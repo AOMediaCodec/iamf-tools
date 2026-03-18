@@ -5,6 +5,7 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "gtest/gtest.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 namespace {
@@ -12,11 +13,11 @@ namespace {
 // A mock to be able to test the abstract base class.
 class MockDecoder : public DecoderBase {
  public:
-  MockDecoder(int num_channels, int num_samples_per_channel)
-      : DecoderBase(num_channels, num_samples_per_channel) {}
+  MockDecoder(SubstreamChannelCount channel_count, int num_samples_per_channel)
+      : DecoderBase(channel_count, num_samples_per_channel) {}
 
   // Helpers to expose the values for expectations.
-  int GetNumChannels() const { return num_channels_; }
+  int num_channels() const { return channel_count_.num_channels(); }
   int GetNumSamplesPerChannel() const { return num_samples_per_channel_; }
 
   // Unimplemented implementations for base class pure virtual methods
@@ -28,10 +29,11 @@ class MockDecoder : public DecoderBase {
 };
 
 TEST(DecoderBaseTest, TestConstruction) {
-  const int kExpectedNumChannels = 9;
+  const int kExpectedNumChannels = 2;
   const int kExpectedNumSamplesPerChannel = 5400;
-  MockDecoder decoder(kExpectedNumChannels, kExpectedNumSamplesPerChannel);
-  EXPECT_EQ(decoder.GetNumChannels(), kExpectedNumChannels);
+  MockDecoder decoder(SubstreamChannelCount::MakeCoupled(),
+                      kExpectedNumSamplesPerChannel);
+  EXPECT_EQ(decoder.num_channels(), kExpectedNumChannels);
   EXPECT_EQ(decoder.GetNumSamplesPerChannel(), kExpectedNumSamplesPerChannel);
 }
 

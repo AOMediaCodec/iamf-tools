@@ -22,19 +22,20 @@
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/codec/flac_decoder_stream_callbacks.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "include/FLAC/stream_decoder.h"
 
 namespace iamf_tools {
 
 absl::StatusOr<std::unique_ptr<DecoderBase>> FlacDecoder::Create(
-    int num_channels, uint32_t num_samples_per_frame) {
+    SubstreamChannelCount channel_count, uint32_t num_samples_per_frame) {
   FLAC__StreamDecoder* decoder = FLAC__stream_decoder_new();
   if (decoder == nullptr) {
     return absl::InternalError("Failed to create FLAC stream decoder.");
   }
 
   auto flac_decoder = absl::WrapUnique(
-      new FlacDecoder(num_channels, num_samples_per_frame, decoder));
+      new FlacDecoder(channel_count, num_samples_per_frame, decoder));
 
   FLAC__stream_decoder_init_stream(
       decoder, flac_callbacks::LibFlacReadCallback, /*seek_callback=*/nullptr,

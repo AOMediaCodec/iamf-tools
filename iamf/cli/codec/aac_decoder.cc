@@ -18,6 +18,9 @@
 #include <memory>
 #include <vector>
 
+#include "absl/status/statusor.h"
+#include "iamf/obu/substream_channel_count.h"
+
 // This symbol conflicts with `aacenc_lib.h` and `aacdecoder_lib.h`.
 #ifdef IS_LITTLE_ENDIAN
 #undef IS_LITTLE_ENDIAN
@@ -106,14 +109,15 @@ absl::Status AacDecoderErrorToAbslStatus(AAC_DECODER_ERROR aac_error_code,
 }
 
 absl::Status ConfigureAacDecoder(const AacDecoderConfig& raw_aac_decoder_config,
-                                 int num_channels,
+                                 SubstreamChannelCount channel_count,
                                  AAC_DECODER_INSTANCE* decoder_) {
   // Configure `fdk_aac` with the audio specific config which has the correct
   // number of channels in it. IAMF may share a decoder config for several
   // substreams, so the raw value may not be accurate.
   AudioSpecificConfig fdk_audio_specific_config =
       raw_aac_decoder_config.decoder_specific_info_.audio_specific_config;
-  fdk_audio_specific_config.channel_configuration_ = num_channels;
+  fdk_audio_specific_config.channel_configuration_ =
+      channel_count.num_channels();
 
   // Serialize the modified config. Assume a reasonable default size, but let
   // the buffer be resizable to be safe.
@@ -144,7 +148,7 @@ absl::Status ConfigureAacDecoder(const AacDecoderConfig& raw_aac_decoder_config,
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
-    const AacDecoderConfig& decoder_config, int num_channels,
+    const AacDecoderConfig& decoder_config, SubstreamChannelCount channel_count,
     uint32_t num_samples_per_frame) {
   // Initialize the decoder.
   AAC_DECODER_INSTANCE* decoder =
@@ -155,7 +159,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
   }
 
   const auto status =
-      ConfigureAacDecoder(decoder_config, num_channels, decoder);
+      ConfigureAacDecoder(decoder_config, channel_count, decoder);
   if (!status.ok()) {
     aacDecoder_Close(decoder);
     return status;
@@ -166,7 +170,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
                             << stream_info->numChannels << " channels.";
 
   return absl::WrapUnique(
-      new AacDecoder(num_channels, num_samples_per_frame, decoder));
+      new AacDecoder(channel_count, num_samples_per_frame, decoder));
 }
 
 AacDecoder::~AacDecoder() {
@@ -214,8 +218,9 @@ absl::Status AacDecoder::DecodeAudioFrame(
             return absl::OkStatus();
           };
   return ConvertInterleavedToChannelTime(
-      MakeConstSpan(interleaved_pcm_from_libfdk_aac_), num_channels_,
-      decoded_samples_, kAacInternalTypeToSampleType);
+      MakeConstSpan(interleaved_pcm_from_libfdk_aac_),
+      channel_count_.num_channels(), decoded_samples_,
+      kAacInternalTypeToSampleType);
 }
 
 }  // namespace iamf_tools

@@ -22,6 +22,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/codec/flac_decoder_stream_callbacks.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "include/FLAC/stream_decoder.h"
 namespace iamf_tools {
 
@@ -31,12 +32,12 @@ class FlacDecoder : public DecoderBase {
  public:
   /*!brief Factory function.
    *
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Number of channels for this substream.
    * \param num_samples_per_frame Number of samples per frame.
    * \return Flac decoder on success. A specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
-      int num_channels, uint32_t num_samples_per_frame);
+      SubstreamChannelCount channel_count, uint32_t num_samples_per_frame);
 
   ~FlacDecoder() override;
 
@@ -59,13 +60,14 @@ class FlacDecoder : public DecoderBase {
    *
    * Used only by the factory function.
    *
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Number of channels for this substream.
    * \param num_samples_per_frame Number of samples per frame for this stream.
    * \param decoder `libflac` decoder to use.
    */
-  FlacDecoder(int num_channels, uint32_t num_samples_per_frame,
+  FlacDecoder(SubstreamChannelCount channel_count,
+              uint32_t num_samples_per_frame,
               FLAC__StreamDecoder* absl_nonnull decoder)
-      : DecoderBase(num_channels, num_samples_per_frame), decoder_(decoder) {
+      : DecoderBase(channel_count, num_samples_per_frame), decoder_(decoder) {
     callback_data_ = std::make_unique<flac_callbacks::LibFlacCallbackData>(
         num_samples_per_frame, decoded_samples_);
   }

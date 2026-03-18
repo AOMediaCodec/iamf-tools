@@ -26,6 +26,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -34,8 +35,8 @@ namespace iamf_tools {
 constexpr int16_t kCorrectAudioRollDistance = 0;
 
 absl::StatusOr<std::unique_ptr<DecoderBase>> LpcmDecoder::Create(
-    const LpcmDecoderConfig& decoder_config, int num_channels,
-    uint32_t num_samples_per_frame) {
+    const LpcmDecoderConfig& decoder_config,
+    SubstreamChannelCount channel_count, uint32_t num_samples_per_frame) {
   RETURN_IF_NOT_OK(decoder_config.Validate(kCorrectAudioRollDistance));
 
   uint8_t bit_depth;
@@ -52,7 +53,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> LpcmDecoder::Create(
   }
   const size_t bytes_per_sample = bit_depth / 8;
 
-  return absl::WrapUnique(new LpcmDecoder(num_channels, num_samples_per_frame,
+  return absl::WrapUnique(new LpcmDecoder(channel_count, num_samples_per_frame,
                                           decoder_config.IsLittleEndian(),
                                           bytes_per_sample));
 }
@@ -61,17 +62,18 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
     absl::Span<const uint8_t> encoded_frame) {
   // Make sure we have a valid number of bytes.  There needs to be an equal
   // number of samples for each channel.
+  const size_t num_channels = channel_count_.num_channels();
   if (encoded_frame.size() % bytes_per_sample_ != 0 ||
-      (encoded_frame.size() / bytes_per_sample_) % num_channels_ != 0) {
+      (encoded_frame.size() / bytes_per_sample_) % num_channels != 0) {
     return absl::InvalidArgumentError(absl::StrCat(
         "LpcmDecoder::DecodeAudioFrame() failed: encoded_frame has ",
         encoded_frame.size(),
         " bytes, which is not a multiple of the bytes per sample (",
-        bytes_per_sample_, ") * number of channels (", num_channels_, ")."));
+        bytes_per_sample_, ") * number of channels (", num_channels, ")."));
   }
   // Each channel has one sample per tick.
   const size_t num_ticks =
-      encoded_frame.size() / bytes_per_sample_ / num_channels_;
+      encoded_frame.size() / bytes_per_sample_ / num_channels;
   if (num_ticks > num_samples_per_channel_) {
     return absl::InvalidArgumentError(
         absl::StrCat("Detected num_ticks= ", num_ticks,
@@ -79,14 +81,14 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
                      "num_samples_per_channel_= ",
                      num_samples_per_channel_, "."));
   }
-  decoded_samples_.resize(num_channels_);
+  decoded_samples_.resize(num_channels);
   int32_t sample_result;
-  for (int c = 0; c < num_channels_; ++c) {
+  for (int c = 0; c < num_channels; ++c) {
     // One sample for each time tick in this channel.
     auto& decoded_samples_for_channel = decoded_samples_[c];
     decoded_samples_for_channel.resize(num_ticks);
     for (size_t t = 0; t < num_ticks; ++t) {
-      const size_t offset = (t * num_channels_ + c) * bytes_per_sample_;
+      const size_t offset = (t * num_channels + c) * bytes_per_sample_;
       absl::Span<const uint8_t> input_bytes(encoded_frame.data() + offset,
                                             bytes_per_sample_);
       if (little_endian_) {

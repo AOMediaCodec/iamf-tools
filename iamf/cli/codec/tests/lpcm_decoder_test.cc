@@ -12,6 +12,7 @@
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -57,10 +58,11 @@ TEST(Create, Succeed) {
   lpcm_decoder_config.sample_size_ = 16;
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmLittleEndian;
-  int number_of_channels = 11;  // Arbitrary.
+  const auto channel_count =
+      SubstreamChannelCount::MakeCoupled();  // Arbitrary.
 
-  auto lpcm_decoder = LpcmDecoder::Create(
-      lpcm_decoder_config, number_of_channels, kNumSamplesPerFrame);
+  auto lpcm_decoder = LpcmDecoder::Create(lpcm_decoder_config, channel_count,
+                                          kNumSamplesPerFrame);
   EXPECT_THAT(lpcm_decoder, IsOkAndHolds(Not(IsNull())));
 }
 
@@ -72,10 +74,11 @@ TEST(Create, FailsWithInvalidConfig) {
   lpcm_decoder_config.sample_size_ = 16;
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmBeginReserved;
-  int number_of_channels = 11;  // Arbitrary.
+  const auto channel_count =
+      SubstreamChannelCount::MakeCoupled();  // Arbitrary.
 
-  auto lpcm_decoder = LpcmDecoder::Create(
-      lpcm_decoder_config, number_of_channels, kNumSamplesPerFrame);
+  auto lpcm_decoder = LpcmDecoder::Create(lpcm_decoder_config, channel_count,
+                                          kNumSamplesPerFrame);
   EXPECT_THAT(lpcm_decoder, Not(IsOk()));
 }
 
@@ -88,7 +91,8 @@ std::unique_ptr<DecoderBase> CreateDecoderForDecodingTest(
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       little_endian ? kLpcmLittleEndian : kLpcmBigEndian;
 
-  auto lpcm_decoder = LpcmDecoder::Create(lpcm_decoder_config, kTwoChannels,
+  auto lpcm_decoder = LpcmDecoder::Create(lpcm_decoder_config,
+                                          SubstreamChannelCount::MakeCoupled(),
                                           num_samples_per_frame);
   EXPECT_THAT(lpcm_decoder, IsOkAndHolds(Not(IsNull())));
   return std::move(*lpcm_decoder);

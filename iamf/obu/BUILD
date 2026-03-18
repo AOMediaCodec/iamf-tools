@@ -373,6 +373,17 @@ cc_library(
 )
 
 cc_library(
+    name = "substream_channel_count",
+    srcs = ["substream_channel_count.cc"],
+    hdrs = ["substream_channel_count.h"],
+    deps = [
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
     name = "temporal_delimiter",
     hdrs = ["temporal_delimiter.h"],
     deps = [

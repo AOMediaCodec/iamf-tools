@@ -294,6 +294,17 @@ cc_test(
 )
 
 cc_test(
+    name = "substream_channel_count_test",
+    size = "small",
+    srcs = ["substream_channel_count_test.cc"],
+    deps = [
+        "//iamf/obu:substream_channel_count",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "temporal_delimiter_test",
     size = "small",
     srcs = ["temporal_delimiter_test.cc"],

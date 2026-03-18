@@ -28,6 +28,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 #include "include/opus.h"
 #include "include/opus_types.h"
@@ -57,15 +58,15 @@ absl::Status ValidateDecoderConfig(
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<DecoderBase>> OpusDecoder::Create(
-    const OpusDecoderConfig& decoder_config, int num_channels,
-    uint32_t num_samples_per_frame) {
+    const OpusDecoderConfig& decoder_config,
+    SubstreamChannelCount channel_count, uint32_t num_samples_per_frame) {
   MAYBE_RETURN_IF_NOT_OK(ValidateDecoderConfig(decoder_config));
 
   // Initialize the decoder.
   int opus_error_code;
   LibOpusDecoder* decoder = opus_decoder_create(
       static_cast<opus_int32>(decoder_config.GetOutputSampleRate()),
-      num_channels, &opus_error_code);
+      channel_count.num_channels(), &opus_error_code);
   RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(
       opus_error_code, "Failed to initialize Opus decoder."));
   if (decoder == nullptr) {
@@ -73,7 +74,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> OpusDecoder::Create(
   }
 
   return absl::WrapUnique(
-      new OpusDecoder(num_channels, num_samples_per_frame, decoder));
+      new OpusDecoder(channel_count, num_samples_per_frame, decoder));
 }
 
 OpusDecoder::~OpusDecoder() {
@@ -101,7 +102,7 @@ absl::Status OpusDecoder::DecodeAudioFrame(
   }
   ABSL_LOG_FIRST_N(INFO, 1)
       << "Opus decoded " << num_output_samples << " samples per channel. With "
-      << num_channels_ << " channels.";
+      << channel_count_.num_channels() << " channels.";
 
   // Convert the interleaved data to (channel, time) axes
   const absl::AnyInvocable<absl::Status(float, InternalSampleType&) const>
@@ -111,8 +112,9 @@ absl::Status OpusDecoder::DecodeAudioFrame(
       };
   return ConvertInterleavedToChannelTime(
       absl::MakeConstSpan(interleaved_float_from_libopus_)
-          .first(num_output_samples * num_channels_),
-      num_channels_, decoded_samples_, kFloatToInternalSampleType);
+          .first(num_output_samples * channel_count_.num_channels()),
+      channel_count_.num_channels(), decoded_samples_,
+      kFloatToInternalSampleType);
 }
 
 }  // namespace iamf_tools

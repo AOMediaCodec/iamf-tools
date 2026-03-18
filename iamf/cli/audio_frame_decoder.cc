@@ -29,6 +29,7 @@
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 
 // These defines are not part of an official API and are likely to change or be
 // removed.  Please do not depend on them.
@@ -50,7 +51,7 @@ namespace iamf_tools {
 namespace {
 
 absl::StatusOr<std::unique_ptr<DecoderBase>> CreateDecoder(
-    const CodecConfigObu& codec_config, int num_channels) {
+    const CodecConfigObu& codec_config, SubstreamChannelCount channel_count) {
   const auto* decoder_config = &codec_config.GetCodecConfig().decoder_config;
   switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
@@ -61,7 +62,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> CreateDecoder(
         return absl::InvalidArgumentError(
             "CodecConfigObu does not contain an `LpcmDecoderConfig`.");
       }
-      return LpcmDecoder::Create(*lpcm_decoder_config, num_channels,
+      return LpcmDecoder::Create(*lpcm_decoder_config, channel_count,
                                  codec_config.GetNumSamplesPerFrame());
     }
 #ifndef IAMF_TOOLS_DISABLE_OPUS_DECODER
@@ -72,7 +73,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> CreateDecoder(
         return absl::InvalidArgumentError(
             "CodecConfigObu does not contain an `OpusDecoderConfig`.");
       }
-      return OpusDecoder::Create(*opus_decoder_config, num_channels,
+      return OpusDecoder::Create(*opus_decoder_config, channel_count,
                                  codec_config.GetNumSamplesPerFrame());
     }
 #endif
@@ -83,13 +84,13 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> CreateDecoder(
         return absl::InvalidArgumentError(
             "CodecConfigObu does not contain an `AacDecoderConfig`.");
       }
-      return AacDecoder::Create(*aac_decoder_config, num_channels,
+      return AacDecoder::Create(*aac_decoder_config, channel_count,
                                 codec_config.GetNumSamplesPerFrame());
     }
 #endif
 #ifndef IAMF_TOOLS_DISABLE_FLAC_DECODER
     case kCodecIdFlac:
-      return FlacDecoder::Create(num_channels,
+      return FlacDecoder::Create(channel_count,
                                  codec_config.GetNumSamplesPerFrame());
 #endif
     default:
@@ -114,11 +115,14 @@ absl::Status AudioFrameDecoder::InitDecodersForSubstreams(
           ". Maybe multiple Audio Element OBUs have the same substream ID?"));
     }
 
-    const int num_channels = static_cast<int>(labels.size());
+    auto channel_count = SubstreamChannelCount::Create(labels.size());
+    if (!channel_count.ok()) {
+      return channel_count.status();
+    }
 
     // Create the decoder, unwrap it and move it into the map, if it is valid.
     absl::StatusOr<std::unique_ptr<DecoderBase>> new_decoder =
-        CreateDecoder(codec_config, num_channels);
+        CreateDecoder(codec_config, *channel_count);
     if (!new_decoder.ok()) {
       return new_decoder.status();
     }

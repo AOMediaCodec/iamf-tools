@@ -47,6 +47,7 @@ cc_library(
         "//iamf/cli/codec:opus_decoder",
         "//iamf/common/utils:macros",
         "//iamf/obu:codec_config",
+        "//iamf/obu:substream_channel_count",
         "//iamf/obu:types",
         "//iamf/obu/decoder_config:aac_decoder_config",
         "//iamf/obu/decoder_config:lpcm_decoder_config",

@@ -18,6 +18,7 @@
 
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -28,11 +29,12 @@ class DecoderBase {
  public:
   /*!\brief Constructor.
    *
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Number of channels for this substream.
    * \param num_samples_per_channel Number of samples per channel.
    */
-  DecoderBase(int num_channels, uint32_t num_samples_per_channel)
-      : num_channels_(num_channels),
+  DecoderBase(SubstreamChannelCount channel_count,
+              uint32_t num_samples_per_channel)
+      : channel_count_(channel_count),
         num_samples_per_channel_(num_samples_per_channel) {
     decoded_samples_.reserve(num_samples_per_channel_);
   }
@@ -59,7 +61,7 @@ class DecoderBase {
   }
 
  protected:
-  const int num_channels_;
+  const SubstreamChannelCount channel_count_;
   const uint32_t num_samples_per_channel_;
 
   // Stores the output decoded frames arranged in (channel, time) axes. That

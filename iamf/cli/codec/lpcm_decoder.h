@@ -22,6 +22,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 
@@ -36,13 +37,13 @@ class LpcmDecoder : public DecoderBase {
   /*!brief Factory function.
    *
    * \param decoder_config Decoder config for this stream.
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Number of channels for this substream.
    * \param num_samples_per_frame Number of samples per frame for this stream.
    * \return LPCM decoder on success. A specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
-      const LpcmDecoderConfig& decoder_config, int num_channels,
-      uint32_t num_samples_per_frame);
+      const LpcmDecoderConfig& decoder_config,
+      SubstreamChannelCount channel_count, uint32_t num_samples_per_frame);
 
   /*!brief Destructor. */
   ~LpcmDecoder() override = default;
@@ -60,14 +61,15 @@ class LpcmDecoder : public DecoderBase {
    *
    * Used only by the factory function.
    *
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Number of channels for this substream.
    * \param num_samples_per_frame Number of samples per frame for this stream.
    * \param little_endian Whether the samples are little endian.
    * \param bytes_per_sample Number of bytes per sample.
    */
-  LpcmDecoder(int num_channels, uint32_t num_samples_per_frame,
-              bool little_endian, size_t bytes_per_sample)
-      : DecoderBase(num_channels, num_samples_per_frame),
+  LpcmDecoder(SubstreamChannelCount channel_count,
+              uint32_t num_samples_per_frame, bool little_endian,
+              size_t bytes_per_sample)
+      : DecoderBase(channel_count, num_samples_per_frame),
         little_endian_(little_endian),
         bytes_per_sample_(bytes_per_sample) {}
   const bool little_endian_;

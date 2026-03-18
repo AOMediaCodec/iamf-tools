@@ -20,6 +20,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 namespace {
@@ -32,8 +33,6 @@ using ::testing::Not;
 
 constexpr uint32_t kNumSamplesPerFrame = 1024;
 using enum AudioSpecificConfig::SampleFrequencyIndex;
-constexpr int kOneChannel = 1;
-constexpr int kTwoChannels = 2;
 
 AacDecoderConfig CreateAacDecoderConfig(
     AudioSpecificConfig::SampleFrequencyIndex sample_frequency_index) {
@@ -50,8 +49,9 @@ AacDecoderConfig CreateAacDecoderConfig(
 TEST(Create, SucceedsForOneChannel) {
   const AacDecoderConfig aac_decoder_config = CreateAacDecoderConfig(k48000);
 
-  auto aac_decoder =
-      AacDecoder::Create(aac_decoder_config, kOneChannel, kNumSamplesPerFrame);
+  auto aac_decoder = AacDecoder::Create(aac_decoder_config,
+                                        SubstreamChannelCount::MakeSingular(),
+                                        kNumSamplesPerFrame);
 
   EXPECT_THAT(aac_decoder, IsOkAndHolds(Not(IsNull())));
 }
@@ -59,8 +59,9 @@ TEST(Create, SucceedsForOneChannel) {
 TEST(Create, SucceedsForTwoChannels) {
   const AacDecoderConfig aac_decoder_config = CreateAacDecoderConfig(k48000);
 
-  auto aac_decoder =
-      AacDecoder::Create(aac_decoder_config, kTwoChannels, kNumSamplesPerFrame);
+  auto aac_decoder = AacDecoder::Create(aac_decoder_config,
+                                        SubstreamChannelCount::MakeCoupled(),
+                                        kNumSamplesPerFrame);
 
   EXPECT_THAT(aac_decoder, IsOkAndHolds(Not(IsNull())));
 }
@@ -68,16 +69,18 @@ TEST(Create, SucceedsForTwoChannels) {
 TEST(Create, SucceedsForAlternativeSampleRate) {
   const AacDecoderConfig aac_decoder_config = CreateAacDecoderConfig(k16000);
 
-  auto aac_decoder =
-      AacDecoder::Create(aac_decoder_config, kTwoChannels, kNumSamplesPerFrame);
+  auto aac_decoder = AacDecoder::Create(aac_decoder_config,
+                                        SubstreamChannelCount::MakeCoupled(),
+                                        kNumSamplesPerFrame);
 
   EXPECT_THAT(aac_decoder, IsOkAndHolds(Not(IsNull())));
 }
 
 TEST(DecodeAudioFrame, FailsForEmptyFrame) {
   const AacDecoderConfig aac_decoder_config = CreateAacDecoderConfig(k48000);
-  auto aac_decoder =
-      AacDecoder::Create(aac_decoder_config, kTwoChannels, kNumSamplesPerFrame);
+  auto aac_decoder = AacDecoder::Create(aac_decoder_config,
+                                        SubstreamChannelCount::MakeCoupled(),
+                                        kNumSamplesPerFrame);
   ASSERT_THAT(aac_decoder, IsOkAndHolds(Not(IsNull())));
 
   constexpr absl::Span<const uint8_t> kEmptyFrame;

@@ -20,6 +20,7 @@
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 
 // This symbol conflicts with a macro in fdk_aac.
 #ifdef IS_LITTLE_ENDIAN
@@ -39,13 +40,13 @@ class AacDecoder : public DecoderBase {
   /*!brief Factory function.
    *
    * \param decoder_config Decoder config for this stream.
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Channel count for this substream.
    * \param num_samples_per_frame Number of samples per frame for this stream.
    * \return AAC decoder on success. A specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
-      const AacDecoderConfig& decoder_config, int num_channels,
-      uint32_t num_samples_per_frame);
+      const AacDecoderConfig& decoder_config,
+      SubstreamChannelCount channel_count, uint32_t num_samples_per_frame);
 
   /*!\brief Destructor.
    */
@@ -64,14 +65,16 @@ class AacDecoder : public DecoderBase {
    *
    * Used only by the factory function.
    *
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Number of channels for this substream.
    * \param num_samples_per_frame Number of samples per frame for this stream.
    * \param decoder `fdk_aac` decoder to use.
    */
-  AacDecoder(int num_channels, uint32_t num_samples_per_frame,
+  AacDecoder(SubstreamChannelCount channel_count,
+             uint32_t num_samples_per_frame,
              AAC_DECODER_INSTANCE* absl_nonnull decoder)
-      : DecoderBase(num_channels, num_samples_per_frame),
-        interleaved_pcm_from_libfdk_aac_(num_samples_per_frame * num_channels),
+      : DecoderBase(channel_count, num_samples_per_frame),
+        interleaved_pcm_from_libfdk_aac_(num_samples_per_frame *
+                                         channel_count.num_channels()),
         decoder_(decoder) {}
 
   // Resizes to the size of the largest input frame.

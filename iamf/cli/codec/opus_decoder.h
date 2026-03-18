@@ -22,6 +22,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "include/opus.h"
 
 namespace iamf_tools {
@@ -31,13 +32,13 @@ class OpusDecoder : public DecoderBase {
   /*!brief Factory function.
    *
    * \param decoder_config Decoder config for this stream.
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Number of channels for this substream.
    * \param num_samples_per_frame Number of samples per frame for this stream.
    * \return Opus decoder on success. A specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
-      const OpusDecoderConfig& decoder_config, int num_channels,
-      uint32_t num_samples_per_frame);
+      const OpusDecoderConfig& decoder_config,
+      SubstreamChannelCount channel_count, uint32_t num_samples_per_frame);
 
   /*!\brief Destructor
    */
@@ -59,14 +60,16 @@ class OpusDecoder : public DecoderBase {
    *
    * Used only by the factory function.
    *
-   * \param num_channels Number of channels for this stream.
+   * \param channel_count Number of channels for this substream.
    * \param num_samples_per_frame Number of samples per frame for this stream.
    * \param decoder `libopus` decoder to use.
    */
-  OpusDecoder(int num_channels, uint32_t num_samples_per_frame,
+  OpusDecoder(SubstreamChannelCount channel_count,
+              uint32_t num_samples_per_frame,
               LibOpusDecoder* absl_nonnull decoder)
-      : DecoderBase(num_channels, num_samples_per_frame),
-        interleaved_float_from_libopus_(num_samples_per_frame * num_channels),
+      : DecoderBase(channel_count, num_samples_per_frame),
+        interleaved_float_from_libopus_(num_samples_per_frame *
+                                        channel_count.num_channels()),
         decoder_(decoder) {}
 
   // Size fixed at construction time.

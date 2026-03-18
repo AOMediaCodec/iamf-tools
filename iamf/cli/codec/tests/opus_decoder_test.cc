@@ -20,6 +20,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 namespace {
@@ -32,8 +33,6 @@ using ::testing::Not;
 
 constexpr uint32_t kNumSamplesPerFrame = 960;
 constexpr uint32_t kSampleRate = 48000;
-constexpr int kOneChannel = 1;
-constexpr int kTwoChannels = 2;
 
 OpusDecoderConfig CreateOpusDecoderConfig(uint32_t sample_rate) {
   return OpusDecoderConfig{
@@ -45,7 +44,8 @@ TEST(Create, SucceedsForOneChannel) {
   const OpusDecoderConfig opus_decoder_config =
       CreateOpusDecoderConfig(kSampleRate);
 
-  auto opus_decoder = OpusDecoder::Create(opus_decoder_config, kOneChannel,
+  auto opus_decoder = OpusDecoder::Create(opus_decoder_config,
+                                          SubstreamChannelCount::MakeSingular(),
                                           kNumSamplesPerFrame);
 
   EXPECT_THAT(opus_decoder, IsOkAndHolds(Not(IsNull())));
@@ -55,7 +55,8 @@ TEST(Create, SucceedsForTwoChannels) {
   const OpusDecoderConfig opus_decoder_config =
       CreateOpusDecoderConfig(kSampleRate);
 
-  auto opus_decoder = OpusDecoder::Create(opus_decoder_config, kTwoChannels,
+  auto opus_decoder = OpusDecoder::Create(opus_decoder_config,
+                                          SubstreamChannelCount::MakeCoupled(),
                                           kNumSamplesPerFrame);
 
   EXPECT_THAT(opus_decoder, IsOkAndHolds(Not(IsNull())));
@@ -66,7 +67,8 @@ TEST(Create, SucceedsForAlternativeSampleRate) {
   const OpusDecoderConfig opus_decoder_config =
       CreateOpusDecoderConfig(kSampleRate16000);
 
-  auto opus_decoder = OpusDecoder::Create(opus_decoder_config, kTwoChannels,
+  auto opus_decoder = OpusDecoder::Create(opus_decoder_config,
+                                          SubstreamChannelCount::MakeCoupled(),
                                           kNumSamplesPerFrame);
 
   EXPECT_THAT(opus_decoder, IsOkAndHolds(Not(IsNull())));
@@ -76,7 +78,8 @@ TEST(DecodeAudioFrame, SucceedsForEmptyFrame) {
   const OpusDecoderConfig opus_decoder_config =
       CreateOpusDecoderConfig(kSampleRate);
 
-  auto opus_decoder = OpusDecoder::Create(opus_decoder_config, kTwoChannels,
+  auto opus_decoder = OpusDecoder::Create(opus_decoder_config,
+                                          SubstreamChannelCount::MakeCoupled(),
                                           kNumSamplesPerFrame);
   ASSERT_THAT(opus_decoder, IsOkAndHolds(Not(IsNull())));
 

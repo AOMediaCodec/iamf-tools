@@ -25,6 +25,7 @@ cc_test(
     deps = [
         "//iamf/cli/codec:aac_decoder",
         "//iamf/cli/codec:decoder_base",
+        "//iamf/obu:substream_channel_count",
         "//iamf/obu/decoder_config:aac_decoder_config",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
@@ -53,6 +54,7 @@ cc_test(
     srcs = ["decoder_base_test.cc"],
     deps = [
         "//iamf/cli/codec:decoder_base",
+        "//iamf/obu:substream_channel_count",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
@@ -96,6 +98,7 @@ cc_test(
         "//iamf/cli/codec:decoder_base",
         "//iamf/cli/codec:flac_decoder",
         "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:substream_channel_count",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
@@ -126,6 +129,7 @@ cc_test(
         "//iamf/cli/codec:decoder_base",
         "//iamf/cli/codec:lpcm_decoder",
         "//iamf/common/utils:numeric_utils",
+        "//iamf/obu:substream_channel_count",
         "//iamf/obu:types",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "@abseil-cpp//absl/status:status_matchers",
@@ -155,6 +159,7 @@ cc_test(
     deps = [
         "//iamf/cli/codec:decoder_base",
         "//iamf/cli/codec:opus_decoder",
+        "//iamf/obu:substream_channel_count",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
