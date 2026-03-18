@@ -21,13 +21,20 @@
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 
 class LpcmEncoder : public EncoderBase {
  public:
-  LpcmEncoder(const CodecConfigObu& codec_config, int num_channels)
-      : EncoderBase(codec_config, num_channels),
+  /*!\brief Constructor.
+   *
+   * \param codec_config Codec config for LPCM.
+   * \param channel_count Number of channels in the substream.
+   */
+  LpcmEncoder(const CodecConfigObu& codec_config,
+              SubstreamChannelCount channel_count)
+      : EncoderBase(codec_config, channel_count),
         decoder_config_(std::get<LpcmDecoderConfig>(
             codec_config.GetCodecConfig().decoder_config)) {}
 

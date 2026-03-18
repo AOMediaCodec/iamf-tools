@@ -16,6 +16,7 @@
 #include "absl/status/statusor.h"
 #include "iamf/cli/codec/opus_encoder.h"
 #include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -23,13 +24,13 @@ namespace iamf_tools {
 /*!\brief Creates `OpusEncoder::Settings` from the input protocol buffer.
  *
  * \param opus_encoder_metadata  Input protocol buffer.
- * \param num_channels Number of channels.
+ * \param channel_count Number of substream channels.
  * \param substream_id Substream ID.
  * \return `OpusEncoder::Settings` on success. A specific status on failure.
  */
 absl::StatusOr<OpusEncoder::Settings> CreateOpusEncoderSettings(
     const iamf_tools_cli_proto::OpusEncoderMetadata& opus_encoder_metadata,
-    int num_channels, DecodedUleb128 substream_id);
+    SubstreamChannelCount channel_count, DecodedUleb128 substream_id);
 
 }  // namespace iamf_tools
 

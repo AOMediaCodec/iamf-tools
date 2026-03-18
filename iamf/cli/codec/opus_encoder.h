@@ -21,6 +21,7 @@
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "include/opus.h"
 #include "include/opus_defines.h"
 
@@ -45,12 +46,12 @@ class OpusEncoder : public EncoderBase {
    *
    * \param settings Encoder settings.
    * \param codec_config Codec config OBU.
-   * \param num_channels Number of channels in the encoded audio.
+   * \param channel_count Number of substream channels in the encoded audio.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   OpusEncoder(const Settings& settings, const CodecConfigObu& codec_config,
-              int num_channels)
-      : EncoderBase(codec_config, num_channels),
+              SubstreamChannelCount channel_count)
+      : EncoderBase(codec_config, channel_count),
         settings_(settings),
         decoder_config_(std::get<OpusDecoderConfig>(
             codec_config.GetCodecConfig().decoder_config)) {}

@@ -18,6 +18,7 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 #include "include/opus_defines.h"
 
@@ -31,10 +32,7 @@ constexpr int kMaxOpusBitrate = 512000;
 
 absl::StatusOr<int32_t> GetSanitizedBitrate(
     const iamf_tools_cli_proto::OpusEncoderMetadata& opus_encoder_metadata,
-    int num_channels, DecodedUleb128 substream_id) {
-  // IAMF elementary streams are only ever 1 or 2 channels.
-  RETURN_IF_NOT_OK(ValidateInRange(num_channels, {1, 2}, "number of channels"));
-
+    SubstreamChannelCount channel_count, DecodedUleb128 substream_id) {
   // Extract a base bitrate and a factor, so validation and checking sentinel
   // values is only done once.
   int32_t base_bitrate = 0;
@@ -45,7 +43,7 @@ absl::StatusOr<int32_t> GetSanitizedBitrate(
   if (override_it !=
       opus_encoder_metadata.substream_id_to_bitrate_override().end()) {
     base_bitrate = override_it->second;
-  } else if (num_channels == 1) {
+  } else if (channel_count.num_channels() == 1) {
     base_bitrate = opus_encoder_metadata.target_bitrate_per_channel();
   } else {
     // Sanitize the coupling rate adjustment. Under the assumption that this is
@@ -63,7 +61,8 @@ absl::StatusOr<int32_t> GetSanitizedBitrate(
     // substreams with the same effective bit-rate per channel, when the
     // coupling rate adjustment is 1.0.
     base_bitrate = opus_encoder_metadata.target_bitrate_per_channel();
-    factor = opus_encoder_metadata.coupling_rate_adjustment() * num_channels;
+    factor = opus_encoder_metadata.coupling_rate_adjustment() *
+             channel_count.num_channels();
   }
 
   // Directly forward some sentinel values from `libopus` to the caller.
@@ -83,7 +82,7 @@ absl::StatusOr<int32_t> GetSanitizedBitrate(
 
 absl::StatusOr<OpusEncoder::Settings> CreateOpusEncoderSettings(
     const iamf_tools_cli_proto::OpusEncoderMetadata& opus_encoder_metadata,
-    int num_channels, DecodedUleb128 substream_id) {
+    SubstreamChannelCount channel_count, DecodedUleb128 substream_id) {
   int application;
   switch (opus_encoder_metadata.application()) {
     using enum iamf_tools_cli_proto::OpusApplicationFlag;
@@ -102,7 +101,7 @@ absl::StatusOr<OpusEncoder::Settings> CreateOpusEncoderSettings(
   }
 
   auto bitrate =
-      GetSanitizedBitrate(opus_encoder_metadata, num_channels, substream_id);
+      GetSanitizedBitrate(opus_encoder_metadata, channel_count, substream_id);
   if (!bitrate.ok()) {
     return bitrate.status();
   }

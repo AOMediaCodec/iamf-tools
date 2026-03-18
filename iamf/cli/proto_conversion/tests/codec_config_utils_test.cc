@@ -19,6 +19,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 #include "include/opus_defines.h"
 
@@ -30,8 +31,8 @@ using ::testing::Not;
 
 using iamf_tools_cli_proto::OpusEncoderMetadata;
 
-constexpr int kOneChannel = 1;
-constexpr int kTwoChannels = 2;
+const auto kOneChannel = SubstreamChannelCount::MakeSingular();
+const auto kTwoChannels = SubstreamChannelCount::MakeCoupled();
 constexpr DecodedUleb128 kSubstreamId = 99;
 
 OpusEncoderMetadata CreateOpusEncoderMetadata() {
@@ -208,15 +209,6 @@ TEST(CreateOpusEncoderSettings, IgnoresBitrateOverrideForDifferentSubstreamId) {
   ASSERT_THAT(settings, IsOk());
   // The override for the other substream should be ignored.
   EXPECT_EQ(settings->target_substream_bitrate, 96000);
-}
-
-TEST(CreateOpusEncoderSettings, ReturnsErrorForUnsanitizedNumChannels) {
-  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
-  const int kInvalidNumChannels = std::numeric_limits<int32_t>::max();
-
-  EXPECT_THAT(CreateOpusEncoderSettings(opus_encoder_metadata,
-                                        kInvalidNumChannels, kSubstreamId),
-              Not(IsOk()));
 }
 
 TEST(CreateOpusEncoderSettings,

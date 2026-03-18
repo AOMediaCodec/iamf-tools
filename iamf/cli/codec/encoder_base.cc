@@ -11,13 +11,13 @@
  */
 #include "iamf/cli/codec/encoder_base.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
 
 namespace iamf_tools {
 
@@ -34,11 +34,9 @@ absl::Status EncoderBase::Initialize(bool validate_codec_delay) {
 
 absl::Status EncoderBase::ValidateInputSamples(
     const std::vector<std::vector<int32_t>>& samples) const {
-  if (samples.size() != static_cast<size_t>(num_channels_)) {
-    auto error_message = absl::StrCat(
-        "Found ", samples.size(), " channels. Expected ", num_channels_, ".");
-    return absl::InvalidArgumentError(error_message);
-  }
+  RETURN_IF_NOT_OK(
+      ValidateEqual(samples.size(), channel_count_.num_channels(),
+                    "number of channels in input samples vs channel_count_"));
   if (samples.empty()) {
     return absl::InvalidArgumentError("samples cannot be empty.");
   }

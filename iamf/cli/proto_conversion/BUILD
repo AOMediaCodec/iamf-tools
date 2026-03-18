@@ -39,6 +39,7 @@ cc_library(
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
+        "//iamf/obu:substream_channel_count",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",

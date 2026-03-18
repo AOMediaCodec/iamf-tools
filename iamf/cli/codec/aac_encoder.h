@@ -27,16 +27,23 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "libAACenc/include/aacenc_lib.h"
 
 namespace iamf_tools {
 
 class AacEncoder : public EncoderBase {
  public:
+  /*!\brief Constructor.
+   *
+   * \param aac_encoder_metadata Encoder metadata for AAC.
+   * \param codec_config Codec config for AAC.
+   * \param channel_count Number of channels in the substream.
+   */
   AacEncoder(
       const iamf_tools_cli_proto::AacEncoderMetadata& aac_encoder_metadata,
-      const CodecConfigObu& codec_config, int num_channels)
-      : EncoderBase(codec_config, num_channels),
+      const CodecConfigObu& codec_config, SubstreamChannelCount channel_count)
+      : EncoderBase(codec_config, channel_count),
         encoder_metadata_(aac_encoder_metadata),
         decoder_config_(std::get<AacDecoderConfig>(
             codec_config.GetCodecConfig().decoder_config)) {}

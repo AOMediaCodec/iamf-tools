@@ -24,6 +24,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 namespace {
@@ -55,7 +56,7 @@ class FlacEncoderTest : public EncoderTestBase, public testing::Test {
     ASSERT_THAT(codec_config_obu, IsOk());
 
     encoder_ = std::make_unique<FlacEncoder>(flac_encoder_metadata_,
-                                             *codec_config_obu, num_channels_);
+                                             *codec_config_obu, channel_count_);
   }
 
   FlacDecoderConfig flac_decoder_config_ = {
@@ -76,7 +77,8 @@ TEST_F(FlacEncoderTest, FramesAreInOrder) {
   const int kNumFrames = 100;
   for (int i = 0; i < kNumFrames; i++) {
     EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-        num_channels_, std::vector<int32_t>(num_samples_per_frame_, i)));
+        channel_count_.num_channels(),
+        std::vector<int32_t>(num_samples_per_frame_, i)));
   }
   FinalizeAndValidateOrderOnly(kNumFrames);
 }
@@ -94,7 +96,8 @@ TEST_F(FlacEncoderTest, EncodeAudioFrameSucceeds) {
   // Typically the user of the encoder should pad partial frames of input data
   // before passing it into the encoder.
   const std::vector<std::vector<int32_t>> kAudioFrameWithCorrectNumSamples(
-      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 0));
+      channel_count_.num_channels(),
+      std::vector<int32_t>(num_samples_per_frame_, 0));
   InitExpectOk();
 
   EncodeAudioFrame(kAudioFrameWithCorrectNumSamples);
@@ -105,7 +108,8 @@ TEST_F(FlacEncoderTest,
   // Typically the user of the encoder should pad partial frames of input data
   // before passing it into the encoder.
   const std::vector<std::vector<int32_t>> kAudioFrameWithMissingSample(
-      num_channels_, std::vector<int32_t>(num_samples_per_frame_ - 1, 0));
+      channel_count_.num_channels(),
+      std::vector<int32_t>(num_samples_per_frame_ - 1, 0));
   InitExpectOk();
 
   EncodeAudioFrame(kAudioFrameWithMissingSample,
@@ -115,7 +119,8 @@ TEST_F(FlacEncoderTest,
 TEST_F(FlacEncoderTest,
        EncodeAudioFrameFailsWhenAudioFrameIsLargerThanNumSamplesPerFrame) {
   const std::vector<std::vector<int32_t>> kAudioFrameWithExtraSample(
-      num_channels_, std::vector<int32_t>(num_samples_per_frame_ + 1, 0));
+      channel_count_.num_channels(),
+      std::vector<int32_t>(num_samples_per_frame_ + 1, 0));
   InitExpectOk();
 
   EncodeAudioFrame(kAudioFrameWithExtraSample,

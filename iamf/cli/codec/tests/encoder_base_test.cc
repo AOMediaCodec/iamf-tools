@@ -27,6 +27,7 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -43,7 +44,7 @@ constexpr bool kDontValidateCodecDelay = false;
 class MockEncoder : public EncoderBase {
  public:
   MockEncoder(const CodecConfigObu& codec_config_obu)
-      : EncoderBase(codec_config_obu, 0) {}
+      : EncoderBase(codec_config_obu, SubstreamChannelCount::MakeSingular()) {}
 
   MOCK_METHOD(
       absl::Status, EncodeAudioFrame,

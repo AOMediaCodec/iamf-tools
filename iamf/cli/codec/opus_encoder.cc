@@ -31,6 +31,7 @@
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "include/opus.h"
 #include "include/opus_defines.h"
 #include "include/opus_types.h"
@@ -91,15 +92,15 @@ absl::StatusOr<int> EncodeFloat(
 
 absl::StatusOr<int> EncodeInt16(
     const std::vector<std::vector<int32_t>>& samples,
-    int num_samples_per_channel, int num_channels, ::OpusEncoder* encoder,
-    std::vector<uint8_t>& audio_frame) {
+    int num_samples_per_channel, SubstreamChannelCount channel_count,
+    ::OpusEncoder* encoder, std::vector<uint8_t>& audio_frame) {
   // `libopus` requires the native system endianness as input.
   const bool big_endian = IsNativeBigEndian();
 
   // TODO(b/382197581): Avoid re-allocations of `encoder_input_pcm`.
   // Convert input to the array that will be passed to `opus_encode`.
   std::vector<opus_int16> encoder_input_pcm(
-      num_samples_per_channel * num_channels, 0);
+      num_samples_per_channel * channel_count.num_channels(), 0);
   size_t write_position = 0;
   for (size_t t = 0; t < samples[0].size(); t++) {
     for (size_t c = 0; c < samples.size(); c++) {
@@ -144,7 +145,7 @@ absl::Status OpusEncoder::InitializeEncoder() {
 
   int opus_error_code;
   encoder_ =
-      opus_encoder_create(input_sample_rate_, num_channels_,
+      opus_encoder_create(input_sample_rate_, channel_count_.num_channels(),
                           settings_.libopus_application_mode, &opus_error_code);
   RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(
       opus_error_code, "Failed to initialize Opus encoder."));
@@ -170,12 +171,13 @@ absl::Status OpusEncoder::EncodeAudioFrame(
   // Opus output could take up to 4 bytes per sample. Reserve an output vector
   // of the maximum possible size.
   auto& audio_frame = partial_audio_frame_with_data->obu.audio_frame_;
-  audio_frame.resize(num_samples_per_channel * num_channels_ * 4, 0);
+  audio_frame.resize(
+      num_samples_per_channel * channel_count_.num_channels() * 4, 0);
 
   const auto encoded_length_bytes =
       settings_.use_float_api
           ? EncodeFloat(samples, num_samples_per_channel, encoder_, audio_frame)
-          : EncodeInt16(samples, num_samples_per_channel, num_channels_,
+          : EncodeInt16(samples, num_samples_per_channel, channel_count_,
                         encoder_, audio_frame);
 
   if (!encoded_length_bytes.ok()) {

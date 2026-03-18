@@ -26,6 +26,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/obu/audio_frame.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -114,7 +115,7 @@ class EncoderTestBase {
     }
   }
 
-  int num_channels_ = 1;
+  SubstreamChannelCount channel_count_ = SubstreamChannelCount::MakeSingular();
   uint32_t num_samples_per_frame_ = 1;
   std::unique_ptr<EncoderBase> encoder_;
 

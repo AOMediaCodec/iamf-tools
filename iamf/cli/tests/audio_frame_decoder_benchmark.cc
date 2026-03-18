@@ -34,6 +34,7 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 #include "include/opus_defines.h"
 
@@ -56,8 +57,9 @@ static std::unique_ptr<AacEncoder> CreateAacEncoder(
   aac_encoder_metadata.set_bitrate_mode(0);
   aac_encoder_metadata.set_enable_afterburner(true);
   aac_encoder_metadata.set_signaling_mode(2);
-  auto encoder = std::make_unique<AacEncoder>(aac_encoder_metadata,
-                                              codec_config, kOneChannel);
+  auto encoder =
+      std::make_unique<AacEncoder>(aac_encoder_metadata, codec_config,
+                                   SubstreamChannelCount::MakeSingular());
   return encoder;
 }
 
@@ -66,8 +68,9 @@ static std::unique_ptr<FlacEncoder> CreateFlacEncoder(
   // Encoder.
   iamf_tools_cli_proto::FlacEncoderMetadata flac_encoder_metadata;
   flac_encoder_metadata.set_compression_level(0);
-  auto encoder = std::make_unique<FlacEncoder>(flac_encoder_metadata,
-                                               codec_config, kOneChannel);
+  auto encoder =
+      std::make_unique<FlacEncoder>(flac_encoder_metadata, codec_config,
+                                    SubstreamChannelCount::MakeSingular());
   return encoder;
 }
 
@@ -80,7 +83,7 @@ static std::unique_ptr<OpusEncoder> CreateOpusEncoder(
           .libopus_application_mode = OPUS_APPLICATION_AUDIO,
           .target_substream_bitrate = 48000,
       },
-      codec_config, kOneChannel);
+      codec_config, SubstreamChannelCount::MakeSingular());
   return encoder;
 }
 
@@ -100,8 +103,9 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
   } else if (codec_id_type == CodecConfig::kCodecIdLpcm) {
     AddLpcmCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleSize,
                        kSampleRate, codec_config_obus);
-    encoder = std::make_unique<LpcmEncoder>(
-        codec_config_obus.at(kCodecConfigId), kOneChannel);
+    encoder =
+        std::make_unique<LpcmEncoder>(codec_config_obus.at(kCodecConfigId),
+                                      SubstreamChannelCount::MakeSingular());
   } else if (codec_id_type == CodecConfig::kCodecIdOpus) {
     AddOpusCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleRate,
                        codec_config_obus);

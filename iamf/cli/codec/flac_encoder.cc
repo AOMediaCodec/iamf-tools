@@ -31,6 +31,7 @@
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_encoder.h"
@@ -79,13 +80,15 @@ absl::Status FlacStreamEncoderInitStatusToAbslStatus(
 
 absl::Status Configure(
     const iamf_tools_cli_proto::FlacEncoderMetadata& encoder_metadata,
-    const FlacDecoderConfig& decoder_config, int num_channels,
-    uint32_t num_samples_per_frame, uint32_t output_sample_rate,
-    uint8_t input_pcm_bit_depth_, FLAC__StreamEncoder* const encoder) {
+    const FlacDecoderConfig& decoder_config,
+    SubstreamChannelCount channel_count, uint32_t num_samples_per_frame,
+    uint32_t output_sample_rate, uint8_t input_pcm_bit_depth_,
+    FLAC__StreamEncoder* const encoder) {
   FLAC__bool ok = true;
   // Configure values based on the associated Codec Config OBU.
 
-  ok &= FLAC__stream_encoder_set_channels(encoder, num_channels);
+  ok &=
+      FLAC__stream_encoder_set_channels(encoder, channel_count.num_channels());
 
   ok &= FLAC__stream_encoder_set_bits_per_sample(
       encoder, static_cast<uint32_t>(input_pcm_bit_depth_));
@@ -197,7 +200,8 @@ absl::Status FlacEncoder::EncodeAudioFrame(
 
   ABSL_LOG_FIRST_N(INFO, 1)
       << "num_samples_per_channel: " << num_samples_per_channel;
-  ABSL_LOG_FIRST_N(INFO, 1) << "num_channels: " << num_channels_;
+  ABSL_LOG_FIRST_N(INFO, 1)
+      << "num_channels: " << channel_count_.num_channels();
 
   // FLAC requires a right-justified sign extended value. Calculate what the
   // mask is to sign extend a `input_bit_depth`-bit value.
@@ -232,7 +236,8 @@ absl::Status FlacEncoder::EncodeAudioFrame(
 
   ABSL_LOG_FIRST_N(INFO, 1)
       << "Encoding " << encoder_input_pcm.size() * 4 << " bytes representing "
-      << num_samples_per_channel << " x " << num_channels_ << " samples.";
+      << num_samples_per_channel << " x " << channel_count_.num_channels()
+      << " samples.";
 
   if (!FLAC__stream_encoder_process_interleaved(
           encoder_, encoder_input_pcm.data(), num_samples_per_channel)) {
@@ -264,7 +269,7 @@ absl::Status FlacEncoder::InitializeEncoder() {
   }
 
   // Configure the FLAC encoder based on user input data.
-  RETURN_IF_NOT_OK(Configure(encoder_metadata_, decoder_config_, num_channels_,
+  RETURN_IF_NOT_OK(Configure(encoder_metadata_, decoder_config_, channel_count_,
                              num_samples_per_frame_, output_sample_rate_,
                              input_pcm_bit_depth_, encoder_));
 

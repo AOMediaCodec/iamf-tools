@@ -29,6 +29,7 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "libAACenc/include/aacenc_lib.h"
 #include "libSYS/include/FDK_audio.h"
 #include "libSYS/include/machine_type.h"
@@ -80,7 +81,8 @@ absl::Status AacEncErrorToAbslStatus(AACENC_ERROR aac_error_code,
 
 absl::Status ConfigureAacEncoder(
     const iamf_tools_cli_proto::AacEncoderMetadata& encoder_metadata,
-    int num_channels, uint32_t output_sample_rate, AACENCODER* const encoder) {
+    SubstreamChannelCount channel_count, uint32_t output_sample_rate,
+    AACENCODER* const encoder) {
   // IAMF requires metadata is not embedded in the stream.
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
       aacEncoder_SetParam(encoder, AACENC_METADATA_MODE, 0),
@@ -102,7 +104,7 @@ absl::Status ConfigureAacEncoder(
       "Failed to configure encoder sample rate."));
 
   CHANNEL_MODE aac_channel_mode;
-  switch (num_channels) {
+  switch (channel_count.num_channels()) {
     case 1:
       aac_channel_mode = MODE_1;
 
@@ -114,7 +116,7 @@ absl::Status ConfigureAacEncoder(
       return absl::InvalidArgumentError(
           absl::StrCat("IAMF requires AAC to be used with 1 or 2 channels. Got "
                        "num_channels= ",
-                       num_channels));
+                       channel_count.num_channels()));
   }
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
       aacEncoder_SetParam(encoder, AACENC_CHANNELMODE, aac_channel_mode),
@@ -155,9 +157,9 @@ absl::Status ValidateEncoderInfo(int num_channels,
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(aacEncInfo(encoder, &enc_info),
                                            "Failed to get encoder info."));
 
-  RETURN_IF_NOT_OK(
-      ValidateEqual(num_channels, static_cast<int>(enc_info.inputChannels),
-                    "user requested vs libFDK required `num_channels`"));
+  RETURN_IF_NOT_OK(ValidateEqual<size_t>(
+      num_channels, enc_info.inputChannels,
+      "user requested vs libFDK required `num_channels`"));
   RETURN_IF_NOT_OK(ValidateEqual(
       num_samples_per_frame, static_cast<uint32_t>(enc_info.frameLength),
       "user requested vs libFDK required `num_samples_per_frame`"));
@@ -174,12 +176,12 @@ absl::Status AacEncoder::InitializeEncoder() {
   }
 
   // Open the encoder.
-  RETURN_IF_NOT_OK(
-      AacEncErrorToAbslStatus(aacEncOpen(&encoder_, 0, num_channels_),
-                              "Failed to initialize AAC encoder."));
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncOpen(&encoder_, 0, channel_count_.num_channels()),
+      "Failed to initialize AAC encoder."));
 
   // Configure the encoder.
-  RETURN_IF_NOT_OK(ConfigureAacEncoder(encoder_metadata_, num_channels_,
+  RETURN_IF_NOT_OK(ConfigureAacEncoder(encoder_metadata_, channel_count_,
                                        output_sample_rate_, encoder_));
 
   // Call `aacEncEncode` with `nullptr` arguments to initialize the encoder.
@@ -188,8 +190,8 @@ absl::Status AacEncoder::InitializeEncoder() {
       "Failed on call to `aacEncEncode`."));
 
   // Validate the configuration matches expected results.
-  RETURN_IF_NOT_OK(
-      ValidateEncoderInfo(num_channels_, num_samples_per_frame_, encoder_));
+  RETURN_IF_NOT_OK(ValidateEncoderInfo(channel_count_.num_channels(),
+                                       num_samples_per_frame_, encoder_));
 
   return absl::OkStatus();
 }
@@ -223,7 +225,7 @@ absl::Status AacEncoder::EncodeAudioFrame(
 
   // TODO(b/382197581): Avoid re-allocations of `encoder_input_pcm`.
   std::vector<INT_PCM> encoder_input_pcm(
-      num_samples_per_channel * num_channels_, 0);
+      num_samples_per_channel * channel_count_.num_channels(), 0);
   size_t write_position = 0;
   for (int t = 0; t < samples[0].size(); ++t) {
     for (int c = 0; c < samples.size(); c++) {
@@ -249,7 +251,8 @@ absl::Status AacEncoder::EncodeAudioFrame(
                                    .bufSizes = in_buffer_sizes,
                                    .bufElSizes = in_buffer_element_sizes};
   AACENC_InArgs in_args = {
-      .numInSamples = num_samples_per_channel * num_channels_,
+      .numInSamples = static_cast<INT>(num_samples_per_channel *
+                                       channel_count_.num_channels()),
       .numAncBytes = 0};
 
   // Resize the output buffer to support the worst case size.
@@ -278,7 +281,8 @@ absl::Status AacEncoder::EncodeAudioFrame(
                    &out_args),
       "Failed on call to `aacEncEncode`."));
 
-  if (num_samples_per_channel * num_channels_ != out_args.numInSamples) {
+  if (num_samples_per_channel * channel_count_.num_channels() !=
+      out_args.numInSamples) {
     return absl::UnknownError("Failed to encode an entire frame.");
   }
 
@@ -289,8 +293,9 @@ absl::Status AacEncoder::EncodeAudioFrame(
       std::move(*partial_audio_frame_with_data));
 
   ABSL_LOG_FIRST_N(INFO, 1)
-      << "Encoded " << num_samples_per_channel << " samples * " << num_channels_
-      << " channels using " << out_args.numOutBytes << " bytes";
+      << "Encoded " << num_samples_per_channel << " samples * "
+      << channel_count_.num_channels() << " channels using "
+      << out_args.numOutBytes << " bytes";
   return absl::OkStatus();
 }
 

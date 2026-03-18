@@ -20,6 +20,7 @@ cc_test(
     deps = [
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto_conversion:codec_config_utils",
+        "//iamf/obu:substream_channel_count",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",

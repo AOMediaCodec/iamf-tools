@@ -23,6 +23,7 @@
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 
@@ -44,14 +45,15 @@ class EncoderBase {
    *   will fail.
    *
    * \param codec_config Codec Config OBU for the encoder.
-   * \param num_channels Number of channels for the encoder.
+   * \param channel_count Number of substream channels for the encoder.
    */
-  EncoderBase(const CodecConfigObu& codec_config, int num_channels)
+  EncoderBase(const CodecConfigObu& codec_config,
+              SubstreamChannelCount channel_count)
       : num_samples_per_frame_(codec_config.GetNumSamplesPerFrame()),
         input_sample_rate_(codec_config.GetInputSampleRate()),
         output_sample_rate_(codec_config.GetOutputSampleRate()),
         input_pcm_bit_depth_(codec_config.GetBitDepthToMeasureLoudness()),
-        num_channels_(num_channels) {}
+        channel_count_(channel_count) {}
 
   /*!\brief Destructor. */
   virtual ~EncoderBase() = 0;
@@ -141,7 +143,7 @@ class EncoderBase {
   const uint32_t input_sample_rate_;
   const uint32_t output_sample_rate_;
   const uint8_t input_pcm_bit_depth_;
-  const int num_channels_;
+  const SubstreamChannelCount channel_count_;
 
  protected:
   /*!\brief Initializes the child class.

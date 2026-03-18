@@ -59,6 +59,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -70,34 +71,34 @@ constexpr bool kValidateCodecDelay = true;
 
 absl::Status InitializeEncoder(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
-    const CodecConfigObu& codec_config, int num_channels,
+    const CodecConfigObu& codec_config, SubstreamChannelCount channel_count,
     std::unique_ptr<EncoderBase>& encoder, bool validate_codec_delay,
     int substream_id = 0) {
   switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
-      encoder = std::make_unique<LpcmEncoder>(codec_config, num_channels);
+      encoder = std::make_unique<LpcmEncoder>(codec_config, channel_count);
       break;
     case kCodecIdOpus: {
       auto opus_encoder_settings = CreateOpusEncoderSettings(
           codec_config_metadata.decoder_config_opus().opus_encoder_metadata(),
-          num_channels, substream_id);
+          channel_count, substream_id);
       if (!opus_encoder_settings.ok()) {
         return opus_encoder_settings.status();
       }
       encoder = std::make_unique<OpusEncoder>(*opus_encoder_settings,
-                                              codec_config, num_channels);
+                                              codec_config, channel_count);
       break;
     }
     case kCodecIdAacLc:
       encoder = std::make_unique<AacEncoder>(
           codec_config_metadata.decoder_config_aac().aac_encoder_metadata(),
-          codec_config, num_channels);
+          codec_config, channel_count);
       break;
     case kCodecIdFlac:
       encoder = std::make_unique<FlacEncoder>(
           codec_config_metadata.decoder_config_flac().flac_encoder_metadata(),
-          codec_config, num_channels);
+          codec_config, channel_count);
       break;
     default:
       return absl::InvalidArgumentError(absl::StrCat(
@@ -117,7 +118,10 @@ absl::Status GetEncodingDataAndInitializeEncoders(
         substream_id_to_encoder) {
   for (const auto& [substream_id, labels] :
        audio_element_with_data.substream_id_to_labels) {
-    const int num_channels = static_cast<int>(labels.size());
+    const auto channel_count = SubstreamChannelCount::Create(labels.size());
+    if (!channel_count.ok()) {
+      return channel_count.status();
+    }
     const CodecConfigObu& codec_config_obu =
         *audio_element_with_data.codec_config;
     auto codec_config_metadata_iter =
@@ -129,7 +133,7 @@ absl::Status GetEncodingDataAndInitializeEncoders(
     }
 
     RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata_iter->second,
-                                       codec_config_obu, num_channels,
+                                       codec_config_obu, *channel_count,
                                        substream_id_to_encoder[substream_id],
                                        kValidateCodecDelay, substream_id));
   }
@@ -791,9 +795,10 @@ absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
   constexpr bool kDontValidateCodecDelay = false;
 
   std::unique_ptr<EncoderBase> encoder;
-  RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata, codec_config,
-                                     /*num_channels=*/1, encoder,
-                                     kDontValidateCodecDelay));
+  RETURN_IF_NOT_OK(
+      InitializeEncoder(codec_config_metadata, codec_config,
+                        /*channel_count=*/SubstreamChannelCount::MakeSingular(),
+                        encoder, kDontValidateCodecDelay));
   if (encoder == nullptr) {
     return absl::InvalidArgumentError("Failed to initialize encoder");
   }

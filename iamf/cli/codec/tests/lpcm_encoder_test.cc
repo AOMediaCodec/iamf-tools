@@ -22,6 +22,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 namespace {
@@ -46,7 +47,7 @@ class LpcmEncoderTest : public EncoderTestBase, public testing::Test {
                                                kOverrideAudioRollDistance);
     ASSERT_THAT(codec_config, IsOk());
 
-    encoder_ = std::make_unique<LpcmEncoder>(*codec_config, num_channels_);
+    encoder_ = std::make_unique<LpcmEncoder>(*codec_config, channel_count_);
   }
 
   LpcmDecoderConfig lpcm_decoder_config_ = {
@@ -151,7 +152,7 @@ TEST_F(LpcmEncoderTest, DoesNotSupportPartialFrames) {
 }
 
 TEST_F(LpcmEncoderTest, TwoChannels) {
-  num_channels_ = 2;
+  channel_count_ = SubstreamChannelCount::MakeCoupled();
   InitExpectOk();
 
   EncodeAudioFrame({{0x11111111}, {0x22222222}});
@@ -162,7 +163,7 @@ TEST_F(LpcmEncoderTest, TwoChannels) {
 
 TEST_F(LpcmEncoderTest,
        EncodeAudioFrameFailsWhenNumChannelsIsInconsitentWithInputFrame) {
-  num_channels_ = 1;
+  channel_count_ = SubstreamChannelCount::MakeSingular();
   const std::vector<std::vector<int32_t>> kInputFrameWithTwoChannels = {
       {0x11111111, 0x22222222}};
   InitExpectOk();
@@ -179,7 +180,8 @@ TEST_F(LpcmEncoderTest, FramesAreInOrder) {
   const int kNumFrames = 100;
   for (int i = 0; i < kNumFrames; i++) {
     EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-        num_samples_per_frame_, std::vector<int32_t>(num_channels_, i)));
+        num_samples_per_frame_,
+        std::vector<int32_t>(channel_count_.num_channels(), i)));
   }
   FinalizeAndValidateOrderOnly(kNumFrames);
 }

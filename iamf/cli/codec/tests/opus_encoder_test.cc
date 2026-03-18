@@ -25,6 +25,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 #include "include/opus_defines.h"
 
@@ -48,7 +49,8 @@ TEST(Initialize, SucceedsWithDefaultSettings) {
   // acceptable.
   const OpusEncoder::Settings default_settings;
   OpusEncoder opus_encoder(default_settings,
-                           codec_config_obus.at(kCodecConfigId), kOneChannel);
+                           codec_config_obus.at(kCodecConfigId),
+                           SubstreamChannelCount::MakeSingular());
 
   EXPECT_THAT(opus_encoder.Initialize(kValidateCodecDelay), IsOk());
 }
@@ -60,14 +62,15 @@ TEST(Initialize, FailsIfApplicationModeIsInvalid) {
       .libopus_application_mode = 0,
   };
   OpusEncoder opus_encoder(settings_with_invalid_application_mode,
-                           codec_config_obus.at(kCodecConfigId), kOneChannel);
+                           codec_config_obus.at(kCodecConfigId),
+                           SubstreamChannelCount::MakeSingular());
 
   EXPECT_THAT(opus_encoder.Initialize(kValidateCodecDelay), Not(IsOk()));
 }
 
 struct BitrateTestCase {
   int32_t bitrate;
-  int num_channels;
+  SubstreamChannelCount channel_count;
   bool is_valid;
 };
 
@@ -82,7 +85,7 @@ TEST_P(InitializeWithBitrateTest, ValidateBitrate) {
       .target_substream_bitrate = test_case.bitrate,
   };
   OpusEncoder opus_encoder(settings, codec_config_obus.at(kCodecConfigId),
-                           test_case.num_channels);
+                           test_case.channel_count);
 
   if (test_case.is_valid) {
     EXPECT_THAT(opus_encoder.Initialize(kValidateCodecDelay), IsOk());
@@ -91,34 +94,37 @@ TEST_P(InitializeWithBitrateTest, ValidateBitrate) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(ValidateBitrateOneChannel, InitializeWithBitrateTest,
-                         testing::ValuesIn<BitrateTestCase>({
-                             {3000, 1, true},
-                             {256000, 1, true},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    ValidateBitrateOneChannel, InitializeWithBitrateTest,
+    testing::ValuesIn<BitrateTestCase>({
+        {3000, SubstreamChannelCount::MakeSingular(), true},
+        {256000, SubstreamChannelCount::MakeSingular(), true},
+    }));
 
 INSTANTIATE_TEST_SUITE_P(ValidateBitrateTwoChannels, InitializeWithBitrateTest,
                          testing::ValuesIn<BitrateTestCase>({
-                             {6000, 2, true},
-                             {512000, 2, true},
+                             {6000, SubstreamChannelCount::MakeCoupled(), true},
+                             {512000, SubstreamChannelCount::MakeCoupled(),
+                              true},
                          }));
 
-INSTANTIATE_TEST_SUITE_P(ValidateBitrateSentinelValues,
-                         InitializeWithBitrateTest,
-                         testing::ValuesIn<BitrateTestCase>({
-                             {OPUS_AUTO, 1, true},
-                             {OPUS_BITRATE_MAX, 1, true},
-                             {OPUS_AUTO, 2, true},
-                             {OPUS_BITRATE_MAX, 2, true},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    ValidateBitrateSentinelValues, InitializeWithBitrateTest,
+    testing::ValuesIn<BitrateTestCase>({
+        {OPUS_AUTO, SubstreamChannelCount::MakeSingular(), true},
+        {OPUS_BITRATE_MAX, SubstreamChannelCount::MakeSingular(), true},
+        {OPUS_AUTO, SubstreamChannelCount::MakeCoupled(), true},
+        {OPUS_BITRATE_MAX, SubstreamChannelCount::MakeCoupled(), true},
+    }));
 
 INSTANTIATE_TEST_SUITE_P(
     OutOfRangeNegativeValues, InitializeWithBitrateTest,
     testing::ValuesIn<BitrateTestCase>({
         // Note that some negative values (e.g. -1) are treated as
         // valid sentinel values by `libopus`.
-        {-2, 1, false},
-        {std::numeric_limits<int32_t>::min(), 1, false},
+        {-2, SubstreamChannelCount::MakeSingular(), false},
+        {std::numeric_limits<int32_t>::min(),
+         SubstreamChannelCount::MakeSingular(), false},
     }));
 
 class OpusEncoderTest : public EncoderTestBase, public testing::Test {
@@ -140,7 +146,7 @@ class OpusEncoderTest : public EncoderTestBase, public testing::Test {
     ASSERT_THAT(codec_config, IsOk());
 
     encoder_ = std::make_unique<OpusEncoder>(opus_encoder_settings_,
-                                             *codec_config, num_channels_);
+                                             *codec_config, channel_count_);
   }
 
   OpusDecoderConfig opus_decoder_config_ = {
@@ -159,7 +165,8 @@ TEST_F(OpusEncoderTest, FramesAreInOrder) {
   const int kNumFrames = 100;
   for (int i = 0; i < kNumFrames; i++) {
     EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-        num_channels_, std::vector<int32_t>(num_samples_per_frame_, i)));
+        channel_count_.num_channels(),
+        std::vector<int32_t>(num_samples_per_frame_, i)));
   }
   FinalizeAndValidateOrderOnly(kNumFrames);
 }
@@ -168,7 +175,8 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceeds) {
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 42 << 16)));
+      channel_count_.num_channels(),
+      std::vector<int32_t>(num_samples_per_frame_, 42 << 16)));
 
   FinalizeAndValidateOrderOnly(1);
 }
@@ -178,7 +186,8 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceedsWithoutFloatApi) {
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 42 << 16)));
+      channel_count_.num_channels(),
+      std::vector<int32_t>(num_samples_per_frame_, 42 << 16)));
 
   FinalizeAndValidateOrderOnly(1);
 }
@@ -187,7 +196,8 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes24BitFrameSucceeds) {
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 42 << 8)));
+      channel_count_.num_channels(),
+      std::vector<int32_t>(num_samples_per_frame_, 42 << 8)));
 
   FinalizeAndValidateOrderOnly(1);
 }
@@ -196,7 +206,8 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes32BitFrameSucceeds) {
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 42)));
+      channel_count_.num_channels(),
+      std::vector<int32_t>(num_samples_per_frame_, 42)));
 
   FinalizeAndValidateOrderOnly(1);
 }

@@ -25,6 +25,7 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_encoder.h"
@@ -59,10 +60,16 @@ struct FlacFrame {
  */
 class FlacEncoder : public EncoderBase {
  public:
+  /*!\brief Constructor.
+   *
+   * \param flac_encoder_metadata Encoder metadata for FLAC.
+   * \param codec_config Codec config for FLAC.
+   * \param channel_count Number of channels in the substream.
+   */
   FlacEncoder(
       const iamf_tools_cli_proto::FlacEncoderMetadata& flac_encoder_metadata,
-      const CodecConfigObu& codec_config, int num_channels)
-      : EncoderBase(codec_config, num_channels),
+      const CodecConfigObu& codec_config, SubstreamChannelCount channel_count)
+      : EncoderBase(codec_config, channel_count),
         encoder_metadata_(flac_encoder_metadata),
         decoder_config_(std::get<FlacDecoderConfig>(
             codec_config.GetCodecConfig().decoder_config)) {}

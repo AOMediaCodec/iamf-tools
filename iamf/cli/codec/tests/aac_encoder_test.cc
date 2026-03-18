@@ -24,6 +24,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/substream_channel_count.h"
 
 namespace iamf_tools {
 namespace {
@@ -57,7 +58,7 @@ class AacEncoderTest : public EncoderTestBase, public testing::Test {
     ASSERT_THAT(codec_config, IsOk());
 
     encoder_ = std::make_unique<AacEncoder>(aac_encoder_metadata_,
-                                            *codec_config, num_channels_);
+                                            *codec_config, channel_count_);
   }
 
   AacDecoderConfig aac_decoder_config_ = {
@@ -81,7 +82,8 @@ TEST_F(AacEncoderTest, FramesAreInOrder) {
   const int kNumFrames = 100;
   for (int i = 0; i < kNumFrames; i++) {
     EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-        num_channels_, std::vector<int32_t>(num_samples_per_frame_, i)));
+        channel_count_.num_channels(),
+        std::vector<int32_t>(num_samples_per_frame_, i)));
   }
   FinalizeAndValidateOrderOnly(kNumFrames);
 }

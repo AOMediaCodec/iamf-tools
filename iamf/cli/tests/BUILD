@@ -85,6 +85,7 @@ cc_test(
         "//iamf/cli/codec:opus_encoder",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
+        "//iamf/obu:substream_channel_count",
         "//iamf/obu:types",
         "//iamf/obu/decoder_config:aac_decoder_config",
         "@abseil-cpp//absl/container:flat_hash_map",

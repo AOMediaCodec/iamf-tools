@@ -48,8 +48,9 @@ absl::Status LpcmEncoder::InitializeEncoder() {
   }
 
   ABSL_VLOG(1) << "  Configured LPCM encoder for " << num_samples_per_frame_
-               << " samples of " << num_channels_ << " channels as "
-               << absl::StrCat(decoder_config_.sample_size_) << "-bit LPCM in "
+               << " samples of " << channel_count_.num_channels()
+               << " channels as " << absl::StrCat(decoder_config_.sample_size_)
+               << "-bit LPCM in "
                << (decoder_config_.sample_format_flags_bitmask_ &
                            LpcmDecoderConfig::kLpcmLittleEndian
                        ? "little"

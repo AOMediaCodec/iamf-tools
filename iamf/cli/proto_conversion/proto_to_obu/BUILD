@@ -83,6 +83,7 @@ cc_library(
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:parameter_data",
+        "//iamf/obu:substream_channel_count",
         "//iamf/obu:types",
         "@abseil-cpp//absl/algorithm:container",
         "@abseil-cpp//absl/base:core_headers",
