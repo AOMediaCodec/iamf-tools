@@ -48,8 +48,13 @@ struct FlacStreamInfoStrictConstraints {
   // reality IAMF restricts these to discrete values.
   static constexpr uint32_t kMinSampleRate = 8000;
   static constexpr uint32_t kMaxSampleRate = 192000;
-  static constexpr uint8_t kMinBitsPerSample = 15;
-  static constexpr uint8_t kMaxBitsPerSample = 31;
+  // IAMF supports 16-bit through 32-bit FLAC.
+  static constexpr uint8_t kMinBitsPerSample = 16;
+  static constexpr uint8_t kMaxBitsPerSample = 32;
+  // In the bitstream, bit-depth is serialized as one less than the value it
+  // represents.
+  static constexpr uint8_t kMinSerializedBitsPerSample = kMinBitsPerSample - 1;
+  static constexpr uint8_t kMaxSerializedBitsPerSample = kMaxBitsPerSample - 1;
 
   // Acceptable ranges for totals_samples_in_stream from the FLAC documentation.
   // FLAC allows a value of 0 to represent an unknown total number of samples.
@@ -72,6 +77,10 @@ struct FlacStreamInfoLooseConstraints {
   static constexpr std::array<uint8_t, 16> kMd5Signature = {0};
 };
 
+/*!\brief Stream info portion of a metadata block described in the FLAC spec.
+ *
+ * Enumeration, ranges, and offsets are stored based on the values in FLAC spec.
+ */
 struct FlacMetaBlockStreamInfo {
   friend bool operator==(const FlacMetaBlockStreamInfo& lhs,
                          const FlacMetaBlockStreamInfo& rhs) = default;

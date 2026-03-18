@@ -118,7 +118,9 @@ cc_library(
     hdrs = ["flac_decoder_stream_callbacks.h"],
     deps = [
         "//iamf/common/utils:numeric_utils",
+        "//iamf/common/utils:validation_utils",
         "//iamf/obu:types",
+        "//iamf/obu/decoder_config:flac_decoder_config",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/types:span",
         "@flac//:src",

@@ -201,7 +201,7 @@ TEST_F(FlacTest, IllegalStreamInfoMustBePresent) {
 
 TEST_F(FlacTest, WriteBitsPerSampleMin) {
   first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoStrictConstraints::kMinBitsPerSample;
+      FlacStreamInfoStrictConstraints::kMinSerializedBitsPerSample;
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -233,7 +233,7 @@ TEST_F(FlacTest, WriteBitsPerSampleMin) {
 
 TEST_F(FlacTest, WriteBitsPerSampleMax) {
   first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoStrictConstraints::kMaxBitsPerSample;
+      FlacStreamInfoStrictConstraints::kMaxSerializedBitsPerSample;
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -609,34 +609,34 @@ FlacDecoderConfig MakeFlacDecoderConfigWithBitsPerSample(
 TEST(GetBitDepthToMeasureLoudness, Min) {
   FlacDecoderConfig flac_decoder_config =
       MakeFlacDecoderConfigWithBitsPerSample(
-          FlacStreamInfoStrictConstraints::kMinBitsPerSample);
+          FlacStreamInfoStrictConstraints::kMinSerializedBitsPerSample);
 
   uint8_t output_bit_depth;
   EXPECT_THAT(
       flac_decoder_config.GetBitDepthToMeasureLoudness(output_bit_depth),
       IsOk());
   EXPECT_EQ(output_bit_depth,
-            FlacStreamInfoStrictConstraints::kMinBitsPerSample + 1);
+            FlacStreamInfoStrictConstraints::kMinBitsPerSample);
 }
 
 TEST(GetBitDepthToMeasureLoudness, Max) {
   FlacDecoderConfig flac_decoder_config =
       MakeFlacDecoderConfigWithBitsPerSample(
-          FlacStreamInfoStrictConstraints::kMaxBitsPerSample);
+          FlacStreamInfoStrictConstraints::kMaxSerializedBitsPerSample);
 
   uint8_t output_bit_depth;
   EXPECT_THAT(
       flac_decoder_config.GetBitDepthToMeasureLoudness(output_bit_depth),
       IsOk());
   EXPECT_EQ(output_bit_depth,
-            FlacStreamInfoStrictConstraints::kMaxBitsPerSample + 1);
+            FlacStreamInfoStrictConstraints::kMaxBitsPerSample);
 }
 
 TEST(GetBitDepthToMeasureLoudness, MinTooLow) {
-  ASSERT_GT(FlacStreamInfoStrictConstraints::kMinBitsPerSample, 0);
+  ASSERT_GT(FlacStreamInfoStrictConstraints::kMinSerializedBitsPerSample, 0);
   FlacDecoderConfig flac_decoder_config =
       MakeFlacDecoderConfigWithBitsPerSample(
-          FlacStreamInfoStrictConstraints::kMinBitsPerSample - 1);
+          FlacStreamInfoStrictConstraints::kMinSerializedBitsPerSample - 1);
 
   uint8_t output_bit_depth;
   EXPECT_THAT(
@@ -646,11 +646,11 @@ TEST(GetBitDepthToMeasureLoudness, MinTooLow) {
 }
 
 TEST(GetBitDepthToMeasureLoudness, MaxTooHigh) {
-  ASSERT_LT(FlacStreamInfoStrictConstraints::kMaxBitsPerSample,
+  ASSERT_LT(FlacStreamInfoStrictConstraints::kMaxSerializedBitsPerSample,
             std::numeric_limits<uint32_t>::max());
   FlacDecoderConfig flac_decoder_config =
       MakeFlacDecoderConfigWithBitsPerSample(
-          FlacStreamInfoStrictConstraints::kMaxBitsPerSample + 1);
+          FlacStreamInfoStrictConstraints::kMaxSerializedBitsPerSample + 1);
 
   uint8_t output_bit_depth;
   EXPECT_THAT(
@@ -662,7 +662,7 @@ TEST(GetBitDepthToMeasureLoudness, MaxTooHigh) {
 TEST(GetBitDepthToMeasureLoudness, InvalidWithNoStreamInfo) {
   FlacDecoderConfig flac_decoder_config =
       MakeFlacDecoderConfigWithBitsPerSample(
-          FlacStreamInfoStrictConstraints::kMinBitsPerSample);
+          FlacStreamInfoStrictConstraints::kMinSerializedBitsPerSample);
   flac_decoder_config.metadata_blocks_.clear();
 
   uint8_t output_bit_depth;

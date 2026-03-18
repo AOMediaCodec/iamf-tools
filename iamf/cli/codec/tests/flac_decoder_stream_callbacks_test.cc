@@ -281,5 +281,41 @@ TEST(LibFlacWriteCallback, FillsExtraSamplesWithZeros) {
   }
 }
 
+TEST(LibFlacWriteCallback, ReturnsStatusAbortForInvalidBitsPerSampleMax) {
+  std::vector<std::vector<InternalSampleType>> decoded_frame;
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  const uint32_t kInvalidBitsPerSample = 33;
+  const FLAC__Frame kFlacFrame0 = {
+      .header = {.blocksize = 1,
+                 .channels = kNumChannels,
+                 .bits_per_sample = kInvalidBitsPerSample}};
+  FLAC__int32 channel_0[] = {1};
+  FLAC__int32 channel_1[] = {2};
+  const FLAC__int32* const buffer[] = {channel_0, channel_1};
+
+  EXPECT_EQ(
+      flac_callbacks::LibFlacWriteCallback(
+          /*stream_decoder=*/nullptr, &kFlacFrame0, buffer, &callback_data),
+      FLAC__STREAM_DECODER_WRITE_STATUS_ABORT);
+}
+
+TEST(LibFlacWriteCallback, ReturnsStatusAbortForInvalidBitsPerSampleMin) {
+  std::vector<std::vector<InternalSampleType>> decoded_frame;
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  const uint32_t kInvalidBitsPerSample = 15;
+  const FLAC__Frame kFlacFrame0 = {
+      .header = {.blocksize = 1,
+                 .channels = kNumChannels,
+                 .bits_per_sample = kInvalidBitsPerSample}};
+  FLAC__int32 channel_0[] = {1};
+  FLAC__int32 channel_1[] = {2};
+  const FLAC__int32* const buffer[] = {channel_0, channel_1};
+
+  EXPECT_EQ(
+      flac_callbacks::LibFlacWriteCallback(
+          /*stream_decoder=*/nullptr, &kFlacFrame0, buffer, &callback_data),
+      FLAC__STREAM_DECODER_WRITE_STATUS_ABORT);
+}
+
 }  // namespace
 }  // namespace iamf_tools

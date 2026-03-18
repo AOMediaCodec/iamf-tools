@@ -14,11 +14,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "absl/log/absl_log.h"
 #include "absl/types/span.h"
 #include "iamf/common/utils/numeric_utils.h"
+#include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/types.h"
 #include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
@@ -30,7 +33,7 @@ namespace flac_callbacks {
 
 namespace {
 using absl::MakeConstSpan;
-}
+}  // namespace
 
 FLAC__StreamDecoderReadStatus LibFlacReadCallback(
     const FLAC__StreamDecoder* /*decoder*/, FLAC__byte buffer[], size_t* bytes,
@@ -79,6 +82,16 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
     // But only fill in based on the actual number of samples in the frame.
     decoded_samples_for_channel.resize(
         libflac_callback_data->num_samples_per_channel_, 0);
+    auto status = ValidateInRange<uint32_t>(
+        frame->header.bits_per_sample,
+        {{FlacStreamInfoStrictConstraints::kMinBitsPerSample},
+         {FlacStreamInfoStrictConstraints::kMaxBitsPerSample}},
+        "bits_per_sample");
+    if (!status.ok()) {
+      ABSL_LOG(ERROR) << status;
+      return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+    }
+
     for (uint32_t t = 0; t < frame->header.blocksize; ++t) {
       decoded_samples_for_channel[t] =
           Int32ToNormalizedFloatingPoint<InternalSampleType>(
