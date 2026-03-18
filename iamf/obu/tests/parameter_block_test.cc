@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -65,6 +66,8 @@ constexpr std::array<uint8_t, 5> kFirstParameterDataBytes = {'f', 'i', 'r', 's',
                                                              't'};
 constexpr std::array<uint8_t, 6> kSecondParameterDataBytes = {'s', 'e', 'c',
                                                               'o', 'n', 'd'};
+
+constexpr std::array<DecodedUleb128, 3> kThreeSubblockDurations = {1, 2, 3};
 
 // TODO(b/273545873): Add more "expected failure" tests. Add more "successful"
 //                    test cases to existing tests.
@@ -136,12 +139,11 @@ TEST(CreateMode0, ReturnsNullptrWhenParamDefinitionIsMode1) {
             nullptr);
 }
 
-TEST(CreateMode1, GettersReturnExpectedValues) {
+TEST(CreateMode1ConstantSubblockDuration, GettersReturnExpectedValues) {
   auto param_definition = CreateParamDefinitionMode1();
 
-  auto obu =
-      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, kDuration,
-                                     kConstantSubblockDuration, kNumSubblocks);
+  auto obu = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
+      ObuHeader(), param_definition, kDuration, kConstantSubblockDuration);
 
   // Under mode 1, the getters return data directly in the OBU.
   EXPECT_THAT(obu, NotNull());
@@ -153,26 +155,75 @@ TEST(CreateMode1, GettersReturnExpectedValues) {
               IsOkAndHolds(kConstantSubblockDuration));
 }
 
-TEST(CreateMode1, SetsNumSubblocksWhenConstantSubblockDurationIsZero) {
+TEST(CreateMode1VariableSubblockDuration,
+     SetsNumSubblocksWhenConstantSubblockDurationIsZero) {
   auto param_definition = CreateParamDefinitionMode1();
 
-  constexpr DecodedUleb128 kTwoSubblocks = 2;
-  constexpr DecodedUleb128 kConstantSubblockDuration = 0;
-  auto obu =
-      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, kDuration,
-                                     kConstantSubblockDuration, kTwoSubblocks);
+  auto obu = ParameterBlockObu::CreateMode1VariableSubblockDuration(
+      ObuHeader(), param_definition, kThreeSubblockDurations);
 
   // Under mode 1, the getters return data directly in the OBU.
   EXPECT_THAT(obu, NotNull());
-  EXPECT_EQ(obu->GetNumSubblocks(), kTwoSubblocks);
+  EXPECT_EQ(obu->GetNumSubblocks(), kThreeSubblockDurations.size());
+  EXPECT_THAT(obu->GetSubblockDuration(0),
+              IsOkAndHolds(kThreeSubblockDurations[0]));
+  EXPECT_THAT(obu->GetSubblockDuration(1),
+              IsOkAndHolds(kThreeSubblockDurations[1]));
+  EXPECT_THAT(obu->GetSubblockDuration(2),
+              IsOkAndHolds(kThreeSubblockDurations[2]));
 }
 
-TEST(CreateMode1, ReturnsNullptrWhenParamDefinitionIsMode0) {
+TEST(CreateMode1ConstantSubblockDuration,
+     ReturnsNullptrWhenParamDefinitionIsMode0) {
   auto param_definition = CreateParamDefinitionMode0();
 
   EXPECT_EQ(
-      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, kDuration,
-                                     kConstantSubblockDuration, kNumSubblocks),
+      ParameterBlockObu::CreateMode1ConstantSubblockDuration(
+          ObuHeader(), param_definition, kDuration, kConstantSubblockDuration),
+      nullptr);
+}
+
+TEST(CreateMode1ConstantSubblockDuration,
+     ReturnsNullptrWhenConstantSubblockDurationIsZero) {
+  auto param_definition = CreateParamDefinitionMode1();
+
+  EXPECT_EQ(ParameterBlockObu::CreateMode1ConstantSubblockDuration(
+                ObuHeader(), param_definition, kDuration,
+                /*constant_subblock_duration=*/0),
+            nullptr);
+}
+
+TEST(CreateMode1VariableSubblockDuration,
+     ReturnsNullptrWhenParamDefinitionIsMode0) {
+  auto param_definition = CreateParamDefinitionMode0();
+  const std::vector<DecodedUleb128> subblock_durations = {1, 2};
+
+  EXPECT_EQ(
+      ParameterBlockObu::CreateMode1VariableSubblockDuration(
+          ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
+      nullptr);
+}
+
+TEST(CreateMode1VariableSubblockDuration,
+     ReturnsNullptrWhenSubblockDurationsIsEmpty) {
+  auto param_definition = CreateParamDefinitionMode1();
+  const std::vector<DecodedUleb128> subblock_durations = {};
+
+  EXPECT_EQ(
+      ParameterBlockObu::CreateMode1VariableSubblockDuration(
+          ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
+      nullptr);
+}
+
+TEST(CreateMode1VariableSubblockDuration,
+     ReturnsNullptrWhenSubblockDurationsOverflow) {
+  auto param_definition = CreateParamDefinitionMode1();
+  const std::vector<DecodedUleb128> subblock_durations = {
+      std::numeric_limits<DecodedUleb128>::max(), 1};
+
+  EXPECT_EQ(
+      ParameterBlockObu::CreateMode1VariableSubblockDuration(
+          ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
       nullptr);
 }
 
@@ -579,23 +630,18 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     // Code within `iamf_tools` will find the associated Audio Element or Mix
     // Presentation OBU and use that metadata. For testing here the metadata is
     // initialized based on `metadata_args_`.
-    if (param_definition_->param_definition_mode_ == 1) {
-      obu_ = ParameterBlockObu::CreateMode1(
-          header_, *param_definition_, duration_args_.duration,
-          duration_args_.constant_subblock_duration,
-          duration_args_.num_subblocks);
-      EXPECT_THAT(obu_, NotNull());
-
-      // With all memory allocated set the subblock durations.
-      for (int i = 0; i < duration_args_.subblock_durations.size(); i++) {
-        EXPECT_THAT(
-            obu_->SetSubblockDuration(i, duration_args_.subblock_durations[i]),
-            IsOk());
-      }
-    } else {
+    if (param_definition_->param_definition_mode_ == 0) {
       obu_ = ParameterBlockObu::CreateMode0(header_, *param_definition_);
-      EXPECT_THAT(obu_, (NotNull()));
+    } else if (duration_args_.subblock_durations.empty()) {
+      obu_ = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
+          header_, *param_definition_, duration_args_.duration,
+          duration_args_.constant_subblock_duration);
+    } else {
+      obu_ = ParameterBlockObu::CreateMode1VariableSubblockDuration(
+          header_, *param_definition_, duration_args_.subblock_durations);
     }
+
+    EXPECT_THAT(obu_, (NotNull()));
   }
 };
 
@@ -687,25 +733,6 @@ TEST_F(MixGainParameterBlockTest, OneSubblockParamDefinitionMode1) {
                        kAnimateStep, 0, 1};
 
   InitAndTestWrite();
-}
-
-TEST_F(MixGainParameterBlockTest,
-       ValidateAndWriteObuFailsWithIllegalDurationInconsistent) {
-  metadata_args_.param_definition_mode = 1;
-
-  duration_args_ = {
-      .duration = 64,
-      .constant_subblock_duration = 0,
-      .num_subblocks = 2,
-      .subblock_durations = {32, 31},  // Does not sum to `duration`.
-  };
-
-  mix_gain_parameter_data_ = {{kAnimateStep, AnimationStepInt16{0}},
-                              {kAnimateStep, AnimationStepInt16{0}}};
-
-  InitExpectOk();
-  WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {

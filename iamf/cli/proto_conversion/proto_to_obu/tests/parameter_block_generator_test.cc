@@ -518,6 +518,78 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   }
 }
 
+TEST(ParameterBlockGeneratorTest,
+     GenerateMixGainParameterBlocksWithVariableSubblockDurations) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  // One block which spans 16 ticks. It has two subblocks with different
+  // durations.
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        parameter_id: 100
+        duration: 16
+        constant_subblock_duration: 0
+        subblocks:
+        [ {
+          subblock_duration: 5
+          mix_gain_parameter_data {
+            animation_type: ANIMATE_STEP
+            param_data { step { start_point_value: 0 } }
+          }
+        }
+          , {
+            subblock_duration: 11
+            mix_gain_parameter_data {
+              animation_type: ANIMATE_STEP
+              param_data { step { start_point_value: 0 } }
+            }
+          }],
+        start_timestamp: 0
+      )pb",
+      user_metadata.add_parameter_block_metadata()));
+  // Initialize pre-requisite OBUs.
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
+                             codec_config_obus, audio_elements);
+  // Add param definition. It would normally be owned by a Mix Presentation OBU.
+  MixGainParamDefinition param_definition;
+  const int16_t kDefaultMixGain = -123;
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants;
+  AddMixGainParamDefinition(kDefaultMixGain, param_definition,
+                            param_definition_variants);
+  // Construct and initialize.
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
+                                    param_definition_variants);
+  EXPECT_THAT(generator.Initialize(audio_elements), IsOk());
+  // Global timing Module; needed when calling `GenerateMixGain()`.
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definition_variants);
+  ASSERT_THAT(global_timing_module, NotNull());
+
+  // Add and generate.
+  ASSERT_EQ(user_metadata.parameter_block_metadata_size(), 1);
+  EXPECT_THAT(generator.AddMetadata(user_metadata.parameter_block_metadata(0)),
+              IsOk());
+  std::list<ParameterBlockWithData> output_parameter_blocks;
+  EXPECT_THAT(
+      generator.GenerateMixGain(*global_timing_module, output_parameter_blocks),
+      IsOk());
+
+  // Validate output.
+  ASSERT_EQ(output_parameter_blocks.size(), 1);
+  const auto& parameter_block = output_parameter_blocks.front();
+  EXPECT_EQ(parameter_block.start_timestamp, 0);
+  EXPECT_EQ(parameter_block.end_timestamp, 16);
+  const auto& obu = parameter_block.obu;
+  EXPECT_EQ(obu->parameter_id_, kParameterId);
+  EXPECT_EQ(obu->GetDuration(), 16);
+  EXPECT_EQ(obu->GetNumSubblocks(), 2);
+  EXPECT_EQ(obu->GetConstantSubblockDuration(), 0);
+  EXPECT_EQ(obu->subblocks_[0].subblock_duration, 5);
+  EXPECT_EQ(obu->subblocks_[1].subblock_duration, 11);
+}
+
 TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   // Initialize pre-requisite OBUs.

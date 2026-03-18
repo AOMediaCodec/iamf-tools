@@ -418,14 +418,9 @@ absl::Status GenerateParameterBlockSubblock(
     const IdLabeledFrameMap* id_to_labeled_frame,
     const IdLabeledFrameMap* id_to_labeled_decoded_frame,
     const ParamDefinitionVariant& param_definition_variant,
-    const bool include_subblock_duration, const int subblock_index,
+    const int subblock_index,
     const iamf_tools_cli_proto::ParameterSubblock& metadata_subblock,
     ParameterBlockObu& obu) {
-  if (include_subblock_duration) {
-    RETURN_IF_NOT_OK(obu.SetSubblockDuration(
-        subblock_index, metadata_subblock.subblock_duration()));
-  }
-
   auto& obu_subblock_param_data = obu.subblocks_[subblock_index].param_data;
   const auto param_definition_type =
       GetParameterDefinitionType(param_definition_variant);
@@ -504,23 +499,32 @@ absl::Status PopulateCommonFields(
       parameter_block_with_data.start_timestamp,
       parameter_block_with_data.end_timestamp));
 
-  // Populate the OBU.
+  // Create the OBU.
   if (param_definition.param_definition_mode_ == 0) {
+    // Timing shared in the parameter definition.
     parameter_block_with_data.obu = ParameterBlockObu::CreateMode0(
         GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
         param_definition);
+  } else if (parameter_block_metadata.constant_subblock_duration() > 0) {
+    // Timing inferred per parameter block, by the constant subblock duration.
+    parameter_block_with_data.obu =
+        ParameterBlockObu::CreateMode1ConstantSubblockDuration(
+            GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
+            param_definition, parameter_block_metadata.duration(),
+            parameter_block_metadata.constant_subblock_duration());
   } else {
-    // Several fields are dependent on `param_definition_mode`.
-    parameter_block_with_data.obu = ParameterBlockObu::CreateMode1(
-        GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
-        param_definition, parameter_block_metadata.duration(),
-        parameter_block_metadata.constant_subblock_duration(),
-        parameter_block_metadata.subblocks_size());
+    // Timing is explicitly specified per subblock in the OBU.
+    std::vector<DecodedUleb128> subblock_durations;
+    subblock_durations.reserve(parameter_block_metadata.subblocks_size());
+    for (const auto& subblock : parameter_block_metadata.subblocks()) {
+      subblock_durations.push_back(subblock.subblock_duration());
+    }
+    parameter_block_with_data.obu =
+        ParameterBlockObu::CreateMode1VariableSubblockDuration(
+            GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
+            param_definition, subblock_durations);
   }
-  RETURN_IF_NOT_OK(
-      ValidateNotNull(parameter_block_with_data.obu, "ParameterBlockObu"));
-
-  return absl::OkStatus();
+  return ValidateNotNull(parameter_block_with_data.obu, "ParameterBlockObu");
 }
 
 absl::Status PopulateSubblocks(
@@ -535,11 +539,6 @@ absl::Status PopulateSubblocks(
   auto& parameter_block_obu = *output_parameter_block.obu;
   const DecodedUleb128 num_subblocks = parameter_block_obu.GetNumSubblocks();
 
-  // All subblocks will include `subblock_duration` or none will include it.
-  const bool include_subblock_duration =
-      GetParameterDefinitionMode(param_definition_variant) == 1 &&
-      parameter_block_obu.GetConstantSubblockDuration() == 0;
-
   if (num_subblocks != parameter_block_metadata.subblocks_size()) {
     return absl::InvalidArgumentError(
         absl::StrCat("Expected ", num_subblocks, " subblocks, got ",
@@ -549,8 +548,8 @@ absl::Status PopulateSubblocks(
     RETURN_IF_NOT_OK(GenerateParameterBlockSubblock(
         override_computed_recon_gains, additional_recon_gains_logging,
         id_to_labeled_frame, id_to_labeled_decoded_frame,
-        param_definition_variant, include_subblock_duration, i,
-        parameter_block_metadata.subblocks(i), parameter_block_obu));
+        param_definition_variant, i, parameter_block_metadata.subblocks(i),
+        parameter_block_obu));
   }
 
   return absl::OkStatus();

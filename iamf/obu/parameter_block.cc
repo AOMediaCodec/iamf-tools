@@ -17,14 +17,15 @@
 #include <memory>
 #include <vector>
 
-#include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/obu_util.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
@@ -94,13 +95,19 @@ std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode0(
   return parameter_block_obu;
 }
 
-std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode1(
+std::unique_ptr<ParameterBlockObu>
+ParameterBlockObu::CreateMode1ConstantSubblockDuration(
     const ObuHeader& header, const ParamDefinition& param_definition,
-    DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration,
-    DecodedUleb128 num_subblocks) {
+    DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration) {
   if (param_definition.param_definition_mode_ != 1) {
-    ABSL_LOG(WARNING) << "CreateMode1() should only be called when "
-                         "param_definition_mode == 1.";
+    ABSL_LOG(WARNING)
+        << "CreateMode1ConstantSubblockDuration() should only be called when "
+           "param_definition_mode == 1.";
+    return nullptr;
+  }
+  if (constant_subblock_duration == 0) {
+    ABSL_LOG(WARNING) << "CreateMode1ConstantSubblockDuration() should only be "
+                         "called when constant_subblock_duration != 0.";
     return nullptr;
   }
   auto parameter_block_obu =
@@ -109,12 +116,50 @@ std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode1(
   // Under param definition mode 1, several fields are explicitly in the OBU.
   parameter_block_obu->duration_ = duration;
   parameter_block_obu->constant_subblock_duration_ = constant_subblock_duration;
-  if (constant_subblock_duration == 0) {
-    // This field is explicitly in the OBU.
-    parameter_block_obu->num_subblocks_ = num_subblocks;
-  }
   parameter_block_obu->subblocks_.resize(
       static_cast<size_t>(parameter_block_obu->GetNumSubblocks()));
+
+  return parameter_block_obu;
+}
+
+std::unique_ptr<ParameterBlockObu>
+ParameterBlockObu::CreateMode1VariableSubblockDuration(
+    const ObuHeader& header, const ParamDefinition& param_definition,
+    absl::Span<const DecodedUleb128> subblock_durations) {
+  if (param_definition.param_definition_mode_ != 1) {
+    ABSL_LOG(WARNING) << "CreateMode1VariableSubblockDuration() should only be "
+                         "called when `param_definition_mode` is 1.";
+    return nullptr;
+  }
+  if (subblock_durations.empty()) {
+    ABSL_LOG(WARNING) << "CreateMode1VariableSubblockDuration() requires at "
+                         "least one subblock duration.";
+    return nullptr;
+  }
+
+  // Pre-calculate duration to ensure it does not overflow.
+  DecodedUleb128 duration = 0;
+  for (const auto subblock_duration : subblock_durations) {
+    if (!AddUint32CheckOverflow(duration, subblock_duration, duration).ok()) {
+      ABSL_LOG(WARNING)
+          << "CreateMode1VariableSubblockDuration() overflowed when "
+             "calculating the total duration.";
+      return nullptr;
+    }
+  }
+
+  auto parameter_block_obu =
+      absl::WrapUnique(new ParameterBlockObu(header, param_definition));
+
+  // Under param definition mode 1, several fields are explicitly in the OBU.
+  parameter_block_obu->duration_ = duration;
+  parameter_block_obu->constant_subblock_duration_ = 0;
+  parameter_block_obu->num_subblocks_ = subblock_durations.size();
+  parameter_block_obu->subblocks_.reserve(subblock_durations.size());
+  for (const auto subblock_duration : subblock_durations) {
+    parameter_block_obu->subblocks_.emplace_back(
+        ParameterSubblock{.subblock_duration = subblock_duration});
+  }
 
   return parameter_block_obu;
 }
@@ -231,31 +276,6 @@ absl::StatusOr<DecodedUleb128> ParameterBlockObu::GetSubblockDuration(
       GetDuration(), param_definition_.param_definition_mode_,
       [this](int i) { return *this->subblocks_[i].subblock_duration; },
       [this](int i) { return this->param_definition_.GetSubblockDuration(i); });
-}
-
-absl::Status ParameterBlockObu::SetSubblockDuration(int subblock_index,
-                                                    DecodedUleb128 duration) {
-  ABSL_CHECK_NE(param_definition_.param_definition_mode_, 0)
-      << "Calling ParameterBlockObu::SetSubblockDuration() is disallowed when "
-      << "`param_definition_mode_ == 0`";
-
-  const DecodedUleb128 num_subblocks = GetNumSubblocks();
-  if (static_cast<DecodedUleb128>(subblock_index) > num_subblocks) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Setting subblock duration for subblock_index = ", subblock_index,
-        " but there are only num_subblocks = ", num_subblocks));
-  }
-  const DecodedUleb128 constant_subblock_duration =
-      GetConstantSubblockDuration();
-
-  // Resets the subblock duration to not holding any value.
-  subblocks_[subblock_index].subblock_duration.reset();
-
-  if (constant_subblock_duration == 0) {
-    // Overwrite the value in the parameter block.
-    subblocks_[subblock_index].subblock_duration = duration;
-  }
-  return absl::OkStatus();
 }
 
 absl::Status ParameterBlockObu::GetLinearMixGain(

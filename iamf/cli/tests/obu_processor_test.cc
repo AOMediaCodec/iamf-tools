@@ -1560,10 +1560,9 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   std::list<ParameterBlockWithData> parameter_blocks_with_data = {};
   constexpr DecodedUleb128 kDuration = 1;
   constexpr DecodedUleb128 kConstantSubblockDuration = 1;
-  constexpr uint32_t kNumSubblocks = 1;
-  auto parameter_block = ParameterBlockObu::CreateMode1(
+  auto parameter_block = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
       ObuHeader(), mix_presentation_obus.front().sub_mixes_[0].output_mix_gain,
-      kDuration, kConstantSubblockDuration, kNumSubblocks);
+      kDuration, kConstantSubblockDuration);
   EXPECT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0].param_data =
       std::make_unique<MixGainParameterData>(

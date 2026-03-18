@@ -291,14 +291,15 @@ cc_library(
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:obu_util",
         "//iamf/obu/param_definitions:param_definition_base",
-        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
