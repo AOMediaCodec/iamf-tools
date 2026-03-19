@@ -14,6 +14,7 @@ cc_library(
         "//iamf/include/iamf_tools:iamf_decoder_interface",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/types:span",
     ],
 )

@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "absl/log/absl_log.h"
+#include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/include/iamf_tools/iamf_decoder_interface.h"

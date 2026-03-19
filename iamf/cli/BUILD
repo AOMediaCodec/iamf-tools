@@ -781,6 +781,7 @@ cc_binary(
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/log:flags",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@protobuf",
     ],
