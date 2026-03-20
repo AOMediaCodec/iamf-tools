@@ -135,11 +135,28 @@ absl::StatusOr<std::string> ReadAxml(
   }
 
   const size_t axml_size = axml_chunk_info->size;
-  std::vector<char> axml_data(axml_size);
+  // The technical limit for a RIFF chunk is ~4GB (and up to 16 Exabytes using
+  // the BW64 ds64 extension). However, to prevent unreasonable memory
+  // consumption, we impose a more realistic maximum limit of 256 MB.
+  static constexpr size_t kMaxAxmlSize = 256 * 1024 * 1024;
+  if (axml_size > kMaxAxmlSize) {
+    return absl::InvalidArgumentError("axml chunk size exceeds maximum limit.");
+  }
+
   buffer.clear();
+  buffer.seekg(0, std::ios::end);
+  const std::streamoff file_size = buffer.tellg();
 
   const std::streamoff axml_data_position =
       axml_chunk_info->offset + Bw64Reader::kChunkHeaderOffset;
+
+  if (axml_data_position + static_cast<std::streamoff>(axml_size) > file_size) {
+    return absl::InvalidArgumentError(
+        "axml chunk size is too large for the file.");
+  }
+
+  std::vector<char> axml_data(axml_size);
+  buffer.clear();
   buffer.seekg(axml_data_position);
   buffer.read(axml_data.data(), axml_size);
 

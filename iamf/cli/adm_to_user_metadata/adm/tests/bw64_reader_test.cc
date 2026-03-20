@@ -166,6 +166,41 @@ TEST(BuildFromStream, ReturnsErrorWhenLookingUpUnknownChunkName) {
   EXPECT_FALSE(reader->GetChunkInfo("INVALID_CHUNK").ok());
 }
 
+TEST(BuildFromStream, FailsOnLargeAxmlSize) {
+  std::string wav_bytes((std::string(kValidWav)));
+  size_t axml_pos = wav_bytes.find("axml");
+  ASSERT_NE(axml_pos, std::string::npos);
+  // Overwrite size to be 256MB + 1 byte (268435457). We are doing
+  // this to test the realistic limit we imposed in bw64_reader.cc,
+  // which is significantly smaller than the fully technical 4GB RIFF
+  // limit, to avoid real world OOM scenarios on malformed payloads.
+  // 0x10000001 in little-endian: \x01\x00\x00\x10
+  wav_bytes[axml_pos + 4] = 0x01;
+  wav_bytes[axml_pos + 5] = 0x00;
+  wav_bytes[axml_pos + 6] = 0x00;
+  wav_bytes[axml_pos + 7] = 0x10;
+
+  std::istringstream ss(wav_bytes);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  EXPECT_FALSE(reader.ok());
+}
+
+TEST(BuildFromStream, FailsOnAxmlSizeExceedingFile) {
+  std::string wav_bytes((std::string(kValidWav)));
+  size_t axml_pos = wav_bytes.find("axml");
+  ASSERT_NE(axml_pos, std::string::npos);
+  // Overwrite size to be larger than the file, but below hard limit.
+  // The valid file is 87 bytes. set to 100.
+  wav_bytes[axml_pos + 4] = 100;
+  wav_bytes[axml_pos + 5] = 0;
+  wav_bytes[axml_pos + 6] = 0;
+  wav_bytes[axml_pos + 7] = 0;
+
+  std::istringstream ss(wav_bytes);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  EXPECT_FALSE(reader.ok());
+}
+
 }  // namespace
 }  // namespace adm_to_user_metadata
 }  // namespace iamf_tools
