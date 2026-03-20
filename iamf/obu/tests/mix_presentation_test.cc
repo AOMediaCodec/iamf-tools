@@ -1086,6 +1086,34 @@ TEST(CreateFromBufferTest, RejectEmptyBitstream) {
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
 }
 
+TEST(CreateFromBufferTest, FailsWithLargeCountLabel) {
+  std::vector<uint8_t> source = {// mix_presentation_id
+                                 10,
+                                 // count_label = 0xFFFFFFFF
+                                 0xff, 0xff, 0xff, 0xff, 0x0f};
+  const int64_t payload_size = source.size();
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  ObuHeader header;
+  EXPECT_FALSE(
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
+}
+
+TEST(CreateFromBufferTest, FailsWithLargeNumSubMixes) {
+  std::vector<uint8_t> source = {// mix_presentation_id
+                                 10,
+                                 // count_label
+                                 0,
+                                 // num_sub_mixes = 0xFFFFFFFF
+                                 0xff, 0xff, 0xff, 0xff, 0x0f};
+  const int64_t payload_size = source.size();
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  ObuHeader header;
+  EXPECT_FALSE(
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
+}
+
 TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
   std::vector<uint8_t> source = {
       // Start Mix OBU.

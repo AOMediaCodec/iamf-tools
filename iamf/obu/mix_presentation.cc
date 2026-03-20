@@ -592,6 +592,10 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
   // Read the main portion of the OBU.
   RETURN_IF_NOT_OK(rb.ReadULeb128(mix_presentation_id_));
   RETURN_IF_NOT_OK(rb.ReadULeb128(count_label_));
+  // A static limit on count_label prevents OOMs from implausible values.
+  if (count_label_ > 256) {
+    return absl::InvalidArgumentError("count_label is implausibly large");
+  }
 
   for (DecodedUleb128 i = 0; i < count_label_; ++i) {
     std::string annotations_language;
@@ -611,6 +615,14 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
 
   DecodedUleb128 num_sub_mixes;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_sub_mixes));
+  // A static limit on num_sub_mixes prevents OOMs from implausible values.
+  // Although the IAMF spec does not state an explicit limit, all current
+  // profiles cap the number of audio elements at 28. Since each sub-mix
+  // must contain at least one audio element, 28 is the maximum possible.
+  if (num_sub_mixes > 28) {
+    return absl::InvalidArgumentError(
+        "num_sub_mixes is greater than the profile limit of 28");
+  }
 
   // Loop to read the `sub_mixes` array.
   for (DecodedUleb128 i = 0; i < num_sub_mixes; ++i) {
