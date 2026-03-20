@@ -306,6 +306,29 @@ TEST(ParseXmlToAdm, DefaultLoudnessValues) {
   EXPECT_FALSE(loudness_metadata.max_true_peak.has_value());
 }
 
+// Tests that malformed ADM timing formats (e.g., 'XX:XX:XX' instead of
+// '00:00:00.00000') are gracefully caught and returned as an
+// absl::InvalidArgumentError instead of crashing the program by throwing an
+// unhandled C++ exception through the Expat XML parser's C callbacks.
+TEST(ParseXmlToAdm, InvalidTimingFormat) {
+  const std::string xml = R"xml(
+    <audioChannelFormat audioChannelFormatID="AC_00010001" audioChannelFormatName="FrontLeft">
+      <audioBlockFormat audioBlockFormatID="AB_00010001_00000001"
+                       rtime="XX:XX:XX"
+                       duration="00:00:01.00000">
+      </audioBlockFormat>
+    </audioChannelFormat>
+  )xml";
+
+  const auto adm =
+      ParseXmlToAdm(xml, kImportanceThreshold, kAdmFileTypeDefault);
+  EXPECT_FALSE(adm.ok());
+  if (!adm.ok()) {
+    EXPECT_THAT(adm.status().message(),
+                testing::HasSubstr("Failed to parse hour"));
+  }
+}
+
 }  // namespace
 }  // namespace adm_to_user_metadata
 }  // namespace iamf_tools

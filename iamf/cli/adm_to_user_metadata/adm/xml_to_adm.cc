@@ -113,6 +113,16 @@ struct Handler {
   AdmBlockFormat audio_block_tag = kBlockDefault;
 
   absl::Status status = absl::OkStatus();
+  XML_Parser parser = nullptr;
+
+  ~Handler() {
+    if (parser != nullptr) {
+      XML_ParserFree(parser);
+    }
+  }
+  Handler() = default;
+  Handler(const Handler&) = delete;
+  Handler& operator=(const Handler&) = delete;
 };
 
 void UpdateErrorStatusIfFalse(bool status, absl::string_view field_name,
@@ -234,22 +244,33 @@ void SetAudioChannelValue(absl::string_view key, absl::string_view value,
 // Parse and store the timing information in Audio Block.
 // The input string which holds the timing information will be in the format
 // 'hh:mm:ss.zzzzz'.
-void ParseTimingInfo(absl::string_view time_string, BlockTime& time) {
-  time.hour = std::stoi(std::string(time_string.substr(0, 2)));
-  time.minute = std::stoi(std::string(time_string.substr(3, 2)));
-  time.second = std::stod(std::string(time_string.substr(6)));
+absl::Status ParseTimingInfo(absl::string_view time_string, BlockTime& time) {
+  if (time_string.length() < 8) {
+    return absl::InvalidArgumentError("Time string too short");
+  }
+  if (!absl::SimpleAtoi(time_string.substr(0, 2), &time.hour)) {
+    return absl::InvalidArgumentError("Failed to parse hour");
+  }
+  if (!absl::SimpleAtoi(time_string.substr(3, 2), &time.minute)) {
+    return absl::InvalidArgumentError("Failed to parse minute");
+  }
+  if (!absl::SimpleAtod(time_string.substr(6), &time.second)) {
+    return absl::InvalidArgumentError("Failed to parse second");
+  }
+  return absl::OkStatus();
 }
 
 // Sets the attributes of AudioBlock.
-void SetAudioBlockValue(absl::string_view key, absl::string_view value,
-                        AudioBlockFormat& audio_block) {
+absl::Status SetAudioBlockValue(absl::string_view key, absl::string_view value,
+                                AudioBlockFormat& audio_block) {
   if (key == "audioBlockFormatID") {
     audio_block.id = value;
   } else if (key == "rtime") {
-    ParseTimingInfo(value, audio_block.rtime);
+    return ParseTimingInfo(value, audio_block.rtime);
   } else if (key == "duration") {
-    ParseTimingInfo(value, audio_block.duration);
+    return ParseTimingInfo(value, audio_block.duration);
   }
+  return absl::OkStatus();
 }
 
 // Removes objects from the ADM structure based on the given importance
@@ -340,7 +361,7 @@ absl::StatusOr<std::string> CreatePackLayout(
       return absl::InvalidArgumentError(
           absl::StrCat("Invalid channel format= ", channel_name));
     }
-    pack_layout += ",";
+    pack_layout += ',';
   }
 
   if (!pack_layout.empty()) {
@@ -800,8 +821,13 @@ void XMLStartTagHandlerForExpat(void* parser_data, const char* name,
     CartesianPosition position;
     audio_block.position = position;
     for (int32_t i = 0; atts[i]; i += 2) {
-      SetAudioBlockValue(absl::string_view(atts[i]),
-                         absl::string_view(atts[i + 1]), audio_block);
+      auto status =
+          SetAudioBlockValue(absl::string_view(atts[i]),
+                             absl::string_view(atts[i + 1]), audio_block);
+      if (!status.ok()) {
+        handler.status = status;
+        break;
+      }
     }
     handler.adm.audio_channels.back().audio_blocks.push_back(audio_block);
   } else {
@@ -844,33 +870,35 @@ absl::StatusOr<ADM> ParseXmlToAdm(absl::string_view xml_data,
   // Creating an XML parser and attaching a handler object to it. Also, parser
   // is linked with functions that have logic to deal with the start tag of XML
   // and the character of XML.
-  XML_Parser parser = XML_ParserCreate(nullptr);
-  XML_SetUserData(parser, &handler);
+  handler.parser = XML_ParserCreate(nullptr);
+  XML_SetUserData(handler.parser, &handler);
   handler.adm.file_type = file_type;
-  XML_SetStartElementHandler(parser, XMLStartTagHandlerForExpat);
-  XML_SetCharacterDataHandler(parser, XMLCharacterDataHandlerForExpat);
+  XML_SetStartElementHandler(handler.parser, XMLStartTagHandlerForExpat);
+  XML_SetCharacterDataHandler(handler.parser, XMLCharacterDataHandlerForExpat);
 
-  switch (const auto xml_status =
-              XML_Parse(parser, xml_data.data(), xml_data.length(), true)) {
+  switch (const auto xml_status = XML_Parse(handler.parser, xml_data.data(),
+                                            xml_data.length(), true)) {
     case XML_STATUS_OK:
       SetChannelIndices(handler.adm);
       ValidateAudioObjects(handler.adm, handler);
       RemoveLowImportanceAndInvalidAudioObjects(importance_threshold, handler);
-      XML_ParserFree(parser);
       if (!handler.status.ok()) {
         return handler.status;
       }
       return handler.adm;
-    case XML_STATUS_ERROR:
-      XML_ParserFree(parser);
-      return absl::InvalidArgumentError(
-          absl::StrCat("XML parsing error. XML_Parse() returned ", xml_status));
+    case XML_STATUS_ERROR: {
+      if (!handler.status.ok()) {
+        return handler.status;
+      }
+      std::string error_msg = absl::StrCat(
+          "XML parsing error. XML_Parse() returned ", xml_status,
+          ". Error code: ", XML_ErrorString(XML_GetErrorCode(handler.parser)));
+      return absl::InvalidArgumentError(error_msg);
+    }
     case XML_STATUS_SUSPENDED:
-      XML_ParserFree(parser);
       return absl::FailedPreconditionError(absl::StrCat(
           "XML parsing suspended. XML_Parse() returned ", xml_status));
     default:
-      XML_ParserFree(parser);
       return absl::UnknownError(absl::StrCat(
           "XML parsing failed. XML_Parse() returned ", xml_status));
   }
