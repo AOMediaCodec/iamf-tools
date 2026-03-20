@@ -188,10 +188,10 @@ absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
 // bytes that contain payload data. See
 // https://aomediacodec.github.io/iamf/#obu_size for more details.
 int64_t GetObuPayloadSize(DecodedUleb128 obu_size,
-                          uint8_t num_samples_to_trim_at_end_size,
-                          uint8_t num_samples_to_trim_at_start_size,
-                          uint8_t extension_header_size_size,
-                          uint8_t extension_header_bytes_size) {
+                          int8_t num_samples_to_trim_at_end_size,
+                          int8_t num_samples_to_trim_at_start_size,
+                          int8_t extension_header_size_size,
+                          DecodedUleb128 extension_header_bytes_size) {
   return static_cast<int64_t>(obu_size) -
          (num_samples_to_trim_at_end_size + num_samples_to_trim_at_start_size +
           extension_header_size_size + extension_header_bytes_size);

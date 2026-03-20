@@ -568,6 +568,29 @@ TEST_F(ObuHeaderTest, ReadAndValidateIncludeAllConditionalFields) {
             expected_extension_header_bytes);
 }
 
+TEST_F(ObuHeaderTest, ReadAndValidateLargeExtensionHeader) {
+  // Construct an OBU with a large extension header size (e.g. 300) to ensure
+  // that it is not truncated to uint8_t when calculating the payload size.
+  std::vector<uint8_t> source_data = {
+      // `obu type` = kObuIaTemporalDelimiter, `obu_extension_flag` = 1.
+      kObuIaTemporalDelimiter << kObuTypeBitShift | kObuExtensionFlagBitMask,
+      // `obu_size` = 302 (ULEB128: 0xae, 0x02).
+      0xae, 0x02,
+      // `extension_header_size` = 300 (ULEB128: 0xac, 0x02).
+      0xac, 0x02};
+  // Add 300 bytes of extension data.
+  source_data.insert(source_data.end(), 300, 0);
+
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      IsOk());
+
+  EXPECT_EQ(payload_serialized_size_, 0);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 300);
+}
+
 TEST_F(ObuHeaderTest, ReadAndValidateImplicitAudioFrameId17) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
