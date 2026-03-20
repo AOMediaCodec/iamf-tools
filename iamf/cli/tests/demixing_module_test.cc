@@ -1385,5 +1385,60 @@ TEST_F(DemixingModuleTest, T2ToT4Demixer) {
   TestLosslessDemixing(1);
 }
 
+TEST_F(DemixingModuleTest, S5ToS7DemixerFailsWhenBetaIsZero) {
+  input_labels_ = {kL7, kR7, kCentre, kLss7, kRss7, kLrs7, kRrs7};
+  const DownMixingParams kDownMixingParams = {.alpha = 0.866, .beta = 0.0};
+  ConfigureLosslessAudioFrame({kL5, kR5}, {{100}, {100}}, kDownMixingParams);
+  ConfigureLosslessAudioFrame({kLs5, kRs5}, {{7794}, {7794}},
+                              kDownMixingParams);
+  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
+  ConfigureLosslessAudioFrame({kLss7, kRss7}, {{1000}, {2000}},
+                              kDownMixingParams);
+
+  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
+      {{kAudioElementId,
+        DemixingModule::DownmixingAndReconstructionConfig{
+            .user_labels = input_labels_,
+            .substream_id_to_labels = substream_id_to_labels_}}});
+  ASSERT_THAT(demixing_module, IsOk());
+  EXPECT_FALSE(demixing_module->DemixDecodedAudioSamples(audio_frames_).ok());
+}
+
+TEST_F(DemixingModuleTest, S3ToS5DemixerFailsWhenDeltaIsZero) {
+  input_labels_ = {kL5, kR5, kCentre, kLtf2, kRtf2};
+  const DownMixingParams kDownMixingParams = {.delta = 0.0, .w = 0.25};
+  ConfigureLosslessAudioFrame({kL3, kR3}, {{18660}, {28660}},
+                              kDownMixingParams);
+  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
+  ConfigureLosslessAudioFrame({kLtf3, kRtf3}, {{1000}, {2000}},
+                              kDownMixingParams);
+
+  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
+      {{kAudioElementId,
+        DemixingModule::DownmixingAndReconstructionConfig{
+            .user_labels = input_labels_,
+            .substream_id_to_labels = substream_id_to_labels_}}});
+  ASSERT_THAT(demixing_module, IsOk());
+  EXPECT_FALSE(demixing_module->DemixDecodedAudioSamples(audio_frames_).ok());
+}
+
+TEST_F(DemixingModuleTest, T2ToT4DemixerFailsWhenGammaIsZero) {
+  input_labels_ = {kL5, kR5, kCentre, kLtf4, kRtf4};
+  const DownMixingParams kDownMixingParams = {.gamma = 0.0};
+  ConfigureLosslessAudioFrame({kL5, kR5}, {{100}, {100}}, kDownMixingParams);
+  ConfigureLosslessAudioFrame({kLs5, kRs5}, {{100}, {100}}, kDownMixingParams);
+  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
+  ConfigureLosslessAudioFrame({kLtf2, kRtf2}, {{8660}, {17320}},
+                              kDownMixingParams);
+
+  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
+      {{kAudioElementId,
+        DemixingModule::DownmixingAndReconstructionConfig{
+            .user_labels = input_labels_,
+            .substream_id_to_labels = substream_id_to_labels_}}});
+  ASSERT_THAT(demixing_module, IsOk());
+  EXPECT_FALSE(demixing_module->DemixDecodedAudioSamples(audio_frames_).ok());
+}
+
 }  // namespace
 }  // namespace iamf_tools

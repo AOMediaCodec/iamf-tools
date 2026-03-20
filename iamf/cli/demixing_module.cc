@@ -96,6 +96,10 @@ absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
 absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "S5 to S7";
+  if (std::abs(down_mixing_params.beta) < 1e-5) {
+    return absl::InvalidArgumentError(
+        "beta cannot be near zero in S5ToS7Demixer");
+  }
 
   absl::Span<const InternalSampleType> l5_samples;
   absl::Span<const InternalSampleType> ls5_samples;
@@ -173,6 +177,10 @@ absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
 absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "S3 to S5";
+  if (std::abs(down_mixing_params.delta) < 1e-5) {
+    return absl::InvalidArgumentError(
+        "delta cannot be near zero in S3ToS5Demixer");
+  }
 
   absl::Span<const InternalSampleType> l3_samples;
   absl::Span<const InternalSampleType> l5_samples;
@@ -333,6 +341,10 @@ absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
 absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "T2 to T4";
+  if (std::abs(down_mixing_params.gamma) < 1e-5) {
+    return absl::InvalidArgumentError(
+        "gamma cannot be near zero in T2ToT4Demixer");
+  }
 
   absl::Span<const InternalSampleType> ltf2_samples;
   absl::Span<const InternalSampleType> ltf4_samples;
