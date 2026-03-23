@@ -366,6 +366,31 @@ TEST(CreateFromBuffer, ReturnsErrorWhenNumSubblocksIsGreaterThanTotalDuration) {
               Not(IsOk()));
 }
 
+TEST(CreateFromBuffer, FailsWhenNumSubblocksIsGreaterThan192000) {
+  std::vector<uint8_t> source_data = {
+      // Parameter ID.
+      kParameterId,
+      // Duration.
+      0x81,
+      0xdc,
+      0x0b,  // 192,001
+      // Constant subblock duration.
+      0x01,
+  };
+  const int64_t payload_size = source_data.size();
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+  MixGainParamDefinition param_definition;
+  param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = 1;
+  param_definition.param_definition_mode_ = 1;
+
+  EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
+                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
+                   param_definition, *buffer)
+                   .ok());
+}
+
 TEST(CreateFromBuffer, ParamDefinitionMode0) {
   const DecodedUleb128 kParameterId = 0x07;
   std::vector<uint8_t> source_data = {
