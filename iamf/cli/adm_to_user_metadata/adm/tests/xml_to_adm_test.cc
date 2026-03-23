@@ -329,6 +329,19 @@ TEST(ParseXmlToAdm, InvalidTimingFormat) {
   }
 }
 
+TEST(ParseXmlToAdm, FailsOnCustomEntityDeclaration) {
+  const std::string xml = R"xml(
+    <?xml version="1.0"?>
+    <!DOCTYPE test [
+      <!ENTITY custom_entity "This is a custom entity">
+    ]>
+    <topLevelElement>&custom_entity;</topLevelElement>
+  )xml";
+
+  EXPECT_FALSE(
+      ParseXmlToAdm(xml, kImportanceThreshold, kAdmFileTypeDefault).ok());
+}
+
 }  // namespace
 }  // namespace adm_to_user_metadata
 }  // namespace iamf_tools

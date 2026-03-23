@@ -860,6 +860,19 @@ void SetChannelIndices(ADM& adm) {
     }
   }
 }
+// Prevents Billion Laughs attacks by explicitly refusing to parse XML custom
+// entity declarations.
+void XMLCALL EntityDeclHandlerForExpat(
+    void* user_data, const XML_Char* entity_name, int /*is_parameter_entity*/,
+    const XML_Char* /*value*/, int /*value_length*/, const XML_Char* /*base*/,
+    const XML_Char* /*system_id*/, const XML_Char* /*public_id*/,
+    const XML_Char* /*notation_name*/) {
+  auto* handler = static_cast<Handler*>(user_data);
+  handler->status = absl::InvalidArgumentError(
+      absl::StrCat("XML entity declarations are not supported: ", entity_name));
+  XML_StopParser(handler->parser, false);
+}
+
 }  // namespace
 
 absl::StatusOr<ADM> ParseXmlToAdm(absl::string_view xml_data,
@@ -875,6 +888,7 @@ absl::StatusOr<ADM> ParseXmlToAdm(absl::string_view xml_data,
   handler.adm.file_type = file_type;
   XML_SetStartElementHandler(handler.parser, XMLStartTagHandlerForExpat);
   XML_SetCharacterDataHandler(handler.parser, XMLCharacterDataHandlerForExpat);
+  XML_SetEntityDeclHandler(handler.parser, EntityDeclHandlerForExpat);
 
   switch (const auto xml_status = XML_Parse(handler.parser, xml_data.data(),
                                             xml_data.length(), true)) {
