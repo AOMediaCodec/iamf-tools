@@ -739,5 +739,25 @@ TEST(ProjectSamplesToRender, FailsOnIncompatibleMatrices) {
                    .ok());
 }
 
+TEST(ProjectSamplesToRender, FailsOnZeroInputChannels) {
+  const std::vector<std::vector<InternalSampleType>> empty_input_samples;
+  const std::vector<int16_t> demixing_matrix(1, 0);
+
+  std::vector<std::vector<InternalSampleType>> projected_samples;
+  EXPECT_FALSE(ProjectSamplesToRender(MakeSpanOfConstSpans(empty_input_samples),
+                                      demixing_matrix, projected_samples)
+                   .ok());
+}
+
+TEST(ProjectSamplesToRender, FailsOnEmptyDemixingMatrix) {
+  const std::vector<std::vector<InternalSampleType>> input_samples(1, {0});
+  const std::vector<int16_t> empty_demixing_matrix;
+
+  std::vector<std::vector<InternalSampleType>> projected_samples;
+  EXPECT_FALSE(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
+                                      empty_demixing_matrix, projected_samples)
+                   .ok());
+}
+
 }  // namespace
 }  // namespace iamf_tools

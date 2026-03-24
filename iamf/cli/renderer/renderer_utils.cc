@@ -338,8 +338,13 @@ absl::Status ProjectSamplesToRender(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const std::vector<int16_t>& demixing_matrix,
     std::vector<std::vector<InternalSampleType>>& projected_samples) {
+  if (input_samples.empty() || demixing_matrix.empty()) {
+    return absl::InvalidArgumentError(
+        "Input samples or demixing matrix is empty.");
+  }
+
   const auto num_input_channels = input_samples.size();
-  const auto num_ticks = input_samples.empty() ? 0 : input_samples[0].size();
+  const auto num_ticks = input_samples[0].size();
 
   const int num_elements_in_demixing_matrix = demixing_matrix.size();
   if (num_elements_in_demixing_matrix % num_input_channels != 0) {
