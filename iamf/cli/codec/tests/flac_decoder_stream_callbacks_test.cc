@@ -36,14 +36,14 @@ using flac_callbacks::LibFlacCallbackData;
 
 TEST(LibFlacCallbackData, ConstructorSetsNumSamplesPerChannel) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
 
   EXPECT_EQ(callback_data.num_samples_per_channel_, kNumSamplesPerFrame);
 }
 
 TEST(LibFlacCallbackData, SetEncodedFrameRemovesPreviouslySetFrame) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   // Intentionally get the buffer to a state where it was partially exhausted.
   callback_data.SetEncodedFrame({99, 100});
   // Intentionally avoid exhausting the buffer.
@@ -57,7 +57,7 @@ TEST(LibFlacCallbackData, SetEncodedFrameRemovesPreviouslySetFrame) {
 
 TEST(LibFlacCallbackData, GetNextSliceCapsOutputToAtMostRemainingSize) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   const std::vector<uint8_t> kEncodedFrame = {99, 100};
   callback_data.SetEncodedFrame(kEncodedFrame);
 
@@ -69,7 +69,7 @@ TEST(LibFlacCallbackData, GetNextSliceCapsOutputToAtMostRemainingSize) {
 
 TEST(LibFlacCallbackData, RepeatedCallsToGetNextSliceReturnNextSlice) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   const std::vector<uint8_t> encoded_frame = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   callback_data.SetEncodedFrame(encoded_frame);
 
@@ -81,7 +81,7 @@ TEST(LibFlacCallbackData, RepeatedCallsToGetNextSliceReturnNextSlice) {
 
 TEST(LibFlacCallbackData, CallsWhenBufferIsExhaustedReturnEmptySpan) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   constexpr int kNumBytes = 5;
   const std::vector<uint8_t> encoded_frame(kNumBytes, 0);
   callback_data.SetEncodedFrame(encoded_frame);
@@ -93,7 +93,7 @@ TEST(LibFlacCallbackData, CallsWhenBufferIsExhaustedReturnEmptySpan) {
 TEST(LibFlacReadCallback, ReadCallbackReturnsEndOfStreamForEmptyFrame) {
   const std::vector<uint8_t> kEmptyFrame;
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   FLAC__byte buffer[1024];
   size_t bytes = 1024;
 
@@ -106,7 +106,7 @@ TEST(LibFlacReadCallback, ReadCallbackReturnsEndOfStreamForEmptyFrame) {
 
 TEST(LibFlacReadCallback, ReadCallbackReturnsAbortForNullPtrs) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   FLAC__byte buffer[1024];
   size_t bytes = 1024;
 
@@ -127,7 +127,7 @@ TEST(LibFlacReadCallback, ReadCallbackReturnsAbortForNullPtrs) {
 
 TEST(LibFlacReadCallback, EachCallToReadCallbackWritesUpToBufferSize) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   // Simulate `libFLAC` requestes 8 bytes at a time.
   const size_t kFlacBufferSize = 8;
   FLAC__byte buffer[kFlacBufferSize];
@@ -161,7 +161,7 @@ TEST(LibFlacReadCallback, EachCallToReadCallbackWritesUpToBufferSize) {
 
 TEST(LibFlacReadCallback, ConsumesEncodedFrame) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   FLAC__byte buffer[1024];
   size_t bytes = 1028;
   const std::vector<uint8_t> encoded_frame(1024, 1);
@@ -178,7 +178,7 @@ TEST(LibFlacReadCallback, ConsumesEncodedFrame) {
 
 TEST(LibFlacReadCallback, Success) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   FLAC__byte buffer[1024];
   size_t bytes = 1028;
   const std::vector<uint8_t> encoded_frame(1024, 1);
@@ -195,7 +195,7 @@ TEST(LibFlacReadCallback, Success) {
 TEST(LibFlacWriteCallback, SucceedsFor32BitSamples) {
   constexpr int kThreeSamplesPerFrame = 3;
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kThreeSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kThreeSamplesPerFrame, kNumChannels, decoded_frame);
   const FLAC__Frame kFlacFrame = {.header = {.blocksize = 3,
                                              .channels = kNumChannels,
                                              .bits_per_sample = 32}};
@@ -216,7 +216,7 @@ TEST(LibFlacWriteCallback, SucceedsFor32BitSamples) {
 TEST(LibFlacWriteCallback, SucceedsFor16BitSamples) {
   constexpr int kTwoSamplesPerFrame = 2;
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kTwoSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kTwoSamplesPerFrame, kNumChannels, decoded_frame);
   const FLAC__Frame kFlacFrame = {.header = {.blocksize = 2,
                                              .channels = kNumChannels,
                                              .bits_per_sample = 16}};
@@ -242,7 +242,7 @@ TEST(LibFlacWriteCallback, ReturnsStatusAbortForTooSmallBlockSize) {
   // num_samples_per_channel = 2, but the encoded frame has 3 samples per
   // channel.
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kTwoSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kTwoSamplesPerFrame, kNumChannels, decoded_frame);
   const FLAC__Frame kFlacFrame = {.header = {.blocksize = kLargerBlockSize,
                                              .channels = kNumChannels,
                                              .bits_per_sample = 32}};
@@ -262,7 +262,7 @@ TEST(LibFlacWriteCallback, FillsExtraSamplesWithZeros) {
   // num_samples_per_channel = 4, but the encoded frame has 3 samples per
   // channel.
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kFourSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kFourSamplesPerFrame, kNumChannels, decoded_frame);
   const FLAC__Frame kFlacFrame = {.header = {.blocksize = kSmallerBlockSize,
                                              .channels = kNumChannels,
                                              .bits_per_sample = 32}};
@@ -283,7 +283,7 @@ TEST(LibFlacWriteCallback, FillsExtraSamplesWithZeros) {
 
 TEST(LibFlacWriteCallback, ReturnsStatusAbortForInvalidBitsPerSampleMax) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   const uint32_t kInvalidBitsPerSample = 33;
   const FLAC__Frame kFlacFrame0 = {
       .header = {.blocksize = 1,
@@ -301,7 +301,7 @@ TEST(LibFlacWriteCallback, ReturnsStatusAbortForInvalidBitsPerSampleMax) {
 
 TEST(LibFlacWriteCallback, ReturnsStatusAbortForInvalidBitsPerSampleMin) {
   std::vector<std::vector<InternalSampleType>> decoded_frame;
-  LibFlacCallbackData callback_data(kNumSamplesPerFrame, decoded_frame);
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame, kNumChannels, decoded_frame);
   const uint32_t kInvalidBitsPerSample = 15;
   const FLAC__Frame kFlacFrame0 = {
       .header = {.blocksize = 1,
