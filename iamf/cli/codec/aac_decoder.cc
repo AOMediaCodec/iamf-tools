@@ -165,6 +165,13 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
     return status;
   }
 
+  // Constrain the maximum number of output channels to match the IAMF-level
+  // substream channel count.  Without this, fdk_aac's implicit SBR/PS
+  // processing could increase the output channel count beyond what the
+  // output buffer is sized for.
+  aacDecoder_SetParam(decoder, AAC_PCM_MAX_OUTPUT_CHANNELS,
+                      channel_count.num_channels());
+
   const auto* stream_info = aacDecoder_GetStreamInfo(decoder);
   ABSL_LOG_FIRST_N(INFO, 1) << "Created an AAC decoder with "
                             << stream_info->numChannels << " channels.";

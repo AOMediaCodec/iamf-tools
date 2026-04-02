@@ -42,9 +42,10 @@ class LibFlacCallbackData {
    *        time ticks within the function.
    */
   LibFlacCallbackData(
-      uint32_t num_samples_per_channel,
+      uint32_t num_samples_per_channel, uint32_t num_channels,
       std::vector<std::vector<InternalSampleType>>& decoded_frame)
       : num_samples_per_channel_(num_samples_per_channel),
+        num_channels_(num_channels),
         decoded_frame_(decoded_frame) {}
 
   /*!\brief Sets the frame to be decoded.
@@ -65,6 +66,7 @@ class LibFlacCallbackData {
   absl::Span<const uint8_t> GetNextSlice(size_t chunk_size);
 
   const uint32_t num_samples_per_channel_;
+  const uint32_t num_channels_;
 
   // Reference to the backing data for the decoded frame.
   std::vector<std::vector<InternalSampleType>>& decoded_frame_;

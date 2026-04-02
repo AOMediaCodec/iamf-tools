@@ -22,6 +22,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/parameter_data.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -42,6 +43,10 @@ absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   // `ParamDefinition::ReadAndWrite(wb)`.
   DecodedUleb128 param_definition_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_size));
+  if (param_definition_size > kEntireObuSizeMaxTwoMegabytes) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "param_definition_size= ", param_definition_size, " exceeds maximum."));
+  }
   param_definition_bytes_.resize(param_definition_size);
   RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes_)));
 

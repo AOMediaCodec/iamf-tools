@@ -72,6 +72,15 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
     return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
   }
 
+  // Reject frames whose channel count does not match the expected count from
+  // the IAMF codec config.  Without this check, a crafted FLAC frame could
+  // claim more channels than the downstream pipeline is sized for.
+  if (frame->header.channels != libflac_callback_data->num_channels_) {
+    ABSL_LOG(ERROR) << "Frame channel count " << frame->header.channels
+                    << " does not match expected " << libflac_callback_data->num_channels_;
+    return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+  }
+
   auto& decoded_samples = libflac_callback_data->decoded_frame_;
   decoded_samples.resize(frame->header.channels);
   for (uint32_t c = 0; c < frame->header.channels; ++c) {

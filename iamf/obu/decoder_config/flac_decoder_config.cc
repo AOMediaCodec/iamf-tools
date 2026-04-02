@@ -249,10 +249,17 @@ absl::Status FlacDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
 
   // We are not given a length field to indicate the number of metadata blocks
   // to read. Instead, we must look at the `last_metadata_block_flag` to
-  // determine when to stop reading.
+  // determine when to stop reading.  Cap at 128 blocks as a safety measure
+  // against crafted bitstreams — the FLAC spec defines only 7 block types.
+  static constexpr int kMaxMetadataBlocks = 128;
   std::vector<FlacMetadataBlock> metadata_blocks;
   bool last_metadata_block_flag = false;
+  int metadata_block_count = 0;
   while (!last_metadata_block_flag) {
+    if (++metadata_block_count > kMaxMetadataBlocks) {
+      return absl::InvalidArgumentError(
+          "Too many FLAC metadata blocks without last_metadata_block_flag.");
+    }
     FlacMetadataBlock metadata_block;
     RETURN_IF_NOT_OK(rb.ReadBoolean(last_metadata_block_flag));
     uint8_t block_type;

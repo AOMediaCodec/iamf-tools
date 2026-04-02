@@ -144,6 +144,10 @@ absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 
   // Loop to read the `subblock_durations` array if it should be included.
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks_));
+  if (num_subblocks_ > kEntireObuSizeMaxTwoMegabytes) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("num_subblocks= ", num_subblocks_, " exceeds maximum."));
+  }
   for (DecodedUleb128 i = 0; i < num_subblocks_; i++) {
     DecodedUleb128 subblock_duration;
     RETURN_IF_NOT_OK(rb.ReadULeb128(subblock_duration));
