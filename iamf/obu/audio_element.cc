@@ -183,7 +183,7 @@ absl::Status ValidateUniqueParamDefinitionType(
 
 absl::Status ValidateOutputChannelCount(const uint8_t channel_count) {
   uint8_t next_valid_output_channel_count;
-  RETURN_IF_NOT_OK(AmbisonicsConfig ::GetNextValidOutputChannelCount(
+  RETURN_IF_NOT_OK(AmbisonicsConfig::GetNextValidOutputChannelCount(
       channel_count, next_valid_output_channel_count));
 
   if (next_valid_output_channel_count == channel_count) {
