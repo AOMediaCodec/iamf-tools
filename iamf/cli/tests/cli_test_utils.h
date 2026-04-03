@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -32,9 +33,9 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
+#include "iamf/cli/obu_processor.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -62,17 +63,20 @@ namespace iamf_tools {
  *
  * \param read_bit_buffer Buffer reader that reads the IAMF bitstream. The
  *        reader's position will be moved past the first IA sequence.
- * \param parsed_descriptor_obus Output parsed descriptor OBUs.
- * \param audio_frames Output audio frames.
- * \param parameter_blocks Output parameter blocks.
- * \return `absl::OkStatus()` if the process is successful. A specific status
- *         on failure.
+ * \return A `CollectedObus` struct containing the parsed OBUs, or a specific
+ *         status on failure.
  */
-absl::Status CollectObusFromIaSequence(
-    ReadBitBuffer& read_bit_buffer,
-    DescriptorObuParser::ParsedDescriptorObus& parsed_descriptor_obus,
-    std::list<AudioFrameWithData>& audio_frames,
-    std::list<ParameterBlockWithData>& parameter_blocks);
+struct CollectedObus {
+  // Contains accessors for the parsed descriptor OBUs.
+  std::unique_ptr<ObuProcessor> absl_nonnull obu_processor;
+
+  // All temporal unit OBUs collected from the IAMF Sequence.
+  std::list<AudioFrameWithData> audio_frames;
+  std::list<ParameterBlockWithData> parameter_blocks;
+};
+
+absl::StatusOr<CollectedObus> CollectObusFromIaSequence(
+    ReadBitBuffer& read_bit_buffer);
 
 // A specification for a decode request. Currently used in the context of
 // extracting the relevant metadata from the UserMetadata proto associated

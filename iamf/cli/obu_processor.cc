@@ -387,23 +387,23 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
   if (!parsed_obus.ok()) {
     return parsed_obus.status();
   }
+  // These are marked as non-null in the struct, but for safety's sake check
+  // again.
   RETURN_IF_NOT_OK(
       ValidateNotNull(parsed_obus->codec_config_obus, "codec_config_obus"));
   RETURN_IF_NOT_OK(
       ValidateNotNull(parsed_obus->audio_elements, "audio_elements"));
-  ia_sequence_header_ = std::move(parsed_obus->ia_sequence_header);
-  codec_config_obus_ = std::move(parsed_obus->codec_config_obus);
-  audio_elements_ = std::move(parsed_obus->audio_elements);
-  mix_presentations_ = std::move(parsed_obus->mix_presentation_obus);
+  descriptors_ = *std::move(parsed_obus);
 
   ABSL_LOG(INFO) << "Processed Descriptor OBUs";
   RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
-      *audio_elements_, mix_presentations_, param_definition_variants_));
-  GetSampleRateAndFrameSize(*codec_config_obus_, output_sample_rate_,
-                            output_frame_size_);
+      *descriptors_.audio_elements, descriptors_.mix_presentation_obus,
+      param_definition_variants_));
+  GetSampleRateAndFrameSize(*descriptors_.codec_config_obus,
+                            output_sample_rate_, output_frame_size_);
   // Mapping from substream IDs to pointers to audio element with data.
   for (const auto& [audio_element_id, audio_element_with_data] :
-       *audio_elements_) {
+       *descriptors_.audio_elements) {
     for (const auto& [substream_id, unused_labels] :
          audio_element_with_data.substream_id_to_labels) {
       auto [unused_iter, inserted] = substream_id_to_audio_element_.insert(
@@ -415,19 +415,45 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
       }
     }
   }
-  global_timing_module_ =
-      GlobalTimingModule::Create(*audio_elements_, param_definition_variants_);
+  global_timing_module_ = GlobalTimingModule::Create(
+      *descriptors_.audio_elements, param_definition_variants_);
   if (global_timing_module_ == nullptr) {
     return absl::InvalidArgumentError(
         "Failed to initialize the global timing module");
   }
-  auto temp_parameters_manager = ParametersManager::Create(*audio_elements_);
+  auto temp_parameters_manager =
+      ParametersManager::Create(*descriptors_.audio_elements);
   if (!temp_parameters_manager.ok()) {
     return temp_parameters_manager.status();
   }
   ABSL_CHECK_NE(*temp_parameters_manager, nullptr);
   parameters_manager_ = *std::move(temp_parameters_manager);
   return absl::OkStatus();
+}
+
+const IASequenceHeaderObu& ObuProcessor::GetIaSequenceHeaderView() const {
+  return descriptors_.ia_sequence_header;
+}
+
+const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
+ObuProcessor::GetCodecConfigObusView() const {
+  // These are marked as non-null in the struct, but for safety's sake check
+  // again.
+  ABSL_CHECK_NE(descriptors_.codec_config_obus, nullptr);
+  return *descriptors_.codec_config_obus;
+}
+
+const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+ObuProcessor::GetAudioElementsView() const {
+  // These are marked as non-null in the struct, but for safety's sake check
+  // again.
+  ABSL_CHECK_NE(descriptors_.audio_elements, nullptr);
+  return *descriptors_.audio_elements;
+}
+
+const std::list<MixPresentationObu>& ObuProcessor::GetMixPresentationObusView()
+    const {
+  return descriptors_.mix_presentation_obus;
 }
 
 std::unique_ptr<ObuProcessor> absl_nullable ObuProcessor::Create(
@@ -514,21 +540,22 @@ absl::Status ObuProcessor::InitializeForRendering(
     const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
     const std::optional<uint32_t>& desired_mix_presentation_id,
     const std::optional<Layout>& desired_layout) {
-  if (mix_presentations_.empty()) {
+  if (descriptors_.mix_presentation_obus.empty()) {
     return absl::InvalidArgumentError("No mix presentation OBUs found.");
   }
-  if (audio_elements_->empty()) {
+  if (descriptors_.audio_elements->empty()) {
     return absl::InvalidArgumentError("No audio element OBUs found.");
   }
 
   const std::list<MixPresentationObu*> supported_mix_presentations =
-      GetSupportedMixPresentations(desired_profile_versions, *audio_elements_,
-                                   mix_presentations_);
+      GetSupportedMixPresentations(desired_profile_versions,
+                                   *descriptors_.audio_elements,
+                                   descriptors_.mix_presentation_obus);
   if (supported_mix_presentations.empty()) {
     return absl::NotFoundError("No supported mix presentation OBUs found.");
   }
   absl::StatusOr<SelectedMixPresentation> selected_mix_presentation =
-      FindMixPresentationAndLayout(*audio_elements_,
+      FindMixPresentationAndLayout(*descriptors_.audio_elements,
                                    supported_mix_presentations, desired_layout,
                                    desired_mix_presentation_id);
   if (!selected_mix_presentation.ok()) {
@@ -556,7 +583,7 @@ absl::Status ObuProcessor::InitializeForRendering(
 
   // Configure simplified audio pipeline, from the simplified mix presentation.
   absl::StatusOr<RenderingModels> rendering_models =
-      ConfigureSimplifiedAudioProcessingPipeline(*audio_elements_,
+      ConfigureSimplifiedAudioProcessingPipeline(*descriptors_.audio_elements,
                                                  *simplified_mix_presentation);
   if (!rendering_models.ok()) {
     return rendering_models.status();
@@ -580,10 +607,11 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
     std::optional<ParameterBlockWithData> parameter_block_with_data;
     std::optional<TemporalDelimiterObu> temporal_delimiter;
     RETURN_IF_NOT_OK(ProcessTemporalUnitObu(
-        *audio_elements_, *codec_config_obus_, substream_id_to_audio_element_,
-        param_definition_variants_, *parameters_manager_, *read_bit_buffer_,
-        *global_timing_module_, audio_frame_with_data,
-        parameter_block_with_data, temporal_delimiter, continue_processing));
+        *descriptors_.audio_elements, *descriptors_.codec_config_obus,
+        substream_id_to_audio_element_, param_definition_variants_,
+        *parameters_manager_, *read_bit_buffer_, *global_timing_module_,
+        audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
+        continue_processing));
 
     // Collect OBUs into a temporal unit.
     bool delimiter_end_condition = false;

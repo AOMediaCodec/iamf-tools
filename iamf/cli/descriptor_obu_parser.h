@@ -16,6 +16,7 @@
 #include <list>
 #include <memory>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -47,11 +48,13 @@ class DescriptorObuParser {
     // IA sequence header processed from the bitstream.
     IASequenceHeaderObu ia_sequence_header;
     // Map of Codec Config OBUs processed from the bitstream.
-    std::unique_ptr<absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>
-        codec_config_obus;
+    std::unique_ptr<
+        absl::flat_hash_map<DecodedUleb128, CodecConfigObu>> absl_nonnull
+    codec_config_obus;
     // Map of Audio Elements and metadata processed from the bitstream.
-    std::unique_ptr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
-        audio_elements;
+    std::unique_ptr<
+        absl::flat_hash_map<DecodedUleb128, AudioElementWithData>> absl_nonnull
+    audio_elements;
     // List of Mix Presentation OBUs processed from the bitstream.
     std::list<MixPresentationObu> mix_presentation_obus;
   };

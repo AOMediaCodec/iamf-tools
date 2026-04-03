@@ -28,6 +28,7 @@
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
@@ -179,16 +180,34 @@ class ObuProcessor {
       const std::list<ParameterBlockWithData>& parameter_blocks,
       std::list<AudioFrameWithData>& audio_frames);
 
-  IASequenceHeaderObu ia_sequence_header_;
-  std::unique_ptr<
-      absl::flat_hash_map<DecodedUleb128, CodecConfigObu>> absl_nonnull
-  codec_config_obus_;
-  std::unique_ptr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
-      audio_elements_;
-  std::list<MixPresentationObu> mix_presentations_;
+  /*!\brief Gets a view of the IA Sequence Header.
+   *
+   * \return View of the IA Sequence Header.
+   */
+  const IASequenceHeaderObu& GetIaSequenceHeaderView() const;
+
+  /*!\brief Gets a view of the Codec Config OBUs.
+   *
+   * \return View of the Codec Config OBUs.
+   */
+  const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
+  GetCodecConfigObusView() const;
+
+  /*!\brief Gets a view of the Audio Element with metadata.
+   *
+   * \return View of the Audio Elements with metadata.
+   */
+  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+  GetAudioElementsView() const;
+
+  /*!\brief Gets a view of the Mix Presentation OBUs.
+   *
+   * \return View of the Mix Presentation OBUs.
+   */
+  const std::list<MixPresentationObu>& GetMixPresentationObusView() const;
 
  private:
-  /*\brief Models required to render audio for playback.
+  /*!\brief Models required to render audio for playback.
    *
    * The IAMF v1.0.0 specification describes several stages of processing in
    * Figure 2. This struct contains classes which help perform audio processing
@@ -214,13 +233,7 @@ class ObuProcessor {
    * \return ObuProcessor instance.
    */
   explicit ObuProcessor(ReadBitBuffer* absl_nonnull buffer)
-      : codec_config_obus_(
-            std::make_unique<
-                absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>()),
-        audio_elements_(
-            std::make_unique<
-                absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>()),
-        read_bit_buffer_(buffer) {}
+      : read_bit_buffer_(buffer) {}
 
   /*!\brief Configures the audio processing pipeline for rendering.
    *
@@ -343,6 +356,9 @@ class ObuProcessor {
 
   // Modules used for rendering, present iff `CreateForRendering()` was called.
   std::optional<RenderingModels> rendering_models_;
+
+  // Parsed descriptor OBUs.
+  DescriptorObuParser::ParsedDescriptorObus descriptors_;
 };
 }  // namespace iamf_tools
 #endif  // CLI_OBU_PROCESSOR_H_

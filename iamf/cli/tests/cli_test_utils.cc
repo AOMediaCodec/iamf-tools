@@ -34,6 +34,7 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
@@ -41,13 +42,10 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/obu_with_data_generator.h"
-#include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -62,6 +60,7 @@
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
@@ -130,45 +129,37 @@ void GetAudioSubstreamIdsAndLabelsMap(
 
 using ::absl_testing::IsOk;
 
-absl::Status CollectObusFromIaSequence(
-    ReadBitBuffer& read_bit_buffer,
-    DescriptorObuParser::ParsedDescriptorObus& parsed_descriptor_obus,
-    std::list<AudioFrameWithData>& audio_frames,
-    std::list<ParameterBlockWithData>& parameter_blocks) {
+absl::StatusOr<CollectedObus> CollectObusFromIaSequence(
+    ReadBitBuffer& read_bit_buffer) {
   bool insufficient_data = false;
   auto obu_processor = ObuProcessor::Create(
       /*is_exhaustive_and_exact=*/false, &read_bit_buffer, insufficient_data);
   EXPECT_FALSE(insufficient_data);
+  RETURN_IF_NOT_OK(ValidateNotNull(obu_processor, "obu_processor"));
+  CollectedObus collected_obus = {.obu_processor = std::move(obu_processor)};
 
   bool continue_processing = true;
   int temporal_unit_count = 0;
   ABSL_LOG(INFO) << "Starting Temporal Unit OBU processing";
   while (continue_processing) {
     std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
-    RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
+    RETURN_IF_NOT_OK(collected_obus.obu_processor->ProcessTemporalUnit(
         /*eos_is_end_of_sequence=*/true, output_temporal_unit,
         continue_processing));
     if (output_temporal_unit.has_value()) {
-      audio_frames.splice(audio_frames.end(),
-                          output_temporal_unit->output_audio_frames);
-      parameter_blocks.splice(parameter_blocks.end(),
-                              output_temporal_unit->output_parameter_blocks);
+      collected_obus.audio_frames.splice(
+          collected_obus.audio_frames.end(),
+          output_temporal_unit->output_audio_frames);
+      collected_obus.parameter_blocks.splice(
+          collected_obus.parameter_blocks.end(),
+          output_temporal_unit->output_parameter_blocks);
       temporal_unit_count++;
     }
   }
   ABSL_LOG(INFO) << "Processed " << temporal_unit_count
                  << " Temporal Unit OBUs";
 
-  // Move the processed data to the output.
-  parsed_descriptor_obus.ia_sequence_header =
-      std::move(obu_processor->ia_sequence_header_);
-  parsed_descriptor_obus.codec_config_obus =
-      std::move(obu_processor->codec_config_obus_);
-  parsed_descriptor_obus.audio_elements =
-      std::move(obu_processor->audio_elements_);
-  parsed_descriptor_obus.mix_presentation_obus =
-      std::move(obu_processor->mix_presentations_);
-  return absl::OkStatus();
+  return collected_obus;
 }
 
 void AddLpcmCodecConfig(
