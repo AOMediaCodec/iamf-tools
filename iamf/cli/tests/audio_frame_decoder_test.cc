@@ -61,6 +61,13 @@ AudioFrameWithData PrepareEncodedAudioFrame(
       kAudioElementId, kCodecConfigId, {kSubstreamId}, codec_config_obus,
       audio_elements);
 
+  // The test FLAC frame (kFlacEncodedFrame) encodes stereo (left/side),
+  // so update the substream labels to match 2 channels.
+  if (codec_id_type == CodecConfig::kCodecIdFlac) {
+    audio_elements.at(kAudioElementId).substream_id_to_labels[kSubstreamId] = {
+        ChannelLabel::kL2, ChannelLabel::kR2};
+  }
+
   if (encoded_audio_frame_payload.empty()) {
     encoded_audio_frame_payload =
         std::vector<uint8_t>(kNumSamplesPerFrame * kBytesPerSample, 0);

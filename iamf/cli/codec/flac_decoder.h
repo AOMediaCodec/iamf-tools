@@ -69,7 +69,7 @@ class FlacDecoder : public DecoderBase {
               FLAC__StreamDecoder* absl_nonnull decoder)
       : DecoderBase(channel_count, num_samples_per_frame), decoder_(decoder) {
     callback_data_ = std::make_unique<flac_callbacks::LibFlacCallbackData>(
-        num_samples_per_frame, decoded_samples_);
+        num_samples_per_frame, channel_count.num_channels(), decoded_samples_);
   }
 
   // Backing data for the `libflac` decoder callbacks. Held in `unique_ptr` for

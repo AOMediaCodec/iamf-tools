@@ -8,6 +8,7 @@
 #include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
@@ -19,14 +20,19 @@ namespace iamf_tools {
 
 namespace {
 
-uint64_t InferItuT35PayloadSize(const int64_t payload_size,
-                                const uint8_t metadata_type_size,
-                                bool has_country_code_extension_byte) {
+absl::StatusOr<uint64_t> InferItuT35PayloadSize(
+    const int64_t payload_size, const uint8_t metadata_type_size,
+    bool has_country_code_extension_byte) {
   // metadataTypeSize, 1 byte for the country code, and 1 byte for
   // the country code extension byte if present.
-  return has_country_code_extension_byte
-             ? payload_size - metadata_type_size - 2
-             : payload_size - metadata_type_size - 1;
+  const int64_t overhead =
+      metadata_type_size + (has_country_code_extension_byte ? 2 : 1);
+  if (payload_size < overhead) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("ITU-T T.35 payload_size= ", payload_size,
+                     " is too small for the required overhead= ", overhead));
+  }
+  return static_cast<uint64_t>(payload_size - overhead);
 }
 
 absl::Status ReadAndValidateMetadataITUTT35(
@@ -41,10 +47,14 @@ absl::Status ReadAndValidateMetadataITUTT35(
     metadata_itu_t_t35.itu_t_t35_country_code_extension_byte =
         itu_t_t35_country_code_extension_byte;
   }
+  auto inferred_size =
+      InferItuT35PayloadSize(payload_size, metadata_type_size,
+                             metadata_itu_t_t35.itu_t_t35_country_code == 0xFF);
+  if (!inferred_size.ok()) {
+    return inferred_size.status();
+  }
   std::vector<uint8_t> temp_itu_t_t35_payload_bytes;
-  temp_itu_t_t35_payload_bytes.resize(InferItuT35PayloadSize(
-      payload_size, metadata_type_size,
-      metadata_itu_t_t35.itu_t_t35_country_code == 0xFF));
+  temp_itu_t_t35_payload_bytes.resize(*inferred_size);
   RETURN_IF_NOT_OK(
       rb.ReadUint8Span(absl::MakeSpan(temp_itu_t_t35_payload_bytes)));
   metadata_itu_t_t35.itu_t_t35_payload_bytes =

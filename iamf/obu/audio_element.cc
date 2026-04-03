@@ -869,7 +869,11 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
     audio_element_params_.push_back(std::move(audio_element_param));
   }
 
-  // Write the specific `audio_element_type`'s config.
+  // Validate that parameter definition types are unique before proceeding
+  // to the config-specific parsing (which returns directly from each case).
+  RETURN_IF_NOT_OK(ValidateUniqueParamDefinitionType(audio_element_params_));
+
+  // Read the specific `audio_element_type`'s config.
   switch (audio_element_type_) {
     case kAudioElementChannelBased:
       config_ = ScalableChannelLayoutConfig();
@@ -901,8 +905,6 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
       return absl::OkStatus();
     }
   }
-  RETURN_IF_NOT_OK(ValidateUniqueParamDefinitionType(audio_element_params_));
-  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools

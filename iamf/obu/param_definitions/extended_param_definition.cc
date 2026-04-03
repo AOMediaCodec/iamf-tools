@@ -16,6 +16,7 @@
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
@@ -42,6 +43,10 @@ absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   // `ParamDefinition::ReadAndWrite(wb)`.
   DecodedUleb128 param_definition_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_size));
+  if (param_definition_size > kEntireObuSizeMaxTwoMegabytes) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "param_definition_size= ", param_definition_size, " exceeds maximum."));
+  }
   param_definition_bytes_.resize(param_definition_size);
   RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes_)));
 
