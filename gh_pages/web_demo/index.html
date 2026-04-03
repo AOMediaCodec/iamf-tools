@@ -31,7 +31,9 @@
         <h2>About this demo</h2>
         <p>
           This is a demo of the
-          <a href="https://github.com/AOMediaCodec/libiamf" target="_blank">libiamf decoder</a>
+          <a href="https://github.com/AOMediaCodec/iamf-tools" target="_blank"
+            >iamf_tools decoder</a
+          >
           compiled into WebAssembly and decoding IAMF in the browser.
         </p>
         <p>
@@ -45,10 +47,6 @@
             ></code
           >
           set to <code>HEADPHONES_RENDERING_MODE_BINAURAL</code>.
-        </p>
-        <p>
-          Our team keeps on improving the binaural rendering quality and will update the demo as
-          work progresses.
         </p>
         <p>Things to listen for:</p>
         <ul>
@@ -81,6 +79,7 @@
             in immersion, directionality, and fullness.
           </li>
         </ul>
+        <p>Note: This demo does not support IAMF files using AAC encoded audio.</p>
         
         <p>Questions or feedback: <a target="_blank" href="https://github.com/AOMediaCodec/iamf-tools/issues/new?title=[Web%20demo]%20%28Put%20a%20short%20title%20here%29&body=Please%20describe%20in%20detail:%0A-%20What%20did%20you%20do?%0A-%20What%20happened?%0A-%20What%20did%20you%20expect?">Please file an issue on GitHub</a>.</p>
       </div>
@@ -98,13 +97,18 @@
             <option value="Animated demo (3rd-order ambisonics + stereo)">
               Animated demo (3rd-order ambisonics + stereo)
             </option>
+            <option value="7.1.4 Speaker callout (FLAC)">7.1.4 Speaker callout (FLAC)</option>
+            <option value="7.1.4 Speaker callout (Opus)">7.1.4 Speaker callout (Opus)</option>
+            <option value="7.1.4 Speaker callout (PCM 16-bit 48kHz)">
+              7.1.4 Speaker callout (PCM 16-bit 48kHz)
+            </option>
           </select>
         </div>
         <label for="fileDrop">Or drag and drop an audio IAMF file</label><br />
         <div id="fileDrop">Drag and drop here</div>
         <p>
-          Note: Only standalone .iamf files are supported and very large files (> 1GB) may exhaust
-          the browser sandbox's memory.
+          Note: MP4 files or standalone .iamf files are supported. Very large files (> 1GB) may
+          exhaust the browser sandbox's memory.
         </p>
         <br />
         <div>
@@ -112,29 +116,67 @@
           <label for="advancedSettingsCheckbox">Advanced settings</label>
           <div id="advancedSettings" hidden="true">
             <h2>Advanced settings</h2>
+            <h3>These settings are for debugging and testing purposes.</h3>
             <p>
-              These settings are for debugging and testing purposes. Changing some settings may have
-              unintended consequences, for example, setting a higher output sample rate than used in
-              the input file will result in upsampling.
+              Controls the loudspeaker decoding layout. Depending on OS and browser, many layouts
+              may not be able to be played, but all can be downloaded as a wave file by checking the
+              "Show audio files" box below.
             </p>
             <div class="dropdown">
-              <select id="outputSampleRate" name="outputSampleRate">
-                <option value="16000">16000</option>
-                <option value="24000">24000</option>
-                <option value="48000" selected="selected">48000</option>
+              <select id="outputLayout" name="outputLayout">
+                <option value="0" selected>
+                  "Stereo" — ITU-R B.S. 2051-3 sound system A (0+2+0)
+                </option>
+                <option value="1">"5.1" — ITU-R B.S. 2051-3 sound system B (0+5+0)</option>
+                <option value="2">"5.1.2" — ITU-R B.S. 2051-3 sound system C (2+5+0)</option>
+                <option value="3">"5.1.4" — ITU-R B.S. 2051-3 sound system D (4+5+0)</option>
+                <option value="4">ITU-R B.S. 2051-3 sound system E (4+5+1)</option>
+                <option value="5">ITU-R B.S. 2051-3 sound system F (3+7+0)</option>
+                <option value="6">ITU-R B.S. 2051-3 sound system G (4+9+0)</option>
+                <option value="7">ITU-R B.S. 2051-3 sound system H (9+10+3)</option>
+                <option value="8">"7.1" — ITU-R B.S. 2051-3 sound system I (0+7+0)</option>
+                <option value="9">"7.1.4" — ITU-R B.S. 2051-3 sound system J (4+7+0)</option>
+                <option value="10">IAMF extension 7.1.2</option>
+                <option value="11">IAMF extension 3.1.2</option>
+                <option value="12">Mono</option>
+                <option value="13">IAMF extension 9.1.6</option>
+                <option value="14">Binaural</option>
               </select>
-              <label for="outputSampleRate">Output sample rate</label>
+              <label for="outputLayout">Loudspeaker decoding output layout</label>
             </div>
             <p>
-              By checking this box, you can access the stereo and binaural audio elements directly
-              to, most usefully, download audio.
+              Optionally, specify an ID to decode a specific Mix Presentation. If invalid or blank,
+              the decoder will use default behaviour. Mix Presentations can be seen in the browser
+              console log messages.
+            </p>
+            <div class="dropdown">
+              <input
+                type="number"
+                id="mixPresentationId"
+                name="mixPresentationId"
+                min="0"
+                placeholder="Unspecified"
+              />
+              <label for="mixPresentationId">Mix Presentation ID</label>
+            </div>
+            <p>Controls the order of the audio channels in the output.</p>
+            <div class="dropdown">
+              <select id="channelOrdering" name="channelOrdering">
+                <option value="0" selected>IAMF Ordering (ITU/IAMF)</option>
+                <option value="1">Ordering for Android (AudioFormat.java)</option>
+              </select>
+              <label for="channelOrdering">Output audio channel ordering</label>
+            </div>
+            <p>
+              By checking this box, you can access the loudspeaker and binaural audio elements to
+              download audio.
             </p>
             <input
               type="checkbox"
               id="showAudioElementsCheckbox"
               name="showAudioElementsCheckbox"
             />
-            <label for="showAudioElementsCheckbox">Show audio elements</label>
+            <label for="showAudioElementsCheckbox">Show audio files</label>
           </div>
         </div>
       </div>
@@ -154,8 +196,8 @@
         <canvas id="timelineCanvas" width="932" , height="120"></canvas>
         <div class="flexBox">
           <div class="audioDiv">
-            <button id="stereoButton">Stereo</button>
-            <audio id="stereoPlayback"></audio>
+            <button id="loudspeakerButton">Stereo</button>
+            <audio id="loudspeakerPlayback"></audio>
           </div>
           <button id="playPauseButton" disabled="true"></button>
           <div class="audioDiv">
@@ -165,9 +207,8 @@
         </div>
       </div>
       <div class="card" id="logBox"></div>
-      <div class="fineprint" id="fineprint"><p>Built 2025-07-16 10:47:44 PDT - Renderers: <a href="https://resonance-audio.github.io/resonance-audio/">Resonance Audio</a> and <a href="https://github.com/ebu/bear">BEAR</a></p></div>
+      <div class="fineprint" id="fineprint"><p>Built 2026-04-03 19:56:22 UTC - Binaural Renderer: <a href="https://www.github.com/google/obr">OBR</a></p></div>
     </div>
-    <script src="./decoder/wasm/wrapper.js"></script>
     <script src="./app_bundle.js"></script>
   </body>
 </html>
