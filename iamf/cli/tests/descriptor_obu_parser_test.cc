@@ -41,6 +41,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::IsEmpty;
 using ::testing::Key;
+using ::testing::Not;
 using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
@@ -67,25 +68,22 @@ std::vector<uint8_t> AddSequenceHeaderAndSerializeObusExpectOk(
 }
 
 TEST(ProcessDescriptorObus, FailsWithEmptyBitstream) {
-  DescriptorObuParser parser;
   const std::vector<uint8_t> bitstream_without_ia_sequence_header =
       SerializeObusExpectOk({});
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(bitstream_without_ia_sequence_header));
   bool insufficient_data;
-  EXPECT_FALSE(parser
-                   .ProcessDescriptorObus(
-                       /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
-                       insufficient_data)
-                   .ok());
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
   // There's no data (and `is_exhaustive_and_exact` is false), so we need more
   // data to proceed.
   EXPECT_TRUE(insufficient_data);
 }
 
 TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
-  DescriptorObuParser parser;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
@@ -100,7 +98,7 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(two_codec_configs_and_audio_frame));
   bool insufficient_data;
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/false, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -113,7 +111,6 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
 }
 
 TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigObus) {
-  DescriptorObuParser parser;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   std::vector<uint8_t> bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
@@ -135,7 +132,7 @@ TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigObus) {
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -147,7 +144,6 @@ TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigObus) {
 }
 
 TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
-  DescriptorObuParser parser;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
@@ -159,7 +155,7 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(two_codec_configs_at_end_of_bitstream));
   bool insufficient_data;
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
   // `is_exhaustive_and_exact` is true so it could not be a more-data situation.
@@ -172,7 +168,6 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
 
 TEST(ProcessDescriptorObus,
      DoesNotCollectCodecConfigsAtEndOfBitstreamWithoutIsExhaustiveAndExact) {
-  DescriptorObuParser parser;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
@@ -185,11 +180,10 @@ TEST(ProcessDescriptorObus,
       absl::MakeConstSpan(two_codec_configs_at_end_of_bitstream));
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
-  EXPECT_FALSE(parser
-                   .ProcessDescriptorObus(
-                       /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
-                       insufficient_data)
-                   .ok());
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
   // `is_exhaustive_and_exact` is false so we won't know it's the end of the
   // bitstream until we see a temporal unit.  Need more data to know we're done.
   EXPECT_TRUE(insufficient_data);
@@ -197,14 +191,13 @@ TEST(ProcessDescriptorObus,
 }
 
 TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithoutOtherObus) {
-  DescriptorObuParser parser;
   const auto only_ia_sequence_header =
       AddSequenceHeaderAndSerializeObusExpectOk({});
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(only_ia_sequence_header));
   bool insufficient_data;
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -216,7 +209,6 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithoutOtherObus) {
 }
 
 TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
-  DescriptorObuParser parser;
   const IASequenceHeaderObu input_ia_sequence_header(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
@@ -231,7 +223,7 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(ia_sequence_header_then_codec_config));
   bool insufficient_data;
-  EXPECT_THAT(parser.ProcessDescriptorObus(
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
                   /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
                   insufficient_data),
               IsOk());
@@ -244,18 +236,16 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
 
   read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(codec_config_then_ia_sequence_header));
-  EXPECT_FALSE(parser
-                   .ProcessDescriptorObus(
-                       /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
-                       insufficient_data)
-                   .ok());
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
   // `insufficient_data` is false as the error was due to an invalid ordering of
   // OBUs, rather than not having enough data.
   EXPECT_FALSE(insufficient_data);
 }
 
 TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
-  DescriptorObuParser parser;
   const IASequenceHeaderObu input_redundant_ia_sequence_header(
       ObuHeader{.obu_redundant_copy = true}, ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
@@ -265,7 +255,7 @@ TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
-  EXPECT_THAT(parser.ProcessDescriptorObus(
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
                   /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
                   insufficient_data),
               IsOk());
@@ -273,7 +263,6 @@ TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
 }
 
 TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
-  DescriptorObuParser parser;
   const IASequenceHeaderObu input_non_redundant_ia_sequence_header(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
@@ -290,7 +279,7 @@ TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
-  EXPECT_THAT(parser.ProcessDescriptorObus(
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
                   /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
                   insufficient_data),
               IsOk());
@@ -302,7 +291,6 @@ TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
 }
 
 TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithCodecConfigs) {
-  DescriptorObuParser parser;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   const DecodedUleb128 kFirstCodecConfigId = 123;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
@@ -316,7 +304,7 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithCodecConfigs) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(ia_sequence_header_with_codec_configs));
   bool insufficient_data;
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -361,8 +349,7 @@ TEST(ProcessDescriptorObus, DropsUnknownCodecIds) {
           {&codec_config_obu, &*audio_element}));
 
   bool insufficient_data;
-  DescriptorObuParser parser;
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -410,8 +397,7 @@ TEST(ProcessDescriptorObus, IgnoresAudioElementWithUnknownAmbisonicsMode) {
            &audio_element_with_unknown_ambisonics_mode}));
 
   bool insufficient_data;
-  DescriptorObuParser parser;
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -424,7 +410,6 @@ TEST(ProcessDescriptorObus, IgnoresAudioElementWithUnknownAmbisonicsMode) {
 }
 
 TEST(ProcessDescriptorObus, IgnoresReservedObu) {
-  DescriptorObuParser parser;
   ArbitraryObu reserved_obu(kObuIaReserved30, ObuHeader(), /*payload=*/{},
                             ArbitraryObu::kInsertionHookAfterIaSequenceHeader);
   const std::vector<uint8_t> bitstream =
@@ -433,7 +418,7 @@ TEST(ProcessDescriptorObus, IgnoresReservedObu) {
       MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
   bool insufficient_data;
 
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
 
   // Check that parsing succeeding and consumed everything.
@@ -444,7 +429,6 @@ TEST(ProcessDescriptorObus, IgnoresReservedObu) {
 }
 
 TEST(ProcessDescriptorObus, DropsMixPresentationWithZeroSubMixes) {
-  DescriptorObuParser parser;
   // Configure a mix presentation with zero submixes, this is degenerate, but
   // the official test suite allows it to be ignored.
   ArbitraryObu mix_presentation_obu(
@@ -460,7 +444,7 @@ TEST(ProcessDescriptorObus, DropsMixPresentationWithZeroSubMixes) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       AddSequenceHeaderAndSerializeObusExpectOk({&mix_presentation_obu}));
   bool insufficient_data;
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
   EXPECT_FALSE(insufficient_data);
@@ -491,7 +475,6 @@ std::vector<uint8_t> InitAllDescriptorsForZerothOrderAmbisonics() {
 
 // Descriptor obus only, is_exhaustive_and_exact = true.
 TEST(ProcessDescriptorObus, SucceedsWithoutTemporalUnitFollowing) {
-  DescriptorObuParser parser;
   auto zeroth_order_ambisonics_descriptor_obus =
       InitAllDescriptorsForZerothOrderAmbisonics();
 
@@ -499,7 +482,7 @@ TEST(ProcessDescriptorObus, SucceedsWithoutTemporalUnitFollowing) {
       absl::MakeConstSpan(zeroth_order_ambisonics_descriptor_obus));
   bool insufficient_data;
 
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -518,7 +501,6 @@ TEST(ProcessDescriptorObus, SucceedsWithoutTemporalUnitFollowing) {
 // Descriptor obus only, is_exhaustive_and_exact = false.
 TEST(ProcessDescriptorObus,
      RejectsWithoutTemporalUnitFollowingAndNotExhaustive) {
-  DescriptorObuParser parser;
   auto zeroth_order_ambisonics_descriptor_obus =
       InitAllDescriptorsForZerothOrderAmbisonics();
 
@@ -527,11 +509,10 @@ TEST(ProcessDescriptorObus,
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
 
-  EXPECT_FALSE(parser
-                   .ProcessDescriptorObus(
-                       /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
-                       insufficient_data)
-                   .ok());
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
 
   // We've received a valid bitstream so far but not complete.
   EXPECT_TRUE(insufficient_data);
@@ -543,7 +524,6 @@ TEST(ProcessDescriptorObus,
 // true
 TEST(ProcessDescriptorObusTest,
      RejectDescriptorObusWithTemporalUnitFollowingAndIsExhaustiveAndExact) {
-  DescriptorObuParser parser;
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
 
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
@@ -557,11 +537,10 @@ TEST(ProcessDescriptorObusTest,
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
 
-  EXPECT_FALSE(parser
-                   .ProcessDescriptorObus(
-                       /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
-                       insufficient_data)
-                   .ok());
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
 
   // We failed with sufficient data.
   EXPECT_FALSE(insufficient_data);
@@ -573,7 +552,6 @@ TEST(ProcessDescriptorObusTest,
 // Descriptor obus + temporal unit header following, is_exhaustive_and_exact =
 // false.
 TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
-  DescriptorObuParser parser;
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   const int64_t descriptors_size = bitstream.size();
 
@@ -587,7 +565,7 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/false, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -608,7 +586,6 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
 }
 
 TEST(ProcessDescriptorObus, BypassesDuplicateAudioElementId) {
-  DescriptorObuParser parser;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -625,7 +602,7 @@ TEST(ProcessDescriptorObus, BypassesDuplicateAudioElementId) {
       MakeConstSpan(bitstream_with_duplicate_audio_element_id));
 
   bool insufficient_data;
-  auto parsed_obus = parser.ProcessDescriptorObus(
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
       /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
   ASSERT_THAT(parsed_obus, IsOk());
 
@@ -637,7 +614,6 @@ TEST(ProcessDescriptorObus, BypassesDuplicateAudioElementId) {
 // read last obu.
 TEST(ProcessDescriptorObusTest,
      RejectDescriptorObusWithNonTemporalUnitHeaderFollowingAndNotEnoughData) {
-  DescriptorObuParser parser;
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
 
   std::vector<uint8_t> extra_descriptor_obu_header_bytes = {
@@ -653,11 +629,10 @@ TEST(ProcessDescriptorObusTest,
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
 
-  EXPECT_FALSE(parser
-                   .ProcessDescriptorObus(
-                       /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
-                       insufficient_data)
-                   .ok());
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
 
   // We've received a valid bitstream so far but not complete.
   EXPECT_TRUE(insufficient_data);
@@ -667,7 +642,6 @@ TEST(ProcessDescriptorObusTest,
 
 // Descriptor obus + partial header following.
 TEST(ProcessDescriptorObus, RejectsDescriptorObusWithPartialHeaderFollowing) {
-  DescriptorObuParser parser;
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
 
   std::vector<uint8_t> partial_header_obu = {0x80};
@@ -679,11 +653,10 @@ TEST(ProcessDescriptorObus, RejectsDescriptorObusWithPartialHeaderFollowing) {
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
 
-  EXPECT_FALSE(parser
-                   .ProcessDescriptorObus(
-                       /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
-                       insufficient_data)
-                   .ok());
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
 
   // We've received a valid bitstream so far but not complete.
   EXPECT_TRUE(insufficient_data);

@@ -24,6 +24,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
@@ -148,24 +149,14 @@ absl::Status InsufficientDataReset(ReadBitBuffer& read_bit_buffer,
 
 }  // namespace
 
-// For defensive programming, initialize the types wrapped in pointers to
-// empty maps.
-DescriptorObuParser::ParsedDescriptorObus::ParsedDescriptorObus()
-    : codec_config_obus(std::make_unique<
-                        absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>()),
-      audio_elements(
-          std::make_unique<
-              absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>()) {}
-
-absl::StatusOr<DescriptorObuParser::ParsedDescriptorObus>
-DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
-                                           ReadBitBuffer& read_bit_buffer,
-                                           bool& output_insufficient_data) {
+absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
+    bool is_exhaustive_and_exact, ReadBitBuffer& read_bit_buffer,
+    bool& output_insufficient_data) {
   // `output_insufficient_data` indicates a specific error condition and so is
   // true iff we've received valid data but need more of it.
   output_insufficient_data = false;
 
-  ParsedDescriptorObus parsed_obus;
+  DescriptorObus parsed_obus;
   const int64_t global_position_before_all_obus = read_bit_buffer.Tell();
   bool processed_ia_header = false;
   bool continue_processing = true;

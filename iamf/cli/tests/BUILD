@@ -255,6 +255,15 @@ cc_test(
 )
 
 cc_test(
+    name = "descriptor_obus_test",
+    srcs = ["descriptor_obus_test.cc"],
+    deps = [
+        "//iamf/cli:descriptor_obus",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "encoder_main_lib_test",
     size = "small",
     srcs = ["encoder_main_lib_test.cc"],
@@ -396,7 +405,7 @@ cc_test(
     srcs = ["obu_processor_utils_test.cc"],
     deps = [
         ":cli_test_utils",
-        "//iamf/cli:descriptor_obu_parser",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli:obu_processor_utils",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/obu:mix_presentation",

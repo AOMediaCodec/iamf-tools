@@ -37,6 +37,7 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obu_parser.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/obu_processor_utils.h"
 #include "iamf/cli/obu_with_data_generator.h"
@@ -381,7 +382,7 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
                                               bool& output_insufficient_data) {
   // Process the descriptor OBUs.
   ABSL_LOG(INFO) << "Starting Descriptor OBU processing";
-  absl::StatusOr<DescriptorObuParser::ParsedDescriptorObus> parsed_obus =
+  absl::StatusOr<DescriptorObus> parsed_obus =
       DescriptorObuParser::ProcessDescriptorObus(
           is_exhaustive_and_exact, *read_bit_buffer_, output_insufficient_data);
   if (!parsed_obus.ok()) {

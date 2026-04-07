@@ -156,6 +156,7 @@ cc_library(
     hdrs = ["descriptor_obu_parser.h"],
     deps = [
         ":audio_element_with_data",
+        ":descriptor_obus",
         ":obu_with_data_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:macros",
@@ -165,12 +166,26 @@ cc_library(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "descriptor_obus",
+    srcs = ["descriptor_obus.cc"],
+    hdrs = ["descriptor_obus.h"],
+    deps = [
+        ":audio_element_with_data",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/base:nullability",
+        "@abseil-cpp//absl/container:flat_hash_map",
     ],
 )
 
@@ -341,6 +356,7 @@ cc_library(
         ":cli_util",
         ":demixing_module",
         ":descriptor_obu_parser",
+        ":descriptor_obus",
         ":global_timing_module",
         ":obu_processor_utils",
         ":obu_with_data_generator",

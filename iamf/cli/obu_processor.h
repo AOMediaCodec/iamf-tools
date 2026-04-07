@@ -28,7 +28,7 @@
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/cli/descriptor_obu_parser.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
@@ -358,7 +358,7 @@ class ObuProcessor {
   std::optional<RenderingModels> rendering_models_;
 
   // Parsed descriptor OBUs.
-  DescriptorObuParser::ParsedDescriptorObus descriptors_;
+  DescriptorObus descriptors_;
 };
 }  // namespace iamf_tools
 #endif  // CLI_OBU_PROCESSOR_H_

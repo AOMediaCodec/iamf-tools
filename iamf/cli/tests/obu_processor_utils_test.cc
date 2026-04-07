@@ -3,7 +3,6 @@
 #include <array>
 #include <cstdint>
 #include <list>
-#include <memory>
 #include <optional>
 #include <vector>
 
@@ -11,7 +10,7 @@
 #include "absl/status/statusor.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/descriptor_obu_parser.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/obu/mix_presentation.h"
@@ -26,8 +25,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::Not;
-
-using ParsedDescriptorObus = DescriptorObuParser::ParsedDescriptorObus;
 
 using enum RenderingConfig::HeadphonesRenderingMode;
 
@@ -89,8 +86,8 @@ constexpr Layout kLayoutBinaural = {
 };
 
 // Helper to avoid repetitive boilerplate.
-ParsedDescriptorObus GetDescriptorObusWithMonoAmbisonics() {
-  ParsedDescriptorObus descriptor_obus;
+DescriptorObus GetDescriptorObusWithMonoAmbisonics() {
+  DescriptorObus descriptor_obus;
 
   AddOpusCodecConfigWithId(kCodecConfigId, *descriptor_obus.codec_config_obus);
 
@@ -100,9 +97,9 @@ ParsedDescriptorObus GetDescriptorObusWithMonoAmbisonics() {
   return descriptor_obus;
 }
 
-ParsedDescriptorObus GetDescriptorObusWithStereoChannelBased(
+DescriptorObus GetDescriptorObusWithStereoChannelBased(
     uint32_t audio_element_id) {
-  ParsedDescriptorObus descriptor_obus;
+  DescriptorObus descriptor_obus;
 
   AddOpusCodecConfigWithId(kCodecConfigId, *descriptor_obus.codec_config_obus);
 
@@ -112,9 +109,9 @@ ParsedDescriptorObus GetDescriptorObusWithStereoChannelBased(
   return descriptor_obus;
 }
 
-ParsedDescriptorObus GetDescriptorObusWithBinauralChannelBased(
+DescriptorObus GetDescriptorObusWithBinauralChannelBased(
     uint32_t audio_element_id) {
-  ParsedDescriptorObus descriptor_obus;
+  DescriptorObus descriptor_obus;
 
   AddOpusCodecConfigWithId(kCodecConfigId, *descriptor_obus.codec_config_obus);
 
@@ -161,8 +158,7 @@ MixPresentationObu CreateMixPresentationObuWithAudioElements(
 // No MixPresentations.
 TEST(FindMixPresentationAndLayoutTest, NoMixPresentations) {
   std::list<MixPresentationObu*> supported_mix_presentations;
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   EXPECT_THAT(FindMixPresentationAndLayout(*descriptor_obus.audio_elements,
                                            supported_mix_presentations,
                                            std::nullopt, std::nullopt),
@@ -177,8 +173,7 @@ TEST(FindMixPresentationAndLayoutTest, EmptySubMixes) {
   mix_presentation_1.sub_mixes_.clear();
   supported_mix_presentations.push_back(&mix_presentation_1);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   EXPECT_THAT(FindMixPresentationAndLayout(*descriptor_obus.audio_elements,
                                            supported_mix_presentations,
                                            std::nullopt, std::nullopt),
@@ -192,8 +187,7 @@ TEST(FindMixPresentationAndLayoutTest, EmptySubMixesWithExplicitLayout) {
   mix_presentation_1.sub_mixes_.clear();
   supported_mix_presentations.push_back(&mix_presentation_1);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   EXPECT_THAT(FindMixPresentationAndLayout(*descriptor_obus.audio_elements,
                                            supported_mix_presentations,
                                            kLayoutA, std::nullopt),
@@ -207,8 +201,7 @@ TEST(FindMixPresentationAndLayoutTest, EmptySubMixesWithBinauralLayout) {
   mix_presentation_1.sub_mixes_.clear();
   supported_mix_presentations.push_back(&mix_presentation_1);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   EXPECT_THAT(FindMixPresentationAndLayout(*descriptor_obus.audio_elements,
                                            supported_mix_presentations,
                                            kLayoutBinaural, std::nullopt),
@@ -222,8 +215,7 @@ TEST(FindMixPresentationAndLayoutTest, EmptyLayouts) {
       CreateMixPresentationObu(kMixPresentationId1, {{}, {kLayoutA}});
   supported_mix_presentations.push_back(&mix_presentation_1);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   EXPECT_THAT(FindMixPresentationAndLayout(*descriptor_obus.audio_elements,
                                            supported_mix_presentations,
                                            std::nullopt, std::nullopt),
@@ -242,8 +234,7 @@ TEST(FindMixPresentationAndLayoutTest, NeitherIdNorLayoutSpecified) {
   supported_mix_presentations.push_back(&mix_presentation_1);
   supported_mix_presentations.push_back(&mix_presentation_2);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   absl::StatusOr<SelectedMixPresentation> result = FindMixPresentationAndLayout(
       *descriptor_obus.audio_elements, supported_mix_presentations,
       std::nullopt, std::nullopt);
@@ -268,8 +259,7 @@ TEST(FindMixPresentationAndLayoutTest, LayoutSpecifiedAndFound) {
   supported_mix_presentations.push_back(&mix_presentation_1);
   supported_mix_presentations.push_back(&mix_presentation_2);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   absl::StatusOr<SelectedMixPresentation> result = FindMixPresentationAndLayout(
       *descriptor_obus.audio_elements, supported_mix_presentations, kLayoutE,
       std::nullopt);
@@ -293,8 +283,7 @@ TEST(FindMixPresentationAndLayoutTest, LayoutSpecifiedAndFoundInMultipleMixes) {
   supported_mix_presentations.push_back(&mix_presentation_1);
   supported_mix_presentations.push_back(&mix_presentation_2);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   absl::StatusOr<SelectedMixPresentation> result = FindMixPresentationAndLayout(
       *descriptor_obus.audio_elements, supported_mix_presentations, kLayoutB,
       std::nullopt);
@@ -318,8 +307,7 @@ TEST(FindMixPresentationAndLayoutTest, LayoutSpecifiedNotFound) {
   supported_mix_presentations.push_back(&mix_presentation_1);
   supported_mix_presentations.push_back(&mix_presentation_2);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   absl::StatusOr<SelectedMixPresentation> result = FindMixPresentationAndLayout(
       *descriptor_obus.audio_elements, supported_mix_presentations, kLayoutD,
       std::nullopt);
@@ -349,8 +337,7 @@ TEST(FindMixPresentationAndLayoutTest, IdSpecifiedAndFound) {
   supported_mix_presentations.push_back(&mix_presentation_1);
   supported_mix_presentations.push_back(&mix_presentation_2);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   absl::StatusOr<SelectedMixPresentation> result = FindMixPresentationAndLayout(
       *descriptor_obus.audio_elements, supported_mix_presentations,
       std::nullopt, kMixPresentationId2);
@@ -375,8 +362,7 @@ TEST(FindMixPresentationAndLayoutTest, IdSpecifiedNotFound) {
   supported_mix_presentations.push_back(&mix_presentation_2);
 
   uint32_t desired_mix_presentation = 999;  // Not in the MixPresentations.
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   absl::StatusOr<SelectedMixPresentation> result = FindMixPresentationAndLayout(
       *descriptor_obus.audio_elements, supported_mix_presentations,
       std::nullopt, desired_mix_presentation);
@@ -402,8 +388,7 @@ TEST(FindMixPresentationAndLayoutTest, BothIdAndLayoutSpecifiedAndFound) {
   supported_mix_presentations.push_back(&mix_presentation_1);
   supported_mix_presentations.push_back(&mix_presentation_2);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   absl::StatusOr<SelectedMixPresentation> result = FindMixPresentationAndLayout(
       *descriptor_obus.audio_elements, supported_mix_presentations, kLayoutB,
       kMixPresentationId2);
@@ -428,8 +413,7 @@ TEST(FindMixPresentationAndLayoutTest, IdAndLayoutSpecifiedIdTakesPrecedence) {
   supported_mix_presentations.push_back(&mix_presentation_1);
   supported_mix_presentations.push_back(&mix_presentation_2);
 
-  const ParsedDescriptorObus descriptor_obus =
-      GetDescriptorObusWithMonoAmbisonics();
+  const DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   absl::StatusOr<SelectedMixPresentation> result = FindMixPresentationAndLayout(
       *descriptor_obus.audio_elements, supported_mix_presentations, kLayoutB,
       kMixPresentationId2);
@@ -463,7 +447,7 @@ SubMixAudioElement CreateSubMixAudioElement(
 }
 
 SelectedMixPresentation FindStereoMixPresentationExpectOk(
-    ParsedDescriptorObus& descriptor_obus) {
+    DescriptorObus& descriptor_obus) {
   std::list<MixPresentationObu*> supported_mix_presentations;
   for (auto& mix : descriptor_obus.mix_presentation_obus) {
     supported_mix_presentations.push_back(&mix);
@@ -478,7 +462,7 @@ SelectedMixPresentation FindStereoMixPresentationExpectOk(
 }
 
 SelectedMixPresentation FindBinauralMixPresentationExpectOk(
-    ParsedDescriptorObus& descriptor_obus) {
+    DescriptorObus& descriptor_obus) {
   std::list<MixPresentationObu*> supported_mix_presentations;
   for (auto& mix : descriptor_obus.mix_presentation_obus) {
     supported_mix_presentations.push_back(&mix);
@@ -494,7 +478,7 @@ SelectedMixPresentation FindBinauralMixPresentationExpectOk(
 
 TEST(FindMixPresentationAndLayoutTest,
      SelectsFirstMixPresentationWithoutArtistPreferredStereoMix) {
-  ParsedDescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
+  DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   constexpr uint32_t kFirstMixPresentationId = 9999;
   descriptor_obus.mix_presentation_obus = {
       CreateMixPresentationObu(kFirstMixPresentationId, {{kLayoutE}}),
@@ -511,7 +495,7 @@ TEST(FindMixPresentationAndLayoutTest,
 // identical headphones rendering mode).
 TEST(FindMixPresentationAndLayoutTest,
      SelectsArtistPreferredStereoMixWhenAvailable) {
-  ParsedDescriptorObus descriptor_obus =
+  DescriptorObus descriptor_obus =
       GetDescriptorObusWithStereoChannelBased(kStereoAudioElementId);
   constexpr uint32_t kPreferredStereoMixPresentationId = 9999;
   // Non-stereo mix.
@@ -534,7 +518,7 @@ TEST(FindMixPresentationAndLayoutTest,
 // Tests clause 2.2.1: Prefers mix with exactly one stereo layout.
 TEST(FindMixPresentationAndLayoutTest,
      SelectsArtistPreferredMixWithOneStereoLayout) {
-  ParsedDescriptorObus descriptor_obus =
+  DescriptorObus descriptor_obus =
       GetDescriptorObusWithStereoChannelBased(kStereoAudioElementId);
   constexpr uint32_t kPreferredStereoMixPresentationId = 9999;
   // Mix with two layouts.
@@ -559,7 +543,7 @@ TEST(FindMixPresentationAndLayoutTest,
 
 // Tests clause 2.2.1: Prefers mix with exactly one stereo audio element.
 TEST(FindMixPresentationAndLayoutTest, SelectsArtistPrefersOneAudioElementMix) {
-  ParsedDescriptorObus descriptor_obus =
+  DescriptorObus descriptor_obus =
       GetDescriptorObusWithStereoChannelBased(kStereoAudioElementId);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kAudioElementId2, kCodecConfigId, kSubstreamId,
@@ -590,7 +574,7 @@ TEST(FindMixPresentationAndLayoutTest, SelectsArtistPrefersOneAudioElementMix) {
 // Tests clause 2.2.1: Prefers mix with correct headphones rendering mode.
 TEST(FindMixPresentationAndLayoutTest,
      ArtistPreferredStereoPrefersStereoRenderingModeOverBinaural) {
-  ParsedDescriptorObus descriptor_obus =
+  DescriptorObus descriptor_obus =
       GetDescriptorObusWithStereoChannelBased(kStereoAudioElementId);
   constexpr uint32_t kPreferredRenderingModeMixPresentationId = 9999;
   // Mix with binaural headphones rendering mode.
@@ -618,7 +602,7 @@ TEST(FindMixPresentationAndLayoutTest,
 // ignores headphones mode mismatch).
 TEST(FindMixPresentationAndLayoutTest,
      ArtistPreferredStereoFallsBackWhenStereoRenderingModeNotAvailable) {
-  ParsedDescriptorObus descriptor_obus =
+  DescriptorObus descriptor_obus =
       GetDescriptorObusWithStereoChannelBased(kStereoAudioElementId);
   constexpr uint32_t kFallbackMixPresentationId = 9999;
   // Non-stereo mix.
@@ -642,7 +626,7 @@ TEST(FindMixPresentationAndLayoutTest,
 
 TEST(FindMixPresentationAndLayoutTest, GracefullyBypassesMissingAudioElement) {
   constexpr uint32_t kMissingAudioElementId = 1235;
-  ParsedDescriptorObus descriptor_obus =
+  DescriptorObus descriptor_obus =
       GetDescriptorObusWithStereoChannelBased(kMissingAudioElementId);
 
   // Gracefully handle this mix, which has no matching audio element.
@@ -663,7 +647,7 @@ TEST(FindMixPresentationAndLayoutTest, GracefullyBypassesMissingAudioElement) {
 
 TEST(FindMixPresentationAndLayoutTest,
      ArtistPreferredStereoIsBasedOnFirstSubMix) {
-  ParsedDescriptorObus descriptor_obus =
+  DescriptorObus descriptor_obus =
       GetDescriptorObusWithStereoChannelBased(kStereoAudioElementId);
   // Non-stereo mix.
   descriptor_obus.mix_presentation_obus.push_back(
@@ -697,7 +681,7 @@ TEST(FindMixPresentationAndLayoutTest,
 TEST(FindMixPresentationAndLayoutTest,
      SelectsBinauralMixWithExactlyOneBinauralAudioElement) {
   constexpr uint32_t kBinauralAudioElementId = 2222;
-  ParsedDescriptorObus descriptor_obus =
+  DescriptorObus descriptor_obus =
       GetDescriptorObusWithBinauralChannelBased(kBinauralAudioElementId);
   constexpr uint32_t kPreferredBinauralMixPresentationId = 9999;
   // Stereo layout.
@@ -724,7 +708,7 @@ TEST(FindMixPresentationAndLayoutTest,
 // Tests clause 2.1.2: Select the mix with the binaural loudness layout.
 TEST(FindMixPresentationAndLayoutTest,
      SelectsBinauralMixByLoudnessLayoutFallback) {
-  ParsedDescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
+  DescriptorObus descriptor_obus = GetDescriptorObusWithMonoAmbisonics();
   constexpr uint32_t kPreferredBinauralMixPresentationId = 8888;
   // Stereo layout.
   descriptor_obus.mix_presentation_obus.push_back(

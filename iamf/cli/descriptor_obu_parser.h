@@ -13,52 +13,14 @@
 #ifndef CLI_DESCRIPTOR_OBU_PARSER_H_
 #define CLI_DESCRIPTOR_OBU_PARSER_H_
 
-#include <list>
-#include <memory>
-
-#include "absl/base/nullability.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
-#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/read_bit_buffer.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 class DescriptorObuParser {
  public:
-  /*!\brief Collection of parsed OBUs.
-   *
-   * OBUs that are commonly pointed to are indirectly held via `std::unique_ptr`
-   * for pointer stability. For example, `AudioElementWithData` contains a
-   * pointer to the corresponding `CodecConfigObu`. This extra layer of wrapping
-   * ensures this type of more move-safe.
-   */
-  struct ParsedDescriptorObus {
-    /*!\brief Default constructor.
-     *
-     * Ensures the `std::unique_ptr` members are set to empty maps, instead of
-     * `nullptr`.
-     */
-    ParsedDescriptorObus();
-
-    // IA sequence header processed from the bitstream.
-    IASequenceHeaderObu ia_sequence_header;
-    // Map of Codec Config OBUs processed from the bitstream.
-    std::unique_ptr<
-        absl::flat_hash_map<DecodedUleb128, CodecConfigObu>> absl_nonnull
-    codec_config_obus;
-    // Map of Audio Elements and metadata processed from the bitstream.
-    std::unique_ptr<
-        absl::flat_hash_map<DecodedUleb128, AudioElementWithData>> absl_nonnull
-    audio_elements;
-    // List of Mix Presentation OBUs processed from the bitstream.
-    std::list<MixPresentationObu> mix_presentation_obus;
-  };
-
   /*!\brief Processes the Descriptor OBUs of an IA Sequence.
    *
    * If insufficient data to process all descriptor OBUs is provided, a failing
@@ -75,10 +37,10 @@ class DescriptorObuParser {
    *        end of the descriptor OBUs if processing is successful.
    * \param output_insufficient_data Whether the bitstream provided is
    *        insufficient to process all descriptor OBUs.
-   * \return `ParsedDescriptorObus` if the process is successful. A specific
+   * \return `DescriptorObus` if the process is successful. A specific
    *        status on failure.
    */
-  static absl::StatusOr<ParsedDescriptorObus> ProcessDescriptorObus(
+  static absl::StatusOr<DescriptorObus> ProcessDescriptorObus(
       bool is_exhaustive_and_exact, ReadBitBuffer& read_bit_buffer,
       bool& output_insufficient_data);
 };
