@@ -157,6 +157,7 @@ cc_library(
 
 cc_library(
     name = "precomputed_compressed_gains",
+    srcs = ["precomputed_compressed_gains.cc"],
     hdrs = ["precomputed_compressed_gains.h"],
     deps = ["@abseil-cpp//absl/container:flat_hash_map"],
 )
