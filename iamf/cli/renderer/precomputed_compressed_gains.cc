@@ -18,7 +18,7 @@ namespace iamf_tools {
 PrecomputedCompressedGains InitPrecomputedCompressedGains() {
   PrecomputedCompressedGains gains;
 
-  // Generated on Tue Apr  7 17:33:05 2026, GMT
+  // Generated on Tue Apr  7 18:26:15 2026, GMT
 
   // -------------------------------------------------------
   // Input layout: 0+1+0
