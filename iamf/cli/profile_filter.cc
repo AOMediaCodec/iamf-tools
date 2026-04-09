@@ -26,12 +26,14 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -336,7 +338,7 @@ absl::Status FilterProfileForHeadphonesRenderingMode(
 //              be the same.
 absl::Status FilterProfilesForCodecConfigRules(
     absl::string_view mix_presentation_id_for_debugging,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const MixPresentationObu& mix_presentation_obu,
     absl::flat_hash_set<ProfileVersion>& profile_versions) {
   struct CodecConfigInfo {
@@ -455,7 +457,7 @@ int GetNumberOfChannels(const AudioElementWithData& audio_element) {
 
 absl::Status FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
     absl::string_view mix_presentation_id_for_debugging,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const MixPresentationObu& mix_presentation_obu,
     absl::flat_hash_set<ProfileVersion>& profile_versions,
     int& num_audio_elements_in_mix_presentation,
@@ -584,7 +586,7 @@ absl::Status ProfileFilter::FilterProfilesForAudioElement(
 }
 
 absl::Status ProfileFilter::FilterProfilesForMixPresentation(
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const MixPresentationObu& mix_presentation_obu,
     absl::flat_hash_set<ProfileVersion>& profile_versions) {
   const std::string mix_presentation_id_for_debugging =

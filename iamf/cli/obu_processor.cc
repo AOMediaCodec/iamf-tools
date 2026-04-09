@@ -65,8 +65,7 @@ namespace iamf_tools {
 namespace {
 
 absl::Status UpdateParameterStatesIfNeeded(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements_with_data,
+    const DescriptorObus::AudioElementsById& audio_elements_with_data,
     const GlobalTimingModule& global_timing_module,
     ParametersManager& parameters_manager) {
   std::optional<InternalTimestamp> global_timestamp;
@@ -91,8 +90,7 @@ absl::Status UpdateParameterStatesIfNeeded(
 
 absl::Status GetAndStoreAudioFrameWithData(
     const ObuHeader& header, const int64_t payload_size,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements_with_data,
+    const DescriptorObus::AudioElementsById& audio_elements_with_data,
     const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>&
         substream_id_to_audio_element,
     ReadBitBuffer& read_bit_buffer, GlobalTimingModule& global_timing_module,
@@ -193,8 +191,8 @@ absl::Status GetAndStoreParameterBlockWithData(
 // are supported.
 std::list<MixPresentationObu*> GetSupportedMixPresentations(
     const absl::flat_hash_set<ProfileVersion> requested_profiles,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    const DescriptorObus::AudioElementsById& audio_elements,
+    DescriptorObus::MixPresentationObus& mix_presentation_obus) {
   // Find a mix presentation and layout that agrees with the requested profiles.
   std::list<MixPresentationObu*> supported_mix_presentations;
   std::string cumulative_error_message;
@@ -215,8 +213,7 @@ std::list<MixPresentationObu*> GetSupportedMixPresentations(
 }
 
 void GetSampleRateAndFrameSize(
-    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        output_codec_config_obus,
+    const DescriptorObus::CodecConfigsById& output_codec_config_obus,
     std::optional<uint32_t>& output_sample_rate,
     std::optional<uint32_t>& output_frame_size) {
   if (output_codec_config_obus.size() != 1) {
@@ -230,10 +227,8 @@ void GetSampleRateAndFrameSize(
 }
 
 absl::Status ProcessTemporalUnitObu(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements_with_data,
-    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        codec_config_obus,
+    const DescriptorObus::AudioElementsById& audio_elements_with_data,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
     const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>&
         substream_id_to_audio_element,
     const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
@@ -436,24 +431,24 @@ const IASequenceHeaderObu& ObuProcessor::GetIaSequenceHeaderView() const {
   return descriptors_.ia_sequence_header;
 }
 
-const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-ObuProcessor::GetCodecConfigObusView() const {
+const DescriptorObus::CodecConfigsById& ObuProcessor::GetCodecConfigsByIdView()
+    const {
   // These are marked as non-null in the struct, but for safety's sake check
   // again.
   ABSL_CHECK_NE(descriptors_.codec_config_obus, nullptr);
   return *descriptors_.codec_config_obus;
 }
 
-const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-ObuProcessor::GetAudioElementsView() const {
+const DescriptorObus::AudioElementsById& ObuProcessor::GetAudioElementsView()
+    const {
   // These are marked as non-null in the struct, but for safety's sake check
   // again.
   ABSL_CHECK_NE(descriptors_.audio_elements, nullptr);
   return *descriptors_.audio_elements;
 }
 
-const std::list<MixPresentationObu>& ObuProcessor::GetMixPresentationObusView()
-    const {
+const DescriptorObus::MixPresentationObus&
+ObuProcessor::GetMixPresentationObusView() const {
   return descriptors_.mix_presentation_obus;
 }
 
@@ -739,8 +734,7 @@ ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
 
 absl::StatusOr<ObuProcessor::RenderingModels>
 ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const MixPresentationObu& simplified_mix_presentation) {
   // The audio elements IDs that are relevant to the selected mix presentation.
   absl::flat_hash_set<DecodedUleb128> relevant_audio_element_ids;

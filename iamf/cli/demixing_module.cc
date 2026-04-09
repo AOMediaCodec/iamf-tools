@@ -21,6 +21,7 @@
 #include <variant>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_check.h"
@@ -34,6 +35,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
@@ -760,8 +762,7 @@ void LogForAudioElementId(absl::string_view log_prefix,
 
 absl::flat_hash_map<DecodedUleb128, DemixingModule::ReconstructionConfig>
 DemixingModule::CreateIdToReconstructionConfig(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const DescriptorObus::AudioElementsById& audio_elements) {
   absl::flat_hash_map<DecodedUleb128, DemixingModule::ReconstructionConfig>
       result;
   for (const auto& [audio_element_id, audio_element_with_data] :
@@ -957,8 +958,8 @@ absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixDecodedAudioSamples(
   return id_to_labeled_decoded_frame;
 }
 
-absl::StatusOr<const std::list<Demixer>*> DemixingModule::GetDownMixers(
-    DecodedUleb128 audio_element_id) const {
+absl::StatusOr<const std::list<Demixer>* absl_nonnull>
+DemixingModule::GetDownMixers(DecodedUleb128 audio_element_id) const {
   const DemixingMetadataForAudioElementId* demixing_metadata = nullptr;
   RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
                                       audio_element_id_to_demixing_metadata_,
@@ -966,8 +967,8 @@ absl::StatusOr<const std::list<Demixer>*> DemixingModule::GetDownMixers(
   return &demixing_metadata->down_mixers;
 }
 
-absl::StatusOr<const std::list<Demixer>*> DemixingModule::GetDemixers(
-    DecodedUleb128 audio_element_id) const {
+absl::StatusOr<const std::list<Demixer>* absl_nonnull>
+DemixingModule::GetDemixers(DecodedUleb128 audio_element_id) const {
   const DemixingMetadataForAudioElementId* demixing_metadata = nullptr;
   RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
                                       audio_element_id_to_demixing_metadata_,

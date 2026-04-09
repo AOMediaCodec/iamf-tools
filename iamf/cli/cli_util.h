@@ -14,7 +14,6 @@
 #define CLI_CLI_UTIL_H_
 
 #include <cstdint>
-#include <list>
 #include <string>
 #include <vector>
 
@@ -22,9 +21,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "iamf/cli/audio_element_with_data.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/mix_presentation.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/types.h"
@@ -44,9 +41,8 @@ namespace iamf_tools {
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status CollectAndValidateParamDefinitions(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus,
     absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
         param_definition_variants);
 
@@ -103,7 +99,7 @@ absl::Status GetCommonSampleRateAndBitDepth(
  *         common frame size.
  */
 absl::Status GetCommonSamplesPerFrame(
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
     uint32_t& common_samples_per_frame);
 
 /*!\brief Logs the channel numbers.

@@ -44,6 +44,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -83,6 +84,9 @@
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 namespace {
 
@@ -162,10 +166,10 @@ absl::StatusOr<CollectedObus> CollectObusFromIaSequence(
   return collected_obus;
 }
 
-void AddLpcmCodecConfig(
-    DecodedUleb128 codec_config_id, uint32_t num_samples_per_frame,
-    uint8_t sample_size, uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+void AddLpcmCodecConfig(DecodedUleb128 codec_config_id,
+                        uint32_t num_samples_per_frame, uint8_t sample_size,
+                        uint32_t sample_rate,
+                        CodecConfigsById& codec_config_obus) {
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
@@ -184,7 +188,7 @@ void AddLpcmCodecConfig(
 
 void AddLpcmCodecConfigWithIdAndSampleRate(
     uint32_t codec_config_id, uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+    CodecConfigsById& codec_config_obus) {
   // Many tests either don't care about the details. Or assumed these "default"
   // values.
   constexpr uint32_t kNumSamplesPerFrame = 8;
@@ -193,10 +197,9 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
                      sample_rate, codec_config_obus);
 }
 
-void AddOpusCodecConfig(
-    uint32_t codec_config_id, uint32_t num_samples_per_frame,
-    uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+void AddOpusCodecConfig(uint32_t codec_config_id,
+                        uint32_t num_samples_per_frame, uint32_t sample_rate,
+                        CodecConfigsById& codec_config_obus) {
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
@@ -212,9 +215,8 @@ void AddOpusCodecConfig(
   codec_config_obus.emplace(codec_config_id, *std::move(obu));
 }
 
-void AddOpusCodecConfigWithId(
-    uint32_t codec_config_id,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+void AddOpusCodecConfigWithId(uint32_t codec_config_id,
+                              CodecConfigsById& codec_config_obus) {
   const uint32_t kNumSamplesPerFrame = 8;
   const uint32_t kSampleRate = 48000;
 
@@ -222,10 +224,10 @@ void AddOpusCodecConfigWithId(
                      codec_config_obus);
 }
 
-void AddFlacCodecConfig(
-    uint32_t codec_config_id, uint32_t num_samples_per_frame,
-    uint8_t sample_size, uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+void AddFlacCodecConfig(uint32_t codec_config_id,
+                        uint32_t num_samples_per_frame, uint8_t sample_size,
+                        uint32_t sample_rate,
+                        CodecConfigsById& codec_config_obus) {
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
@@ -248,9 +250,8 @@ void AddFlacCodecConfig(
   codec_config_obus.emplace(codec_config_id, *std::move(obu));
 }
 
-void AddFlacCodecConfigWithId(
-    uint32_t codec_config_id,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+void AddFlacCodecConfigWithId(uint32_t codec_config_id,
+                              CodecConfigsById& codec_config_obus) {
   const uint32_t kNumSamplesPerFrame = 16;
   const uint32_t kSampleRate = 48000;
   const uint8_t kSampleSize = 16;
@@ -261,7 +262,7 @@ void AddFlacCodecConfigWithId(
 void AddAacCodecConfig(
     uint32_t codec_config_id, uint32_t num_samples_per_frame,
     AudioSpecificConfig::SampleFrequencyIndex sample_frequency_index,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+    CodecConfigsById& codec_config_obus) {
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
@@ -281,8 +282,8 @@ void AddAacCodecConfig(
 void AddAmbisonicsMonoAudioElementWithSubstreamIds(
     DecodedUleb128 audio_element_id, uint32_t codec_config_id,
     absl::Span<const DecodedUleb128> substream_ids,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
+    const CodecConfigsById& codec_config_obus,
+    AudioElementsById& audio_elements) {
   // Check the `codec_config_id` is known and this is a new
   // `audio_element_id`.
   auto codec_config_iter = codec_config_obus.find(codec_config_id);
@@ -325,8 +326,8 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
 void AddScalableAudioElementWithSubstreamIds(
     IamfInputLayout input_layout, DecodedUleb128 audio_element_id,
     uint32_t codec_config_id, absl::Span<const DecodedUleb128> substream_ids,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
+    const CodecConfigsById& codec_config_obus,
+    AudioElementsById& audio_elements) {
   google::protobuf::RepeatedPtrField<
       iamf_tools_cli_proto::AudioElementObuMetadata>
       audio_element_metadatas;
@@ -355,26 +356,26 @@ void AddScalableAudioElementWithSubstreamIds(
 void AddMixPresentationObuWithAudioElementIds(
     DecodedUleb128 mix_presentation_id,
     const std::vector<DecodedUleb128>& audio_element_ids,
-    DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
-    std::list<MixPresentationObu>& mix_presentations) {
+    uint32_t mix_gain_parameter_id, uint32_t parameter_rate,
+    MixPresentationObus& mix_presentations) {
   // Configure one of the simplest mix presentation. Mix presentations REQUIRE
   // at least one sub-mix and a stereo layout.
   AddMixPresentationObuWithConfigurableLayouts(
-      mix_presentation_id, audio_element_ids, common_parameter_id,
-      common_parameter_rate,
-      {LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}, mix_presentations);
+      mix_presentation_id, audio_element_ids, mix_gain_parameter_id,
+      parameter_rate, {LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0},
+      mix_presentations);
 }
 
 void AddMixPresentationObuWithConfigurableLayouts(
     DecodedUleb128 mix_presentation_id,
     const std::vector<DecodedUleb128>& audio_element_ids,
-    DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
+    uint32_t mix_gain_parameter_id, uint32_t parameter_rate,
     const std::vector<LoudspeakersSsConventionLayout::SoundSystem>&
         sound_system_layouts,
-    std::list<MixPresentationObu>& mix_presentations) {
+    MixPresentationObus& mix_presentations) {
   MixGainParamDefinition common_mix_gain_param_definition;
-  common_mix_gain_param_definition.parameter_id_ = common_parameter_id;
-  common_mix_gain_param_definition.parameter_rate_ = common_parameter_rate;
+  common_mix_gain_param_definition.parameter_id_ = mix_gain_parameter_id;
+  common_mix_gain_param_definition.parameter_rate_ = parameter_rate;
   common_mix_gain_param_definition.param_definition_mode_ = true;
   common_mix_gain_param_definition.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(0);
@@ -588,7 +589,7 @@ uint32_t GetSampleRateForCodecConfigMetadata(
     DecodedUleb128 codec_config_id) {
   auto codec_config_generator =
       CodecConfigGenerator(user_metadata.codec_config_metadata());
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   EXPECT_THAT(codec_config_generator.Generate(codec_config_obus), IsOk());
   if (codec_config_obus.contains(codec_config_id)) {
     return codec_config_obus.at(codec_config_id).GetOutputSampleRate();

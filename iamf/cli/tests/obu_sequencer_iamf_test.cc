@@ -25,8 +25,8 @@
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/temporal_unit_view.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -34,10 +34,8 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/parameter_block.h"
@@ -52,6 +50,9 @@ using ::testing::Not;
 using ::testing::NotNull;
 using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 constexpr DecodedUleb128 kCodecConfigId = 1;
 constexpr uint32_t kSampleRate = 48000;
@@ -73,7 +74,7 @@ constexpr int64_t kReadBitBufferCapacity = 1024;
 void AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
     uint32_t audio_element_id, uint32_t substream_id,
     InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const AudioElementsById& audio_elements,
     std::list<AudioFrameWithData>& audio_frames) {
   ASSERT_TRUE(audio_elements.contains(audio_element_id));
 
@@ -103,8 +104,7 @@ void InitializeOneParameterBlockAndOneAudioFrame(
     DemixingParamDefinition& param_definition,
     std::list<ParameterBlockWithData>& parameter_blocks,
     std::list<AudioFrameWithData>& audio_frames,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements) {
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements) {
   constexpr InternalTimestamp kStartTimestamp = 0;
   constexpr InternalTimestamp kEndTimestamp = 16;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
@@ -168,9 +168,9 @@ class ObuSequencerIamfTest : public ::testing::Test {
 
  protected:
   std::optional<IASequenceHeaderObu> ia_sequence_header_obu_;
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus_;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements_;
-  std::list<MixPresentationObu> mix_presentation_obus_;
+  CodecConfigsById codec_config_obus_;
+  AudioElementsById audio_elements_;
+  MixPresentationObus mix_presentation_obus_;
 
   DemixingParamDefinition param_definition_;
   std::list<ParameterBlockWithData> parameter_blocks_;
@@ -278,9 +278,9 @@ TEST(ObuSequencerIamf, PushDescriptorObusAndCloseSucceedsWithEmptyOutputFile) {
 void PushOneTemporalUnitIaSequenceAndClose(
     ObuSequencerIamf& sequencer,
     const IASequenceHeaderObu& ia_sequence_header_obu,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const CodecConfigsById& codec_config_obus,
+    const AudioElementsById& audio_elements,
+    const MixPresentationObus& mix_presentation_obus,
     const std::list<ArbitraryObu>& arbitrary_obus,
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const std::list<AudioFrameWithData>& audio_frames) {
@@ -336,7 +336,7 @@ TEST_F(ObuSequencerIamfTest, OutputFileCanBeReadBack) {
   ASSERT_THAT(collected_obus->obu_processor, NotNull());
   const auto& obu_processor = *collected_obus->obu_processor;
   EXPECT_EQ(obu_processor.GetIaSequenceHeaderView(), *ia_sequence_header_obu_);
-  EXPECT_THAT(obu_processor.GetCodecConfigObusView(),
+  EXPECT_THAT(obu_processor.GetCodecConfigsByIdView(),
               UnorderedElementsAre(Key(kCodecConfigId)));
   EXPECT_THAT(obu_processor.GetAudioElementsView(), SizeIs(1));
   EXPECT_THAT(obu_processor.GetMixPresentationObusView(), SizeIs(1));

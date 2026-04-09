@@ -30,11 +30,11 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
@@ -63,10 +63,8 @@
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/metadata_obu.h"
-#include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
@@ -78,8 +76,7 @@ using ::iamf_tools_cli_proto::ChannelLabelMessage;
 using ::iamf_tools_cli_proto::ParameterBlockObuMetadata;
 
 absl::Status InitAudioFrameDecoderForAllAudioElements(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     AudioFrameDecoder& audio_frame_decoder) {
   for (const auto& [unused_audio_element_id, audio_element] : audio_elements) {
     if (audio_element.codec_config == nullptr) {
@@ -184,7 +181,7 @@ absl::Status PushTemporalUnitToObuSequencers(
 absl::Status FinalizeDescriptors(
     bool validate_user_loudness,
     RenderingMixPresentationFinalizer& mix_presentation_finalizer,
-    std::list<MixPresentationObu>& mix_presentation_obus,
+    DescriptorObus::MixPresentationObus& mix_presentation_obus,
     bool& mix_presentation_obus_finalized) {
   if (mix_presentation_obus_finalized) {
     // Skip finalizing twice, in case this is called multiple times.
@@ -210,11 +207,9 @@ absl::Status FinalizeDescriptors(
 absl::Status FinalizeObuSequencers(
     const IASequenceHeaderObu& ia_sequence_header_obu,
     const std::list<MetadataObu>& metadata_obus,
-    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        codec_config_obus,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus,
     const std::list<ArbitraryObu>& descriptor_arbitrary_obus,
     std::vector<std::unique_ptr<ObuSequencerBase>>& obu_sequencers,
     ObuSequencerStreamingIamf& streaming_obu_sequencer,
@@ -277,8 +272,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   // Codec Config OBUs.
   // Held in a `unique_ptr`, so the underlying map can be moved without
   // invalidating pointers.
-  auto codec_config_obus =
-      std::make_unique<absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>();
+  auto codec_config_obus = std::make_unique<DescriptorObus::CodecConfigsById>();
   CodecConfigGenerator codec_config_generator(
       user_metadata.codec_config_metadata());
   RETURN_IF_NOT_OK(codec_config_generator.Generate(*codec_config_obus));
@@ -286,8 +280,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   // Audio Element OBUs.
   // Held in a `unique_ptr`, so the underlying map can be moved without
   // invalidating pointers.
-  auto audio_elements = std::make_unique<
-      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>();
+  auto audio_elements = std::make_unique<DescriptorObus::AudioElementsById>();
   AudioElementGenerator audio_element_generator(
       user_metadata.audio_element_metadata());
   RETURN_IF_NOT_OK(
@@ -295,7 +288,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
 
   // Generate the majority of Mix Presentation OBUs - loudness will be
   // calculated after all temporal units have been pushed.
-  std::list<MixPresentationObu> mix_presentation_obus;
+  DescriptorObus::MixPresentationObus mix_presentation_obus;
   MixPresentationGenerator mix_presentation_generator(
       user_metadata.mix_presentation_metadata());
   RETURN_IF_NOT_OK(mix_presentation_generator.Generate(
@@ -704,12 +697,11 @@ absl::Status IamfEncoder::FinalizeEncode() {
       obu_sequencers_, streaming_obu_sequencer_, sequencers_finalized_);
 }
 
-const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-IamfEncoder::GetAudioElements() const {
+const DescriptorObus::AudioElementsById& IamfEncoder::GetAudioElements() const {
   return *audio_elements_;
 }
 
-const std::list<MixPresentationObu>& IamfEncoder::GetMixPresentationObus(
+const DescriptorObus::MixPresentationObus& IamfEncoder::GetMixPresentationObus(
     bool& output_is_finalized) const {
   output_is_finalized = mix_presentation_obus_finalized_;
   return mix_presentation_obus_;

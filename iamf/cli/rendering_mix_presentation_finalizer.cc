@@ -39,6 +39,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -77,7 +78,7 @@ bool CanRenderAnyLayout(
 }
 
 absl::Status CollectAudioElementsInSubMix(
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
     std::vector<const AudioElementWithData*>& audio_elements_in_sub_mix) {
   audio_elements_in_sub_mix.reserve(sub_mix_audio_elements.size());
@@ -521,7 +522,7 @@ absl::Status GenerateRenderingMetadataForSubmixes(
         loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const MixPresentationObu& mix_presentation_obu,
     std::vector<SubmixRenderingMetadata>& output_rendering_metadata) {
   const auto mix_presentation_id = mix_presentation_obu.GetMixPresentationId();
@@ -714,9 +715,9 @@ RenderingMixPresentationFinalizer::Create(
     const RendererFactoryBase* absl_nullable renderer_factory,
     const LoudnessCalculatorFactoryBase* absl_nullable
         loudness_calculator_factory,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const SampleProcessorFactory& sample_processor_factory,
-    const std::list<MixPresentationObu>& mix_presentation_obus) {
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus) {
   const bool rendering_enabled = renderer_factory != nullptr;
   if (!rendering_enabled) {
     ABSL_LOG(INFO) << "Rendering is safely disabled.";
@@ -728,7 +729,7 @@ RenderingMixPresentationFinalizer::Create(
   }
   absl::flat_hash_map<DecodedUleb128, std::vector<SubmixRenderingMetadata>>
       mix_presentation_id_to_rendering_metadata;
-  std::list<MixPresentationObu> mix_presentation_obus_to_render;
+  DescriptorObus::MixPresentationObus mix_presentation_obus_to_render;
   for (const auto& mix_presentation_obu : mix_presentation_obus) {
     // Copy all mix presentation OBUs, so they can be echoed back, even when
     // rendering is disabled.
@@ -835,7 +836,7 @@ absl::Status RenderingMixPresentationFinalizer::FinalizePushingTemporalUnits() {
   return absl::OkStatus();
 }
 
-absl::StatusOr<std::list<MixPresentationObu>>
+absl::StatusOr<DescriptorObus::MixPresentationObus>
 RenderingMixPresentationFinalizer::GetFinalizedMixPresentationObus(
     bool validate_loudness) {
   switch (state_) {

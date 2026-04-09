@@ -31,6 +31,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
@@ -601,8 +602,7 @@ absl::Status CollectChannelLayersAndLabelsForLoudspeakerLayout(
 
 absl::StatusOr<AudioElementWithData>
 ObuWithDataGenerator::GenerateAudioElementWithData(
-    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        codec_config_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
     const AudioElementObu& audio_element_obu) {
   SubstreamIdLabelsMap substream_id_to_labels;
   LabelGainMap label_to_output_gain;

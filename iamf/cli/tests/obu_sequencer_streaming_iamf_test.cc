@@ -18,20 +18,18 @@
 #include <optional>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/temporal_unit_view.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
@@ -41,6 +39,9 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
 using ::testing::IsEmpty;
 
@@ -65,11 +66,11 @@ constexpr std::array<uint8_t, 16> kEightSampleAudioFrame{
 constexpr absl::Span<ParameterBlockWithData> kNoParameterBlocks = {};
 constexpr absl::Span<ArbitraryObu> kNoArbitraryObus = {};
 
-void AddOneFrame(
-    uint32_t audio_element_id, uint32_t substream_id,
-    InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<AudioFrameWithData>& audio_frames) {
+void AddOneFrame(uint32_t audio_element_id, uint32_t substream_id,
+                 InternalTimestamp start_timestamp,
+                 InternalTimestamp end_timestamp,
+                 const AudioElementsById& audio_elements,
+                 std::list<AudioFrameWithData>& audio_frames) {
   ASSERT_TRUE(audio_elements.contains(audio_element_id));
 
   audio_frames.push_back(
@@ -159,8 +160,8 @@ TEST(GetPreviousSerializedTemporalUnit, GetsPreviousSerializedTemporalUnit) {
   IASequenceHeaderObu ia_sequence_header_obu(ObuHeader(),
                                              ProfileVersion::kIamfSimpleProfile,
                                              ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   AddLpcmCodecConfig(kCodecConfigId, kEightSamplesPerFrame, kBitDepth,
                      kSampleRate, codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
@@ -193,8 +194,8 @@ TEST(Close, ClearsSerializedTemporalUnitObus) {
   IASequenceHeaderObu ia_sequence_header_obu(ObuHeader(),
                                              ProfileVersion::kIamfSimpleProfile,
                                              ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   AddLpcmCodecConfig(kCodecConfigId, kEightSamplesPerFrame, kBitDepth,
                      kSampleRate, codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
@@ -225,8 +226,8 @@ TEST(Abort, ClearsSerializedDescriptorAndTemporalUnitObus) {
   IASequenceHeaderObu ia_sequence_header_obu(ObuHeader(),
                                              ProfileVersion::kIamfSimpleProfile,
                                              ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   AddLpcmCodecConfig(kCodecConfigId, kEightSamplesPerFrame, kBitDepth,
                      kSampleRate, codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(

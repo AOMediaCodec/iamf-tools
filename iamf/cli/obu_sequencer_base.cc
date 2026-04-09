@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -27,6 +26,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/profile_filter.h"
 #include "iamf/cli/temporal_unit_view.h"
@@ -92,9 +92,9 @@ class AbortOnDestruct {
 };
 
 template <typename KeyValueMap, typename KeyComparator>
-std::vector<uint32_t> SortedKeys(const KeyValueMap& map,
-                                 const KeyComparator& comparator) {
-  std::vector<uint32_t> keys;
+std::vector<typename KeyValueMap::key_type> SortedKeys(
+    const KeyValueMap& map, const KeyComparator& comparator) {
+  std::vector<typename KeyValueMap::key_type> keys;
   keys.reserve(map.size());
   for (const auto& [key, value] : map) {
     keys.push_back(key);
@@ -120,7 +120,7 @@ constexpr int64_t kFallbackFirstPts = 0;
 // Gets the common sample rate and bit depth for the given codec config OBUs. Or
 // falls back to default values if there are no codec configs.
 absl::Status GetCommonSampleRateAndBitDepth(
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
     uint32_t& common_sample_rate, uint8_t& common_bit_depth,
     bool& requires_resampling) {
   if (codec_config_obus.empty()) {
@@ -157,7 +157,7 @@ absl::Status WriteObusWithHook(
 }
 
 absl::Status FillDescriptorStatistics(
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
     auto& descriptor_statistics) {
   descriptor_statistics.common_samples_per_frame = kFallbackSamplesPerFrame;
   descriptor_statistics.common_sample_rate = kFallbackSampleRate;
@@ -243,10 +243,9 @@ absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
 absl::Status WriteDescriptorObus(
     const IASequenceHeaderObu& ia_sequence_header_obu,
     const std::list<MetadataObu>& metadata_obus,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
-
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus,
     const std::list<ArbitraryObu>& arbitrary_obus, WriteBitBuffer& wb) {
   // Write IA Sequence Header OBU.
   RETURN_IF_NOT_OK(ia_sequence_header_obu.ValidateAndWriteObu(wb));
@@ -264,8 +263,8 @@ absl::Status WriteDescriptorObus(
 
   // Write Codec Config OBUs in ascending order of Codec Config IDs.
   // TODO(b/332956880): Support customizing the ordering.
-  const std::vector<uint32_t> codec_config_ids =
-      SortedKeys(codec_config_obus, std::less<uint32_t>());
+  const std::vector<DecodedUleb128> codec_config_ids =
+      SortedKeys(codec_config_obus, std::less<DecodedUleb128>());
   for (const auto id : codec_config_ids) {
     RETURN_IF_NOT_OK(codec_config_obus.at(id).ValidateAndWriteObu(wb));
     ABSL_LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
@@ -277,8 +276,8 @@ absl::Status WriteDescriptorObus(
 
   // Write Audio Element OBUs in ascending order of Audio Element IDs.
   // TODO(b/332956880): Support customizing the ordering.
-  const std::vector<uint32_t> audio_element_ids =
-      SortedKeys(audio_elements, std::less<uint32_t>());
+  const std::vector<DecodedUleb128> audio_element_ids =
+      SortedKeys(audio_elements, std::less<DecodedUleb128>());
   for (const auto id : audio_element_ids) {
     RETURN_IF_NOT_OK(audio_elements.at(id).obu.ValidateAndWriteObu(wb));
     ABSL_LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
@@ -342,9 +341,9 @@ ObuSequencerBase::~ObuSequencerBase() {
 absl::Status ObuSequencerBase::PushDescriptorObus(
     const IASequenceHeaderObu& ia_sequence_header_obu,
     const std::list<MetadataObu>& metadata_obus,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus,
     const std::list<ArbitraryObu>& arbitrary_obus) {
   // Many failure points should call `Abort`. We want to avoid leaving
   // sequencers open if they may have invalid or corrupted IAMF data.
@@ -458,9 +457,9 @@ absl::Status ObuSequencerBase::PushTemporalUnit(
 absl::Status ObuSequencerBase::UpdateDescriptorObusAndClose(
     const IASequenceHeaderObu& ia_sequence_header_obu,
     const std::list<MetadataObu>& metadata_obus,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus,
     const std::list<ArbitraryObu>& arbitrary_obus) {
   // Many failure points should call `Abort`. We want to avoid leaving
   // sequencers open if they may have invalid or corrupted IAMF data.

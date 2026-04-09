@@ -15,13 +15,13 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -33,6 +33,8 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 constexpr DecodedUleb128 kCodecConfigId = 44;
 constexpr uint32_t kSampleRate = 16000;
@@ -47,8 +49,7 @@ constexpr std::array<uint8_t, 22> kFlacEncodedFrame = {
     0x80, 0x00, 0x80, 0x04, 0x92, 0x49, 0x00, 0x01, 0xfe, 0x81, 0xee};
 
 AudioFrameWithData PrepareEncodedAudioFrame(
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements,
     CodecConfig::CodecId codec_id_type = CodecConfig::kCodecIdLpcm,
     std::vector<uint8_t> encoded_audio_frame_payload = {}) {
   if (codec_id_type == CodecConfig::kCodecIdLpcm) {
@@ -86,8 +87,8 @@ AudioFrameWithData PrepareEncodedAudioFrame(
 TEST(Decode, RequiresSubstreamsAreInitialized) {
   AudioFrameDecoder decoder;
   // Encoded frames.
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   AudioFrameWithData encoded_audio_frame =
       PrepareEncodedAudioFrame(codec_config_obus, audio_elements);
 
@@ -104,7 +105,7 @@ TEST(Decode, RequiresSubstreamsAreInitialized) {
 
 TEST(InitDecodersForSubstreams,
      ShouldNotBeCalledTwiceWithTheSameSubstreamIdForStatefulEncoders) {
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
   const auto& codec_config = codec_config_obus.at(kCodecConfigId);
 
@@ -125,10 +126,8 @@ TEST(InitDecodersForSubstreams,
       IsOk());
 }
 
-void InitAllAudioElements(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
-    AudioFrameDecoder& decoder) {
+void InitAllAudioElements(const AudioElementsById& audio_elements,
+                          AudioFrameDecoder& decoder) {
   for (const auto& [audio_element_id, audio_element_with_data] :
        audio_elements) {
     EXPECT_THAT(decoder.InitDecodersForSubstreams(
@@ -142,8 +141,8 @@ TEST(Decode, DecodesLpcmFrame) {
   AudioFrameDecoder decoder;
 
   // Encoded frames.
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   AudioFrameWithData audio_frame =
       PrepareEncodedAudioFrame(codec_config_obus, audio_elements);
   InitAllAudioElements(audio_elements, decoder);
@@ -175,8 +174,8 @@ TEST(Decode, DecodesFlacFrame) {
   AudioFrameDecoder decoder;
 
   // Encoded frames.
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::vector<uint8_t> encoded_audio_frame_payload = {kFlacEncodedFrame.begin(),
                                                       kFlacEncodedFrame.end()};
   AudioFrameWithData audio_frame = PrepareEncodedAudioFrame(
@@ -214,8 +213,8 @@ TEST(Decode, DecodesMultipleFlacFrames) {
   AudioFrameDecoder decoder;
 
   // Encoded frames.
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::vector<uint8_t> encoded_audio_frame_payload = {kFlacEncodedFrame.begin(),
                                                       kFlacEncodedFrame.end()};
   AudioFrameWithData encoded_audio_frame = PrepareEncodedAudioFrame(

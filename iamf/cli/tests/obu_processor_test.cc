@@ -31,6 +31,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
@@ -38,7 +39,6 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
@@ -70,6 +70,9 @@ using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
 using absl::MakeConstSpan;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
 constexpr DecodedUleb128 kSecondCodecConfigId = 2;
@@ -136,7 +139,7 @@ TEST(Create, FailsWithEmptyBitstream) {
 }
 
 TEST(Create, CollectsCodecConfigsBeforeATemporalUnit) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
   AudioFrameObu input_audio_frame(
@@ -155,7 +158,7 @@ TEST(Create, CollectsCodecConfigsBeforeATemporalUnit) {
                            read_bit_buffer.get(), insufficient_data);
 
   ASSERT_THAT(obu_processor, NotNull());
-  EXPECT_THAT(obu_processor->GetCodecConfigObusView(),
+  EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(),
               UnorderedElementsAre(Key(kFirstCodecConfigId),
                                    Key(kSecondCodecConfigId)));
   // `insufficient_data` is false because we have successfully read all
@@ -164,8 +167,8 @@ TEST(Create, CollectsCodecConfigsBeforeATemporalUnit) {
   EXPECT_FALSE(insufficient_data);
 }
 
-TEST(Create, IgnoresImplausibleCodecConfigObus) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+TEST(Create, IgnoresImplausibleCodecConfigsById) {
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   std::vector<uint8_t> bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&input_codec_configs.at(kFirstCodecConfigId)});
@@ -192,14 +195,14 @@ TEST(Create, IgnoresImplausibleCodecConfigObus) {
   ASSERT_THAT(obu_processor, NotNull());
 
   // We only find the valid Codec Config OBU, with no sign of the tiny one.
-  EXPECT_THAT(obu_processor->GetCodecConfigObusView(),
+  EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(),
               UnorderedElementsAre(Key(kFirstCodecConfigId)));
   // The buffer advanced past the tiny Codec Config OBU.
   EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
 }
 
 TEST(Create, CollectsCodecConfigsAtEndOfBitstream) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
   const auto two_codec_configs_at_end_of_bitstream =
@@ -218,14 +221,14 @@ TEST(Create, CollectsCodecConfigsAtEndOfBitstream) {
   // `is_exhaustive_and_exact` is true so it could not be a more-data situation.
   EXPECT_FALSE(insufficient_data);
 
-  EXPECT_THAT(obu_processor->GetCodecConfigObusView(),
+  EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(),
               UnorderedElementsAre(Key(kFirstCodecConfigId),
                                    Key(kSecondCodecConfigId)));
 }
 
 TEST(Create,
      DoesNotCollectCodecConfigsAtEndOfBitstreamWithoutIsExhaustiveAndExact) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
   const auto two_codec_configs_at_end_of_bitstream =
@@ -271,7 +274,7 @@ TEST(Create, DescriptorObusMustStartWithIaSequenceHeader) {
   const IASequenceHeaderObu input_ia_sequence_header(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
 
   // Descriptor OBUs must start with IA Sequence Header.
@@ -353,7 +356,7 @@ TEST(Create, ConsumesUpToNextNonRedundantSequenceHeader) {
 }
 
 TEST(Create, CollectsIaSequenceHeaderWithCodecConfigs) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   const DecodedUleb128 kFirstCodecConfigId = 123;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   const DecodedUleb128 kSecondCodecConfigId = 124;
@@ -374,7 +377,7 @@ TEST(Create, CollectsIaSequenceHeaderWithCodecConfigs) {
   EXPECT_FALSE(insufficient_data);
   EXPECT_EQ(obu_processor->GetIaSequenceHeaderView().GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
-  EXPECT_THAT(obu_processor->GetCodecConfigObusView(),
+  EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(),
               UnorderedElementsAre(Key(kFirstCodecConfigId),
                                    Key(kSecondCodecConfigId)));
 }
@@ -382,14 +385,13 @@ TEST(Create, CollectsIaSequenceHeaderWithCodecConfigs) {
 // Returns a bitstream with all the descriptor obus for a zeroth order
 // ambisonics stream.
 std::vector<uint8_t> InitAllDescriptorsForZerothOrderAmbisonics() {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       input_codec_configs, audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
@@ -416,7 +418,7 @@ TEST(Create, SucceedsWithoutTemporalUnitFollowing) {
   EXPECT_FALSE(insufficient_data);
   EXPECT_EQ(obu_processor->GetIaSequenceHeaderView().GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
-  EXPECT_THAT(obu_processor->GetCodecConfigObusView(),
+  EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(),
               UnorderedElementsAre(Key(kFirstCodecConfigId)));
   EXPECT_THAT(obu_processor->GetAudioElementsView(),
               UnorderedElementsAre(Key(kFirstAudioElementId)));
@@ -498,7 +500,7 @@ TEST(Create, SucceedsWithTemporalUnitFollowing) {
   EXPECT_FALSE(insufficient_data);
   EXPECT_EQ(obu_processor->GetIaSequenceHeaderView().GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
-  EXPECT_THAT(obu_processor->GetCodecConfigObusView(),
+  EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(),
               UnorderedElementsAre(Key(kFirstCodecConfigId)));
   EXPECT_THAT(obu_processor->GetAudioElementsView(),
               UnorderedElementsAre(Key(kFirstAudioElementId)));
@@ -714,7 +716,7 @@ TEST(ProcessTemporalUnit, SkipsStrayParameterBlocks) {
 TEST(ProcessTemporalUnit, SkipsStrayAudioFrames) {
   // Configure an IA Sequence with two mixes. One of them uses a future audio
   // element and the audio frames associated will be dropped.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_configs);
   auto audio_element = AudioElementObu::CreateForMonoAmbisonics(
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
@@ -727,7 +729,7 @@ TEST(ProcessTemporalUnit, SkipsStrayAudioFrames) {
       /*audio_substream_ids=*/{kSecondSubstreamId},
       /*audio_element_config_bytes=*/{});
   ASSERT_THAT(stray_audio_element, IsOk());
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
@@ -1169,7 +1171,7 @@ TEST(CollectObusFromIaSequence, ConsumesIaSequenceAndCollectsAllObus) {
 
   // Reaching the end of the stream.
   EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
-  EXPECT_THAT(obu_processor.GetCodecConfigObusView(),
+  EXPECT_THAT(obu_processor.GetCodecConfigsByIdView(),
               UnorderedElementsAre(Key(kFirstCodecConfigId)));
   EXPECT_THAT(obu_processor.GetAudioElementsView(),
               UnorderedElementsAre(Key(kFirstAudioElementId)));
@@ -1213,7 +1215,7 @@ TEST(CollectObusFromIaSequence, ConsumesTrivialIaSequence) {
   // The first IA sequence is trivial and should be consumed.
   ASSERT_THAT(collected_obus->obu_processor, NotNull());
   const auto& obu_processor = *collected_obus->obu_processor;
-  EXPECT_THAT(obu_processor.GetCodecConfigObusView(), IsEmpty());
+  EXPECT_THAT(obu_processor.GetCodecConfigsByIdView(), IsEmpty());
   EXPECT_THAT(obu_processor.GetAudioElementsView(), IsEmpty());
   EXPECT_THAT(obu_processor.GetMixPresentationObusView(), IsEmpty());
   EXPECT_TRUE(collected_obus->audio_frames.empty());
@@ -1265,7 +1267,7 @@ TEST(Create, Succeeds) {
 
   EXPECT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
-  EXPECT_THAT(obu_processor->GetCodecConfigObusView(), SizeIs(1));
+  EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(), SizeIs(1));
   EXPECT_THAT(obu_processor->GetAudioElementsView(), SizeIs(1));
   EXPECT_THAT(obu_processor->GetMixPresentationObusView(), SizeIs(1));
 }
@@ -1305,7 +1307,7 @@ TEST(GetOutputSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
   const auto buffer = SerializeObusExpectOk(
@@ -1337,11 +1339,11 @@ TEST(GetOutputSampleRate, FailsForTrivialIaSequence) {
   EXPECT_THAT(obu_processor->GetOutputSampleRate(), Not(IsOk()));
 }
 
-TEST(GetOutputSampleRate, FailsForMultipleCodecConfigObus) {
+TEST(GetOutputSampleRate, FailsForMultipleCodecConfigsById) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
@@ -1364,7 +1366,7 @@ TEST(GetOutputFrameSize, ReturnsSampleRateBasedOnCodecConfigObu) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfig(kFirstCodecConfigId, kFrameSize, kBitDepth, kSampleRate,
                      codec_config_obus);
   const auto buffer = SerializeObusExpectOk(
@@ -1396,11 +1398,11 @@ TEST(GetOutputFrameSize, FailsForTrivialIaSequence) {
   EXPECT_THAT(obu_processor->GetOutputFrameSize(), Not(IsOk()));
 }
 
-TEST(GetOutputFrameSize, FailsForMultipleCodecConfigObus) {
+TEST(GetOutputFrameSize, FailsForMultipleCodecConfigsById) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
@@ -1420,17 +1422,16 @@ TEST(GetOutputFrameSize, FailsForMultipleCodecConfigObus) {
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness, RenderingNothingReturnsOk) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId,
       {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
        kFourthSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
@@ -1457,17 +1458,16 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RenderingNothingReturnsOk) {
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId,
       {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
        kFourthSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
@@ -1528,15 +1528,14 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
      SupportsMixGainParameterBlocks) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
@@ -1590,27 +1589,25 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
       IsOkAndHolds(HasShape(kTwoChannels, kExpectedNumSamplesPerFrame)));
 }
 
-void AddOneLayerStereoAudioElement(
-    DecodedUleb128 codec_config_id, DecodedUleb128 audio_element_id,
-    uint32_t substream_id,
-    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
+void AddOneLayerStereoAudioElement(DecodedUleb128 codec_config_id,
+                                   DecodedUleb128 audio_element_id,
+                                   uint32_t substream_id,
+                                   const CodecConfigsById& codec_config_obus,
+                                   AudioElementsById& audio_elements) {
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kStereo, audio_element_id, codec_config_id,
       {substream_id}, codec_config_obus, audio_elements);
 }
 
 TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereo) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddOneLayerStereoAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
                                 kFirstSubstreamId, codec_config_obus,
                                 audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
@@ -1668,15 +1665,14 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereo) {
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
      RendersPassthroughStereoToWav_2) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddOneLayerStereoAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
                                 kFirstSubstreamId, codec_config_obus,
                                 audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
@@ -1729,11 +1725,10 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
      SelectsFirstMixPresentationWhenSupported) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddOneLayerStereoAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
                                 kFirstSubstreamId, codec_config_obus,
                                 audio_elements_with_data);
@@ -1759,7 +1754,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
           &audio_elements_with_data.at(kSecondAudioElementId),
   });
 
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   constexpr auto kExpectedFirstSampleForFirstMixPresentation =
       Int32ToNormalizedFloatingPoint<InternalSampleType>(1 << 16);
   AddMixPresentationObuWithAudioElementIds(
@@ -1856,11 +1851,10 @@ TEST(GetOutputLayout, FailsWhenNotCreastedForRendering) {
 
 TEST(CreateForRendering,
      ReturnsNullptrWhenDesiredProfileVersionIsNotSupported) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddOneLayerStereoAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
                                 kFirstSubstreamId, codec_config_obus,
                                 audio_elements_with_data);
@@ -1872,7 +1866,7 @@ TEST(CreateForRendering,
                                 audio_elements_with_data);
 
   // The only mix presentation is not suitable for simple or base profile.
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId,
       {kFirstAudioElementId, kSecondAudioElementId, kThirdAudioElementId},
@@ -1907,17 +1901,16 @@ constexpr Layout k5_1_Layout = {
         .sound_system = LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0}};
 
 TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId,
       {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
        kFourthSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   std::vector<LoudspeakersSsConventionLayout::SoundSystem>
       sound_system_layouts = {
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
@@ -1956,17 +1949,16 @@ TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
 TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
   // Set up inputs; key aspect is that the mix presentation does not contain the
   // desired layout.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId,
       {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
        kFourthSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   std::vector<LoudspeakersSsConventionLayout::SoundSystem>
       sound_system_layouts = {
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
@@ -2013,17 +2005,16 @@ TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
 TEST(CreateForRendering, CanChooseLayoutByMixPresentationIdOnly) {
   // Set up inputs; key aspect is that the mix presentation does not contain the
   // desired layout.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId,
       {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
        kFourthSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   std::vector<LoudspeakersSsConventionLayout::SoundSystem>
       sound_system_layouts = {
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,

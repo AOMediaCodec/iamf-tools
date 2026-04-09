@@ -27,6 +27,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -36,7 +37,6 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_header.h"
@@ -52,6 +52,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::NotNull;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -120,11 +122,10 @@ void ConfigureDemixingParameterBlocks(
       user_metadata.add_parameter_block_metadata()));
 }
 
-void InitializePrerequisiteObus(
-    IamfInputLayout input_layout,
-    absl::Span<const DecodedUleb128> substream_ids,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
+void InitializePrerequisiteObus(IamfInputLayout input_layout,
+                                absl::Span<const DecodedUleb128> substream_ids,
+                                CodecConfigsById& codec_config_obus,
+                                AudioElementsById& audio_elements) {
   constexpr uint32_t kSampleRate = 48000;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
@@ -162,8 +163,8 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   ConfigureDemixingParameterBlocks(user_metadata);
 
   // Initialize pre-requisite OBUs.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
                              codec_config_obus, audio_elements);
 
@@ -276,8 +277,8 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   ConfigureMixGainParameterBlocks(user_metadata);
 
   // Initialize pre-requisite OBUs.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
                              codec_config_obus, audio_elements);
 
@@ -380,11 +381,9 @@ void ConfigureReconGainParameterBlocks(
       user_metadata.add_parameter_block_metadata()));
 }
 
-void Add5_1AudioElementForReconGain(
-    DecodedUleb128 audio_element_id,
-    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
+void Add5_1AudioElementForReconGain(DecodedUleb128 audio_element_id,
+                                    const CodecConfigsById& codec_config_obus,
+                                    AudioElementsById& audio_elements) {
   // To compute recon gains, we need at least two layers in the
   // `ScalableChannelLayoutConfig`.
   const ScalableChannelLayoutConfig scalable_channel_layout_config = {
@@ -436,13 +435,13 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   ConfigureReconGainParameterBlocks(user_metadata);
 
   // Initialize pre-requisite OBUs.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   constexpr uint32_t kSampleRate = 48000;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
 
   // Add a multi-layer 5.1 Audio Element to compute recon gain.
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   Add5_1AudioElementForReconGain(kAudioElementId, codec_config_obus,
                                  audio_elements);
 
@@ -547,8 +546,8 @@ TEST(ParameterBlockGeneratorTest,
       )pb",
       user_metadata.add_parameter_block_metadata()));
   // Initialize pre-requisite OBUs.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
                              codec_config_obus, audio_elements);
   // Add param definition. It would normally be owned by a Mix Presentation OBU.
@@ -594,8 +593,8 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   // Initialize pre-requisite OBUs.
   ConfigureDemixingParameterBlocks(user_metadata);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   InitializePrerequisiteObus(IamfInputLayout::k5_1, kFourSubtreamIds,
                              codec_config_obus, audio_elements);
 

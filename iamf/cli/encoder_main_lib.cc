@@ -26,8 +26,8 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/iamf_encoder.h"
 #include "iamf/cli/parameter_block_partitioner.h"
@@ -100,8 +100,7 @@ absl::Status OrganizeParameterBlockMetadata(
 }
 
 absl::Status CollectLabeledSamplesForAudioElements(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     WavSampleProvider& wav_sample_provider,
     absl::flat_hash_map<DecodedUleb128, LabelSamplesMap>& id_to_labeled_samples,
     bool& no_more_real_samples) {

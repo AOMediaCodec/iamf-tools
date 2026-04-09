@@ -14,13 +14,12 @@
 
 #include <cstdint>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -28,6 +27,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr uint32_t kOpusNumSamplesPerFrame = 960;
@@ -38,7 +38,7 @@ constexpr int64_t kLpcmNumSamplesPerFrame = 64;
 constexpr bool kAutomaticallyOverrideAudioRollDistance = true;
 constexpr bool kAutomaticallyOverrideCodecDelay = true;
 
-void ExpectGeneratingCodecConfigObuSucceeds(
+void ExpectGeneratingCodecConfigsByIducceeds(
     const iamf_tools_cli_proto::CodecConfigObuMetadata&
         codec_config_obu_metadata) {
   ::google::protobuf::RepeatedPtrField<
@@ -46,7 +46,7 @@ void ExpectGeneratingCodecConfigObuSucceeds(
       codec_config_obu_metadatas;
   *codec_config_obu_metadatas.Add() = codec_config_obu_metadata;
 
-  absl::flat_hash_map<uint32_t, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(
       CodecConfigGenerator(codec_config_obu_metadatas).Generate(output_obus),
       IsOk());
@@ -99,7 +99,7 @@ TEST(FillLpcmCodecConfigObuMetadata, IsCompatibleWithCodecConfigGenerator) {
           kCodecConfigId, kLpcmNumSamplesPerFrame, kLpcmSampleSize,
           kLpcmSampleRate);
 
-  ExpectGeneratingCodecConfigObuSucceeds(codec_config_obu_metadata);
+  ExpectGeneratingCodecConfigsByIducceeds(codec_config_obu_metadata);
 }
 
 TEST(GetOpusCodecConfigObuMetadata, OutputHasRequestedValues) {
@@ -145,7 +145,7 @@ TEST(GetOpusCodecConfigObuMetadata, IsCompatibleWithCodecConfigGenerator) {
       CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
           kCodecConfigId, kOpusNumSamplesPerFrame);
 
-  ExpectGeneratingCodecConfigObuSucceeds(codec_config_obu_metadata);
+  ExpectGeneratingCodecConfigsByIducceeds(codec_config_obu_metadata);
 }
 
 }  // namespace

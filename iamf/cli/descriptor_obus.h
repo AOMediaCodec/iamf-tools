@@ -33,6 +33,34 @@ namespace iamf_tools {
  * ensures this type of more move-safe.
  */
 struct DescriptorObus {
+  /*!\brief Map `CodecConfigOBU`s keyed by codec config ID.
+   *
+   * The IAMF specification has a `codec_config_id` field which is unique to
+   * each (non-redundant) Codec Config OBU. This map is keyed by that field for
+   * easy lookup.
+   */
+  using CodecConfigsById = absl::flat_hash_map<DecodedUleb128, CodecConfigObu>;
+
+  /*!\brief Map of `AudioElementWithData` keyed by audio element ID.
+   *
+   * The IAMF specification has an `audio_element_id` field which is unique to
+   * each (non-redundant) Audio Element OBU. This map is keyed by that field for
+   * easy lookup.
+   */
+  using AudioElementsById =
+      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>;
+
+  /*!\brief List of Mix Presentation OBUs.
+   *
+   * The IAMF specification allows several mix presentations to be included in
+   * a bitstream.
+   *
+   * The specification uses the order within the bitstream to help determine
+   * which one will be used for rendering. This type holds them in a list, which
+   * helps preserve their order.
+   */
+  using MixPresentationObus = std::list<MixPresentationObu>;
+
   /*!\brief Default constructor.
    *
    * Ensures the `std::unique_ptr` members are set to empty maps, instead of
@@ -43,15 +71,11 @@ struct DescriptorObus {
   // IA sequence header processed from the bitstream.
   IASequenceHeaderObu ia_sequence_header;
   // Map of Codec Config OBUs processed from the bitstream.
-  std::unique_ptr<
-      absl::flat_hash_map<DecodedUleb128, CodecConfigObu>> absl_nonnull
-  codec_config_obus;
+  std::unique_ptr<CodecConfigsById> absl_nonnull codec_config_obus;
   // Map of Audio Elements and metadata processed from the bitstream.
-  std::unique_ptr<
-      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>> absl_nonnull
-  audio_elements;
+  std::unique_ptr<AudioElementsById> absl_nonnull audio_elements;
   // List of Mix Presentation OBUs processed from the bitstream.
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
 };
 
 }  // namespace iamf_tools

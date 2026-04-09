@@ -26,11 +26,11 @@
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
@@ -100,8 +100,7 @@ class AudioFrameGenerator {
           iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata,
       const ::google::protobuf::RepeatedPtrField<
           iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata,
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements,
+      const DescriptorObus::AudioElementsById& audio_elements,
       const DemixingModule& demixing_module,
       ParametersManager& parameters_manager,
       GlobalTimingModule& global_timing_module);
@@ -197,8 +196,7 @@ class AudioFrameGenerator {
       absl::flat_hash_map<DecodedUleb128,
                           absl::flat_hash_set<ChannelLabel::Label>>
           audio_element_id_to_labels,
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements,
+      const DescriptorObus::AudioElementsById& audio_elements,
       const DemixingModule& demixing_module,
       ParametersManager& parameters_manager,
       GlobalTimingModule& global_timing_module,
@@ -227,8 +225,7 @@ class AudioFrameGenerator {
       audio_element_id_to_labels_;
 
   // Mapping from Audio Element ID to audio element data.
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-      audio_elements_;
+  const DescriptorObus::AudioElementsById& audio_elements_;
 
   // Mapping from audio substream IDs to encoders.
   absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>

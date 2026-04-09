@@ -29,6 +29,7 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_processor.h"
@@ -76,6 +77,10 @@ using ::testing::NotNull;
 using ::testing::Pointee;
 using ::testing::Return;
 using ::testing::SizeIs;
+
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -392,7 +397,7 @@ TEST_F(IamfEncoderTest, CreateGeneratesDescriptorObus) {
   EXPECT_FALSE(get_descriptors_obus_are_finalized);
   EXPECT_EQ(obu_processor->GetIaSequenceHeaderView().GetPrimaryProfile(),
             kExpectedPrimaryProfile);
-  EXPECT_THAT(obu_processor->GetCodecConfigObusView(), SizeIs(1));
+  EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(), SizeIs(1));
   EXPECT_THAT(obu_processor->GetAudioElementsView(), SizeIs(1));
   EXPECT_THAT(obu_processor->GetMixPresentationObusView(), SizeIs(1));
   // Also, check the equivalent in the deprecated getters.
@@ -587,7 +592,7 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   // Check that the OBU views look reasonable.
   EXPECT_EQ(obu_processor.GetIaSequenceHeaderView().GetPrimaryProfile(),
             kExpectedPrimaryProfile);
-  EXPECT_THAT(obu_processor.GetCodecConfigObusView(), SizeIs(1));
+  EXPECT_THAT(obu_processor.GetCodecConfigsByIdView(), SizeIs(1));
   EXPECT_THAT(obu_processor.GetAudioElementsView(), SizeIs(1));
   EXPECT_THAT(obu_processor.GetMixPresentationObusView(), SizeIs(1));
   EXPECT_THAT(collected_obus->audio_frames, SizeIs(1));
@@ -655,7 +660,7 @@ GetLoudnessCalculatorWhichReturnsIntegratedLoudness(
 }
 
 void ExpectFirstLayoutIntegratedLoudnessIs(
-    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const MixPresentationObus& mix_presentation_obus,
     int16_t expected_integrated_loudness) {
   ASSERT_FALSE(mix_presentation_obus.empty());
   EXPECT_EQ(mix_presentation_obus.front()

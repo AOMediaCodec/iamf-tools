@@ -30,6 +30,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
@@ -59,6 +60,8 @@ using ::testing::NotNull;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 using ::testing::Values;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
 using enum ChannelLabel::Label;
 
@@ -95,7 +98,7 @@ TEST(GenerateAudioElementWithData, ValidAudioElementWithCodecConfig) {
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
       {kFirstSubstreamId}, kOneLayerStereoConfig);
   ASSERT_THAT(obu, IsOk());
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
   auto audio_element_with_data =
       ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
@@ -125,7 +128,7 @@ TEST(GenerateAudioElementWithData, InvalidCodecConfigId) {
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kSecondCodecConfigId,
       {kFirstSubstreamId}, kOneLayerStereoConfig);
   ASSERT_THAT(obu, IsOk());
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
 
   EXPECT_THAT(ObuWithDataGenerator::GenerateAudioElementWithData(
@@ -377,9 +380,8 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   const std::vector<uint8_t> kAudioFrameData;
   const AudioFrameObu kFirstSubstreamAudioFrameObu;
   const AudioFrameObu kSecondSubstreamAudioFrameObu;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus_;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data_;
+  CodecConfigsById codec_config_obus_;
+  AudioElementsById audio_elements_with_data_;
 
   std::list<AudioFrameObu> audio_frame_obus_;
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
@@ -743,9 +745,8 @@ TEST_F(GenerateAudioFrameWithDataTest, RejectMismatchingAudioElement) {
 
 TEST(GenerateParameterBlockWithData, ValidParameterBlock) {
   // Set up inputs.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements_with_data;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId,

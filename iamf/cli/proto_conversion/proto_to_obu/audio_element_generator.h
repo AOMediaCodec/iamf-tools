@@ -13,14 +13,9 @@
 #ifndef CLI_PROTO_CONVERSION_PROTO_TO_OBU_AUDIO_ELEMENT_GENERATOR_H_
 #define CLI_PROTO_CONVERSION_PROTO_TO_OBU_AUDIO_ELEMENT_GENERATOR_H_
 
-#include <cstdint>
-
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/audio_element.pb.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
@@ -41,10 +36,8 @@ class AudioElementGenerator {
    * \param audio_elements Map of Audio Element IDs to generated OBUs with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Generate(
-      const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_configs,
-      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements);
+  absl::Status Generate(const DescriptorObus::CodecConfigsById& codec_configs,
+                        DescriptorObus::AudioElementsById& audio_elements);
 
  private:
   const ::google::protobuf::RepeatedPtrField<

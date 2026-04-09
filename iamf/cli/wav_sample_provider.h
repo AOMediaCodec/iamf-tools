@@ -14,17 +14,15 @@
 #define CLI_WAV_SAMPLE_PROVIDER_H_
 
 #include <cstdint>
-#include <string>
-#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/types.h"
@@ -45,8 +43,7 @@ class WavSampleProvider {
       const ::google::protobuf::RepeatedPtrField<
           iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata,
       absl::string_view input_wav_directory,
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements);
+      const DescriptorObus::AudioElementsById& audio_elements);
 
   /*!\brief Read frames from WAV files corresponding to an Audio Element.
    *

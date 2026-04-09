@@ -13,20 +13,12 @@
 
 #include <memory>
 
-#include "absl/container/flat_hash_map.h"
-#include "iamf/cli/audio_element_with_data.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/types.h"
-
 namespace iamf_tools {
 
 // For defensive programming, initialize the types wrapped in pointers to
 // empty maps.
 DescriptorObus::DescriptorObus()
-    : codec_config_obus(std::make_unique<
-                        absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>()),
-      audio_elements(
-          std::make_unique<
-              absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>()) {}
+    : codec_config_obus(std::make_unique<CodecConfigsById>()),
+      audio_elements(std::make_unique<AudioElementsById>()) {}
 
 }  // namespace iamf_tools

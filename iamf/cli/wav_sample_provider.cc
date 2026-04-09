@@ -28,6 +28,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/wav_reader.h"
@@ -144,8 +145,7 @@ absl::StatusOr<WavSampleProvider> WavSampleProvider::Create(
     const ::google::protobuf::RepeatedPtrField<
         iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata,
     absl::string_view input_wav_directory,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const DescriptorObus::AudioElementsById& audio_elements) {
   // Precompute, validate, and cache data for each audio element.
   absl::flat_hash_map<DecodedUleb128, WavReader> wav_readers;
   absl::flat_hash_map<DecodedUleb128, std::vector<uint32_t>>

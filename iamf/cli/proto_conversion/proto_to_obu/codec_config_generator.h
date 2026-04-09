@@ -13,12 +13,9 @@
 #ifndef CLI_PROTO_CONVERSION_PROTO_TO_OBU_CODEC_CONFIG_GENERATOR_H_
 #define CLI_PROTO_CONVERSION_PROTO_TO_OBU_CODEC_CONFIG_GENERATOR_H_
 
-#include <cstdint>
-
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/obu/codec_config.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
@@ -52,8 +49,7 @@ class CodecConfigGenerator {
    *         would result in lost information. `kIamfInvalidBitstream` if
    *         `codec_id` is unrecognized.
    */
-  absl::Status Generate(
-      absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+  absl::Status Generate(DescriptorObus::CodecConfigsById& codec_config_obus);
 
  private:
   const ::google::protobuf::RepeatedPtrField<

@@ -17,20 +17,18 @@
 #include <memory>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/types.h"
@@ -46,6 +44,9 @@ using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 using absl::MakeConstSpan;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
 constexpr DecodedUleb128 kSecondCodecConfigId = 2;
@@ -84,7 +85,7 @@ TEST(ProcessDescriptorObus, FailsWithEmptyBitstream) {
 }
 
 TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
   AudioFrameObu input_audio_frame(
@@ -110,8 +111,8 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
   EXPECT_FALSE(insufficient_data);
 }
 
-TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigObus) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigsById) {
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   std::vector<uint8_t> bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&input_codec_configs.at(kFirstCodecConfigId)});
@@ -144,7 +145,7 @@ TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigObus) {
 }
 
 TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
   const auto two_codec_configs_at_end_of_bitstream =
@@ -168,7 +169,7 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
 
 TEST(ProcessDescriptorObus,
      DoesNotCollectCodecConfigsAtEndOfBitstreamWithoutIsExhaustiveAndExact) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
   const auto two_codec_configs_at_end_of_bitstream =
@@ -212,7 +213,7 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
   const IASequenceHeaderObu input_ia_sequence_header(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
 
   // Descriptor OBUs must start with IA Sequence Header.
@@ -291,7 +292,7 @@ TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
 }
 
 TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithCodecConfigs) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   const DecodedUleb128 kFirstCodecConfigId = 123;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   const DecodedUleb128 kSecondCodecConfigId = 124;
@@ -362,7 +363,7 @@ TEST(ProcessDescriptorObus, DropsUnknownCodecIds) {
 }
 
 TEST(ProcessDescriptorObus, IgnoresAudioElementWithUnknownAmbisonicsMode) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   constexpr DecodedUleb128 kFirstCodecConfigId = 3;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   // Configure an audio element with an unknown ambisonics mode, this implies
@@ -455,14 +456,13 @@ TEST(ProcessDescriptorObus, DropsMixPresentationWithZeroSubMixes) {
 // Returns a bitstream with all the descriptor obus for a zeroth order
 // ambisonics stream.
 std::vector<uint8_t> InitAllDescriptorsForZerothOrderAmbisonics() {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       input_codec_configs, audio_elements_with_data);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
@@ -586,10 +586,9 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
 }
 
 TEST(ProcessDescriptorObus, BypassesDuplicateAudioElementId) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  AudioElementsById audio_elements_with_data;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       input_codec_configs, audio_elements_with_data);

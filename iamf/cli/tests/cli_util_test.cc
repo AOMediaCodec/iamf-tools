@@ -27,13 +27,13 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/extended_param_definition.h"
@@ -49,6 +49,9 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::Not;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
 constexpr DecodedUleb128 kCodecConfigId = 21;
 constexpr DecodedUleb128 kAudioElementId = 100;
@@ -210,11 +213,11 @@ TEST_F(GetCommonSampleRateAndBitDepthTest, LargeCommonSampleRatesAndBitDepths) {
 TEST(CollectAndValidateParamDefinitions,
      ReturnsOneUniqueParamDefinitionWhenTheyAreIdentical) {
   // Initialize prerequisites.
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
+  AudioElementsById audio_elements = {};
 
   // Create a mix presentation OBU. It will have a `element_mix_gain` and
   // `output_mix_gain` which common settings.
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
       mix_presentation_obus);
@@ -249,10 +252,10 @@ RenderingConfigParamDefinition MakePolarRenderingConfigParamDefinition(
 TEST(CollectAndValidateParamDefinitions,
      IsInvalidWhenPositionParamDefinitionsAreNotEquivalent) {
   // Initialize prerequisites.
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
+  AudioElementsById audio_elements = {};
   // Create a mix presentation OBU. It will have a `element_mix_gain` and
   // `output_mix_gain` which common settings.
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kMixPresentationId, {kAudioElementId, kSecondAudioElementId},
       kParameterId, kParameterRate, mix_presentation_obus);
@@ -276,11 +279,11 @@ TEST(CollectAndValidateParamDefinitions,
 TEST(CollectAndValidateParamDefinitions,
      IsInvalidWhenParamDefinitionsAreNotEquivalent) {
   // Initialize prerequisites.
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
+  AudioElementsById audio_elements = {};
 
   // Create a mix presentation OBU. It will have a `element_mix_gain` and
   // `output_mix_gain` which common settings.
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
       mix_presentation_obus);
@@ -303,10 +306,10 @@ TEST(CollectAndValidateParamDefinitions,
 TEST(CollectAndValidateParamDefinitions,
      DoesNotCollectParamDefinitionsFromExtensionParamDefinitions) {
   // Initialize prerequisites.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
-  const std::list<MixPresentationObu> kNoMixPresentationObus = {};
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  const MixPresentationObus kNoMixPresentationObus = {};
+  AudioElementsById audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kAudioElementId, kCodecConfigId, kZerothOrderAmbisonicsSubstreamId,
       input_codec_configs, audio_elements);
@@ -327,11 +330,10 @@ TEST(CollectAndValidateParamDefinitions,
 }
 
 TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
-  const std::list<MixPresentationObu> kNoMixPresentationObus = {};
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_elements_with_data;
+  const MixPresentationObus kNoMixPresentationObus = {};
+  AudioElementsById audio_elements_with_data;
 
   const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
       .channel_audio_layer_configs = {
@@ -407,10 +409,10 @@ TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
 
 TEST(CollectAndValidateParamDefinitions,
      InvalidWhenReconGainParamDefinitionIsPresentButChannelConfigIsMissing) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  CodecConfigsById input_codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
-  const std::list<MixPresentationObu> kNoMixPresentationObus = {};
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  const MixPresentationObus kNoMixPresentationObus = {};
+  AudioElementsById audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kAudioElementId, kCodecConfigId, {kFirstSubstreamId}, input_codec_configs,
       audio_elements);

@@ -20,7 +20,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
@@ -52,8 +52,7 @@ class ParametersManager {
    * \return `ParametersManager` on success. A specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<ParametersManager> absl_nonnull> Create(
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements);
+      const DescriptorObus::AudioElementsById& audio_elements);
 
   /*!\brief Checks if a `DemixingParamDefinition` exists for an audio element.
    *

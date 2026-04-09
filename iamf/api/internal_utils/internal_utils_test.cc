@@ -19,19 +19,17 @@
 #include <string>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/include/iamf_tools/iamf_decoder_factory.h"
 #include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/types.h"
 
@@ -41,6 +39,10 @@ namespace {
 using api::IamfDecoderFactory;
 using api::IamfDecoderInterface;
 using api::OutputLayout;
+
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
 constexpr uint32_t kNumSamplesPerFrame = 8;
@@ -58,14 +60,14 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
   const IASequenceHeaderObu ia_sequence_header(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
                      kSampleRate, codec_configs);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_configs, audio_elements);
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);

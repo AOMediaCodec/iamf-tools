@@ -16,12 +16,11 @@
 #include <list>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
@@ -30,6 +29,10 @@
 namespace {
 
 using ::iamf_tools::DecodedUleb128;
+
+using CodecConfigsById = iamf_tools::DescriptorObus::CodecConfigsById;
+using AudioElementsById = iamf_tools::DescriptorObus::AudioElementsById;
+using MixPresentationObus = iamf_tools::DescriptorObus::MixPresentationObus;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
 constexpr uint32_t kNumSamplesPerFrame = 8;
@@ -45,11 +48,10 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
   const iamf_tools::IASequenceHeaderObu ia_sequence_header(
       iamf_tools::ObuHeader(), iamf_tools::ProfileVersion::kIamfSimpleProfile,
       iamf_tools::ProfileVersion::kIamfBaseProfile);
-  absl::flat_hash_map<DecodedUleb128, iamf_tools::CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
                      kSampleRate, codec_configs);
-  absl::flat_hash_map<DecodedUleb128, iamf_tools::AudioElementWithData>
-      audio_elements;
+  AudioElementsById audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_configs, audio_elements);

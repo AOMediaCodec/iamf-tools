@@ -25,6 +25,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/audio_element.h"
@@ -43,6 +44,7 @@ using ProtoAudioFrameObuMetadata =
     ::iamf_tools_cli_proto::AudioFrameObuMetadata;
 using ProtoChannelMetadata = ::iamf_tools_cli_proto::ChannelMetadata;
 using ProtoChannelLabel = ::iamf_tools_cli_proto::ChannelLabel;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 // Helper function to make an AudioElementWithData.
 AudioElementWithData MakeAudioElement(
@@ -101,7 +103,7 @@ TEST(CreateAudioElementIdToDemixingMetadata,
   *user_metadata.add_audio_frame_metadata() =
       MakeAudioFrameObuMetadata(user_id, {});
   const DecodedUleb128 audio_element_id = 1;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   audio_elements.emplace(audio_element_id, MakeAudioElement(audio_element_id));
 
   absl::StatusOr<absl::flat_hash_map<
@@ -119,7 +121,7 @@ TEST(CreateAudioElementIdToDemixingMetadata, MustHaveConvertibleLabels) {
   *user_metadata.add_audio_frame_metadata() = MakeAudioFrameObuMetadata(
       element_id, {{1, ProtoChannelLabel::CHANNEL_LABEL_L_2},
                    {2, ProtoChannelLabel::CHANNEL_LABEL_L_2}});
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   audio_elements.emplace(element_id, MakeAudioElement(element_id));
 
   absl::StatusOr<absl::flat_hash_map<
@@ -137,7 +139,7 @@ TEST(CreateAudioElementIdToDemixingMetadata, SucceedsWithValidInputs) {
   *user_metadata.add_audio_frame_metadata() = MakeAudioFrameObuMetadata(
       element_id, {{1, ProtoChannelLabel::CHANNEL_LABEL_L_2},
                    {2, ProtoChannelLabel::CHANNEL_LABEL_R_2}});
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   audio_elements.emplace(element_id, MakeAudioElement(element_id));
 
   absl::StatusOr<absl::flat_hash_map<
@@ -155,7 +157,7 @@ TEST(CreateAudioElementIdToDemixingMetadata,
   *user_metadata.add_audio_frame_metadata() = MakeAudioFrameObuMetadata(
       element_id, {{1, ProtoChannelLabel::CHANNEL_LABEL_L_2},
                    {2, ProtoChannelLabel::CHANNEL_LABEL_R_2}});
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   // Arbitrary values in the `substream_id_to_labels` and `label_to_output_gain`
   SubstreamIdLabelsMap substream_id_to_labels = {
       {34, {ChannelLabel::Label::kA11}},

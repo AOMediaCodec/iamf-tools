@@ -12,13 +12,10 @@
 #ifndef CLI_PROFILE_FILTER_H_
 #define CLI_PROFILE_FILTER_H_
 
-#include <cstdint>
-
-#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
@@ -57,7 +54,7 @@ class ProfileFilter {
    *         one of the input profile. A specific error otherwise.
    */
   static absl::Status FilterProfilesForMixPresentation(
-      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+      const DescriptorObus::AudioElementsById& audio_elements,
       const MixPresentationObu& mix_presentation_obu,
       absl::flat_hash_set<ProfileVersion>& profile_versions);
 };

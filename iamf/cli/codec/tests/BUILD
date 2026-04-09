@@ -68,6 +68,7 @@ cc_test(
     srcs = ["encoder_base_test.cc"],
     deps = [
         "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli/codec:encoder_base",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:audio_frame",
@@ -75,7 +76,6 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:substream_channel_count",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
@@ -177,6 +177,7 @@ cc_test(
     srcs = ["opus_encoder_test.cc"],
     deps = [
         ":encoder_test_base",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli/codec:opus_encoder",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:codec_config",
@@ -184,7 +185,6 @@ cc_test(
         "//iamf/obu:substream_channel_count",
         "//iamf/obu:types",
         "//iamf/obu/decoder_config:opus_decoder_config",
-        "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
         "@libopus",

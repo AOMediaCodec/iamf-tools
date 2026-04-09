@@ -19,9 +19,9 @@
 #include "absl/log/absl_check.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_element.pb.h"
@@ -36,12 +36,13 @@
 #include "iamf/cli/user_metadata_builder/audio_frame_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 constexpr DecodedUleb128 kCodecConfigId = 99;
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -75,8 +76,7 @@ void InitializeAudioFrameGenerator(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>&
         param_definitions,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements,
     std::unique_ptr<GlobalTimingModule>& global_timing_module,
     std::unique_ptr<ParametersManager>& parameters_manager,
     std::unique_ptr<AudioFrameGenerator>& audio_frame_generator) {
@@ -126,8 +126,8 @@ static void BM_AddSamples(benchmark::State& state) {
   ConfigureUserMetadata(user_metadata, num_samples_per_frame);
   const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
+  CodecConfigsById codec_config_obus = {};
+  AudioElementsById audio_elements = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
   std::unique_ptr<AudioFrameGenerator> audio_frame_generator;

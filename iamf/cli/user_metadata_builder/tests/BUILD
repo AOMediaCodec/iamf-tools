@@ -32,12 +32,11 @@ cc_test(
     name = "codec_config_obu_metadata_builder_test",
     srcs = ["codec_config_obu_metadata_builder_test.cc"],
     deps = [
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto_conversion/proto_to_obu:codec_config_generator",
         "//iamf/cli/user_metadata_builder:codec_config_obu_metadata_builder",
-        "//iamf/obu:codec_config",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
         "@protobuf",

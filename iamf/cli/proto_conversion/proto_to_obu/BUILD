@@ -31,6 +31,7 @@ cc_library(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli:obu_with_data_generator",
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
@@ -66,6 +67,7 @@ cc_library(
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:parameters_manager",
         "//iamf/cli:substream_frames",
@@ -109,6 +111,7 @@ cc_library(
     hdrs = ["codec_config_generator.h"],
     deps = [
         ":audio_frame_generator",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto_conversion:lookup_tables",
         "//iamf/cli/proto_conversion:proto_utils",
@@ -121,7 +124,6 @@ cc_library(
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@abseil-cpp//absl/base:no_destructor",
-        "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
@@ -164,6 +166,7 @@ cc_library(
     srcs = ["mix_presentation_generator.cc"],
     hdrs = ["mix_presentation_generator.h"],
     deps = [
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli/proto:element_gain_offset_config_cc_proto",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
@@ -203,10 +206,10 @@ cc_library(
     srcs = ["parameter_block_generator.cc"],
     hdrs = ["parameter_block_generator.h"],
     deps = [
-        "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:cli_util",
         "//iamf/cli:demixing_module",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli:recon_gain_generator",

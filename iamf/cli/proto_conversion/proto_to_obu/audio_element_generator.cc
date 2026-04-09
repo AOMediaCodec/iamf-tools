@@ -26,6 +26,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
@@ -673,8 +674,8 @@ void LogAudioElement(const AudioElementWithData& audio_element) {
 }  // namespace
 
 absl::Status AudioElementGenerator::Generate(
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_configs,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
+    const DescriptorObus::CodecConfigsById& codec_configs,
+    DescriptorObus::AudioElementsById& audio_elements) {
   for (const auto& audio_element_metadata : audio_element_metadata_) {
     // Ensure the ID is unique before generating data for it.
     if (audio_elements.contains(audio_element_metadata.audio_element_id())) {

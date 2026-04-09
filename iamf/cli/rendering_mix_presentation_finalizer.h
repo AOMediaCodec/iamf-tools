@@ -26,8 +26,8 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -169,9 +169,9 @@ class RenderingMixPresentationFinalizer {
       const RendererFactoryBase* absl_nullable renderer_factory,
       const LoudnessCalculatorFactoryBase* absl_nullable
           loudness_calculator_factory,
-      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+      const DescriptorObus::AudioElementsById& audio_elements,
       const SampleProcessorFactory& sample_processor_factory,
-      const std::list<MixPresentationObu>& mix_presentation_obus);
+      const DescriptorObus::MixPresentationObus& mix_presentation_obus);
 
   /*!\brief Move constructor. */
   RenderingMixPresentationFinalizer(RenderingMixPresentationFinalizer&&) =
@@ -249,8 +249,8 @@ class RenderingMixPresentationFinalizer {
    * \return List of finalized OBUs with calculated loudness information. A
    *         specific status on failure.
    */
-  absl::StatusOr<std::list<MixPresentationObu>> GetFinalizedMixPresentationObus(
-      bool validate_loudness);
+  absl::StatusOr<DescriptorObus::MixPresentationObus>
+  GetFinalizedMixPresentationObus(bool validate_loudness);
 
  private:
   enum State {
@@ -272,7 +272,7 @@ class RenderingMixPresentationFinalizer {
       absl::flat_hash_map<DecodedUleb128,
                           std::vector<SubmixRenderingMetadata>>&&
           mix_presentation_id_to_sub_mix_rendering_metadata,
-      std::list<MixPresentationObu>&& mix_presentation_obus)
+      DescriptorObus::MixPresentationObus&& mix_presentation_obus)
       : mix_presentation_id_to_sub_mix_rendering_metadata_(
             std::move(mix_presentation_id_to_sub_mix_rendering_metadata)),
         mix_presentation_obus_(std::move(mix_presentation_obus)) {}
@@ -285,7 +285,7 @@ class RenderingMixPresentationFinalizer {
       mix_presentation_id_to_sub_mix_rendering_metadata_;
 
   // Mix Presentation OBUs to render and measure the loudness of.
-  std::list<MixPresentationObu> mix_presentation_obus_;
+  DescriptorObus::MixPresentationObus mix_presentation_obus_;
 };
 
 }  // namespace iamf_tools

@@ -33,6 +33,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_processor.h"
@@ -47,7 +48,6 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
@@ -97,10 +97,10 @@ struct DecodeSpecification {
  * \param sample_rate `sample_rate` of the OBU to create.
  * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */
-void AddLpcmCodecConfig(
-    DecodedUleb128 codec_config_id, uint32_t num_samples_per_frame,
-    uint8_t sample_size, uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+void AddLpcmCodecConfig(DecodedUleb128 codec_config_id,
+                        uint32_t num_samples_per_frame, uint8_t sample_size,
+                        uint32_t sample_rate,
+                        DescriptorObus::CodecConfigsById& codec_config_obus);
 
 /*!\brief Adds a configurable LPCM `CodecConfigObu` to the output argument.
  *
@@ -110,7 +110,7 @@ void AddLpcmCodecConfig(
  */
 void AddLpcmCodecConfigWithIdAndSampleRate(
     uint32_t codec_config_id, uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+    DescriptorObus::CodecConfigsById& codec_config_obus);
 
 /*!\brief Adds a configurable Opus `CodecConfigObu` to the output argument.
  *
@@ -119,10 +119,9 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
  * \param sample_rate `sample_rate` of the OBU to create.
  * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */
-void AddOpusCodecConfig(
-    uint32_t codec_config_id, uint32_t num_samples_per_frame,
-    uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+void AddOpusCodecConfig(uint32_t codec_config_id,
+                        uint32_t num_samples_per_frame, uint32_t sample_rate,
+                        DescriptorObus::CodecConfigsById& codec_config_obus);
 
 /*!\brief Adds a configurable Opus `CodecConfigObu` to the output argument.
  *
@@ -131,7 +130,7 @@ void AddOpusCodecConfig(
  */
 void AddOpusCodecConfigWithId(
     uint32_t codec_config_id,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+    DescriptorObus::CodecConfigsById& codec_config_obus);
 
 /*!\brief Adds a configurable Flac `CodecConfigObu` to the output argument.
  *
@@ -141,10 +140,10 @@ void AddOpusCodecConfigWithId(
  * \param sample_rate Sample rate in Hz of the OBU to create.
  * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */
-void AddFlacCodecConfig(
-    uint32_t codec_config_id, uint32_t num_samples_per_frame,
-    uint8_t sample_size, uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+void AddFlacCodecConfig(uint32_t codec_config_id,
+                        uint32_t num_samples_per_frame, uint8_t sample_size,
+                        uint32_t sample_rate,
+                        DescriptorObus::CodecConfigsById& codec_config_obus);
 
 /*!\brief Adds a configurable Flac `CodecConfigObu` to the output argument.
  *
@@ -153,7 +152,7 @@ void AddFlacCodecConfig(
  */
 void AddFlacCodecConfigWithId(
     uint32_t codec_config_id,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+    DescriptorObus::CodecConfigsById& codec_config_obus);
 
 /*!\brief Adds a configurable AAC `CodecConfigObu` to the output argument.
  *
@@ -165,7 +164,7 @@ void AddFlacCodecConfigWithId(
 void AddAacCodecConfig(
     uint32_t codec_config_id, uint32_t num_samples_per_frame,
     AudioSpecificConfig::SampleFrequencyIndex sample_frequency_index,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+    DescriptorObus::CodecConfigsById& codec_config_obus);
 
 /*!\brief Adds a configurable ambisonics `AudioElementObu` to the output.
  *
@@ -178,8 +177,8 @@ void AddAacCodecConfig(
 void AddAmbisonicsMonoAudioElementWithSubstreamIds(
     DecodedUleb128 audio_element_id, uint32_t codec_config_id,
     absl::Span<const DecodedUleb128> substream_ids,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements);
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
+    DescriptorObus::AudioElementsById& audio_elements);
 
 /*!\brief Adds a configurable scalable `AudioElementObu` to the output argument.
  *
@@ -193,8 +192,8 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
 void AddScalableAudioElementWithSubstreamIds(
     IamfInputLayout input_layout, DecodedUleb128 audio_element_id,
     uint32_t codec_config_id, absl::Span<const DecodedUleb128> substream_ids,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements);
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
+    DescriptorObus::AudioElementsById& audio_elements);
 
 /*!\brief Adds a configurable `MixPresentationObu` to the output argument.
  *
@@ -210,7 +209,7 @@ void AddMixPresentationObuWithAudioElementIds(
     DecodedUleb128 mix_presentation_id,
     const std::vector<DecodedUleb128>& audio_element_id,
     DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
-    std::list<MixPresentationObu>& output_mix_presentations);
+    DescriptorObus::MixPresentationObus& output_mix_presentations);
 
 /*!\brief Adds a configurable `MixPresentationObu` to the output argument.
  *
@@ -229,7 +228,7 @@ void AddMixPresentationObuWithConfigurableLayouts(
     DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
     const std::vector<LoudspeakersSsConventionLayout::SoundSystem>&
         sound_system_layouts,
-    std::list<MixPresentationObu>& output_mix_presentations);
+    DescriptorObus::MixPresentationObus& output_mix_presentations);
 
 /*!\brief Adds a configurable mix gain param definition to the output argument.
  *

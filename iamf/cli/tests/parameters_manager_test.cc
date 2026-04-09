@@ -11,21 +11,19 @@
  */
 #include "iamf/cli/parameters_manager.h"
 
-#include <cstdint>
 #include <memory>
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
@@ -41,6 +39,8 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::NotNull;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 using ::testing::Not;
 
@@ -119,8 +119,8 @@ class ParametersManagerTest : public testing::Test {
   }
 
  protected:
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus_;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_;
+  CodecConfigsById codec_config_obus_;
+  AudioElementsById audio_elements_;
   std::vector<ParameterBlockWithData> demixing_parameter_blocks_;
   std::vector<ParameterBlockWithData> recon_gain_parameter_blocks_;
 };
@@ -157,8 +157,7 @@ TEST_F(ParametersManagerTest, CreateWithReconGainParameterSucceeds) {
 // Creates and unwraps the `ParametersManager` from the `StatusOr`, to keep
 // tests more direct.
 std::unique_ptr<ParametersManager> CreateAndUnwrapParametersManager(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const AudioElementsById& audio_elements) {
   auto parameters_manager = ParametersManager::Create(audio_elements);
   EXPECT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
 

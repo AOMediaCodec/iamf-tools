@@ -25,7 +25,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -44,6 +44,9 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 using ::testing::Not;
 using ::testing::UnorderedElementsAre;
 
@@ -587,9 +590,8 @@ TEST(FilterProfilesForAudioElement,
 }
 
 void InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements,
+    MixPresentationObus& mix_presentation_obus) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
@@ -602,9 +604,8 @@ void InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
 }
 
 void InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements,
+    MixPresentationObus& mix_presentation_obus) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
@@ -618,9 +619,8 @@ void InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
 }
 
 void InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements,
+    MixPresentationObus& mix_presentation_obus) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
@@ -636,10 +636,9 @@ void InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
 }
 
 void InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-    int num_audio_elements,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    int num_audio_elements, CodecConfigsById& codec_config_obus,
+    AudioElementsById& audio_elements,
+    MixPresentationObus& mix_presentation_obus) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   // Create audio elements where the audio element IDs match the sole substream
@@ -657,13 +656,11 @@ void InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       mix_presentation_obus);
 }
 
-absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-MakeAudioElementsWithCodecConfigIds(
+AudioElementsById MakeAudioElementsWithCodecConfigIds(
     const absl::flat_hash_map<DecodedUleb128, DecodedUleb128>&
         audio_element_id_to_codec_config_id,
-    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        codec_config_obus) {
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+    const CodecConfigsById& codec_config_obus) {
+  AudioElementsById audio_elements;
   for (const auto& [audio_element_id, codec_config_id] :
        audio_element_id_to_codec_config_id) {
     const DecodedUleb128 substream_id = audio_elements.size();
@@ -676,7 +673,7 @@ MakeAudioElementsWithCodecConfigIds(
 
 MixPresentationObu MakeMixPresentationObuWithAudioElementIdsInSubmixes(
     const std::vector<std::vector<DecodedUleb128>>& audio_element_ids_in_submix,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements) {
+    const AudioElementsById& audio_elements) {
   MixGainParamDefinition common_mix_gain_param_definition;
   common_mix_gain_param_definition.parameter_id_ = kCommonMixGainParameterId;
   common_mix_gain_param_definition.parameter_rate_ =
@@ -721,10 +718,9 @@ MixPresentationObu MakeMixPresentationObuWithAudioElementIdsInSubmixes(
 }
 
 void InitializeDescriptorObusWithNSubmixes(
-    int num_submixes,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    int num_submixes, CodecConfigsById& codec_config_obus,
+    AudioElementsById& audio_elements,
+    MixPresentationObus& mix_presentation_obus) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
 
@@ -744,9 +740,9 @@ void InitializeDescriptorObusWithNSubmixes(
 
 TEST(FilterProfilesForMixPresentation,
      RemovesSimpleProfileWhenThereAreTwoSubmixes) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
                                         mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
@@ -761,7 +757,7 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      AllKnownProfilesDoNotSupportMultipleCodecConfigsInTheFirstSubmix) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
@@ -791,7 +787,7 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      SomeProfilesSupportMultipleCodecConfigsInDifferentSubmixes) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
@@ -1011,7 +1007,7 @@ TEST(FilterProfilesForAudioElement, SomeProfilesSupportTop5ChExpandedLayout) {
 
 TEST(FilterProfilesForMixPresentation,
      SomeProfilesSupportMultipleCodecConfigsWithDifferentBitDepths) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
   constexpr uint32_t kSecondCodecConfigBitDepth = 32;
   AddLpcmCodecConfig(
@@ -1046,9 +1042,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      SomeProfilesSupportHeadphonesRenderingModeBinauralHeadLocked) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   mix_presentation_obus.front()
@@ -1071,7 +1067,7 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesAllProfilesWhenCodecConfigsHaveDifferentSampleRates) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
   constexpr uint32_t kSecondCodecConfigSampleRate = 96000;
   AddLpcmCodecConfig(
@@ -1103,7 +1099,7 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesAllProfilesWhenCodecConfigsHaveDifferentSamplesPerFrame) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
   constexpr uint32_t kSecondCodecConfigNumSamplesPerFrame = 1024;
   AddLpcmCodecConfig(
@@ -1135,7 +1131,7 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesAllProfilesWhenThereAreTwoNonLpcmCodecConfigs) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
   AddFlacCodecConfig(
       kSecondCodecConfigId,
@@ -1167,7 +1163,7 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesAllProfilesWhenThereAreThreeCodecConfigs) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
@@ -1204,9 +1200,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      KeepsSimpleProfileWhenThereIsOnlyOneAudioElement) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
@@ -1221,9 +1217,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesSimpleProfileWhenThereAreMultipleAudioElements) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
@@ -1237,9 +1233,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesSimpleProfileWhenThereAreMoreThanSixteenChannels) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
@@ -1254,9 +1250,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(
     FilterProfilesForMixPresentation,
     RemovesSimpleProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   mix_presentation_obus.front()
@@ -1276,9 +1272,9 @@ TEST(
 
 TEST(FilterProfilesForMixPresentation,
      RemovesSimpleProfileWithReservedHeadphonesRenderingMode3) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   mix_presentation_obus.front()
@@ -1298,9 +1294,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesBaseProfileWhenThereAreTwoSubmixes) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
                                         mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
@@ -1314,9 +1310,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      KeepsBaseProfileWhenThereIsOnlyOneAudioElement) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
@@ -1330,9 +1326,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesBaseProfileWhenThereAreMoreThanEighteenChannels) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
@@ -1345,9 +1341,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesBaseProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   mix_presentation_obus.front()
@@ -1366,9 +1362,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesBaseProfileWithReservedHeadphonesRenderingMode3) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   mix_presentation_obus.front()
@@ -1387,9 +1383,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      RemovesBaseEnhancedProfileWhenThereAreTwoSubmixes) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
                                         mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
@@ -1404,9 +1400,9 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation, SomeProfilesSupportTwoSubmixes) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
                                         mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
@@ -1424,9 +1420,9 @@ TEST(FilterProfilesForMixPresentation, SomeProfilesSupportTwoSubmixes) {
 
 TEST(FilterProfilesForMixPresentation,
      RemovesAllKnownProfilesForThreeSubmixes) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusWithNSubmixes(3, codec_config_obus, audio_elements,
                                         mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
@@ -1442,9 +1438,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      KeepsBaseEnhancedProfileWhenThereAreTwoAudioElements) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
@@ -1458,9 +1454,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      KeepsBaseEnhancedProfileWhenThereIsOnlyOneAudioElement) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
@@ -1476,9 +1472,9 @@ TEST(FilterProfilesForMixPresentation,
 
 TEST(FilterProfilesForMixPresentation,
      KeepsBaseEnhancedProfileWithAFourthOrderAmbisonicsAudioElement) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
@@ -1495,9 +1491,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(FilterProfilesForMixPresentation,
      KeepsBaseEnhancedProfileWhenThereAreTwentyEightOrFewerAudioElements) {
   const int kNumAudioElements = 28;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       kNumAudioElements, codec_config_obus, audio_elements,
       mix_presentation_obus);
@@ -1515,9 +1511,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(FilterProfilesForMixPresentation,
      RemoveBaseEnhancedProfileWhenThereAreMoreThanTwentyEightAudioElements) {
   const int kNumAudioElements = 29;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       kNumAudioElements, codec_config_obus, audio_elements,
       mix_presentation_obus);
@@ -1535,9 +1531,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(
     FilterProfilesForMixPresentation,
     RemovesBaseEnhancedProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   mix_presentation_obus.front()
@@ -1558,9 +1554,9 @@ TEST(
 
 TEST(FilterProfilesForMixPresentation,
      RemovesBaseEnhancedProfileWithReservedHeadphonesRenderingMode3) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
   mix_presentation_obus.front()
@@ -1582,9 +1578,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(FilterProfilesForMixPresentation,
      RemovesAllKnownProfilesThatDoNotMeetRequirements) {
   const int kNumAudioElements = 28;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       kNumAudioElements, codec_config_obus, audio_elements,
       mix_presentation_obus);
@@ -1602,9 +1598,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(FilterProfilesForMixPresentation,
      KeepsBaseAdvancedProfileWhenThereAreEighteenOrFewerAudioElements) {
   const int kNumAudioElements = 18;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       kNumAudioElements, codec_config_obus, audio_elements,
       mix_presentation_obus);
@@ -1622,9 +1618,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(FilterProfilesForMixPresentation,
      KeepsAdvanced1ProfileWhenThereAreEighteenOrFewerAudioElements) {
   const int kNumAudioElements = 18;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       kNumAudioElements, codec_config_obus, audio_elements,
       mix_presentation_obus);
@@ -1642,9 +1638,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(FilterProfilesForMixPresentation,
      KeepsAdvanced2ProfileWhenThereAreTwentyEightOrFewerAudioElements) {
   const int kNumAudioElements = 28;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       kNumAudioElements, codec_config_obus, audio_elements,
       mix_presentation_obus);
@@ -1662,9 +1658,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(FilterProfilesForMixPresentation,
      RemovesAllKnownProfilesWhenThereAreMoreThanTwentyEightAudioElements) {
   const int kNumAudioElements = 29;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       kNumAudioElements, codec_config_obus, audio_elements,
       mix_presentation_obus);
@@ -1682,9 +1678,9 @@ TEST(FilterProfilesForMixPresentation,
 TEST(FilterProfilesForMixPresentation,
      RemovesAllKnownProfilesWhenThereIsAnUnknownAudioElement) {
   constexpr DecodedUleb128 kUnknownAudioElementId = 1000;
-  const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
+  const AudioElementsById kNoAudioElements;
   // Omit adding an audio element.
-  std::list<MixPresentationObu> mix_presentation_obus;
+  MixPresentationObus mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kUnknownAudioElementId},
       kCommonMixGainParameterId, kCommonMixGainParameterRate,

@@ -13,7 +13,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <list>
 #include <optional>
 #include <string>
 #include <utility>
@@ -26,6 +25,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/element_gain_offset_config.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
@@ -690,7 +690,7 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
 
 absl::Status MixPresentationGenerator::Generate(
     bool append_build_information_tag,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    DescriptorObus::MixPresentationObus& mix_presentation_obus) {
   for (const auto& mix_presentation_metadata : mix_presentation_metadata_) {
     struct {
       DecodedUleb128 mix_presentation_id;

@@ -14,9 +14,9 @@
 #define CLI_PROTO_CONVERSION_PROTO_TO_OBU_MIX_PRESENTATION_GENERATOR_H_
 
 #include <cstdint>
-#include <list>
 
 #include "absl/status/status.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/mix_presentation.h"
@@ -98,8 +98,9 @@ class MixPresentationGenerator {
    * \param mix_presentation_obus Output list of OBUs.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Generate(bool append_build_information_tag,
-                        std::list<MixPresentationObu>& mix_presentation_obus);
+  absl::Status Generate(
+      bool append_build_information_tag,
+      DescriptorObus::MixPresentationObus& mix_presentation_obus);
 
  private:
   const ::google::protobuf::RepeatedPtrField<

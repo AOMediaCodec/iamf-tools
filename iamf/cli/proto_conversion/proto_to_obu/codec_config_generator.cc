@@ -17,10 +17,10 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
@@ -316,8 +316,8 @@ absl::Status GenerateAacDecoderConfig(
   return absl::OkStatus();
 }
 
-void LogCodecConfigObus(
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+void LogCodecConfigsById(
+    const DescriptorObus::CodecConfigsById& codec_config_obus) {
   for (const auto& [codec_config_id, codec_config_obu] : codec_config_obus) {
     codec_config_obu.PrintObu();
   }
@@ -339,7 +339,7 @@ absl::Status OverrideCodecDelay(
 }  // namespace
 
 absl::Status CodecConfigGenerator::Generate(
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+    DescriptorObus::CodecConfigsById& codec_config_obus) {
   // Codec Config-related parameters.
   for (auto const& codec_config_metadata : codec_config_metadata_) {
     // Common section for all codecs.
@@ -401,7 +401,7 @@ absl::Status CodecConfigGenerator::Generate(
                               *std::move(obu));
   }
 
-  LogCodecConfigObus(codec_config_obus);
+  LogCodecConfigsById(codec_config_obus);
   return absl::OkStatus();
 }
 

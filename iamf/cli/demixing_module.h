@@ -28,6 +28,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -143,8 +144,7 @@ class DemixingModule {
    */
   static absl::flat_hash_map<DecodedUleb128, ReconstructionConfig>
   CreateIdToReconstructionConfig(
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements);
+      const DescriptorObus::AudioElementsById& audio_elements);
 
   /*!\brief Initializes for reconstruction (demixing) the input audio elements.
    *

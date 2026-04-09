@@ -34,7 +34,6 @@
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
@@ -190,21 +189,19 @@ class ObuProcessor {
    *
    * \return View of the Codec Config OBUs.
    */
-  const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-  GetCodecConfigObusView() const;
+  const DescriptorObus::CodecConfigsById& GetCodecConfigsByIdView() const;
 
   /*!\brief Gets a view of the Audio Element with metadata.
    *
    * \return View of the Audio Elements with metadata.
    */
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-  GetAudioElementsView() const;
+  const DescriptorObus::AudioElementsById& GetAudioElementsView() const;
 
   /*!\brief Gets a view of the Mix Presentation OBUs.
    *
    * \return View of the Mix Presentation OBUs.
    */
-  const std::list<MixPresentationObu>& GetMixPresentationObusView() const;
+  const DescriptorObus::MixPresentationObus& GetMixPresentationObusView() const;
 
  private:
   /*!\brief Models required to render audio for playback.
@@ -242,8 +239,7 @@ class ObuProcessor {
    */
   static absl::StatusOr<RenderingModels>
   ConfigureSimplifiedAudioProcessingPipeline(
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements,
+      const DescriptorObus::AudioElementsById& audio_elements,
       const MixPresentationObu& simplified_mix_presentation);
 
   /*!\brief Performs internal initialization of the OBU processor.

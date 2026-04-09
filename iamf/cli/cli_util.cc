@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <list>
 #include <string>
 #include <utility>
 #include <variant>
@@ -28,11 +27,11 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
@@ -97,9 +96,8 @@ absl::Status FillReconGainAuxiliaryData(
 }  // namespace
 
 absl::Status CollectAndValidateParamDefinitions(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus,
     absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
         param_definition_variants) {
   param_definition_variants.clear();
@@ -233,7 +231,7 @@ absl::Status GetCommonSampleRateAndBitDepth(
 }
 
 absl::Status GetCommonSamplesPerFrame(
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
     uint32_t& common_samples_per_frame) {
   bool first = true;
   for (const auto& [unused_id, codec_config_obu] : codec_config_obus) {

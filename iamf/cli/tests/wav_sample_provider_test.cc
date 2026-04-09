@@ -23,12 +23,12 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
@@ -36,6 +36,8 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 using enum ChannelLabel::Label;
 using testing::Pointwise;
 
@@ -73,13 +75,12 @@ void FillStereoDataForAudioElementId(
   channel_metadata->set_channel_label(CHANNEL_LABEL_R_2);
 }
 
-void InitializeTestData(
-    const uint32_t sample_rate,
-    iamf_tools_cli_proto::UserMetadata& user_metadata,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
+void InitializeTestData(const uint32_t sample_rate,
+                        iamf_tools_cli_proto::UserMetadata& user_metadata,
+                        AudioElementsById& audio_elements) {
   FillStereoDataForAudioElementId(kAudioElementId,
                                   *user_metadata.add_audio_frame_metadata());
-  static absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  static CodecConfigsById codec_config_obus;
   codec_config_obus.clear();
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, sample_rate,
                                         codec_config_obus);
@@ -95,7 +96,7 @@ std::string GetInputWavDir() {
 
 TEST(Create, SucceedsForStereoInputWithChannelMetadatas) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
 
   EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
@@ -105,7 +106,7 @@ TEST(Create, SucceedsForStereoInputWithChannelMetadatas) {
 
 TEST(Create, FailsWhenUserMetadataContainsDuplicateAudioElementIds) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
   FillStereoDataForAudioElementId(kAudioElementId,
                                   *user_metadata.add_audio_frame_metadata());
@@ -117,8 +118,7 @@ TEST(Create, FailsWhenUserMetadataContainsDuplicateAudioElementIds) {
 
 TEST(Create, FailsWhenMatchingAudioElementObuIsMissing) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kNoAudioElements = {};
+  const AudioElementsById kNoAudioElements = {};
   FillStereoDataForAudioElementId(kAudioElementId,
                                   *user_metadata.add_audio_frame_metadata());
 
@@ -129,7 +129,7 @@ TEST(Create, FailsWhenMatchingAudioElementObuIsMissing) {
 
 TEST(Create, FailsWhenCodecConfigIsMissing) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
 
   // Corrupt the audio element by clearing the codec config pointer.
@@ -143,7 +143,7 @@ TEST(Create, FailsWhenCodecConfigIsMissing) {
 
 TEST(Create, FailsForUnknownLabels) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
   user_metadata.mutable_audio_frame_metadata(0)
       ->mutable_channel_metadatas(0)
@@ -157,7 +157,7 @@ TEST(Create, FailsForUnknownLabels) {
 TEST(Create, SucceedsForDuplicateChannelMetadatasChannelIds) {
   constexpr uint32_t kDuplicateChannelId = 0;
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
   user_metadata.mutable_audio_frame_metadata(0)
       ->mutable_channel_metadatas(0)
@@ -174,7 +174,7 @@ TEST(Create, SucceedsForDuplicateChannelMetadatasChannelIds) {
 TEST(Create, FailsForDuplicateChannelMetadatasChannelLabels) {
   constexpr auto kDuplicateLabel = iamf_tools_cli_proto::CHANNEL_LABEL_L_2;
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
   user_metadata.mutable_audio_frame_metadata(0)
       ->mutable_channel_metadatas(0)
@@ -190,7 +190,7 @@ TEST(Create, FailsForDuplicateChannelMetadatasChannelLabels) {
 
 TEST(Create, FailsForChannelMetadataChannelIdTooLarge) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
   // Channel IDs are indexed from zero; a stereo wav file must not have a
   // channel ID greater than 1.
@@ -207,7 +207,7 @@ TEST(Create, FailsForChannelMetadataChannelIdTooLarge) {
 
 TEST(Create, FailsForBitDepthLowerThanFile) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
 
   // Try to load a 24-bit WAV file with a codec config whose bit depth is 16.
@@ -221,7 +221,7 @@ TEST(Create, FailsForBitDepthLowerThanFile) {
 
 TEST(Create, FailsForMismatchingSampleRates) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
 
   // Set the sample rate of the codec config to a different one than the WAV
   // file, causing the `Initialize()` to fail.
@@ -244,7 +244,7 @@ void ReadOneFrameExpectFinished(WavSampleProvider& wav_sample_provider,
 
 TEST(WavSampleProviderTest, ReadFrameSucceedsWithChannelMetadatas) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
 
   auto wav_sample_provider = WavSampleProvider::Create(
@@ -265,7 +265,7 @@ TEST(WavSampleProviderTest, ReadFrameSucceedsWithChannelMetadatas) {
 
 TEST(WavSampleProviderTest, ReadFrameFailsWithWrongAudioElementId) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
 
   auto wav_sample_provider = WavSampleProvider::Create(

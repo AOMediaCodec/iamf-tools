@@ -21,9 +21,9 @@
 #include "absl/log/absl_check.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -31,7 +31,6 @@
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -40,6 +39,9 @@ namespace {
 
 using enum ChannelLabel::Label;
 using enum LoudspeakersSsConventionLayout::SoundSystem;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 constexpr uint32_t kAudioElementId = 59;
 constexpr uint32_t kCodecConfigId = 42;
@@ -78,10 +80,9 @@ static RenderingMixPresentationFinalizer
 CreateRenderingMixPresentationFinalizer(
     bool ambisonics_input,
     iamf_tools::LoudspeakersSsConventionLayout::SoundSystem sound_system_layout,
-    int num_ticks,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    int num_ticks, CodecConfigsById& codec_config_obus,
+    AudioElementsById& audio_elements,
+    MixPresentationObus& mix_presentation_obus) {
   AddLpcmCodecConfig(kCodecConfigId, num_ticks, kBitDepth, kSampleRate,
                      codec_config_obus);
   if (ambisonics_input) {
@@ -118,9 +119,9 @@ static void BM_PushTemporalUnit(
       CreateInput(ambisonics_input, num_ticks);
 
   // Create a rendering mix presentation finalizer using prerequisite OBUs.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
   auto finalizer = CreateRenderingMixPresentationFinalizer(
       ambisonics_input, sound_system_layout, num_ticks, codec_config_obus,
       audio_elements, mix_presentation_obus);

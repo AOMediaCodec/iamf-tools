@@ -23,8 +23,8 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
@@ -37,8 +37,7 @@ namespace iamf_tools {
 namespace {
 
 absl::Status InitializeInternal(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
         param_definition_variants,
     auto& audio_frame_timing_data, auto& parameter_block_timing_data) {
@@ -91,8 +90,7 @@ absl::Status InitializeInternal(
 }  // namespace
 
 std::unique_ptr<GlobalTimingModule> GlobalTimingModule::Create(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
         param_definition_variants) {
   absl::flat_hash_map<DecodedUleb128, TimingData> audio_frame_timing_data;

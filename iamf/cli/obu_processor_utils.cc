@@ -12,10 +12,10 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/rendering_config.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -49,8 +49,7 @@ bool IsLayoutBinaural(const Layout& layout) {
 // has the last layer as the specified loudspeaker layout.
 bool HasOneAudioElementWithLayout(
     const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout) {
   if (sub_mix_audio_elements.size() != 1) {
     return false;
@@ -88,8 +87,7 @@ bool MixPresentationContainsLayout(const MixPresentationObu& candidate_mix,
 
 bool HasOneStereoLayoutAndAudioElement(
     const MixPresentationObu& mix_presentation,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const DescriptorObus::AudioElementsById& audio_elements) {
   if (mix_presentation.sub_mixes_.empty()) {
     return false;
   }
@@ -109,8 +107,7 @@ bool HasOneStereoLayoutAndAudioElement(
 
 MixPresentationObu* FindPreferredStereoLoudspeakerMixPresentation(
     const std::list<MixPresentationObu*>& supported_mix_presentations,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const DescriptorObus::AudioElementsById& audio_elements) {
   // 2.2.1: Select the first matching mix with all of the following true:
   //        - Exactly one stereo loudness layout.
   //        - Exactly one stereo audio element.
@@ -141,8 +138,7 @@ MixPresentationObu* FindPreferredStereoLoudspeakerMixPresentation(
 
 MixPresentationObu* FindPreferredBinauralMixPresentation(
     const std::list<MixPresentationObu*>& supported_mix_presentations,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const DescriptorObus::AudioElementsById& audio_elements) {
   // 2.1.1: Select the mix with exactly one audio_element_id where its
   //        loudspeaker_layout is BINAURAL.
   auto* candidate_mix = FindMixPresentationWithCondition(
@@ -181,8 +177,7 @@ MixPresentationObu* FindPreferredBinauralMixPresentation(
 // TODO(b/438178739): Find a different way of rendering requested layouts not in
 // the bitstream.
 absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const std::list<MixPresentationObu*>& supported_mix_presentations,
     const std::optional<Layout>& desired_layout,
     std::optional<uint32_t> desired_mix_presentation_id) {

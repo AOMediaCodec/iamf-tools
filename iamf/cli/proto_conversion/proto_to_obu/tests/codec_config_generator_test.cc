@@ -18,12 +18,12 @@
 #include <variant>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -43,6 +43,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::Not;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
 using iamf_tools_cli_proto::CodecConfigObuMetadata;
 
@@ -71,8 +72,7 @@ void InitMetadataForLpcm(
       codec_config_metadata.Add());
 }
 
-void InitExpectedObuForLpcm(
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
+void InitExpectedObuForLpcm(CodecConfigsById& expected_obus) {
   constexpr uint32_t kNumSamplesPerFrame = 64;
   constexpr uint8_t kSampleSize = 16;
   constexpr uint32_t kSampleRate = 16000;
@@ -108,8 +108,7 @@ void InitMetadataForOpus(
       codec_config_metadata.Add()));
 }
 
-void InitExpectedObuForOpus(
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
+void InitExpectedObuForOpus(CodecConfigsById& expected_obus) {
   auto codec_config = CodecConfigObu::Create(
       ObuHeader(), kCodecConfigId,
       {.codec_id = CodecConfig::CodecConfig::kCodecIdOpus,
@@ -163,8 +162,7 @@ void InitMetadataForAac(
       codec_config_metadata.Add()));
 }
 
-void InitExpectedObuForAac(
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
+void InitExpectedObuForAac(CodecConfigsById& expected_obus) {
   auto codec_config = CodecConfigObu::Create(
       ObuHeader(), kCodecConfigId,
       {.codec_id = CodecConfig::kCodecIdAacLc,
@@ -214,10 +212,9 @@ class CodecConfigGeneratorTest : public testing::Test {
  public:
   CodecConfigGeneratorTest() = default;
 
-  absl::StatusOr<absl::flat_hash_map<uint32_t, CodecConfigObu>>
-  InitAndGenerate() {
+  absl::StatusOr<CodecConfigsById> InitAndGenerate() {
     // Generate the OBUs.
-    absl::flat_hash_map<uint32_t, CodecConfigObu> output_obus;
+    CodecConfigsById output_obus;
     CodecConfigGenerator generator(codec_config_metadata_);
 
     if (const auto status = generator.Generate(output_obus); status.ok()) {
@@ -231,10 +228,10 @@ class CodecConfigGeneratorTest : public testing::Test {
   ::google::protobuf::RepeatedPtrField<
       iamf_tools_cli_proto::CodecConfigObuMetadata>
       codec_config_metadata_;
-  absl::flat_hash_map<uint32_t, CodecConfigObu> expected_obus_;
+  CodecConfigsById expected_obus_;
 };
 
-TEST_F(CodecConfigGeneratorTest, SucceedsGeneratingNoCodecConfigObus) {
+TEST_F(CodecConfigGeneratorTest, SucceedsGeneratingNoCodecConfigsById) {
   codec_config_metadata_.Clear();
 
   const auto output_obus = InitAndGenerate();
@@ -798,7 +795,7 @@ TEST(Generate, InvalidForUnexpectedSamplingFrequency) {
       ->set_sampling_frequency(9876);
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
 
   EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
@@ -820,7 +817,7 @@ TEST(Generate,
       ->set_sampling_frequency(48000);
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   const auto& audio_specific_config =
@@ -846,7 +843,7 @@ TEST(Generate, FillsTopLevelFieldsForFlac) {
   CodecConfigMetadatas codec_config_metadatas;
   FillMetadataForFlac(*codec_config_metadatas.Add());
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
@@ -860,7 +857,7 @@ TEST(Generate, FillsStreamInfoForFlac) {
   CodecConfigMetadatas codec_config_metadatas;
   FillMetadataForFlac(*codec_config_metadatas.Add());
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
@@ -910,7 +907,7 @@ TEST(Generate, IamfFlacFixedFieldsMayBeIncluded) {
       FlacStreamInfoLooseConstraints::kMd5Signature.size());
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   ASSERT_TRUE(output_obus.contains(kCodecConfigId));
@@ -959,7 +956,7 @@ TEST(Generate, ObeysInvalidFlacStreamInfo) {
                                           kInvalidMd5Signature.size());
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   ASSERT_TRUE(output_obus.contains(kCodecConfigId));
@@ -1000,7 +997,7 @@ TEST(Generate, ConfiguresFlacWithExtraBlocks) {
                         .payload = std::vector<uint8_t>({'a', 'b', 'c'})};
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   const auto& decoder_config = std::get<FlacDecoderConfig>(
@@ -1023,7 +1020,7 @@ TEST(Generate, IgnoresDeprecatedMetadataDataBlockLength) {
       ->set_metadata_data_block_length(std::numeric_limits<uint32_t>::max());
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   const auto& decoder_config = std::get<FlacDecoderConfig>(
@@ -1043,7 +1040,7 @@ TEST(Generate, IgnoresDeprecatedLastMetadataBlockFlag) {
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   const auto& decoder_config = std::get<FlacDecoderConfig>(
@@ -1064,7 +1061,7 @@ TEST(Generate, FailsWhenFlacMd5SignatureIsNotSixteenBytes) {
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
@@ -1086,7 +1083,7 @@ TEST(Generate, InvalidUnknownBlockType) {
           ->add_metadata_blocks()));
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
@@ -1110,7 +1107,7 @@ TEST(Generate, InvalidMissingGenericBlock) {
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
@@ -1122,7 +1119,7 @@ TEST(Generate, InvalidFlacDecoderConfigIsMissing) {
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
@@ -1143,7 +1140,7 @@ TEST(Generate, InvalidMissingStreamInfoBlock) {
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigsById output_obus;
   EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 

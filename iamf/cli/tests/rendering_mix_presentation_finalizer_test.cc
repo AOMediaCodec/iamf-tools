@@ -35,6 +35,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -68,6 +69,10 @@ using ::testing::IsEmpty;
 using ::testing::Not;
 using ::testing::Return;
 using enum ChannelLabel::Label;
+
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 using absl::StatusCode::kFailedPrecondition;
 
@@ -289,9 +294,9 @@ class FinalizerTest : public ::testing::Test {
 
  protected:
   // Prerequisite OBUs.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs_;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_;
-  std::list<MixPresentationObu> obus_to_finalize_;
+  CodecConfigsById codec_configs_;
+  AudioElementsById audio_elements_;
+  MixPresentationObus obus_to_finalize_;
   std::list<ParameterBlockWithData> parameter_blocks_;
 
   // Finalizer create settings. Default to simplistic inputs that disable
@@ -309,7 +314,7 @@ class FinalizerTest : public ::testing::Test {
 
   std::vector<IdLabeledFrameMap> ordered_labeled_frames_;
 
-  std::list<MixPresentationObu> finalized_obus_;
+  MixPresentationObus finalized_obus_;
 };
 
 // =Tests that the create function does not crash with various modes disabled.=

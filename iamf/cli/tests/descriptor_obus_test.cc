@@ -20,7 +20,7 @@ namespace {
 using ::testing::IsEmpty;
 using ::testing::Pointee;
 
-TEST(DescriptorObusConstructor, CodecConfigObusIsValidAndEmpty) {
+TEST(DescriptorObusConstructor, CodecConfigsByIdIsValidAndEmpty) {
   DescriptorObus descriptor_obus;
 
   EXPECT_THAT(descriptor_obus.codec_config_obus, Pointee(IsEmpty()));

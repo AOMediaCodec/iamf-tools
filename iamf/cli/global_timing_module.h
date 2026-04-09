@@ -20,7 +20,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
@@ -37,8 +37,7 @@ class GlobalTimingModule {
    * \return `GlobalTimingModule` on success. Null pointer on failure.
    */
   static std::unique_ptr<GlobalTimingModule> Create(
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements,
+      const DescriptorObus::AudioElementsById& audio_elements,
       const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
           param_definition_variants);
 

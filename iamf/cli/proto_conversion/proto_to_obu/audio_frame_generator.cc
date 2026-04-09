@@ -46,6 +46,7 @@
 #include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/codec/opus_encoder.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
@@ -643,8 +644,7 @@ AudioFrameGenerator::Create(
         iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadatas,
     const ::google::protobuf::RepeatedPtrField<
         iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadatas,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const DemixingModule& demixing_module,
     ParametersManager& parameters_manager,
     GlobalTimingModule& global_timing_module) {

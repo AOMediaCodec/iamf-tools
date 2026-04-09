@@ -14,7 +14,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <list>
 #include <memory>
 #include <utility>
 
@@ -48,7 +47,7 @@ constexpr size_t kSmallestAcceptedCodecConfigSize = 8;
 // `codec_config_obu_map`, using the `codec_config_id` as the unique key.
 absl::Status GetAndStoreCodecConfigObu(
     const ObuHeader& header, int64_t payload_size,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obu_map,
+    DescriptorObus::CodecConfigsById& codec_config_obu_map,
     ReadBitBuffer& read_bit_buffer) {
   if (static_cast<size_t>(payload_size) < kSmallestAcceptedCodecConfigSize) {
     // The OBU is implausibly small. It is likely the source file is corrupted.
@@ -72,11 +71,9 @@ absl::Status GetAndStoreCodecConfigObu(
 }
 
 absl::Status GetAndStoreAudioElement(
-    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        codec_config_obus,
+    const DescriptorObus::CodecConfigsById& codec_config_obus,
     const ObuHeader& header, int64_t payload_size,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements_with_data,
+    DescriptorObus::AudioElementsById& audio_elements_with_data,
     ReadBitBuffer& read_bit_buffer) {
   absl::StatusOr<AudioElementObu> audio_element_obu =
       AudioElementObu::CreateFromBuffer(header, payload_size, read_bit_buffer);
@@ -105,10 +102,9 @@ absl::Status GetAndStoreAudioElement(
 }
 
 absl::Status GetAndStoreMixPresentationObu(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements_with_data,
+    const DescriptorObus::AudioElementsById& audio_elements_with_data,
     const ObuHeader& header, int64_t payload_size,
-    std::list<MixPresentationObu>& mix_presentation_obus,
+    DescriptorObus::MixPresentationObus& mix_presentation_obus,
     ReadBitBuffer& read_bit_buffer) {
   absl::StatusOr<MixPresentationObu> mix_presentation_obu =
       MixPresentationObu::CreateFromBuffer(header, payload_size,

@@ -16,11 +16,11 @@
 #include <memory>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/tests/encoder_test_base.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
@@ -34,6 +34,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::Not;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
 constexpr bool kOverrideAudioRollDistance = true;
 constexpr bool kValidateCodecDelay = true;
@@ -43,7 +44,7 @@ constexpr DecodedUleb128 kCodecConfigId = 57;
 constexpr int kOneChannel = 1;
 
 TEST(Initialize, SucceedsWithDefaultSettings) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
   // `OpusEncoder::Settings` has default settings, which are guaranteed to be
   // acceptable.
@@ -56,7 +57,7 @@ TEST(Initialize, SucceedsWithDefaultSettings) {
 }
 
 TEST(Initialize, FailsIfApplicationModeIsInvalid) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
   OpusEncoder::Settings settings_with_invalid_application_mode = {
       .libopus_application_mode = 0,
@@ -79,7 +80,7 @@ using InitializeWithBitrateTest = testing::TestWithParam<BitrateTestCase>;
 TEST_P(InitializeWithBitrateTest, ValidateBitrate) {
   const auto& test_case = GetParam();
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
   OpusEncoder::Settings settings = {
       .target_substream_bitrate = test_case.bitrate,

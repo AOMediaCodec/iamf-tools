@@ -5,15 +5,14 @@ cc_test(
     srcs = ["iamf_decoder_factory_test.cc"],
     deps = [
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/include/iamf_tools:iamf_decoder_factory",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
-        "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/container:flat_hash_map",
         "@googletest//:gtest_main",
     ],
 )

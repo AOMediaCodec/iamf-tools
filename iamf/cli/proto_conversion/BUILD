@@ -61,6 +61,7 @@ cc_library(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
+        "//iamf/cli:descriptor_obus",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/obu:types",

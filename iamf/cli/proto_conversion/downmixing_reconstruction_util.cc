@@ -20,6 +20,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/common/utils/macros.h"
@@ -31,8 +32,7 @@ absl::StatusOr<absl::flat_hash_map<
     DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
 CreateAudioElementIdToDemixingMetadata(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const DescriptorObus::AudioElementsById& audio_elements) {
   absl::flat_hash_map<DecodedUleb128,
                       DemixingModule::DownmixingAndReconstructionConfig>
       result;
@@ -43,8 +43,8 @@ CreateAudioElementIdToDemixingMetadata(
   for (const iamf_tools_cli_proto::AudioFrameObuMetadata&
            user_audio_frame_metadata : user_metadata.audio_frame_metadata()) {
     const auto audio_element_id = user_audio_frame_metadata.audio_element_id();
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>::const_iterator
-        audio_element = audio_elements.find(audio_element_id);
+    DescriptorObus::AudioElementsById::const_iterator audio_element =
+        audio_elements.find(audio_element_id);
     if (audio_element == audio_elements.end()) {
       return absl::InvalidArgumentError(
           absl::StrCat("Audio Element ID= ", audio_element_id, " not found"));

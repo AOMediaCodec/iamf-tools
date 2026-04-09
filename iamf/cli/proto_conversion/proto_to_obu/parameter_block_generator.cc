@@ -25,10 +25,10 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
@@ -570,8 +570,7 @@ void LogParameterBlockObus(
 }  // namespace
 
 absl::Status ParameterBlockGenerator::Initialize(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const DescriptorObus::AudioElementsById& audio_elements) {
   for (const auto& [parameter_id, param_definition_variant] :
        param_definition_variants_) {
     const auto param_definition_type =

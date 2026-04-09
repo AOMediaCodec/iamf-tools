@@ -27,8 +27,8 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -93,8 +93,7 @@ absl::Status UpdateParameterState(
 
 absl::StatusOr<std::unique_ptr<ParametersManager> absl_nonnull>
 ParametersManager::Create(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const DescriptorObus::AudioElementsById& audio_elements) {
   // Collect all `DemixingParamDefinition`s and all `ReconGainParamDefinitions`
   // in all Audio Elements. Validate there is no more than one per Audio
   // Element.
@@ -295,13 +294,13 @@ absl::Status ParametersManager::GetReconGainInfoParameterData(
 }
 
 void ParametersManager::AddDemixingParameterBlock(
-    const ParameterBlockWithData* parameter_block) {
+    const ParameterBlockWithData* absl_nonnull parameter_block) {
   demixing_parameter_blocks_[parameter_block->obu->parameter_id_] =
       parameter_block;
 }
 
 void ParametersManager::AddReconGainParameterBlock(
-    const ParameterBlockWithData* parameter_block) {
+    const ParameterBlockWithData* absl_nonnull parameter_block) {
   recon_gain_parameter_blocks_[parameter_block->obu->parameter_id_] =
       parameter_block;
 }

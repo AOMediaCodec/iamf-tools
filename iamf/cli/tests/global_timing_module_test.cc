@@ -19,11 +19,10 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
@@ -35,6 +34,8 @@ using ::absl_testing::IsOk;
 using ::testing::IsNull;
 using ::testing::Not;
 using ::testing::NotNull;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 constexpr DecodedUleb128 kSampleRate = 48000;
 constexpr uint32_t kDuration = 960;
@@ -70,13 +71,12 @@ class GlobalTimingModuleTest : public ::testing::Test {
         audio_elements_);
   }
 
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus_;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_;
+  CodecConfigsById codec_config_obus_;
+  AudioElementsById audio_elements_;
 };
 
 TEST(Create, SucceedsForEmptyAudioElementsAndParamDefinitions) {
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kEmptyAudioElements;
+  const AudioElementsById kEmptyAudioElements;
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       kEmptyParamDefinitionVariants;
 
@@ -100,8 +100,7 @@ TEST_F(GlobalTimingModuleTest, CreateFailsForDuplicateSubstreamIds) {
 
 TEST(Create, FailsForParameterIdWithZeroRate) {
   constexpr DecodedUleb128 kInvalidParameterRate = 0;
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kEmptyAudioElements;
+  const AudioElementsById kEmptyAudioElements;
   absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition> param_definitions;
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
@@ -168,8 +167,7 @@ TEST_F(GlobalTimingModuleTest,
 
 TEST(GetNextAudioFrameTimestamp, FailsForUnknownSubstreamId) {
   constexpr DecodedUleb128 kUnknownSubstreamId = 1000;
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kEmptyAudioElements;
+  const AudioElementsById kEmptyAudioElements;
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       kEmptyParamDefinitionVariants;
   auto global_timing_module = GlobalTimingModule::Create(
@@ -190,8 +188,7 @@ TEST(GetNextAudioFrameTimestamp, FailsForUnknownSubstreamId) {
 }
 
 TEST(GetNextParameterBlockTimestamps, AdvancesTimestamps) {
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kEmptyAudioElements;
+  const AudioElementsById kEmptyAudioElements;
   absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition> param_definitions;
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
@@ -221,8 +218,7 @@ TEST(GetNextParameterBlockTimestamps, AdvancesTimestamps) {
 }
 
 TEST(GetNextParameterBlockTimestamps, FailsWhenInputTimestampDoesNotAgree) {
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kEmptyAudioElements;
+  const AudioElementsById kEmptyAudioElements;
   absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition> param_definitions;
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
@@ -249,8 +245,7 @@ TEST(GetNextParameterBlockTimestamps, FailsWhenInputTimestampDoesNotAgree) {
 
 TEST(GetNextParameterBlockTimestamps, FailsForUnknownParameterId) {
   constexpr DecodedUleb128 kStrayParameterBlockId = kFirstParameterId + 1;
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kEmptyAudioElements;
+  const AudioElementsById kEmptyAudioElements;
   absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition> param_definitions;
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
@@ -271,8 +266,7 @@ TEST(GetNextParameterBlockTimestamps, FailsForUnknownParameterId) {
 }
 
 TEST(GetGlobalAudioFrameTimestamp, ReturnsErrorWhenNoAudioFrames) {
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kEmptyAudioElements;
+  const AudioElementsById kEmptyAudioElements;
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       kEmptyParamDefinitionVariants;
   auto global_timing_module = GlobalTimingModule::Create(

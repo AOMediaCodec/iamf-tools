@@ -6,11 +6,9 @@
 #include <optional>
 
 #include "absl/base/nullability.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
-#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -43,8 +41,7 @@ struct SelectedMixPresentation {
  * \returns If no error, returns Mix Presentation, ID, and Layout.
  */
 absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
+    const DescriptorObus::AudioElementsById& audio_elements,
     const std::list<MixPresentationObu*>& supported_mix_presentations,
     const std::optional<Layout>& desired_layout,
     std::optional<uint32_t> desired_mix_presentation_id);

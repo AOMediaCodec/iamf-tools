@@ -15,8 +15,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/types.h"
 
@@ -35,8 +35,7 @@ absl::StatusOr<absl::flat_hash_map<
     DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
 CreateAudioElementIdToDemixingMetadata(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements);
+    const DescriptorObus::AudioElementsById& audio_elements);
 
 }  // namespace iamf_tools
 

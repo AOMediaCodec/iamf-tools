@@ -17,12 +17,12 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -34,6 +34,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
 using testing::Return;
 
@@ -58,7 +59,7 @@ class MockEncoder : public EncoderBase {
 };
 
 TEST(EncoderBaseTest, InitializeSucceeds) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
   MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder, InitializeEncoder()).WillOnce(Return(absl::OkStatus()));
@@ -69,7 +70,7 @@ TEST(EncoderBaseTest, InitializeSucceeds) {
 }
 
 TEST(EncoderBaseTest, InitializeFailsWhenInitializeEncoderFails) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
   MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder, InitializeEncoder())
@@ -81,7 +82,7 @@ TEST(EncoderBaseTest, InitializeFailsWhenInitializeEncoderFails) {
 
 TEST(EncoderBaseTest,
      InitializePropagatesValidatePreSkipToSetNumberOfSamplesToDelayAtStart) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
   MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder,
@@ -91,7 +92,7 @@ TEST(EncoderBaseTest,
 }
 
 TEST(EncoderBaseTest, SetNumberOfSamplesToDelayAtStartDefaultsToSuccess) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
   MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart(kValidateCodecDelay));
@@ -101,7 +102,7 @@ TEST(EncoderBaseTest, SetNumberOfSamplesToDelayAtStartDefaultsToSuccess) {
 
 TEST(EncoderBaseTest,
      InitializeFailsWhenSetNumberOfSamplesToDelayAtStartFails) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
   MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder, InitializeEncoder()).WillOnce(Return(absl::OkStatus()));
@@ -113,7 +114,7 @@ TEST(EncoderBaseTest,
 }
 
 TEST(EncoderBaseTest, FinalizeAndPopAppendNothingWhenNoFramesAvailable) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
   MockEncoder encoder(codec_configs.at(kCodecConfigId));
 
@@ -152,7 +153,7 @@ TEST(EncoderBaseTest, FinalizeAndPopAppendNothingWhenNoFramesAvailable) {
 }
 
 TEST(EncoderBaseTest, DefaultZeroNumberOfSamplesToDelayAtStart) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
   MockEncoder encoder(codec_configs.at(kCodecConfigId));
 

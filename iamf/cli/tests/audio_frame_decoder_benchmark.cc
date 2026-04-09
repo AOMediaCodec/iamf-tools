@@ -17,12 +17,10 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/aac_encoder.h"
@@ -30,6 +28,7 @@
 #include "iamf/cli/codec/flac_encoder.h"
 #include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/codec/opus_encoder.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -40,6 +39,8 @@
 
 namespace iamf_tools {
 namespace {
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 constexpr DecodedUleb128 kCodecConfigId = 57;
 constexpr uint32_t kSampleRate = 48000;
@@ -88,8 +89,7 @@ static std::unique_ptr<OpusEncoder> CreateOpusEncoder(
 }
 
 static AudioFrameWithData PrepareEncodedAudioFrame(
-    const uint32_t num_samples_per_frame,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+    const uint32_t num_samples_per_frame, CodecConfigsById& codec_config_obus,
     CodecConfig::CodecId codec_id_type) {
   std::unique_ptr<EncoderBase> encoder;
   if (codec_id_type == CodecConfig::kCodecIdAacLc) {
@@ -139,10 +139,9 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
   return output_audio_frames.back();
 }
 
-static void InitAudioFrameDecoder(
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-    AudioFrameDecoder& decoder) {
+static void InitAudioFrameDecoder(const CodecConfigsById& codec_config_obus,
+                                  AudioElementsById& audio_elements,
+                                  AudioFrameDecoder& decoder) {
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kAudioElementId, kCodecConfigId, {kSubstreamId}, codec_config_obus,
       audio_elements);
@@ -158,12 +157,12 @@ static void BM_DecodeForCodecId(const CodecConfig::CodecId codec_id_type,
                                 benchmark::State& state) {
   // Prepare the input, which is an encoded audio frame.
   const uint32_t num_samples_per_frame = state.range(0);
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AudioFrameWithData audio_frame = PrepareEncodedAudioFrame(
       num_samples_per_frame, codec_config_obus, codec_id_type);
 
   // Prepare the audio frame decoder.
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   AudioFrameDecoder decoder;
   InitAudioFrameDecoder(codec_config_obus, audio_elements, decoder);
 

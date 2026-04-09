@@ -30,13 +30,13 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
@@ -48,6 +48,8 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using enum ChannelLabel::Label;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using ::testing::DoubleEq;
 using ::testing::DoubleNear;
 using ::testing::IsEmpty;
@@ -128,7 +130,7 @@ TEST(FindSamplesOrDemixedSamples, ErrorNoMatchingSamples) {
 void InitAudioElementWithLabelsAndScalableChannelLayout(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const ScalableChannelLayoutConfig& config,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
+    AudioElementsById& audio_elements) {
   std::vector<DecodedUleb128> substream_ids;
   substream_ids.reserve(substream_id_to_labels.size());
   for (const auto& [substream_id, _] : substream_id_to_labels) {
@@ -185,7 +187,7 @@ const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
          .substream_count = 1}}};
 
 TEST(InitializeForReconstruction, NeverCreatesDownMixers) {
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{0, {kMono}}, {1, {kL2}}}, kTwoLayerStereoConfig, audio_elements);
   const auto demixing_module = DemixingModule::CreateForReconstruction(
@@ -199,7 +201,7 @@ TEST(InitializeForReconstruction, NeverCreatesDownMixers) {
 }
 
 TEST(CreateForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{0, {kMono}}, {1, {kL2}}}, kTwoLayerStereoConfig, audio_elements);
   const auto demixing_module = DemixingModule::CreateForReconstruction(
@@ -218,7 +220,7 @@ TEST(CreateForReconstruction, FailsForReservedLayout14) {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReserved14,
            .substream_count = 1}}};
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{0, {kOmitted}}}, kReserved14Config, audio_elements);
 
@@ -236,7 +238,7 @@ TEST(CreateForReconstruction, ValidForExpandedLayoutLFE) {
            .expanded_loudspeaker_layout =
                ChannelAudioLayerConfig::kExpandedLayoutLFE}}};
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{0, {kLFE}}}, kExpandedLayoutLFEConfig, audio_elements);
 
@@ -247,7 +249,7 @@ TEST(CreateForReconstruction, ValidForExpandedLayoutLFE) {
 }
 
 TEST(CreateForReconstruction, CreatesNoDemixersForSingleLayerChannelBased) {
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{0, {kL2, kR2}}}, kOneLayerStereoConfig, audio_elements);
   const auto demixing_module = DemixingModule::CreateForReconstruction(
@@ -263,9 +265,9 @@ TEST(CreateForReconstruction, CreatesNoDemixersForSingleLayerChannelBased) {
 TEST(CreateForReconstruction, CreatesNoDemixersForAmbisonics) {
   const DecodedUleb128 kCodecConfigId = 0;
   constexpr std::array<DecodedUleb128, 4> kAmbisonicsSubstreamIds{0, 1, 2, 3};
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  CodecConfigsById codec_configs;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, 48000, codec_configs);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
                                                 kAmbisonicsSubstreamIds,
                                                 codec_configs, audio_elements);
@@ -281,7 +283,7 @@ TEST(CreateForReconstruction, CreatesNoDemixersForAmbisonics) {
 }
 
 TEST(DemixOriginalAudioSamples, ReturnsErrorAfterCreateForReconstruction) {
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
       kTwoLayerStereoConfig, audio_elements);
@@ -295,7 +297,7 @@ TEST(DemixOriginalAudioSamples, ReturnsErrorAfterCreateForReconstruction) {
 TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
   const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
   const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
       kTwoLayerStereoConfig, audio_elements);
@@ -335,7 +337,7 @@ TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
 TEST(DemixDecodedAudioSamples, ReturnsErrorWhenChannelCountsMismatch) {
   // Configure a stereo audio element. We'd typically expected audio frames to
   // have two channels.
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kStereoSubstreamId, {kL2, kR2}}}, kOneLayerStereoConfig,
       audio_elements);
@@ -373,7 +375,7 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
   const DecodedUleb128 kL2SubstreamId = 1;
   const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
   const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
       kTwoLayerStereoConfig, audio_elements);
@@ -423,7 +425,7 @@ TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
       Int32ToInternalSampleType2D(kDecodedMonoSamplesInt);
   const auto kDecodedL2Samples =
       Int32ToInternalSampleType2D(kDecodedL2SamplesInt);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
       kTwoLayerStereoConfig, audio_elements);
@@ -477,7 +479,7 @@ TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
       Int32ToInternalSampleType2D(kDecodedMonoSamplesInt);
   const auto kDecodedL2Samples =
       Int32ToInternalSampleType2D(kDecodedL2SamplesInt);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
 
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -524,7 +526,7 @@ TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
 TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
   const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
   const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
       kTwoLayerStereoConfig, audio_elements);

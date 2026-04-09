@@ -16,17 +16,16 @@
 #include <memory>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
@@ -45,8 +44,7 @@ class ObuWithDataGenerator {
    *         status on failure.
    */
   static absl::StatusOr<AudioElementWithData> GenerateAudioElementWithData(
-      const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-          codec_config_obus,
+      const DescriptorObus::CodecConfigsById& codec_config_obus,
       const AudioElementObu& audio_element_obu);
 
   /*!\brief Creates an `AudioFrameWithData` instance.

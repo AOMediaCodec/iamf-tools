@@ -17,7 +17,6 @@
 #include <variant>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
@@ -25,11 +24,11 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/param_definitions/extended_param_definition.h"
@@ -52,6 +51,8 @@ using ::testing::Key;
 using ::testing::Not;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 using enum ChannelLabel::Label;
 
@@ -68,9 +69,7 @@ constexpr DecodedUleb128 kL2SubstreamId = 100;
 
 template <typename T>
 const T& GetConfigForAudioElementIdExpectOk(
-    DecodedUleb128 audio_element_id,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        output_obus) {
+    DecodedUleb128 audio_element_id, const AudioElementsById& output_obus) {
   EXPECT_TRUE(output_obus.contains(audio_element_id));
   const T* config =
       std::get_if<T>(&output_obus.at(audio_element_id).obu.config_);
@@ -165,12 +164,12 @@ TEST(Generate, PopulatesExpandedLoudspeakerLayout) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   const auto& output_first_layer =
@@ -202,12 +201,12 @@ TEST(Generate, PopulatesExpandedLayoutBottom3Ch) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   const auto& output_first_layer =
@@ -239,12 +238,12 @@ TEST(Generate, PopulatesExpandedLayoutTop1Ch) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   const auto& output_first_layer =
@@ -276,12 +275,12 @@ TEST(Generate, InvalidWhenExpandedLoudspeakerLayoutIsSignalledButNotPresent) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_FALSE(generator.Generate(codec_config_obus, output_obus).ok());
 }
 
@@ -303,12 +302,12 @@ TEST(Generate, IgnoresExpandedLayoutWhenNotSignalled) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   const auto& output_first_layer =
@@ -335,12 +334,12 @@ TEST(Generate, LeavesExpandedLayoutEmptyWhenNotSignalled) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   const auto& output_first_layer =
@@ -353,8 +352,8 @@ TEST(Generate, LeavesExpandedLayoutEmptyWhenNotSignalled) {
 TEST(Generate, NoAudioElementObus) {
   AudioElementObuMetadatas audio_element_metadatas;
   AudioElementGenerator generator(audio_element_metadatas);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById output_obus;
 
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
@@ -364,12 +363,12 @@ TEST(Generate, NoAudioElementObus) {
 TEST(Generate, GeneratesObjectsConfig) {
   AudioElementObuMetadatas audio_element_metadatas;
   FillObjectsMetadata(*audio_element_metadatas.Add());
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -392,12 +391,12 @@ TEST(Generate, GeneratesObjectsConfigWithTwoObjects) {
   FillObjectsMetadata(*audio_element_metadatas.Add());
   audio_element_metadatas.Mutable(0)->mutable_objects_config()->set_num_objects(
       2);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -420,12 +419,12 @@ TEST(Generate, InvalidObjectsConfigWithThreeObjects) {
   FillObjectsMetadata(*audio_element_metadatas.Add());
   audio_element_metadatas.Mutable(0)->mutable_objects_config()->set_num_objects(
       3);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
 }
 
@@ -434,24 +433,24 @@ TEST(Generate, InvalidObjectsConfigWithMultipleSubstreams) {
   auto audio_element_metadata = *audio_element_metadatas.Add();
   FillObjectsMetadata(audio_element_metadata);
   audio_element_metadata.mutable_audio_substream_ids()->Add(kMonoSubstreamId);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
 }
 
 TEST(Generate, GeneratesFirstOrderAmbisonics) {
   AudioElementObuMetadatas audio_element_metadatas;
   FillFirstOrderAmbisonicsMetadata(*audio_element_metadatas.Add());
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -497,12 +496,12 @@ TEST(Generate, FirstOrderMonoAmbisonicsLargeSubstreamIds) {
       audio_element_metadatas.Add()));
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {1000, {kA0}}, {2000, {kA1}}, {3000, {kA2}}, {4000, {kA3}}};
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -532,12 +531,12 @@ TEST(Generate, FirstOrderMonoAmbisonicsArbitraryOrder) {
       audio_element_metadatas.Add()));
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {103, {kA0}}, {101, {kA1}}, {100, {kA2}}, {102, {kA3}}};
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -565,12 +564,12 @@ TEST(Generate, SubstreamWithMultipleAmbisonicsChannelNumbers) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -598,12 +597,12 @@ TEST(Generate, MixedFirstOrderMonoAmbisonics) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -640,12 +639,12 @@ TEST(Generate, ThirdOrderMonoAmbisonics) {
       ->mutable_ambisonics_mono_config()
       ->mutable_channel_mapping()
       ->Add(kChannelMapping.begin(), kChannelMapping.end());
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -676,11 +675,11 @@ TEST(Generate, FillsAudioElementWithDataFields) {
       {.surround = 1, .lfe = 0, .height = 0, .bottom = 0},
       {.surround = 2, .lfe = 0, .height = 0, .bottom = 0}};
   FillTwoLayerStereoMetadata(*audio_element_metadatas.Add());
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   AudioElementGenerator generator(audio_element_metadatas);
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -715,11 +714,11 @@ TEST(Generate, DeprecatedLoudspeakerLayoutIsNotSupported) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   AudioElementGenerator generator(audio_element_metadatas);
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
   EXPECT_TRUE(output_obus.empty());
@@ -747,10 +746,10 @@ TEST(Generate, DefaultLoudspeakerLayoutIsNotSupported) {
         }
       )pb",
       audio_element_metadatas.Add()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   AudioElementGenerator generator(audio_element_metadatas);
 
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
@@ -831,12 +830,12 @@ TEST(Generate, GeneratesDemixingParameterDefinition) {
   // Extension portion of `DefaultDemixingInfoParameterData` in the IAMF spec.
   expected_default_demixing_info_parameter_data.default_w = 2;
   expected_default_demixing_info_parameter_data.reserved_for_future_use = 12;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
@@ -855,12 +854,12 @@ TEST(Generate, MissingParamDefinitionTypeIsNotSupported) {
         # param_definition_type: PARAM_DEFINITION_TYPE_DEMIXING
       )pb",
       audio_element_metadata.add_audio_element_params()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
   EXPECT_TRUE(output_obus.empty());
 }
@@ -874,11 +873,11 @@ TEST(Generate, DeprecatedParamDefinitionTypeIsNotSupported) {
         deprecated_param_definition_type: 1  # PARAMETER_DEFINITION_DEMIXING
       )pb",
       audio_element_metadata.add_audio_element_params()));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
 
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
   EXPECT_TRUE(output_obus.empty());
@@ -917,11 +916,11 @@ TEST(Generate, GeneratesReconGainParameterDefinition) {
   expected_recon_gain_param_definition.constant_subblock_duration_ = 8;
   expected_recon_gain_param_definition.reserved_ = 10;
 
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   // Recon gain requires an associated lossy codec (e.g. Opus or AAC).
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   AudioElementGenerator generator(audio_element_metadatas);
 
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
@@ -947,12 +946,12 @@ TEST(Generate, IgnoresDeprecatedParamDefinitionSizeField) {
       ->set_param_definition_size(kInconsistentParamDefinitionSize);
   audio_element_param->mutable_param_definition_extension()
       ->set_param_definition_bytes(kParamDefinitionBytes);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AudioElementGenerator generator(audio_element_metadatas);
 
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  AudioElementsById output_obus;
   EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
 
   EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));

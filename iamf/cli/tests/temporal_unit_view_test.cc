@@ -20,18 +20,17 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
@@ -44,6 +43,8 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::Not;
 using ::testing::NotNull;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using AudioElementsById = DescriptorObus::AudioElementsById;
 
 constexpr DecodedUleb128 kCodecConfigId = 1;
 constexpr uint32_t kNumSamplesPerFrame = 8;
@@ -70,8 +71,7 @@ constexpr absl::Span<const ParameterBlockWithData*> kNoParameterBlockPtrs = {};
 constexpr absl::Span<const ArbitraryObu*> kNoArbitraryObuPtrs = {};
 
 void InitializePrerequisiteObusForOneSubstream(
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements) {
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
@@ -82,7 +82,7 @@ void InitializePrerequisiteObusForOneSubstream(
 void AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
     uint32_t audio_element_id, uint32_t substream_id,
     InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const AudioElementsById& audio_elements,
     std::list<AudioFrameWithData>& audio_frames) {
   ASSERT_TRUE(audio_elements.contains(audio_element_id));
 
@@ -125,10 +125,9 @@ void AddMixGainParameterBlock(
   });
 }
 
-void InitializeOneFrameIaSequence(
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<AudioFrameWithData>& audio_frames) {
+void InitializeOneFrameIaSequence(CodecConfigsById& codec_config_obus,
+                                  AudioElementsById& audio_elements,
+                                  std::list<AudioFrameWithData>& audio_frames) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
@@ -140,8 +139,7 @@ void InitializeOneFrameIaSequence(
 }
 
 void InitializePrerequsiteObusForTwoSubstreams(
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements) {
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
@@ -153,8 +151,8 @@ void InitializePrerequsiteObusForTwoSubstreams(
 }
 
 TEST(Create, PopulatesMemberVariablesWithOneAudioFrame) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
 
@@ -169,8 +167,8 @@ TEST(Create, PopulatesMemberVariablesWithOneAudioFrame) {
 }
 
 TEST(Create, PopulatesMemberVariablesWithOneParameterBlock) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
@@ -187,8 +185,8 @@ TEST(Create, PopulatesMemberVariablesWithOneParameterBlock) {
 }
 
 TEST(Create, OrderingByAscendingParameterId) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
@@ -218,8 +216,8 @@ TEST(Create, OrderingByAscendingParameterId) {
 
 TEST(CompareAudioElementIdAudioSubstreamId,
      OrdersByAudioElementIdThenSubstreamId) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   constexpr uint32_t kFirstAudioElementId = 1;
@@ -271,8 +269,8 @@ TEST(CompareAudioElementIdAudioSubstreamId,
 }
 
 TEST(Create, MaintainsArbitraryObusInInputOrder) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   std::list<ArbitraryObu> arbitrary_obus;
@@ -295,8 +293,8 @@ TEST(Create, MaintainsArbitraryObusInInputOrder) {
 TEST(Create, SetsStartTimestamp) {
   constexpr InternalTimestamp kExpectedStartTimestamp = 123456789;
   constexpr InternalTimestamp kEndTimestamp = kExpectedStartTimestamp + 8;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   audio_frames.front().start_timestamp = kExpectedStartTimestamp;
@@ -312,8 +310,8 @@ TEST(Create, SetsStartTimestamp) {
 TEST(Create, SetsEndTimestamp) {
   constexpr InternalTimestamp kStartTimestamp = 123456789;
   constexpr InternalTimestamp kExpectedEndTimestamp = kStartTimestamp + 8;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   audio_frames.front().start_timestamp = kStartTimestamp;
@@ -327,8 +325,8 @@ TEST(Create, SetsEndTimestamp) {
 }
 
 TEST(Create, SetsNumSamplesToTrimAtStart) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   const uint32_t kExpectedNumSamplesToTrimAtStart = 4;
@@ -344,8 +342,8 @@ TEST(Create, SetsNumSamplesToTrimAtStart) {
 }
 
 TEST(Create, SetsNumUntrimmedSamplesToZeroForFullyTrimmedAudioFrame) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   // Ok. Fully trimmed frames are allowed. They are common in codecs like
@@ -362,8 +360,8 @@ TEST(Create, SetsNumUntrimmedSamplesToZeroForFullyTrimmedAudioFrame) {
 }
 
 TEST(Create, SetsNumUntrimmedSamples) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   audio_frames.front().obu.header_ = ObuHeader{
@@ -448,8 +446,8 @@ TEST(Create,
 }
 
 TEST(CreateFromPointers, FailsIfAudioFramesContainNullPtrs) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   InitializePrerequisiteObusForOneSubstream(codec_config_obus, audio_elements);
   constexpr std::array<const AudioFrameWithData*, 1> kNullAudioFramePtr = {
       nullptr};
@@ -461,8 +459,8 @@ TEST(CreateFromPointers, FailsIfAudioFramesContainNullPtrs) {
 }
 
 TEST(CreateFromPointers, FailsIfParameterBlocksContainNullPtrs) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   const std::vector<const AudioFrameWithData*> audio_frames_ptrs = {
@@ -477,8 +475,8 @@ TEST(CreateFromPointers, FailsIfParameterBlocksContainNullPtrs) {
 }
 
 TEST(CreateFromPointers, FailsIfArbitraryObusContainNullPtrs) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   const std::vector<const AudioFrameWithData*> audio_frames_ptrs = {
@@ -492,8 +490,8 @@ TEST(CreateFromPointers, FailsIfArbitraryObusContainNullPtrs) {
 }
 
 TEST(Create, ReturnsErrorIfAudioElementWithDataIsNullptr) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializePrerequisiteObusForOneSubstream(codec_config_obus, audio_elements);
   AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
@@ -508,8 +506,8 @@ TEST(Create, ReturnsErrorIfAudioElementWithDataIsNullptr) {
 }
 
 TEST(Create, ReturnsErrorIfCodecConfigIsNullptr) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializePrerequisiteObusForOneSubstream(codec_config_obus, audio_elements);
   AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
@@ -524,8 +522,8 @@ TEST(Create, ReturnsErrorIfCodecConfigIsNullptr) {
 }
 
 TEST(Create, ReturnsErrorIfTrimmingIsImplausible) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   // Corrupt the audio frame. Trim cannot be greater than the total number of
@@ -540,8 +538,8 @@ TEST(Create, ReturnsErrorIfTrimmingIsImplausible) {
 }
 
 TEST(Create, ReturnsErrorIfSubstreamIdsAreRepeated) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
   constexpr DecodedUleb128 kRepeatedSubstreamId = kFirstSubstreamId;
@@ -555,8 +553,8 @@ TEST(Create, ReturnsErrorIfSubstreamIdsAreRepeated) {
 }
 
 TEST(Create, ReturnsErrorIfTrimmingIsInconsistent) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializePrerequsiteObusForTwoSubstreams(codec_config_obus, audio_elements);
   AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
@@ -578,8 +576,8 @@ TEST(Create, ReturnsErrorIfTrimmingIsInconsistent) {
 }
 
 TEST(Create, ReturnsErrorIfAudioFrameTimestampsAreInconsistent) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   InitializePrerequsiteObusForTwoSubstreams(codec_config_obus, audio_elements);
   AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
@@ -596,8 +594,8 @@ TEST(Create, ReturnsErrorIfAudioFrameTimestampsAreInconsistent) {
 }
 
 TEST(Create, ReturnsErrorIfParameterBlockTimestampsAreInconsistent) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
@@ -613,8 +611,8 @@ TEST(Create, ReturnsErrorIfParameterBlockTimestampsAreInconsistent) {
 }
 
 TEST(Create, ReturnsErrorIfParameterBlockIdsAreRepeated) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
@@ -631,8 +629,8 @@ TEST(Create, ReturnsErrorIfParameterBlockIdsAreRepeated) {
 }
 
 TEST(Create, ReturnsErrorIfArbitraryObuTimestampsAreInconsistent) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ArbitraryObu> arbitrary_obus;
   InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
