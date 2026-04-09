@@ -14,7 +14,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
@@ -234,17 +233,17 @@ absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
       }
       case kObuIaCodecConfig:
         parsed_obu_status = GetAndStoreCodecConfigObu(
-            header, payload_size, *parsed_obus.codec_config_obus,
+            header, payload_size, parsed_obus.codec_config_obus,
             read_bit_buffer);
         break;
       case kObuIaAudioElement:
         parsed_obu_status = GetAndStoreAudioElement(
-            *parsed_obus.codec_config_obus, header, payload_size,
-            *parsed_obus.audio_elements, read_bit_buffer);
+            parsed_obus.codec_config_obus, header, payload_size,
+            parsed_obus.audio_elements, read_bit_buffer);
         break;
       case kObuIaMixPresentation:
         parsed_obu_status = GetAndStoreMixPresentationObu(
-            *parsed_obus.audio_elements, header, payload_size,
+            parsed_obus.audio_elements, header, payload_size,
             parsed_obus.mix_presentation_obus, read_bit_buffer);
         break;
       case kObuIaMetadata:

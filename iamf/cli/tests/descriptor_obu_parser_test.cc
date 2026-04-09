@@ -40,7 +40,6 @@ using ::absl_testing::IsOk;
 using ::testing::IsEmpty;
 using ::testing::Key;
 using ::testing::Not;
-using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
 using absl::MakeConstSpan;
@@ -104,8 +103,8 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
   ASSERT_THAT(parsed_obus, IsOk());
 
   EXPECT_THAT(parsed_obus->codec_config_obus,
-              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId),
-                                           Key(kSecondCodecConfigId))));
+              UnorderedElementsAre(Key(kFirstCodecConfigId),
+                                   Key(kSecondCodecConfigId)));
   // `insufficient_data` is false because we have successfully read all provided
   // descriptor obus up to the temporal unit.
   EXPECT_FALSE(insufficient_data);
@@ -139,7 +138,7 @@ TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigsById) {
 
   // We only find the valid Codec Config OBU, with no sign of the tiny one.
   EXPECT_THAT(parsed_obus->codec_config_obus,
-              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
+              UnorderedElementsAre(Key(kFirstCodecConfigId)));
   // The buffer advanced past the tiny Codec Config OBU.
   EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
 }
@@ -163,8 +162,8 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
   EXPECT_FALSE(insufficient_data);
 
   EXPECT_THAT(parsed_obus->codec_config_obus,
-              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId),
-                                           Key(kSecondCodecConfigId))));
+              UnorderedElementsAre(Key(kFirstCodecConfigId),
+                                   Key(kSecondCodecConfigId)));
 }
 
 TEST(ProcessDescriptorObus,
@@ -313,8 +312,8 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithCodecConfigs) {
   EXPECT_EQ(parsed_obus->ia_sequence_header.GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
   EXPECT_THAT(parsed_obus->codec_config_obus,
-              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId),
-                                           Key(kSecondCodecConfigId))));
+              UnorderedElementsAre(Key(kFirstCodecConfigId),
+                                   Key(kSecondCodecConfigId)));
 }
 
 TEST(ProcessDescriptorObus, DropsUnknownCodecIds) {
@@ -356,8 +355,8 @@ TEST(ProcessDescriptorObus, DropsUnknownCodecIds) {
 
   // We only find the valid Codec Config OBU. The audio element is ignored
   // because its Codec Config ID was transitively unknown.
-  EXPECT_THAT(parsed_obus->codec_config_obus, Pointee(IsEmpty()));
-  EXPECT_THAT(parsed_obus->audio_elements, Pointee(IsEmpty()));
+  EXPECT_THAT(parsed_obus->codec_config_obus, IsEmpty());
+  EXPECT_THAT(parsed_obus->audio_elements, IsEmpty());
   // The buffer advanced past the audio element OBU.
   EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
 }
@@ -405,8 +404,8 @@ TEST(ProcessDescriptorObus, IgnoresAudioElementWithUnknownAmbisonicsMode) {
   // We only find the valid Codec Config OBU. The audio element is ignored
   // because its ambisonics mode is unknown.
   EXPECT_THAT(parsed_obus->codec_config_obus,
-              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
-  EXPECT_THAT(parsed_obus->audio_elements, Pointee(IsEmpty()));
+              UnorderedElementsAre(Key(kFirstCodecConfigId)));
+  EXPECT_THAT(parsed_obus->audio_elements, IsEmpty());
   EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
 }
 
@@ -490,9 +489,9 @@ TEST(ProcessDescriptorObus, SucceedsWithoutTemporalUnitFollowing) {
   EXPECT_EQ(parsed_obus->ia_sequence_header.GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
   EXPECT_THAT(parsed_obus->codec_config_obus,
-              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
+              UnorderedElementsAre(Key(kFirstCodecConfigId)));
   EXPECT_THAT(parsed_obus->audio_elements,
-              Pointee(UnorderedElementsAre(Key(kFirstAudioElementId))));
+              UnorderedElementsAre(Key(kFirstAudioElementId)));
   EXPECT_EQ(parsed_obus->mix_presentation_obus.size(), 1);
   EXPECT_EQ(parsed_obus->mix_presentation_obus.front().GetMixPresentationId(),
             kFirstMixPresentationId);
@@ -573,9 +572,9 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
   EXPECT_EQ(parsed_obus->ia_sequence_header.GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
   EXPECT_THAT(parsed_obus->codec_config_obus,
-              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
+              UnorderedElementsAre(Key(kFirstCodecConfigId)));
   EXPECT_THAT(parsed_obus->audio_elements,
-              Pointee(UnorderedElementsAre(Key(kFirstAudioElementId))));
+              UnorderedElementsAre(Key(kFirstAudioElementId)));
   EXPECT_EQ(parsed_obus->mix_presentation_obus.size(), 1);
   EXPECT_EQ(parsed_obus->mix_presentation_obus.front().GetMixPresentationId(),
             kFirstMixPresentationId);
@@ -606,7 +605,7 @@ TEST(ProcessDescriptorObus, BypassesDuplicateAudioElementId) {
   ASSERT_THAT(parsed_obus, IsOk());
 
   EXPECT_THAT(parsed_obus->audio_elements,
-              Pointee(UnorderedElementsAre(Key(kFirstAudioElementId))));
+              UnorderedElementsAre(Key(kFirstAudioElementId)));
 }
 
 // Descriptor obus + non_temporal_unit_header following but not enough data to

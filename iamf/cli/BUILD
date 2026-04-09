@@ -177,7 +177,6 @@ cc_library(
 
 cc_library(
     name = "descriptor_obus",
-    srcs = ["descriptor_obus.cc"],
     hdrs = ["descriptor_obus.h"],
     deps = [
         ":audio_element_with_data",
@@ -185,8 +184,7 @@ cc_library(
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/base:nullability",
-        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/container:node_hash_map",
     ],
 )
 

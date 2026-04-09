@@ -13,10 +13,8 @@
 #define CLI_DESCRIPTOR_OBUS_H_
 
 #include <list>
-#include <memory>
 
-#include "absl/base/nullability.h"
-#include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_map.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -27,10 +25,10 @@ namespace iamf_tools {
 
 /*!\brief Collection of parsed OBUs.
  *
- * OBUs that are commonly pointed to are indirectly held via `std::unique_ptr`
- * for pointer stability. For example, `AudioElementWithData` contains a
- * pointer to the corresponding `CodecConfigObu`. This extra layer of wrapping
- * ensures this type of more move-safe.
+ * OBUs that are commonly pointed to are held via `absl::node_hash_map` for
+ * pointer stability. For example, `AudioElementWithData` contains a pointer to
+ * the corresponding `CodecConfigObu`. This container ensures this type is
+ * move-safe.
  */
 struct DescriptorObus {
   /*!\brief Map `CodecConfigOBU`s keyed by codec config ID.
@@ -38,17 +36,21 @@ struct DescriptorObus {
    * The IAMF specification has a `codec_config_id` field which is unique to
    * each (non-redundant) Codec Config OBU. This map is keyed by that field for
    * easy lookup.
+   *
+   * Held in a `node_hash_map` for pointer stability.
    */
-  using CodecConfigsById = absl::flat_hash_map<DecodedUleb128, CodecConfigObu>;
+  using CodecConfigsById = absl::node_hash_map<DecodedUleb128, CodecConfigObu>;
 
   /*!\brief Map of `AudioElementWithData` keyed by audio element ID.
    *
    * The IAMF specification has an `audio_element_id` field which is unique to
    * each (non-redundant) Audio Element OBU. This map is keyed by that field for
    * easy lookup.
+   *
+   * Held in a `node_hash_map` for pointer stability.
    */
   using AudioElementsById =
-      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>;
+      absl::node_hash_map<DecodedUleb128, AudioElementWithData>;
 
   /*!\brief List of Mix Presentation OBUs.
    *
@@ -61,19 +63,15 @@ struct DescriptorObus {
    */
   using MixPresentationObus = std::list<MixPresentationObu>;
 
-  /*!\brief Default constructor.
-   *
-   * Ensures the `std::unique_ptr` members are set to empty maps, instead of
-   * `nullptr`.
-   */
-  DescriptorObus();
+  /*!\brief Default constructor. */
+  DescriptorObus() = default;
 
   // IA sequence header processed from the bitstream.
   IASequenceHeaderObu ia_sequence_header;
   // Map of Codec Config OBUs processed from the bitstream.
-  std::unique_ptr<CodecConfigsById> absl_nonnull codec_config_obus;
+  CodecConfigsById codec_config_obus;
   // Map of Audio Elements and metadata processed from the bitstream.
-  std::unique_ptr<AudioElementsById> absl_nonnull audio_elements;
+  AudioElementsById audio_elements;
   // List of Mix Presentation OBUs processed from the bitstream.
   MixPresentationObus mix_presentation_obus;
 };

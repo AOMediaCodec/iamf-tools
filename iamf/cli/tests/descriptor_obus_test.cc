@@ -11,31 +11,100 @@
  */
 #include "iamf/cli/descriptor_obus.h"
 
+#include <utility>
+#include <vector>
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::testing::IsEmpty;
-using ::testing::Pointee;
+
+constexpr DecodedUleb128 kCodecConfigId = 9999;
+constexpr DecodedUleb128 kAudioElementId = 9999;
 
 TEST(DescriptorObusConstructor, CodecConfigsByIdIsValidAndEmpty) {
   DescriptorObus descriptor_obus;
 
-  EXPECT_THAT(descriptor_obus.codec_config_obus, Pointee(IsEmpty()));
+  EXPECT_THAT(descriptor_obus.codec_config_obus, IsEmpty());
 }
 
 TEST(DescriptorObusConstructor, AudioElementsIsValidAndEmpty) {
   DescriptorObus descriptor_obus;
 
-  EXPECT_THAT(descriptor_obus.audio_elements, Pointee(IsEmpty()));
+  EXPECT_THAT(descriptor_obus.audio_elements, IsEmpty());
 }
 
 TEST(DescriptorObusConstructor, MixPresentationObusIsEmpty) {
   DescriptorObus descriptor_obus;
 
   EXPECT_TRUE(descriptor_obus.mix_presentation_obus.empty());
+}
+
+TEST(DescriptorObus, CodecConfigObuPointerStabilityAfterMove) {
+  DescriptorObus descriptor_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, descriptor_obus.codec_config_obus);
+  const CodecConfigObu* initial_address =
+      &descriptor_obus.codec_config_obus.at(kCodecConfigId);
+
+  DescriptorObus moved_descriptor_obus = std::move(descriptor_obus);
+
+  EXPECT_EQ(initial_address,
+            &moved_descriptor_obus.codec_config_obus.at(kCodecConfigId));
+}
+
+TEST(DescriptorObus, CodecConfigObuPointerStabilityAfterInsert) {
+  DescriptorObus descriptor_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, descriptor_obus.codec_config_obus);
+  const CodecConfigObu* initial_address =
+      &descriptor_obus.codec_config_obus.at(kCodecConfigId);
+
+  for (int i = 2; i < 100; ++i) {
+    AddOpusCodecConfigWithId(i, descriptor_obus.codec_config_obus);
+  }
+
+  EXPECT_EQ(initial_address,
+            &descriptor_obus.codec_config_obus.at(kCodecConfigId));
+}
+
+TEST(DescriptorObus, AudioElementsPointerStabilityAfterMove) {
+  DescriptorObus descriptor_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, descriptor_obus.codec_config_obus);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kAudioElementId, kCodecConfigId, {0}, descriptor_obus.codec_config_obus,
+      descriptor_obus.audio_elements);
+  const AudioElementWithData* initial_address =
+      &descriptor_obus.audio_elements.at(kAudioElementId);
+
+  DescriptorObus moved_descriptor_obus = std::move(descriptor_obus);
+
+  EXPECT_EQ(initial_address,
+            &moved_descriptor_obus.audio_elements.at(kAudioElementId));
+}
+
+TEST(DescriptorObus, AudioElementsWithDataPointerStabilityAfterInsert) {
+  DescriptorObus descriptor_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, descriptor_obus.codec_config_obus);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kAudioElementId, kCodecConfigId, /*substream_ids=*/{9999},
+      descriptor_obus.codec_config_obus, descriptor_obus.audio_elements);
+  const AudioElementWithData* initial_address =
+      &descriptor_obus.audio_elements.at(kAudioElementId);
+
+  for (DecodedUleb128 i = 0; i < 100; ++i) {
+    AddAmbisonicsMonoAudioElementWithSubstreamIds(
+        i, kCodecConfigId, /*substream_ids=*/std::vector<DecodedUleb128>{i},
+        descriptor_obus.codec_config_obus, descriptor_obus.audio_elements);
+  }
+
+  EXPECT_EQ(initial_address,
+            &descriptor_obus.audio_elements.at(kAudioElementId));
 }
 
 }  // namespace

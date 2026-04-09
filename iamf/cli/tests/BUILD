@@ -256,7 +256,11 @@ cc_test(
     name = "descriptor_obus_test",
     srcs = ["descriptor_obus_test.cc"],
     deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
         "//iamf/cli:descriptor_obus",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:types",
         "@googletest//:gtest_main",
     ],
 )
