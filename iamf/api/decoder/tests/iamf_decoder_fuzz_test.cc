@@ -118,12 +118,14 @@ FUZZ_TEST(IamfDecoderFuzzTest_ArbitraryBytesToDescriptors,
 void DoesNotDieAllParams(std::optional<api::OutputLayout> output_layout,
                          api::OutputSampleType output_sample_type,
                          std::optional<uint32_t> mix_presentation_id,
+                         api::ChannelOrdering channel_ordering,
                          std::string data) {
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
   const api::IamfDecoder::Settings kSettings = {
       .requested_mix = {.mix_presentation_id = mix_presentation_id,
                         .output_layout = output_layout},
+      .channel_ordering = channel_ordering,
       .requested_output_sample_type = output_sample_type,
   };
   ASSERT_TRUE(api::IamfDecoder::Create(kSettings, iamf_decoder).ok());
@@ -160,10 +162,18 @@ auto AnyOutputSampleType() {
   });
 }
 
+auto AnyChannelOrdering() {
+  return ElementOf<api::ChannelOrdering>({
+      api::ChannelOrdering::kIamfOrdering,
+      api::ChannelOrdering::kOrderingForAndroid,
+  });
+}
+
 FUZZ_TEST(IamfDecoderFuzzTest_AllArbitraryParams, DoesNotDieAllParams)
     .WithDomains(OptionalOf(AnyOutputLayout()),      // output_layout,
                  AnyOutputSampleType(),              // output_sample_type,
                  OptionalOf(Arbitrary<uint32_t>()),  // mix_presentation_id,
+                 AnyChannelOrdering(),               // channel_ordering,
                  Arbitrary<std::string>());          // data
 
 }  // namespace
