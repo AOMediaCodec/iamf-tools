@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,7 @@ namespace {
 using api::OutputLayout;
 using ::fuzztest::Arbitrary;
 using ::fuzztest::ElementOf;
+using ::fuzztest::OptionalOf;
 
 constexpr absl::string_view kIamfFileTestPath = "iamf/cli/testdata/iamf/";
 
@@ -113,13 +115,15 @@ void DoesNotDieCreateFromDescriptors(const std::string& descriptor_data,
 FUZZ_TEST(IamfDecoderFuzzTest_ArbitraryBytesToDescriptors,
           DoesNotDieCreateFromDescriptors);
 
-void DoesNotDieAllParams(api::OutputLayout output_layout,
+void DoesNotDieAllParams(std::optional<api::OutputLayout> output_layout,
                          api::OutputSampleType output_sample_type,
-                         uint32_t mix_presentation_id, std::string data) {
+                         std::optional<uint32_t> mix_presentation_id,
+                         std::string data) {
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
   const api::IamfDecoder::Settings kSettings = {
-      .requested_mix = {.output_layout = output_layout},
+      .requested_mix = {.mix_presentation_id = mix_presentation_id,
+                        .output_layout = output_layout},
       .requested_output_sample_type = output_sample_type,
   };
   ASSERT_TRUE(api::IamfDecoder::Create(kSettings, iamf_decoder).ok());
@@ -157,10 +161,10 @@ auto AnyOutputSampleType() {
 }
 
 FUZZ_TEST(IamfDecoderFuzzTest_AllArbitraryParams, DoesNotDieAllParams)
-    .WithDomains(AnyOutputLayout(),          // output_layout,
-                 AnyOutputSampleType(),      // output_sample_type,
-                 Arbitrary<uint32_t>(),      // mix_presentation_id,
-                 Arbitrary<std::string>());  // data
+    .WithDomains(OptionalOf(AnyOutputLayout()),      // output_layout,
+                 AnyOutputSampleType(),              // output_sample_type,
+                 OptionalOf(Arbitrary<uint32_t>()),  // mix_presentation_id,
+                 Arbitrary<std::string>());          // data
 
 }  // namespace
 }  // namespace iamf_tools
