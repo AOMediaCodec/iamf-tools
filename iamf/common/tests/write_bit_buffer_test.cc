@@ -555,7 +555,7 @@ TEST(WriteUleb128, CanFailWithFixedSizeGenerator) {
   ASSERT_NE(leb_generator, nullptr);
   WriteBitBuffer wb(1, *leb_generator);
 
-  EXPECT_FALSE(wb.WriteUleb128(128).ok());
+  EXPECT_THAT(wb.WriteUleb128(128), Not(IsOk()));
 }
 
 struct WriteIso14496_1ExpandedTestCase {

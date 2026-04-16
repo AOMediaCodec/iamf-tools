@@ -36,6 +36,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
+using ::testing::Not;
 
 constexpr DecodedUleb128 kSubblockDuration = 99;
 constexpr int16_t kStartPointValue = 100;
@@ -136,18 +137,18 @@ TEST(GenerateParameterSubblockMetadata,
       .param_data = std::make_unique<MixGainParameterData>(
           kAnimateStep, AnimationBezierInt16{})};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kInconsistentStepSubblock)
-          .ok());
-  EXPECT_FALSE(
+          kParameterDefinitionMixGain, kInconsistentStepSubblock),
+      Not(IsOk()));
+  EXPECT_THAT(
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kInconsistentLinearSubblock)
-          .ok());
-  EXPECT_FALSE(
+          kParameterDefinitionMixGain, kInconsistentLinearSubblock),
+      Not(IsOk()));
+  EXPECT_THAT(
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kInconsistentBezierSubblock)
-          .ok());
+          kParameterDefinitionMixGain, kInconsistentBezierSubblock),
+      Not(IsOk()));
 }
 
 TEST(GenerateParameterSubblockMetadata,

@@ -84,6 +84,7 @@
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
+using ::absl_testing::IsOk;
 using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using AudioElementsById = DescriptorObus::AudioElementsById;
 using MixPresentationObus = DescriptorObus::MixPresentationObus;
@@ -124,14 +125,12 @@ void GetAudioSubstreamIdsAndLabelsMap(
     audio_substream_ids.push_back(substream_id);
 
     const auto label = ChannelLabel::AmbisonicsChannelNumberToLabel(i);
-    ASSERT_TRUE(label.ok());
+    ASSERT_THAT(label, IsOk());
     substream_id_to_labels[substream_id].push_back(*label);
   }
 }
 
 }  // namespace
-
-using ::absl_testing::IsOk;
 
 absl::StatusOr<CollectedObus> CollectObusFromIaSequence(
     ReadBitBuffer& read_bit_buffer) {

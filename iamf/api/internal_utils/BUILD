@@ -35,6 +35,7 @@ cc_test(
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
     ],
 )

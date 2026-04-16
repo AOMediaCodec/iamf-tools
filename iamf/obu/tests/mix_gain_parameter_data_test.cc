@@ -15,7 +15,6 @@
 #include <variant>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -30,6 +29,7 @@ using absl_testing::IsOk;
 using MixGainParameterData::kAnimateBezier;
 using MixGainParameterData::kAnimateLinear;
 using MixGainParameterData::kAnimateStep;
+using ::testing::Not;
 
 constexpr uint32_t kAudioElementId = 0;
 
@@ -160,7 +160,7 @@ TEST(MixGainParameterData,
       absl::MakeConstSpan(source_data));
 
   MixGainParameterData mix_gain_parameter_data;
-  EXPECT_FALSE(mix_gain_parameter_data.ReadAndValidate(*buffer).ok());
+  EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), Not(IsOk()));
 }
 
 }  // namespace

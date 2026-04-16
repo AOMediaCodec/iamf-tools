@@ -24,7 +24,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
-#include "absl/status/statusor.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -739,7 +738,7 @@ TEST_F(GenerateAudioFrameWithDataTest, RejectMismatchingAudioElement) {
         ObuWithDataGenerator::GenerateAudioFrameWithData(
             audio_elements_with_data_.at(kFirstAudioElementId), audio_frame_obu,
             *global_timing_module_, *parameters_manager_);
-    EXPECT_FALSE(audio_frame_with_data.ok());
+    EXPECT_THAT(audio_frame_with_data, Not(IsOk()));
   }
 }
 
@@ -822,11 +821,11 @@ TEST(FinalizeScalableChannelLayoutConfig,
   LabelGainMap output_label_to_output_gain;
   std::vector<ChannelNumbers> output_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kTooFewSubstreamIdsForOneLayerStereo, kOneLayerStereoConfig,
-                   output_substream_id_to_labels, output_label_to_output_gain,
-                   output_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+                  kTooFewSubstreamIdsForOneLayerStereo, kOneLayerStereoConfig,
+                  output_substream_id_to_labels, output_label_to_output_gain,
+                  output_channel_numbers_for_layer),
+              Not(IsOk()));
 }
 
 TEST(FinalizeScalableChannelLayoutConfig,
@@ -838,11 +837,11 @@ TEST(FinalizeScalableChannelLayoutConfig,
   LabelGainMap output_label_to_output_gain;
   std::vector<ChannelNumbers> output_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kTooManySubstreamIdsForOneLayerStereo, kOneLayerStereoConfig,
-                   output_substream_id_to_labels, output_label_to_output_gain,
-                   output_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+                  kTooManySubstreamIdsForOneLayerStereo, kOneLayerStereoConfig,
+                  output_substream_id_to_labels, output_label_to_output_gain,
+                  output_channel_numbers_for_layer),
+              Not(IsOk()));
 }
 
 TEST(FinalizeScalableChannelLayoutConfig, InvalidWhenSubstreamIdsAreNotUnique) {
@@ -858,11 +857,11 @@ TEST(FinalizeScalableChannelLayoutConfig, InvalidWhenSubstreamIdsAreNotUnique) {
   LabelGainMap output_label_to_output_gain;
   std::vector<ChannelNumbers> output_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kNonUniqueSubstreamIds, k3_1_2Config,
-                   output_substream_id_to_labels, output_label_to_output_gain,
-                   output_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(
+      ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+          kNonUniqueSubstreamIds, k3_1_2Config, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      Not(IsOk()));
 }
 
 TEST(FinalizeScalableChannelLayoutConfig,
@@ -880,12 +879,11 @@ TEST(FinalizeScalableChannelLayoutConfig,
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds,
-                   kInvalidOneLayerStereoWithoutCoupledSubstreams,
-                   unused_substream_id_to_labels, unused_label_to_output_gain,
-                   unused_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+                  kSubstreamIds, kInvalidOneLayerStereoWithoutCoupledSubstreams,
+                  unused_substream_id_to_labels, unused_label_to_output_gain,
+                  unused_channel_numbers_for_layer),
+              Not(IsOk()));
 }
 
 TEST(FinalizeScalableChannelLayoutConfig,
@@ -904,12 +902,11 @@ TEST(FinalizeScalableChannelLayoutConfig,
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds,
-                   kInvalidOneLayerStereoWithoutCoupledSubstreams,
-                   unused_substream_id_to_labels, unused_label_to_output_gain,
-                   unused_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+                  kSubstreamIds, kInvalidOneLayerStereoWithoutCoupledSubstreams,
+                  unused_substream_id_to_labels, unused_label_to_output_gain,
+                  unused_channel_numbers_for_layer),
+              Not(IsOk()));
 }
 
 TEST(FinalizeScalableChannelLayoutConfig,
@@ -964,11 +961,11 @@ TEST(FinalizeScalableChannelLayoutConfig,
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds, kInvalidWithMonoLayerAfterStereo,
-                   unused_substream_id_to_labels, unused_label_to_output_gain,
-                   unused_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+                  kSubstreamIds, kInvalidWithMonoLayerAfterStereo,
+                  unused_substream_id_to_labels, unused_label_to_output_gain,
+                  unused_channel_numbers_for_layer),
+              Not(IsOk()));
 }
 
 TEST(FinalizeScalableChannelLayoutConfig, FillsOutputGainMap) {
@@ -1268,11 +1265,11 @@ TEST(FinalizeScalableChannelLayoutConfig, InvalidWithReservedLayout14) {
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds, kOneLayerReserved14Layout,
-                   unused_substream_id_to_labels, unused_label_to_output_gain,
-                   unused_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+                  kSubstreamIds, kOneLayerReserved14Layout,
+                  unused_substream_id_to_labels, unused_label_to_output_gain,
+                  unused_channel_numbers_for_layer),
+              Not(IsOk()));
 }
 
 TEST(FinalizeObjectsConfig, FillsLabelsForOneObject) {
@@ -1721,12 +1718,12 @@ TEST(FinalizeScalableChannelLayoutConfig,
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds,
-                   kInvalidWithFirstLayerExpandedAndAnotherSecondLayer,
-                   unused_substream_id_to_labels, unused_label_to_output_gain,
-                   unused_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(
+      ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kInvalidWithFirstLayerExpandedAndAnotherSecondLayer,
+          unused_substream_id_to_labels, unused_label_to_output_gain,
+          unused_channel_numbers_for_layer),
+      Not(IsOk()));
 }
 
 TEST(FinalizeScalableChannelLayoutConfig,
@@ -1748,11 +1745,11 @@ TEST(FinalizeScalableChannelLayoutConfig,
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds, kInvalidWithSecondLayerExpandedLayout,
-                   unused_substream_id_to_labels, unused_label_to_output_gain,
-                   unused_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+                  kSubstreamIds, kInvalidWithSecondLayerExpandedLayout,
+                  unused_substream_id_to_labels, unused_label_to_output_gain,
+                  unused_channel_numbers_for_layer),
+              Not(IsOk()));
 }
 
 TEST(FinalizeScalableChannelLayoutConfig,
@@ -1770,12 +1767,12 @@ TEST(FinalizeScalableChannelLayoutConfig,
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
 
-  EXPECT_FALSE(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds,
-                   kInvaliWithInconsistentExpandedLoudspeakerLayout,
-                   unused_substream_id_to_labels, unused_label_to_output_gain,
-                   unused_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(
+      ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kInvaliWithInconsistentExpandedLoudspeakerLayout,
+          unused_substream_id_to_labels, unused_label_to_output_gain,
+          unused_channel_numbers_for_layer),
+      Not(IsOk()));
 }
 
 }  // namespace

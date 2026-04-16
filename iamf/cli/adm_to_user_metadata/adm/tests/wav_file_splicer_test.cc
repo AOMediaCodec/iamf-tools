@@ -33,6 +33,7 @@ namespace adm_to_user_metadata {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 using enum iamf_tools::ProfileVersion;
 
@@ -245,9 +246,9 @@ TEST(SpliceWavFilesFromAdm,
   const std::string directory = GetAndCreateOutputDirectory("");
   int lfe_count = 0;
 
-  EXPECT_FALSE(SpliceWavFilesFromAdm(::testing::TempDir(), "prefix",
-                                     kIamfBaseProfile, *reader, ss, lfe_count)
-                   .ok());
+  EXPECT_THAT(SpliceWavFilesFromAdm(::testing::TempDir(), "prefix",
+                                    kIamfBaseProfile, *reader, ss, lfe_count),
+              Not(IsOk()));
 
   EXPECT_TRUE(std::filesystem::is_empty(directory));
 }

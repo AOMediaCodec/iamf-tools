@@ -224,7 +224,7 @@ TEST_F(OpusEncoderTest, ChecksPreSkipWhenValidateCodecDelayIsTrue) {
   opus_decoder_config_.pre_skip_ = kIncorrectPreSkip;
   ConstructEncoder();
 
-  EXPECT_FALSE(encoder_->Initialize(kValidateCodecDelay).ok());
+  EXPECT_THAT(encoder_->Initialize(kValidateCodecDelay), Not(IsOk()));
 }
 
 }  // namespace

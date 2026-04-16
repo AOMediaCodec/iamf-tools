@@ -9,7 +9,6 @@ cc_test(
         "//iamf/cli/proto_conversion:channel_label_utils",
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/status:status_matchers",
-        "@abseil-cpp//absl/strings:string_view",
         "@googletest//:gtest_main",
     ],
 )

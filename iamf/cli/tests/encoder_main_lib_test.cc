@@ -33,6 +33,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr absl::string_view kTestdataPath = "iamf/cli/testdata/";
 constexpr absl::string_view kIgnoredOutputPath = "";
@@ -80,7 +81,8 @@ void ParseTestVectorAssertSuccess(
 }
 
 TEST(EncoderMainLibTest, EmptyUserMetadataTestMainFails) {
-  EXPECT_FALSE(TestMain(iamf_tools_cli_proto::UserMetadata(), "", "").ok());
+  EXPECT_THAT(TestMain(iamf_tools_cli_proto::UserMetadata(), "", ""),
+              Not(IsOk()));
 }
 
 TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
@@ -89,8 +91,8 @@ TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
   // `partition_mix_gain_parameter_blocks` is left true (the default value).
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
-  EXPECT_FALSE(
-      TestMain(user_metadata, "", std::string(kIgnoredOutputPath)).ok());
+  EXPECT_THAT(TestMain(user_metadata, "", std::string(kIgnoredOutputPath)),
+              Not(IsOk()));
 
   // After setting `partition_mix_gain_parameter_blocks` to false, `TestMain()`
   // will succeed.
@@ -261,7 +263,7 @@ TEST_P(TestVector, ValidateTestSuite) {
   if (user_metadata.test_vector_metadata().is_valid()) {
     EXPECT_THAT(result, IsOk()) << "File= " << textproto_filename;
   } else {
-    EXPECT_FALSE(result.ok()) << " File= " << textproto_filename;
+    EXPECT_THAT(result, Not(IsOk())) << " File= " << textproto_filename;
   }
 }
 

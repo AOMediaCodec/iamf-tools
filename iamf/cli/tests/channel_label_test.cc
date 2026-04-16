@@ -114,23 +114,23 @@ TEST(AmbisonicsChannelNumberToLabel, SucceedsForFourthOrderAmbisonics) {
 TEST(AmbisonicsChannelNumberToLabel, InvalidForFifthOrderAmbisonics) {
   constexpr int kFirstFifthOrderAmbisonicsChannel = 25;
   constexpr int kLastFifthOrderAmbisonicsChannel = 35;
-  EXPECT_FALSE(ChannelLabel::AmbisonicsChannelNumberToLabel(
-                   kFirstFifthOrderAmbisonicsChannel)
-                   .ok());
-  EXPECT_FALSE(ChannelLabel::AmbisonicsChannelNumberToLabel(
-                   kLastFifthOrderAmbisonicsChannel)
-                   .ok());
+  EXPECT_THAT(ChannelLabel::AmbisonicsChannelNumberToLabel(
+                  kFirstFifthOrderAmbisonicsChannel),
+              Not(IsOk()));
+  EXPECT_THAT(ChannelLabel::AmbisonicsChannelNumberToLabel(
+                  kLastFifthOrderAmbisonicsChannel),
+              Not(IsOk()));
 }
 
 TEST(AmbisonicsChannelNumberToLabel, InvalidForFourteenthOrderAmbisonics) {
   constexpr int kFirstFourteenthOrderAmbisonicsChannel = 196;
   constexpr int kLastFourteenthOrderAmbisonicsChannel = 224;
-  EXPECT_FALSE(ChannelLabel::AmbisonicsChannelNumberToLabel(
-                   kFirstFourteenthOrderAmbisonicsChannel)
-                   .ok());
-  EXPECT_FALSE(ChannelLabel::AmbisonicsChannelNumberToLabel(
-                   kLastFourteenthOrderAmbisonicsChannel)
-                   .ok());
+  EXPECT_THAT(ChannelLabel::AmbisonicsChannelNumberToLabel(
+                  kFirstFourteenthOrderAmbisonicsChannel),
+              Not(IsOk()));
+  EXPECT_THAT(ChannelLabel::AmbisonicsChannelNumberToLabel(
+                  kLastFourteenthOrderAmbisonicsChannel),
+              Not(IsOk()));
 }
 
 TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
@@ -142,28 +142,28 @@ TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
 
 TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
      FailsForReservedLayouts10Through14) {
-  EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   kLayoutReserved10, kNoExpandedLayout)
-                   .ok());
-  EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   kLayoutReserved11, kNoExpandedLayout)
-                   .ok());
-  EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   kLayoutReserved12, kNoExpandedLayout)
-                   .ok());
-  EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   kLayoutReserved13, kNoExpandedLayout)
-                   .ok());
-  EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   kLayoutReserved14, kNoExpandedLayout)
-                   .ok());
+  EXPECT_THAT(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
+                  kLayoutReserved10, kNoExpandedLayout),
+              Not(IsOk()));
+  EXPECT_THAT(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
+                  kLayoutReserved11, kNoExpandedLayout),
+              Not(IsOk()));
+  EXPECT_THAT(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
+                  kLayoutReserved12, kNoExpandedLayout),
+              Not(IsOk()));
+  EXPECT_THAT(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
+                  kLayoutReserved13, kNoExpandedLayout),
+              Not(IsOk()));
+  EXPECT_THAT(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
+                  kLayoutReserved14, kNoExpandedLayout),
+              Not(IsOk()));
 }
 
 TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
      InvalidWhenExpandedLayoutIsInconsistent) {
-  EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   ChannelAudioLayerConfig::kLayoutExpanded, kNoExpandedLayout)
-                   .ok());
+  EXPECT_THAT(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
+                  ChannelAudioLayerConfig::kLayoutExpanded, kNoExpandedLayout),
+              Not(IsOk()));
 }
 
 struct ExpandedLayoutAndChannelOrderTestCase {
@@ -352,34 +352,34 @@ TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
 
 TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
      FailsForReservedLayouts10Through14) {
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved10, kNoExpandedLayout)
-          .ok());
-  EXPECT_FALSE(
+          kLayoutReserved10, kNoExpandedLayout),
+      Not(IsOk()));
+  EXPECT_THAT(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved11, kNoExpandedLayout)
-          .ok());
-  EXPECT_FALSE(
+          kLayoutReserved11, kNoExpandedLayout),
+      Not(IsOk()));
+  EXPECT_THAT(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved12, kNoExpandedLayout)
-          .ok());
-  EXPECT_FALSE(
+          kLayoutReserved12, kNoExpandedLayout),
+      Not(IsOk()));
+  EXPECT_THAT(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved13, kNoExpandedLayout)
-          .ok());
-  EXPECT_FALSE(
+          kLayoutReserved13, kNoExpandedLayout),
+      Not(IsOk()));
+  EXPECT_THAT(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved14, kNoExpandedLayout)
-          .ok());
+          kLayoutReserved14, kNoExpandedLayout),
+      Not(IsOk()));
 }
 
 TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
      InvalidWhenExpandedLayoutIsInconsistent) {
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          ChannelAudioLayerConfig::kLayoutExpanded, kNoExpandedLayout)
-          .ok());
+          ChannelAudioLayerConfig::kLayoutExpanded, kNoExpandedLayout),
+      Not(IsOk()));
 }
 
 using LookupLabelsToReconstructFromScalableLoudspeakerLayout =
@@ -494,29 +494,29 @@ TEST(GetDemixedChannelLabelForReconGain, SucceedsForRtb4) {
 }
 
 TEST(GetDemixedChannelLabelForReconGain, FailsForReconGainFlagC) {
-  EXPECT_FALSE(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutStereo,
-                                                                kReconGainFlagC)
-                   .ok());
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutStereo,
+                                                               kReconGainFlagC),
+              Not(IsOk()));
 }
 
 TEST(GetDemixedChannelLabelForReconGain, FailsForReconGainFlagLfe) {
-  EXPECT_FALSE(ChannelLabel::GetDemixedChannelLabelForReconGain(
-                   kLayout5_1_ch, kReconGainFlagLfe)
-                   .ok());
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout5_1_ch, kReconGainFlagLfe),
+              Not(IsOk()));
 }
 
 TEST(GetDemixedChannelLabelForReconGain,
      FailsForReconGainFlagLWithoutAppropriateLayout) {
-  EXPECT_FALSE(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutStereo,
-                                                                kReconGainFlagL)
-                   .ok());
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutStereo,
+                                                               kReconGainFlagL),
+              Not(IsOk()));
 }
 
 TEST(GetDemixedChannelLabelForReconGain,
      FailsForReconGainFlagRWithoutAppropriateLayout) {
-  EXPECT_FALSE(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutMono,
-                                                                kReconGainFlagR)
-                   .ok());
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutMono,
+                                                               kReconGainFlagR),
+              Not(IsOk()));
 }
 
 }  // namespace

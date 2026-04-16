@@ -15,7 +15,6 @@
 #include <optional>
 
 #include "absl/status/status_matchers.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -28,6 +27,7 @@ using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::AllOf;
 using ::testing::Each;
+using ::testing::Not;
 using ::testing::Optional;
 using ::testing::SizeIs;
 
@@ -62,11 +62,13 @@ TEST(LookupPrecomputedGains, ShapeAgreesWithInputKey) {
 }
 
 TEST(LookupPrecomputedGains, ReturnsErrorWhenInputKeyIsUnknown) {
-  EXPECT_FALSE(LookupPrecomputedGains(kUnknownInputKey, kStereoOutputKey).ok());
+  EXPECT_THAT(LookupPrecomputedGains(kUnknownInputKey, kStereoOutputKey),
+              Not(IsOk()));
 }
 
 TEST(LookupPrecomputedGains, ReturnsErrorWhenOutputKeyIsUnknown) {
-  EXPECT_FALSE(LookupPrecomputedGains(kFOAInputKey, kUnknownOutputKey).ok());
+  EXPECT_THAT(LookupPrecomputedGains(kFOAInputKey, kUnknownOutputKey),
+              Not(IsOk()));
 }
 
 constexpr DownMixingParams kDMixPMode1DownMixingParams = {.alpha = 1.0,

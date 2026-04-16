@@ -261,10 +261,10 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
               IsOk());
 
   // But it would be invalid if the OBU size is too small.
-  EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
-                   ObuHeader{.obu_type = kObuIaParameterBlock},
-                   kIncorrectObuSize, param_definition, *buffer)
-                   .ok());
+  EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
+                  ObuHeader{.obu_type = kObuIaParameterBlock},
+                  kIncorrectObuSize, param_definition, *buffer),
+              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ParamDefinitionMode1) {
@@ -331,7 +331,8 @@ TEST(CreateFromBuffer, ParamDefinitionMode1) {
   EXPECT_FLOAT_EQ(linear_mix_gain, 1.8335015f);
 
   // Parameter blocks are open intervals.
-  EXPECT_FALSE((*parameter_block)->GetLinearMixGain(10, linear_mix_gain).ok());
+  EXPECT_THAT((*parameter_block)->GetLinearMixGain(10, linear_mix_gain),
+              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ReturnsErrorWhenNumSubblocksIsGreaterThanTotalDuration) {
@@ -385,10 +386,10 @@ TEST(CreateFromBuffer, FailsWhenNumSubblocksIsGreaterThan192000) {
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 1;
 
-  EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
-                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                   param_definition, *buffer)
-                   .ok());
+  EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
+                  ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
+                  param_definition, *buffer),
+              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ParamDefinitionMode0) {
@@ -450,7 +451,8 @@ TEST(CreateFromBuffer, ParamDefinitionMode0) {
   EXPECT_FLOAT_EQ(linear_mix_gain, 1.8335015f);
 
   // Parameter blocks are open intervals.
-  EXPECT_FALSE((*parameter_block)->GetLinearMixGain(10, linear_mix_gain).ok());
+  EXPECT_THAT((*parameter_block)->GetLinearMixGain(10, linear_mix_gain),
+              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, FailsWhenSubblockDurationsAreInconsistent) {
@@ -481,10 +483,10 @@ TEST(CreateFromBuffer, FailsWhenSubblockDurationsAreInconsistent) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 1;
-  EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
-                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                   param_definition, *buffer)
-                   .ok());
+  EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
+                  ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
+                  param_definition, *buffer),
+              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, InvalidWhenParamDefinitionIdDoesNotMatchBitstream) {
@@ -519,10 +521,10 @@ TEST(CreateFromBuffer, InvalidWhenParamDefinitionIdDoesNotMatchBitstream) {
   auto buffer_to_use_without_metadata =
       MemoryBasedReadBitBuffer::CreateFromSpan(
           absl::MakeConstSpan(source_data));
-  EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
-                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                   param_definition, *buffer_to_use_without_metadata)
-                   .ok());
+  EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
+                  ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
+                  param_definition, *buffer_to_use_without_metadata),
+              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, DemixingParamDefinitionMode0) {
@@ -713,7 +715,7 @@ TEST_F(MixGainParameterBlockTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixGainParameterBlockTest,
@@ -722,7 +724,7 @@ TEST_F(MixGainParameterBlockTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixGainParameterBlockTest, ExtensionHeader) {
@@ -938,7 +940,7 @@ TEST_F(DemixingParameterBlockTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(DemixingParameterBlockTest,
@@ -947,7 +949,7 @@ TEST_F(DemixingParameterBlockTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 class ReconGainBlockTest : public ParameterBlockObuTestBase,
@@ -1180,7 +1182,7 @@ TEST_F(ReconGainBlockTest, ValidateAndWriteObuFailsWithMoreThanOneSubblock) {
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(ReconGainBlockTest,
@@ -1199,7 +1201,7 @@ TEST_F(ReconGainBlockTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,

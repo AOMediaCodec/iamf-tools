@@ -23,11 +23,8 @@ cc_test(
     srcs = ["numeric_utils_test.cc"],
     deps = [
         "//iamf/cli/proto:obu_header_cc_proto",
-        "//iamf/cli/tests:cli_test_utils",
-        "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:numeric_utils",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/functional:any_invocable",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",

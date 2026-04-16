@@ -21,12 +21,14 @@ namespace adm_to_user_metadata {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 TEST(LookupInputLayoutFromAudioPackFormatId, UnknownAudioPackFormatId) {
-  EXPECT_FALSE(LookupInputLayoutFromAudioPackFormatId("").ok());
-  EXPECT_FALSE(LookupInputLayoutFromAudioPackFormatId("AP_00020001").ok());
-  EXPECT_FALSE(LookupInputLayoutFromAudioPackFormatId("00010002").ok());
-  EXPECT_FALSE(LookupInputLayoutFromAudioPackFormatId("Stereo").ok());
+  EXPECT_THAT(LookupInputLayoutFromAudioPackFormatId(""), Not(IsOk()));
+  EXPECT_THAT(LookupInputLayoutFromAudioPackFormatId("AP_00020001"),
+              Not(IsOk()));
+  EXPECT_THAT(LookupInputLayoutFromAudioPackFormatId("00010002"), Not(IsOk()));
+  EXPECT_THAT(LookupInputLayoutFromAudioPackFormatId("Stereo"), Not(IsOk()));
 }
 
 struct SupportedAudioPackFormatIdTestCase {

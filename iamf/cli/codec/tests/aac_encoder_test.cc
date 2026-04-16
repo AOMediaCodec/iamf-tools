@@ -15,7 +15,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -30,6 +29,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr bool kOverrideAudioRollDistance = true;
 constexpr bool kIgnoredValidatePreskip = true;
@@ -107,14 +107,14 @@ TEST_F(AacEncoderTest, InitFailsWithInvalidBitrateMode) {
   aac_encoder_metadata_.set_bitrate_mode(-1);
   ConstructEncoder();
 
-  EXPECT_FALSE(encoder_->Initialize(kIgnoredValidatePreskip).ok());
+  EXPECT_THAT(encoder_->Initialize(kIgnoredValidatePreskip), Not(IsOk()));
 }
 
 TEST_F(AacEncoderTest, InitFailsWithInvalidSignalingMode) {
   aac_encoder_metadata_.set_signaling_mode(-1);
   ConstructEncoder();
 
-  EXPECT_FALSE(encoder_->Initialize(kIgnoredValidatePreskip).ok());
+  EXPECT_THAT(encoder_->Initialize(kIgnoredValidatePreskip), Not(IsOk()));
 }
 
 }  // namespace

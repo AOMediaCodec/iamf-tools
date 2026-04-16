@@ -368,11 +368,11 @@ TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
       kMixPresentationId, {kAudioElementId, kStereoAudioElementId},
       /*common_parameter_id=*/999, kCommonParameterRate, obus_to_finalize_);
 
-  EXPECT_FALSE(RenderingMixPresentationFinalizer::Create(
-                   renderer_factory_.get(), loudness_calculator_factory_.get(),
-                   audio_elements_, sample_processor_factory_,
-                   obus_to_finalize_)
-                   .ok());
+  EXPECT_THAT(
+      RenderingMixPresentationFinalizer::Create(
+          renderer_factory_.get(), loudness_calculator_factory_.get(),
+          audio_elements_, sample_processor_factory_, obus_to_finalize_),
+      Not(IsOk()));
 }
 
 // =========== Tests that work is delegated to the renderer factory. ===========
@@ -563,10 +563,9 @@ TEST_F(FinalizerTest, InvalidWhenFrameIsLargerThanNumSamplesPerFrame) {
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
 
-  EXPECT_FALSE(finalizer
-                   .PushTemporalUnit(ordered_labeled_frames_[0], kStartTime,
-                                     kEndTime, parameter_blocks)
-                   .ok());
+  EXPECT_THAT(finalizer.PushTemporalUnit(ordered_labeled_frames_[0], kStartTime,
+                                         kEndTime, parameter_blocks),
+              Not(IsOk()));
 }
 
 TEST_F(FinalizerTest, WavFileHasExpectedProperties) {
@@ -844,8 +843,8 @@ TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
               IsOk());
 
   EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
-  EXPECT_FALSE(
-      finalizer.GetFinalizedMixPresentationObus(validate_loudness_).ok());
+  EXPECT_THAT(finalizer.GetFinalizedMixPresentationObus(validate_loudness_),
+              Not(IsOk()));
 }
 
 //============== Various modes fallback to preserving loudness. ==============
@@ -942,8 +941,8 @@ TEST_F(FinalizerTest,
        GetFinalizedMixPresentationObusFailsBeforeFinalizePushingTemporalUnits) {
   auto finalizer = CreateFinalizerExpectOk();
 
-  EXPECT_FALSE(
-      finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness).ok());
+  EXPECT_THAT(finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness),
+              Not(IsOk()));
 }
 
 TEST_F(FinalizerTest,
@@ -1106,8 +1105,8 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   // Do validate that computed loudness matches the user provided loudness -
   // since kArbitraryLoudnessInfo is the `computed` loudness, it won't.
   validate_loudness_ = true;
-  EXPECT_FALSE(
-      finalizer.GetFinalizedMixPresentationObus(validate_loudness_).ok());
+  EXPECT_THAT(finalizer.GetFinalizedMixPresentationObus(validate_loudness_),
+              Not(IsOk()));
 }
 
 // =========== Tests for GetPostProcessedSamplesAsSpan ===========

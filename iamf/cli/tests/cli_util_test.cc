@@ -115,9 +115,9 @@ TEST(WritePcmFrameToBuffer, RequiresBitDepthIsMultipleOfEight) {
   const bool kBigEndian = false;
   std::vector<uint8_t> output_buffer;
 
-  EXPECT_FALSE(WritePcmFrameToBuffer(frame_to_write, kBitDepth, kBigEndian,
-                                     output_buffer)
-                   .ok());
+  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kBitDepth, kBigEndian,
+                                    output_buffer),
+              Not(IsOk()));
 }
 
 class GetCommonSampleRateAndBitDepthTest : public ::testing::Test {
@@ -298,9 +298,9 @@ TEST(CollectAndValidateParamDefinitions,
             output_mix_gain);
 
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> result;
-  EXPECT_FALSE(CollectAndValidateParamDefinitions(audio_elements,
-                                                  mix_presentation_obus, result)
-                   .ok());
+  EXPECT_THAT(CollectAndValidateParamDefinitions(audio_elements,
+                                                 mix_presentation_obus, result),
+              Not(IsOk()));
 }
 
 TEST(CollectAndValidateParamDefinitions,

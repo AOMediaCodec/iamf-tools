@@ -20,7 +20,6 @@
 #include <variant>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -256,7 +255,7 @@ TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidNumSubMixes) {
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest,
@@ -267,7 +266,7 @@ TEST_F(MixPresentationObuTest,
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
 
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(
@@ -279,7 +278,7 @@ TEST_F(
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
 
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(
@@ -291,7 +290,7 @@ TEST_F(
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
 
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest,
@@ -309,7 +308,7 @@ TEST_F(MixPresentationObuTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest,
@@ -322,7 +321,7 @@ TEST_F(MixPresentationObuTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest, TwoAnchorElements) {
@@ -412,7 +411,7 @@ TEST_F(MixPresentationObuTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest, LiveLoudnessInfo) {
@@ -571,7 +570,7 @@ TEST_F(MixPresentationObuTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest, MultipleLabels) {
@@ -634,7 +633,7 @@ TEST_F(MixPresentationObuTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
@@ -747,7 +746,7 @@ TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidMissingStero) {
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest, WritesMixPresentionTags) {
@@ -1031,9 +1030,9 @@ TEST_F(GetNumChannelsFromLayoutTest, UnsupportedReservedLayoutType) {
       .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
 
   int32_t unused_num_channels;
-  EXPECT_FALSE(
-      MixPresentationObu::GetNumChannelsFromLayout(layout_, unused_num_channels)
-          .ok());
+  EXPECT_THAT(MixPresentationObu::GetNumChannelsFromLayout(layout_,
+                                                           unused_num_channels),
+              Not(IsOk()));
 }
 
 TEST_F(GetNumChannelsFromLayoutTest, UnsupportedReservedSoundSystem) {
@@ -1058,7 +1057,7 @@ TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithErrorBeyondLayoutType) {
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(GetNumChannelsFromLayoutTest, ErrorBeyondReservedSoundSystem) {
@@ -1070,9 +1069,9 @@ TEST_F(GetNumChannelsFromLayoutTest, ErrorBeyondReservedSoundSystem) {
       .sound_system = kBeyondSoundSystemReserved;
 
   int32_t unused_num_channels;
-  EXPECT_FALSE(
-      MixPresentationObu::GetNumChannelsFromLayout(layout_, unused_num_channels)
-          .ok());
+  EXPECT_THAT(MixPresentationObu::GetNumChannelsFromLayout(layout_,
+                                                           unused_num_channels),
+              Not(IsOk()));
 }
 
 // --- Begin CreateFromBuffer tests ---
@@ -1082,8 +1081,9 @@ TEST(CreateFromBufferTest, RejectEmptyBitstream) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   ObuHeader header;
-  EXPECT_FALSE(
-      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
+  EXPECT_THAT(
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer),
+      Not(IsOk()));
 }
 
 TEST(CreateFromBufferTest, FailsWithLargeCountLabel) {
@@ -1095,8 +1095,9 @@ TEST(CreateFromBufferTest, FailsWithLargeCountLabel) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   ObuHeader header;
-  EXPECT_FALSE(
-      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
+  EXPECT_THAT(
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer),
+      Not(IsOk()));
 }
 
 TEST(CreateFromBufferTest, FailsWithLargeNumSubMixes) {
@@ -1110,8 +1111,9 @@ TEST(CreateFromBufferTest, FailsWithLargeNumSubMixes) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   ObuHeader header;
-  EXPECT_FALSE(
-      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
+  EXPECT_THAT(
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer),
+      Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
@@ -1133,8 +1135,9 @@ TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   ObuHeader header;
-  EXPECT_FALSE(
-      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
+  EXPECT_THAT(
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer),
+      Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ReadsOneSubMix) {
@@ -1793,8 +1796,8 @@ TEST(MixPresentationTagsWriteAndValidate,
 
   WriteBitBuffer wb(0);
 
-  EXPECT_FALSE(
-      kMixPresentationTagsWithContentLanguageTag.ValidateAndWrite(wb).ok());
+  EXPECT_THAT(kMixPresentationTagsWithContentLanguageTag.ValidateAndWrite(wb),
+              Not(IsOk()));
 }
 
 TEST(MixPresentationTagsWriteAndValidate, WritesArbitraryTags) {
@@ -1844,9 +1847,9 @@ TEST(MixPresentationTagsWriteAndValidate, InvalidForDuplicateContentIdTag) {
 
   WriteBitBuffer wb(1024);
 
-  EXPECT_FALSE(
-      kMixPresentationTagsWithDuplicateContentLanguageTag.ValidateAndWrite(wb)
-          .ok());
+  EXPECT_THAT(
+      kMixPresentationTagsWithDuplicateContentLanguageTag.ValidateAndWrite(wb),
+      Not(IsOk()));
 }
 
 TEST(MixPresentationOptionalFieldsCreateFromBufferTest,

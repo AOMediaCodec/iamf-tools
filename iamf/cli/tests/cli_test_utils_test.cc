@@ -22,7 +22,6 @@
 #include <optional>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -67,7 +66,7 @@ TEST(ReadFileToBytes, FailsIfFileDoesNotExist) {
   ASSERT_FALSE(std::filesystem::exists(file_path_does_not_exist));
 
   std::vector<uint8_t> bytes;
-  EXPECT_FALSE(ReadFileToBytes(file_path_does_not_exist, bytes).ok());
+  EXPECT_THAT(ReadFileToBytes(file_path_does_not_exist, bytes), Not(IsOk()));
 }
 
 void WriteVectorToFile(const std::filesystem::path filename,

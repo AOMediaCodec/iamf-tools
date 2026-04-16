@@ -30,6 +30,7 @@ namespace adm_to_user_metadata {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr int32_t kFrameDurationMs = 10;
 constexpr uint32_t kSamplesPerSec = 48000;
@@ -134,10 +135,10 @@ TEST(Create, WithNoAudioObjectsSucceeds) {
 }
 
 TEST(Create, WithObjectBasedAudioObjectFails) {
-  EXPECT_FALSE(IAMF::Create(
-                   /*adm=*/{.audio_objects = {GetObjectBasedAudioObject()}},
-                   kFrameDurationMs, kSamplesPerSec)
-                   .ok());
+  EXPECT_THAT(IAMF::Create(
+                  /*adm=*/{.audio_objects = {GetObjectBasedAudioObject()}},
+                  kFrameDurationMs, kSamplesPerSec),
+              Not(IsOk()));
 }
 
 TEST(Create, PopulatesIamfInputLayoutsFromObjects) {
@@ -268,11 +269,12 @@ TEST_P(FrameDurationInfo, TestWithParam) {
   // Many fields are irrelevant to calculating the number of samples per frame.
   auto iamf = IAMF::Create(
       /*adm=*/{}, test_case.frame_duration_ms, test_case.samples_per_sec);
-  ASSERT_EQ(iamf.ok(), test_case.is_valid);
-
   if (test_case.is_valid) {
+    ASSERT_THAT(iamf, IsOk());
     EXPECT_EQ(iamf->num_samples_per_frame_,
               test_case.expected_num_samples_per_frame);
+  } else {
+    EXPECT_THAT(iamf, Not(IsOk()));
   }
 }
 

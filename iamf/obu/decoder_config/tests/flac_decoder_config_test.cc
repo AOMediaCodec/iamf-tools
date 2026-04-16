@@ -703,18 +703,18 @@ TEST_F(FlacTest, InvalidGetTotalNumSamplesInStreamTooHigh) {
       FlacStreamInfoStrictConstraints::kMaxTotalSamplesInStream + 1;
 
   uint64_t output_total_samples_in_stream;
-  EXPECT_FALSE(flac_decoder_config_
-                   .GetTotalSamplesInStream(output_total_samples_in_stream)
-                   .ok());
+  EXPECT_THAT(flac_decoder_config_.GetTotalSamplesInStream(
+                  output_total_samples_in_stream),
+              Not(IsOk()));
 }
 
 TEST_F(FlacTest, InvalidGetTotalNumSamplesInStreamWithNoStreamInfo) {
   flac_decoder_config_.metadata_blocks_.clear();
 
   uint64_t output_total_samples_in_stream;
-  EXPECT_FALSE(flac_decoder_config_
-                   .GetTotalSamplesInStream(output_total_samples_in_stream)
-                   .ok());
+  EXPECT_THAT(flac_decoder_config_.GetTotalSamplesInStream(
+                  output_total_samples_in_stream),
+              Not(IsOk()));
 }
 
 // ============================================================================

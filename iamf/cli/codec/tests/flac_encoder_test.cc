@@ -15,7 +15,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -30,6 +29,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr bool kOverrideAudioRollDistance = true;
 constexpr bool kIgnoredValidateCodecDelay = true;
@@ -89,7 +89,7 @@ TEST_F(FlacEncoderTest,
 
   ConstructEncoder();
 
-  EXPECT_FALSE(encoder_->Initialize(kIgnoredValidateCodecDelay).ok());
+  EXPECT_THAT(encoder_->Initialize(kIgnoredValidateCodecDelay), Not(IsOk()));
 }
 
 TEST_F(FlacEncoderTest, EncodeAudioFrameSucceeds) {

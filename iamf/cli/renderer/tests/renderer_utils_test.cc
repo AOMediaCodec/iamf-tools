@@ -33,6 +33,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 using enum ChannelLabel::Label;
 using testing::DoubleEq;
 using testing::ElementsAre;
@@ -207,10 +208,10 @@ TEST(ArrangeSamplesToRender,
   std::vector<absl::Span<const InternalSampleType>> samples(
       kStereoArrangement.size());
   size_t num_valid_samples = 0;
-  EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrameWithMissingSample,
-                                      kStereoArrangement, kEmptyChannel,
-                                      samples, num_valid_samples)
-                   .ok());
+  EXPECT_THAT(ArrangeSamplesToRender(kStereoLabeledFrameWithMissingSample,
+                                     kStereoArrangement, kEmptyChannel, samples,
+                                     num_valid_samples),
+              Not(IsOk()));
 }
 
 TEST(ArrangeSamplesToRender, InvalidWhenEmptyChannelHasTooFewSamples) {
@@ -224,10 +225,10 @@ TEST(ArrangeSamplesToRender, InvalidWhenEmptyChannelHasTooFewSamples) {
   std::vector<absl::Span<const InternalSampleType>> samples(
       kStereoArrangement.size());
   size_t num_valid_samples = 0;
-  EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrame, kStereoArrangement,
-                                      kEmptyChannelWithTooManySamples, samples,
-                                      num_valid_samples)
-                   .ok());
+  EXPECT_THAT(ArrangeSamplesToRender(kStereoLabeledFrame, kStereoArrangement,
+                                     kEmptyChannelWithTooManySamples, samples,
+                                     num_valid_samples),
+              Not(IsOk()));
 }
 
 TEST(ArrangeSamplesToRender, InvalidWhenTrimIsImplausible) {
@@ -241,10 +242,10 @@ TEST(ArrangeSamplesToRender, InvalidWhenTrimIsImplausible) {
   std::vector<absl::Span<const InternalSampleType>> samples(
       kStereoArrangement.size());
   size_t num_valid_samples = 0;
-  EXPECT_FALSE(ArrangeSamplesToRender(kFrameWithExcessSamplesTrimmed,
-                                      kStereoArrangement, kEmptyChannel,
-                                      samples, num_valid_samples)
-                   .ok());
+  EXPECT_THAT(
+      ArrangeSamplesToRender(kFrameWithExcessSamplesTrimmed, kStereoArrangement,
+                             kEmptyChannel, samples, num_valid_samples),
+      Not(IsOk()));
 }
 
 TEST(ArrangeSamplesToRender, InvalidMissingLabel) {
@@ -256,10 +257,10 @@ TEST(ArrangeSamplesToRender, InvalidMissingLabel) {
   std::vector<absl::Span<const InternalSampleType>> unused_samples(
       kMonoArrangement.size());
   size_t num_valid_samples = 0;
-  EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrame, kMonoArrangement,
-                                      kEmptyChannel, unused_samples,
-                                      num_valid_samples)
-                   .ok());
+  EXPECT_THAT(
+      ArrangeSamplesToRender(kStereoLabeledFrame, kMonoArrangement,
+                             kEmptyChannel, unused_samples, num_valid_samples),
+      Not(IsOk()));
 }
 
 TEST(LookupOutputKeyFromPlaybackLayout, SucceedsForChannelBasedLayout) {
@@ -296,17 +297,17 @@ TEST(LookupOutputKeyFromPlaybackLayout, SucceedsFor7_1_5_4) {
 }
 
 TEST(LookupOutputKeyFromPlaybackLayout, FailsOnBinauralBasedLayout) {
-  EXPECT_FALSE(LookupOutputKeyFromPlaybackLayout(
-                   {.layout_type = Layout::kLayoutTypeBinaural,
-                    .specific_layout = LoudspeakersReservedOrBinauralLayout{}})
-                   .ok());
+  EXPECT_THAT(LookupOutputKeyFromPlaybackLayout(
+                  {.layout_type = Layout::kLayoutTypeBinaural,
+                   .specific_layout = LoudspeakersReservedOrBinauralLayout{}}),
+              Not(IsOk()));
 }
 
 TEST(LookupOutputKeyFromPlaybackLayout, FailsOnReservedLayout) {
-  EXPECT_FALSE(LookupOutputKeyFromPlaybackLayout(
-                   {.layout_type = Layout::kLayoutTypeReserved0,
-                    .specific_layout = LoudspeakersReservedOrBinauralLayout{}})
-                   .ok());
+  EXPECT_THAT(LookupOutputKeyFromPlaybackLayout(
+                  {.layout_type = Layout::kLayoutTypeReserved0,
+                   .specific_layout = LoudspeakersReservedOrBinauralLayout{}}),
+              Not(IsOk()));
 }
 
 using AmbisonicsOrderTest = ::testing::TestWithParam<int>;
@@ -315,7 +316,7 @@ TEST_P(AmbisonicsOrderTest, SucceedsOnPerfectSquaredChannelCount) {
   const auto channel_count =
       static_cast<uint8_t>((expected_order + 1) * (expected_order + 1));
   int actual_order;
-  EXPECT_TRUE(GetAmbisonicsOrder(channel_count, actual_order).ok());
+  EXPECT_THAT(GetAmbisonicsOrder(channel_count, actual_order), IsOk());
   EXPECT_EQ(actual_order, expected_order);
 }
 
@@ -330,7 +331,7 @@ TEST_P(AmbisonicsOrderTest, FailsOnNonPerfectSquaredChannelCount) {
        i < (order + 1) * (order + 1); i++) {
     const auto channel_count = static_cast<uint8_t>(i);
     int actual_order;
-    EXPECT_FALSE(GetAmbisonicsOrder(channel_count, actual_order).ok());
+    EXPECT_THAT(GetAmbisonicsOrder(channel_count, actual_order), Not(IsOk()));
   }
 }
 INSTANTIATE_TEST_SUITE_P(GetAmbisonicsOrderForInRangeChannelCount,
@@ -340,7 +341,7 @@ using ChannelCountTest = ::testing::TestWithParam<uint8_t>;
 TEST_P(ChannelCountTest, FailsOnTooLargeChannelCount) {
   const uint8_t channel_count = GetParam();
   int actual_order;
-  EXPECT_FALSE(GetAmbisonicsOrder(channel_count, actual_order).ok());
+  EXPECT_THAT(GetAmbisonicsOrder(channel_count, actual_order), Not(IsOk()));
 }
 INSTANTIATE_TEST_SUITE_P(GetAmbisonicsOrderForOutRangeChannelCount,
                          ChannelCountTest, testing::Range<uint8_t>(226, 255));
@@ -355,11 +356,11 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullZerothOrderAmbisonicsMono) {
   const SubstreamIdLabelsMap kZerothOrderSubstreamIdToLabels = {{100, {kA0}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(kFullZerothOrderAmbisonicsConfig,
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(kFullZerothOrderAmbisonicsConfig,
                                             kFullZerothOrderAudioSubstreamIds,
                                             kZerothOrderSubstreamIdToLabels,
-                                            channel_labels)
-                  .ok());
+                                            channel_labels),
+              IsOk());
   EXPECT_THAT(channel_labels, ElementsAre(kA0));
 }
 
@@ -376,11 +377,11 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullFirstOrderAmbisonicsMono) {
       {100, {kA0}}, {101, {kA1}}, {102, {kA2}}, {103, {kA3}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(kFullFirstOrderAmbisonicsConfig,
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(kFullFirstOrderAmbisonicsConfig,
                                             kFullFirstOrderAudioSubstreamIds,
                                             kFirstOrderSubstreamIdToLabels,
-                                            channel_labels)
-                  .ok());
+                                            channel_labels),
+              IsOk());
   EXPECT_THAT(channel_labels, ElementsAre(kA0, kA1, kA2, kA3));
 }
 
@@ -398,11 +399,11 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullSecondOrderAmbisonicsMono) {
       {105, {kA5}}, {106, {kA6}}, {107, {kA7}}, {108, {kA8}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(kFullSecondOrderAmbisonicsConfig,
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(kFullSecondOrderAmbisonicsConfig,
                                             kFullSecondOrderAudioSubstreamIds,
                                             kSecondOrderSubstreamIdToLabels,
-                                            channel_labels)
-                  .ok());
+                                            channel_labels),
+              IsOk());
   EXPECT_THAT(channel_labels,
               ElementsAre(kA0, kA1, kA2, kA3, kA4, kA5, kA6, kA7, kA8));
 }
@@ -425,11 +426,11 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullThirdOrderAmbisonicsMono) {
       {112, {kA12}}, {113, {kA13}}, {114, {kA14}}, {115, {kA15}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(kFullThirdOrderAmbisonicsConfig,
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(kFullThirdOrderAmbisonicsConfig,
                                             kFullThirdOrderAudioSubstreamIds,
                                             kThirdOrderSubstreamIdToLabels,
-                                            channel_labels)
-                  .ok());
+                                            channel_labels),
+              IsOk());
   EXPECT_THAT(channel_labels,
               ElementsAreArray({kA0, kA1, kA2, kA3, kA4, kA5, kA6, kA7, kA8,
                                 kA9, kA10, kA11, kA12, kA13, kA14, kA15}));
@@ -457,11 +458,11 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullFourthOrderAmbisonicsMono) {
       {124, {kA24}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(kFullFourthOrderAmbisonicsConfig,
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(kFullFourthOrderAmbisonicsConfig,
                                             kFullFourthOrderAudioSubstreamIds,
                                             kFourthOrderSubstreamIdToLabels,
-                                            channel_labels)
-                  .ok());
+                                            channel_labels),
+              IsOk());
   EXPECT_THAT(
       channel_labels,
       ElementsAreArray({kA0,  kA1,  kA2,  kA3,  kA4,  kA5,  kA6,  kA7,  kA8,
@@ -486,11 +487,11 @@ TEST(GetChannelLabelsForAmbisonicsTest, MixedFirstOrderAmbisonicsMono) {
       {100, {kA0}}, {101, {kA1}}, {102, {kA2}}, {103, {kA3}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(kMixedFirstOrderAmbisonicsConfig,
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(kMixedFirstOrderAmbisonicsConfig,
                                             kMixedFirstOrderAudioSubstreamIds,
                                             kFirstOrderSubstreamIdToLabels,
-                                            channel_labels)
-                  .ok());
+                                            channel_labels),
+              IsOk());
   EXPECT_THAT(channel_labels, ElementsAre(kA0, kOmitted, kA2, kA3));
 }
 
@@ -510,10 +511,10 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullFirstOrderAmbisonicsProjection) {
       {200, {kA0}}, {201, {kA1}}, {202, {kA2}}, {203, {kA3}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(
                   kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
-                  kFirstOrderSubstreamIdToLabels, channel_labels)
-                  .ok());
+                  kFirstOrderSubstreamIdToLabels, channel_labels),
+              IsOk());
   EXPECT_THAT(channel_labels, ElementsAre(kA0, kA1, kA2, kA3));
 }
 
@@ -533,10 +534,10 @@ TEST(GetChannelLabelsForAmbisonicsTest,
       {200, {kA0, kA1}}, {201, {kA2, kA3}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(
                   kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
-                  kFirstOrderSubstreamIdToLabels, channel_labels)
-                  .ok());
+                  kFirstOrderSubstreamIdToLabels, channel_labels),
+              IsOk());
   EXPECT_THAT(channel_labels, ElementsAre(kA0, kA1, kA2, kA3));
 }
 
@@ -558,10 +559,10 @@ TEST(GetChannelLabelsForAmbisonicsTest, MixedFirstOrderAmbisonicsProjection) {
       {200, {kA0}}, {201, {kA1}}, {202, {kA2}}, {203, {kA3}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_TRUE(GetChannelLabelsForAmbisonics(
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(
                   kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
-                  kFirstOrderSubstreamIdToLabels, channel_labels)
-                  .ok());
+                  kFirstOrderSubstreamIdToLabels, channel_labels),
+              IsOk());
   EXPECT_THAT(channel_labels, ElementsAre(kA0, /*missing kA1, */ kA2, kA3));
 }
 
@@ -584,10 +585,10 @@ TEST(GetChannelLabelsForAmbisonicsTest, InvalidMonoModeWithProjectionConfig) {
       {100, {kA0}}, {101, {kA1}}, {102, {kA2}}, {103, {kA3}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_FALSE(GetChannelLabelsForAmbisonics(
-                   kInvalidAmbisonicsConfig, kFullFirstOrderAudioSubstreamIds,
-                   kFirstOrderSubstreamIdToLabels, channel_labels)
-                   .ok());
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(
+                  kInvalidAmbisonicsConfig, kFullFirstOrderAudioSubstreamIds,
+                  kFirstOrderSubstreamIdToLabels, channel_labels),
+              Not(IsOk()));
 }
 
 TEST(GetChannelLabelsForAmbisonicsTest, InvalidProjectionModeWithMonoConfig) {
@@ -605,10 +606,10 @@ TEST(GetChannelLabelsForAmbisonicsTest, InvalidProjectionModeWithMonoConfig) {
       {100, {kA0}}, {101, {kA1}}, {102, {kA2}}, {103, {kA3}}};
 
   std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_FALSE(GetChannelLabelsForAmbisonics(
-                   kInvalidAmbisonicsConfig, kFullFirstOrderAudioSubstreamIds,
-                   kFirstOrderSubstreamIdToLabels, channel_labels)
-                   .ok());
+  EXPECT_THAT(GetChannelLabelsForAmbisonics(
+                  kInvalidAmbisonicsConfig, kFullFirstOrderAudioSubstreamIds,
+                  kFirstOrderSubstreamIdToLabels, channel_labels),
+              Not(IsOk()));
 }
 
 TEST(GetDemixingMatrix, ReturnsNullPointerForMonoConfig) {
@@ -620,7 +621,7 @@ TEST(GetDemixingMatrix, ReturnsNullPointerForMonoConfig) {
                                .channel_mapping = {0, 1, 2, 3}}};
 
   auto demixing_matrix = GetDemixingMatrix(kFullFirstOrderAmbisonicsConfig);
-  ASSERT_TRUE(demixing_matrix.ok());
+  ASSERT_THAT(demixing_matrix, IsOk());
   EXPECT_EQ(*demixing_matrix, nullptr);
 }
 
@@ -636,7 +637,7 @@ TEST(GetDemixingMatrix, ReturnsNonNullDemixingMatrixForMonoConfig) {
           .demixing_matrix = kExpectedDemixingMatrix}};
 
   auto demixing_matrix = GetDemixingMatrix(kAmbisonicsProjectionConfig);
-  ASSERT_TRUE(demixing_matrix.ok());
+  ASSERT_THAT(demixing_matrix, IsOk());
   ASSERT_NE(*demixing_matrix, nullptr);
   EXPECT_EQ(**demixing_matrix, kExpectedDemixingMatrix);
 }
@@ -654,7 +655,7 @@ TEST(GetDemixingMatrix, InvalidMonoModeWithProjectionConfig) {
           .substream_count = 4,
           .coupled_substream_count = 0,
           .demixing_matrix = kAllZeroDemixingMatrix}};
-  EXPECT_FALSE(GetDemixingMatrix(kInvalidAmbisonicsConfig).ok());
+  EXPECT_THAT(GetDemixingMatrix(kInvalidAmbisonicsConfig), Not(IsOk()));
 }
 
 TEST(GetDemixingMatrix, InvalidProjectionModeWithMonoConfig) {
@@ -666,7 +667,7 @@ TEST(GetDemixingMatrix, InvalidProjectionModeWithMonoConfig) {
           AmbisonicsMonoConfig{.output_channel_count = 4,
                                .substream_count = 4,
                                .channel_mapping = {0, 1, 2, 3}}};
-  EXPECT_FALSE(GetDemixingMatrix(kInvalidAmbisonicsConfig).ok());
+  EXPECT_THAT(GetDemixingMatrix(kInvalidAmbisonicsConfig), Not(IsOk()));
 }
 
 TEST(ProjectSamplesToRender, ProjectionReordersChannelsAndHalvesValues) {
@@ -685,9 +686,9 @@ TEST(ProjectSamplesToRender, ProjectionReordersChannelsAndHalvesValues) {
   const std::vector<std::vector<InternalSampleType>> input_samples = {
       {0.8}, {0.6}, {0.4}, {0.2}};
   std::vector<std::vector<InternalSampleType>> projected_samples;
-  EXPECT_TRUE(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
-                                     demixing_matrix, projected_samples)
-                  .ok());
+  EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
+                                     demixing_matrix, projected_samples),
+              IsOk());
 
   // Expect the output have the channels reversed and values halved.
   const std::vector<std::vector<InternalSampleType>>
@@ -712,9 +713,9 @@ TEST(ProjectSamplesToRender, ProjectionAveragesEveryTwoChannels) {
   const std::vector<std::vector<InternalSampleType>> input_samples = {
       {0.8}, {0.6}, {0.4}, {0.2}};
   std::vector<std::vector<InternalSampleType>> projected_samples;
-  EXPECT_TRUE(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
-                                     demixing_matrix, projected_samples)
-                  .ok());
+  EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
+                                     demixing_matrix, projected_samples),
+              IsOk());
 
   // Expect the output have the channels reversed and values halved.
   const std::vector<std::vector<InternalSampleType>>
@@ -734,9 +735,9 @@ TEST(ProjectSamplesToRender, FailsOnIncompatibleMatrices) {
   const std::vector<int16_t> demixing_matrix(17, 0);
 
   std::vector<std::vector<InternalSampleType>> projected_samples;
-  EXPECT_FALSE(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
-                                      demixing_matrix, projected_samples)
-                   .ok());
+  EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
+                                     demixing_matrix, projected_samples),
+              Not(IsOk()));
 }
 
 TEST(ProjectSamplesToRender, FailsOnZeroInputChannels) {
@@ -744,9 +745,9 @@ TEST(ProjectSamplesToRender, FailsOnZeroInputChannels) {
   const std::vector<int16_t> demixing_matrix(1, 0);
 
   std::vector<std::vector<InternalSampleType>> projected_samples;
-  EXPECT_FALSE(ProjectSamplesToRender(MakeSpanOfConstSpans(empty_input_samples),
-                                      demixing_matrix, projected_samples)
-                   .ok());
+  EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(empty_input_samples),
+                                     demixing_matrix, projected_samples),
+              Not(IsOk()));
 }
 
 TEST(ProjectSamplesToRender, FailsOnEmptyDemixingMatrix) {
@@ -754,9 +755,9 @@ TEST(ProjectSamplesToRender, FailsOnEmptyDemixingMatrix) {
   const std::vector<int16_t> empty_demixing_matrix;
 
   std::vector<std::vector<InternalSampleType>> projected_samples;
-  EXPECT_FALSE(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
-                                      empty_demixing_matrix, projected_samples)
-                   .ok());
+  EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
+                                     empty_demixing_matrix, projected_samples),
+              Not(IsOk()));
 }
 
 }  // namespace

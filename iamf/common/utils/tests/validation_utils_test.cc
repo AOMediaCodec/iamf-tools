@@ -44,9 +44,9 @@ TEST(ValidateContainerSizeEqual, OkIfArgsAreEqual) {
 TEST(ValidateContainerSizeEqual, NotOkIfArgsAreNotEquals) {
   constexpr uint8_t kInaccurateSizeFive = 5;
 
-  EXPECT_FALSE(ValidateContainerSizeEqual(kOmitContext, kFourTestValues,
-                                          kInaccurateSizeFive)
-                   .ok());
+  EXPECT_THAT(ValidateContainerSizeEqual(kOmitContext, kFourTestValues,
+                                         kInaccurateSizeFive),
+              Not(IsOk()));
 }
 
 TEST(ValidateContainerSizeEqual, MessageContainsContextOnError) {
@@ -67,7 +67,8 @@ TEST(ValidateEqual, OkIfArgsAreEqual) {
 TEST(ValidateEqual, NotOkIfArgsAreNotEqual) {
   const auto kLeftArg = 123;
   const auto kUnequalRightArg = 223;
-  EXPECT_FALSE(ValidateEqual(kLeftArg, kUnequalRightArg, kOmitContext).ok());
+  EXPECT_THAT(ValidateEqual(kLeftArg, kUnequalRightArg, kOmitContext),
+              Not(IsOk()));
 }
 
 TEST(ValidateNotEqual, OkIfArgsAreNotEqual) {
@@ -79,7 +80,8 @@ TEST(ValidateNotEqual, OkIfArgsAreNotEqual) {
 TEST(ValidateNotEqual, NotOkIfArgsAreEqual) {
   const auto kLeftArg = 123;
   const auto kEqualRightArg = 123;
-  EXPECT_FALSE(ValidateNotEqual(kLeftArg, kEqualRightArg, kOmitContext).ok());
+  EXPECT_THAT(ValidateNotEqual(kLeftArg, kEqualRightArg, kOmitContext),
+              Not(IsOk()));
 }
 
 TEST(ValidateHasValue, OkIfArgHasValue) {
@@ -89,7 +91,7 @@ TEST(ValidateHasValue, OkIfArgHasValue) {
 
 TEST(ValidateHasValue, NotOkIfArgDoesNotHaveValue) {
   constexpr std::optional<int> kArg = std::nullopt;
-  EXPECT_FALSE(ValidateHasValue(kArg, kOmitContext).ok());
+  EXPECT_THAT(ValidateHasValue(kArg, kOmitContext), Not(IsOk()));
 }
 
 TEST(ValidateUnique, OkIfArgsAreUnique) {
@@ -103,9 +105,9 @@ TEST(ValidateUnique, OkIfArgsAreUnique) {
 TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {
   const std::vector<int> kVectorWithDuplicateValues = {1, 2, 3, 99, 1};
 
-  EXPECT_FALSE(ValidateUnique(kVectorWithDuplicateValues.begin(),
-                              kVectorWithDuplicateValues.end(), kOmitContext)
-                   .ok());
+  EXPECT_THAT(ValidateUnique(kVectorWithDuplicateValues.begin(),
+                             kVectorWithDuplicateValues.end(), kOmitContext),
+              Not(IsOk()));
 }
 
 TEST(ValidateInRange, OkIfValueInRange) {

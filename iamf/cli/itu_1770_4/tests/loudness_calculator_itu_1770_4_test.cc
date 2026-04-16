@@ -28,6 +28,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 const int16_t kMaxLoudness = std::numeric_limits<int16_t>::max();
 const int16_t kMinLoudness = std::numeric_limits<int16_t>::min();
@@ -201,10 +202,9 @@ TEST(AccumulateLoudnessForSamples,
   const std::vector<std::vector<InternalSampleType>>
       kSamplesWithMissingChannels(
           kTooFewChannels, std::vector<InternalSampleType>(kNumTicks, 0.0));
-  EXPECT_FALSE(calculator
-                   ->AccumulateLoudnessForSamples(
-                       MakeSpanOfConstSpans(kSamplesWithMissingChannels))
-                   .ok());
+  EXPECT_THAT(calculator->AccumulateLoudnessForSamples(
+                  MakeSpanOfConstSpans(kSamplesWithMissingChannels)),
+              Not(IsOk()));
 }
 
 TEST(AccumulateLoudnessForSamples, ReturnsErrorWhenThereAreTooManySamples) {
@@ -220,10 +220,9 @@ TEST(AccumulateLoudnessForSamples, ReturnsErrorWhenThereAreTooManySamples) {
   constexpr size_t kNumChannels = 2;
   const std::vector<std::vector<InternalSampleType>> kSamplesWithTooManySamples(
       kNumChannels, std::vector<InternalSampleType>(kTooManySamples, 0.0));
-  EXPECT_FALSE(calculator
-                   ->AccumulateLoudnessForSamples(
-                       MakeSpanOfConstSpans(kSamplesWithTooManySamples))
-                   .ok());
+  EXPECT_THAT(calculator->AccumulateLoudnessForSamples(
+                  MakeSpanOfConstSpans(kSamplesWithTooManySamples)),
+              Not(IsOk()));
 }
 
 }  // namespace

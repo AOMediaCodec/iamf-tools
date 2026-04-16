@@ -90,7 +90,6 @@ cc_test(
         "//iamf/cli/renderer:loudspeakers_renderer",
         "//iamf/obu:parameter_data",
         "@abseil-cpp//absl/status:status_matchers",
-        "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings:string_view",
         "@googletest//:gtest_main",
     ],

@@ -33,6 +33,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using AudioElementsById = DescriptorObus::AudioElementsById;
 
@@ -93,7 +94,7 @@ TEST(Decode, RequiresSubstreamsAreInitialized) {
       PrepareEncodedAudioFrame(codec_config_obus, audio_elements);
 
   // Decoding fails before substreams are initialized.
-  EXPECT_FALSE(decoder.Decode(encoded_audio_frame).ok());
+  EXPECT_THAT(decoder.Decode(encoded_audio_frame), Not(IsOk()));
   const auto& audio_element = audio_elements.at(kAudioElementId);
   // Decoding succeeds after substreams are initialized.
   EXPECT_THAT(
@@ -115,9 +116,9 @@ TEST(InitDecodersForSubstreams,
   EXPECT_THAT(
       decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config),
       IsOk());
-  EXPECT_FALSE(
-      decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config)
-          .ok());
+  EXPECT_THAT(
+      decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config),
+      Not(IsOk()));
 
   const SubstreamIdLabelsMap kLabelsForSubstreamOne = {
       {kSubstreamId + 1, {ChannelLabel::kMono}}};

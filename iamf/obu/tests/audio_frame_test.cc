@@ -17,7 +17,6 @@
 #include <numeric>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -33,6 +32,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 TEST(AudioFrameConstructor, SetsImplicitObuType0) {
   AudioFrameObu obu({}, /*audio_substream_id=*/0, {});
@@ -285,7 +285,7 @@ TEST_F(AudioFrameObuTest, ValidateAndWriteObuFailsWithIllegalRedundantCopy) {
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 // --- Begin CreateFromBuffer tests ---
@@ -331,7 +331,7 @@ TEST(CreateFromBuffer, FailsWithPayloadSizeTooLarge) {
   ObuHeader header = {.obu_type = kObuIaAudioFrame};  // Requires explicit ID.
   int64_t obu_payload_size = 7;
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, *buffer);
-  EXPECT_FALSE(obu.ok());
+  EXPECT_THAT(obu, Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, FailsWithPayloadSizeZero) {
@@ -345,7 +345,7 @@ TEST(CreateFromBuffer, FailsWithPayloadSizeZero) {
   ObuHeader header = {.obu_type = kObuIaAudioFrame};  // Requires explicit ID.
   int64_t obu_payload_size = 0;
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, *buffer);
-  EXPECT_FALSE(obu.ok());
+  EXPECT_THAT(obu, Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, FailsWithPayloadSizeLessThanSizeUsedById) {
@@ -358,7 +358,7 @@ TEST(CreateFromBuffer, FailsWithPayloadSizeLessThanSizeUsedById) {
   ObuHeader header = {.obu_type = kObuIaAudioFrame};  // Requires explicit ID.
   int64_t obu_payload_size = 2;  // Less than the 3 used for the ID.
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, *buffer);
-  EXPECT_FALSE(obu.ok());
+  EXPECT_THAT(obu, Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, FailsWithNegativePayloadSize) {
@@ -369,7 +369,7 @@ TEST(CreateFromBuffer, FailsWithNegativePayloadSize) {
   ObuHeader header = {.obu_type = kObuIaAudioFrameId0};  // ID from OBU type.
   int64_t obu_payload_size = -1;
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, *buffer);
-  EXPECT_FALSE(obu.ok());
+  EXPECT_THAT(obu, Not(IsOk()));
 }
 
 }  // namespace

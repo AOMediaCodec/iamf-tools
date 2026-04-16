@@ -30,6 +30,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr std::optional<int64_t> kNoInsertionTick = std::nullopt;
 constexpr int64_t kInsertionTick = 500;
@@ -93,7 +94,7 @@ TEST(ValidateAndWrite, FailsWhenInvalidatesBitstreamIsTrue) {
                    kNoInsertionTick, kInvalidatesBitstream);
 
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu.ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu.ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST(ArbitraryObuConstructor, DefaultsToNoInsertionTick) {

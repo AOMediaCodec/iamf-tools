@@ -31,6 +31,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr absl::string_view kTestdataPath = "iamf/cli/testdata/";
 constexpr size_t kArbitraryNumSamplesPerFrame = 1;
@@ -104,18 +105,18 @@ TEST(CreateFromFile, FailsWhenNumSamplesPerFrameIsZero) {
       GetRunfilesFile(kTestdataPath, "stereo_8_samples_48khz_s16le.wav");
   ASSERT_TRUE(std::filesystem::exists(input_wav_file));
 
-  EXPECT_FALSE(
-      WavReader::CreateFromFile(input_wav_file, kInvalidNumSamplesPerFrame)
-          .ok());
+  EXPECT_THAT(
+      WavReader::CreateFromFile(input_wav_file, kInvalidNumSamplesPerFrame),
+      Not(IsOk()));
 }
 
 TEST(CreateFromFile, FailsOnMissingFile) {
   const std::string non_existent_file(GetAndCleanupOutputFileName(".wav"));
   ASSERT_FALSE(std::filesystem::exists(non_existent_file));
 
-  EXPECT_FALSE(
-      WavReader::CreateFromFile(non_existent_file, kArbitraryNumSamplesPerFrame)
-          .ok());
+  EXPECT_THAT(WavReader::CreateFromFile(non_existent_file,
+                                        kArbitraryNumSamplesPerFrame),
+              Not(IsOk()));
 }
 
 TEST(CreateFromFile, FailsOnNonWavFile) {
@@ -124,9 +125,9 @@ TEST(CreateFromFile, FailsOnNonWavFile) {
       << "This is not a wav file.";
   ASSERT_TRUE(std::filesystem::exists(non_wav_file));
 
-  EXPECT_FALSE(
-      WavReader::CreateFromFile(non_wav_file, kArbitraryNumSamplesPerFrame)
-          .ok());
+  EXPECT_THAT(
+      WavReader::CreateFromFile(non_wav_file, kArbitraryNumSamplesPerFrame),
+      Not(IsOk()));
 }
 
 WavReader InitAndValidate(absl::string_view filename,

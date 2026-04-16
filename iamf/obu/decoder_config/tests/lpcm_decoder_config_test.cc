@@ -15,7 +15,6 @@
 #include <limits>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -28,6 +27,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr int16_t kAudioRollDistance = 0;
 
@@ -82,7 +82,7 @@ TEST(LpcmDecoderConfigTest, Validate_InvalidSampleFormatFlagsMin) {
       LpcmDecoderConfig::kLpcmBeginReserved, 16, 48000};
   int16_t audio_roll_distance = 0;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_IllegalSampleFormatFlagsMax) {
@@ -90,7 +90,7 @@ TEST(LpcmDecoderConfigTest, Validate_IllegalSampleFormatFlagsMax) {
                                            16, 48000};
   int16_t audio_roll_distance = 0;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_SampleSize24) {
@@ -126,7 +126,7 @@ TEST(LpcmDecoderConfigTest, Validate_AudioRollDistanceMustBeZero_A) {
                                            16, 48000};
   int16_t audio_roll_distance = -1;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_AudioRollDistanceMustBeZero_B) {
@@ -134,7 +134,7 @@ TEST(LpcmDecoderConfigTest, Validate_AudioRollDistanceMustBeZero_B) {
                                            16, 48000};
   int16_t audio_roll_distance = 1;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeZero) {
@@ -142,7 +142,7 @@ TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeZero) {
                                            0, 48000};
   int16_t audio_roll_distance = 0;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeEight) {
@@ -150,7 +150,7 @@ TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeEight) {
                                            8, 48000};
   int16_t audio_roll_distance = 0;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeOverMax) {
@@ -158,7 +158,7 @@ TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeOverMax) {
                                            40, 48000};
   int16_t audio_roll_distance = 0;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_SampleRateMin_16kHz) {
@@ -208,7 +208,7 @@ TEST(LpcmDecoderConfigTest, Validate_InvalidSampleRateZero) {
                                            16, 0};
   int16_t audio_roll_distance = 0;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_InvalidSampleRate192kHz) {
@@ -216,7 +216,7 @@ TEST(LpcmDecoderConfigTest, Validate_InvalidSampleRate192kHz) {
                                            16, 192000};
   int16_t audio_roll_distance = 0;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Validate_InvalidSampleRateMax) {
@@ -225,7 +225,7 @@ TEST(LpcmDecoderConfigTest, Validate_InvalidSampleRateMax) {
                                            std::numeric_limits<int16_t>::max()};
   int16_t audio_roll_distance = 0;
 
-  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+  EXPECT_THAT(lpcm_decoder_config.Validate(audio_roll_distance), Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Write_AllValid) {
@@ -250,8 +250,8 @@ TEST(LpcmDecoderConfigTest, Write_InvalidDoesNotWrite) {
   int16_t audio_roll_distance = 0;
   WriteBitBuffer wb(48);  // Arbitrary size.  We'll fail before writing.
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_THAT(lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb),
+              Not(IsOk()));
 }
 
 TEST(LpcmDecoderConfigTest, Write_InvalidRollDistance) {
@@ -265,8 +265,8 @@ TEST(LpcmDecoderConfigTest, Write_InvalidRollDistance) {
   int16_t audio_roll_distance = 1;
   WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_THAT(lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb),
+              Not(IsOk()));
 }
 
 TEST(ReadAndValidateTest, ReadAllFields) {
@@ -297,9 +297,9 @@ TEST(ReadAndValidateTest, RejectInvalidAudioRollDistance) {
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   LpcmDecoderConfig lpcm_decoder_config;
-  EXPECT_FALSE(
-      lpcm_decoder_config.ReadAndValidate(audio_roll_distance, *read_buffer)
-          .ok());
+  EXPECT_THAT(
+      lpcm_decoder_config.ReadAndValidate(audio_roll_distance, *read_buffer),
+      Not(IsOk()));
 }
 
 }  // namespace

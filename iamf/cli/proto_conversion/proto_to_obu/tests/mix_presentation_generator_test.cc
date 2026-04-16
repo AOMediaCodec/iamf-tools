@@ -1423,9 +1423,9 @@ TEST(CopySoundSystem, InvalidSoundSystem) {
       iamf_tools_cli_proto::SOUND_SYSTEM_INVALID;
 
   LoudspeakersSsConventionLayout::SoundSystem output_sound_system;
-  EXPECT_FALSE(MixPresentationGenerator::CopySoundSystem(input_sound_system,
-                                                         output_sound_system)
-                   .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopySoundSystem(input_sound_system,
+                                                        output_sound_system),
+              Not(IsOk()));
 }
 
 TEST(CopyInfoType, Zero) {
@@ -1529,9 +1529,9 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesIntegratedLoudness) {
   // Configure `integrated_loudness` that cannot fit into an `int16_t`.
   user_loudness.set_integrated_loudness(std::numeric_limits<int16_t>::max() +
                                         1);
-  EXPECT_FALSE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
-                   user_loudness, output_loudness)
-                   .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                  user_loudness, output_loudness),
+              Not(IsOk()));
 }
 
 TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesDigitalPeak) {
@@ -1543,9 +1543,9 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesDigitalPeak) {
   // Configure `digital_peak` that cannot fit into an `int16_t`.
   user_loudness.set_digital_peak(std::numeric_limits<int16_t>::min() - 1);
 
-  EXPECT_FALSE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
-                   user_loudness, output_loudness)
-                   .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                  user_loudness, output_loudness),
+              Not(IsOk()));
 }
 
 TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesTruePeak) {
@@ -1558,9 +1558,9 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesTruePeak) {
   // Configure `true_peak` that cannot fit into an `int16_t`.
   user_loudness.set_true_peak(std::numeric_limits<int16_t>::max() + 1);
 
-  EXPECT_FALSE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
-                   user_loudness, output_loudness)
-                   .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                  user_loudness, output_loudness),
+              Not(IsOk()));
 }
 
 TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
@@ -1607,9 +1607,9 @@ TEST(CopyUserAnchoredLoudness, IllegalUnknownAnchorElementEnum) {
       )pb",
       &user_loudness);
 
-  EXPECT_FALSE(MixPresentationGenerator::CopyUserAnchoredLoudness(
-                   user_loudness, output_loudness)
-                   .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserAnchoredLoudness(
+                  user_loudness, output_loudness),
+              Not(IsOk()));
 }
 
 TEST(CopyUserLayoutExtension, LiveLoudnessInfoType) {

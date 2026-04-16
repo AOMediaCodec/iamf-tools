@@ -21,7 +21,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -100,9 +99,9 @@ TEST(FindSamplesOrDemixedSamples, InvalidWhenThereIsNoDemixingLabel) {
   const LabelSamplesMap kLabelToSamples = {{kDemixedR2, kSamplesToFind}};
 
   absl::Span<const InternalSampleType> found_samples;
-  EXPECT_FALSE(DemixingModule::FindSamplesOrDemixedSamples(kL2, kLabelToSamples,
-                                                           found_samples)
-                   .ok());
+  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kL2, kLabelToSamples,
+                                                          found_samples),
+              Not(IsOk()));
 }
 
 TEST(FindSamplesOrDemixedSamples, RegularSamplesTakePrecedence) {
@@ -122,9 +121,9 @@ TEST(FindSamplesOrDemixedSamples, ErrorNoMatchingSamples) {
   const LabelSamplesMap kLabelToSamples = {{kL2, kSamplesToFind}};
 
   absl::Span<const InternalSampleType> found_samples;
-  EXPECT_FALSE(DemixingModule::FindSamplesOrDemixedSamples(kL3, kLabelToSamples,
-                                                           found_samples)
-                   .ok());
+  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kL3, kLabelToSamples,
+                                                          found_samples),
+              Not(IsOk()));
 }
 
 void InitAudioElementWithLabelsAndScalableChannelLayout(
@@ -227,7 +226,7 @@ TEST(CreateForReconstruction, FailsForReservedLayout14) {
   const auto demixing_module = DemixingModule::CreateForReconstruction(
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
 
-  EXPECT_FALSE(demixing_module.ok());
+  EXPECT_THAT(demixing_module, Not(IsOk()));
 }
 
 TEST(CreateForReconstruction, ValidForExpandedLayoutLFE) {
@@ -1403,7 +1402,8 @@ TEST_F(DemixingModuleTest, S5ToS7DemixerFailsWhenBetaIsZero) {
             .user_labels = input_labels_,
             .substream_id_to_labels = substream_id_to_labels_}}});
   ASSERT_THAT(demixing_module, IsOk());
-  EXPECT_FALSE(demixing_module->DemixDecodedAudioSamples(audio_frames_).ok());
+  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(audio_frames_),
+              Not(IsOk()));
 }
 
 TEST_F(DemixingModuleTest, S3ToS5DemixerFailsWhenDeltaIsZero) {
@@ -1421,7 +1421,8 @@ TEST_F(DemixingModuleTest, S3ToS5DemixerFailsWhenDeltaIsZero) {
             .user_labels = input_labels_,
             .substream_id_to_labels = substream_id_to_labels_}}});
   ASSERT_THAT(demixing_module, IsOk());
-  EXPECT_FALSE(demixing_module->DemixDecodedAudioSamples(audio_frames_).ok());
+  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(audio_frames_),
+              Not(IsOk()));
 }
 
 TEST_F(DemixingModuleTest, T2ToT4DemixerFailsWhenGammaIsZero) {
@@ -1439,7 +1440,8 @@ TEST_F(DemixingModuleTest, T2ToT4DemixerFailsWhenGammaIsZero) {
             .user_labels = input_labels_,
             .substream_id_to_labels = substream_id_to_labels_}}});
   ASSERT_THAT(demixing_module, IsOk());
-  EXPECT_FALSE(demixing_module->DemixDecodedAudioSamples(audio_frames_).ok());
+  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(audio_frames_),
+              Not(IsOk()));
 }
 
 }  // namespace

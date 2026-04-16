@@ -25,6 +25,7 @@ namespace adm_to_user_metadata {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 using testing::ElementsAreArray;
 
@@ -33,9 +34,9 @@ constexpr absl::string_view kAudioPackFormatIdMono = "AP_00010001";
 constexpr int kImportanceThreshold = 0;
 
 TEST(ParseXmlToAdm, InvalidXml) {
-  EXPECT_FALSE(ParseXmlToAdm(R"xml(<open_tag> </mismatching_close_tag>)xml",
-                             kImportanceThreshold, kAdmFileTypeDefault)
-                   .ok());
+  EXPECT_THAT(ParseXmlToAdm(R"xml(<open_tag> </mismatching_close_tag>)xml",
+                            kImportanceThreshold, kAdmFileTypeDefault),
+              Not(IsOk()));
 }
 
 TEST(ParseXmlToAdm, LoadsAudioProgrammes) {
@@ -241,18 +242,18 @@ TEST(ParseXmlToAdm, InvalidWhenImportanceIsNonInteger) {
     <audioObject importance="1.1"/>
   )xml";
 
-  EXPECT_FALSE(
-      ParseXmlToAdm(xml, /*importance_threshold=*/10, kAdmFileTypeDefault)
-          .ok());
+  EXPECT_THAT(
+      ParseXmlToAdm(xml, /*importance_threshold=*/10, kAdmFileTypeDefault),
+      Not(IsOk()));
 }
 
 TEST(ParseXmlToAdm, InvalidWhenGainIsNonFloat) {
-  EXPECT_FALSE(ParseXmlToAdm(R"xml(
+  EXPECT_THAT(ParseXmlToAdm(R"xml(
     <audioObject>
       <gain>1-1</gain>
     </audioObject>)xml",
-                             /*importance_threshold=*/10, kAdmFileTypeDefault)
-                   .ok());
+                            /*importance_threshold=*/10, kAdmFileTypeDefault),
+              Not(IsOk()));
 }
 
 TEST(ParseXmlToAdm, SetsExplicitLoudnessValuesAsFloat) {
@@ -275,13 +276,13 @@ TEST(ParseXmlToAdm, SetsExplicitLoudnessValuesAsFloat) {
 }
 
 TEST(ParseXmlToAdm, InvalidWhenFloatCannotBeParsed) {
-  EXPECT_FALSE(ParseXmlToAdm(
-                   R"xml(
+  EXPECT_THAT(ParseXmlToAdm(
+                  R"xml(
         <audioProgramme>
           <integratedLoudness>1.1q</integratedLoudness>
         </audioProgramme>)xml",
-                   kImportanceThreshold, kAdmFileTypeDefault)
-                   .ok());
+                  kImportanceThreshold, kAdmFileTypeDefault),
+              Not(IsOk()));
 }
 
 TEST(ParseXmlToAdm, DefaultLoudnessValues) {
@@ -322,7 +323,7 @@ TEST(ParseXmlToAdm, InvalidTimingFormat) {
 
   const auto adm =
       ParseXmlToAdm(xml, kImportanceThreshold, kAdmFileTypeDefault);
-  EXPECT_FALSE(adm.ok());
+  EXPECT_THAT(adm, Not(IsOk()));
   if (!adm.ok()) {
     EXPECT_THAT(adm.status().message(),
                 testing::HasSubstr("Failed to parse hour"));
@@ -338,8 +339,8 @@ TEST(ParseXmlToAdm, FailsOnCustomEntityDeclaration) {
     <topLevelElement>&custom_entity;</topLevelElement>
   )xml";
 
-  EXPECT_FALSE(
-      ParseXmlToAdm(xml, kImportanceThreshold, kAdmFileTypeDefault).ok());
+  EXPECT_THAT(ParseXmlToAdm(xml, kImportanceThreshold, kAdmFileTypeDefault),
+              Not(IsOk()));
 }
 
 }  // namespace

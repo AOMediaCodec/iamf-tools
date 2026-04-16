@@ -15,7 +15,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -360,11 +359,10 @@ TEST_F(ParametersManagerTest,
   parameters_manager->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[1]);
   ReconGainInfoParameterData recon_gain_parameter_data_1;
-  EXPECT_FALSE(parameters_manager
-                   ->GetReconGainInfoParameterData(kAudioElementId,
-                                                   /*num_layers=*/1,
-                                                   recon_gain_parameter_data_1)
-                   .ok());
+  EXPECT_THAT(parameters_manager->GetReconGainInfoParameterData(
+                  kAudioElementId,
+                  /*num_layers=*/1, recon_gain_parameter_data_1),
+              Not(IsOk()));
 }
 
 TEST_F(ParametersManagerTest, ParameterBlocksRunOutReturnsDefault) {
@@ -573,10 +571,9 @@ TEST_F(ParametersManagerTest,
   // element shares the same parameter ID, but is still expecting the
   // parameter block for the first frame (while the manager is already
   // holding the parameter block for the second frame). So the getter fails.
-  EXPECT_FALSE(
-      parameters_manager
-          ->GetDownMixingParameters(kAudioElementId2, down_mixing_params)
-          .ok());
+  EXPECT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId2,
+                                                          down_mixing_params),
+              Not(IsOk()));
 }
 
 TEST_F(ParametersManagerTest, DemixingParamDefinitionIsNotAvailableForWrongId) {
@@ -609,9 +606,9 @@ TEST_F(ParametersManagerTest, UpdateFailsWithWrongTimestamps) {
   // The second frame starts with timestamp = 8, so updating with a different
   // timestamp fails.
   constexpr InternalTimestamp kWrongNextTimestamp = 17;
-  EXPECT_FALSE(parameters_manager
-                   ->UpdateDemixingState(kAudioElementId, kWrongNextTimestamp)
-                   .ok());
+  EXPECT_THAT(parameters_manager->UpdateDemixingState(kAudioElementId,
+                                                      kWrongNextTimestamp),
+              Not(IsOk()));
 }
 
 TEST_F(ParametersManagerTest, UpdateNotValidatingWhenParameterIdNotFound) {

@@ -17,7 +17,6 @@
 #include <variant>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
@@ -281,7 +280,7 @@ TEST(Generate, InvalidWhenExpandedLoudspeakerLayoutIsSignalledButNotPresent) {
   AudioElementGenerator generator(audio_element_metadatas);
 
   AudioElementsById output_obus;
-  EXPECT_FALSE(generator.Generate(codec_config_obus, output_obus).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
 }
 
 TEST(Generate, IgnoresExpandedLayoutWhenNotSignalled) {

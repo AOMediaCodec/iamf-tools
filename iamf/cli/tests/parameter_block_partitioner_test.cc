@@ -28,6 +28,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 using iamf_tools_cli_proto::MixGainParameterData;
 using iamf_tools_cli_proto::ParameterBlockObuMetadata;
@@ -329,10 +330,10 @@ TEST(PartitionParameterBlock, InvalidForUnknownOrMissingParameterData) {
       &full_parameter_block);
 
   ParameterBlockObuMetadata unused_parameter_block;
-  EXPECT_FALSE(ParameterBlockPartitioner::PartitionParameterBlock(
-                   full_parameter_block, /*partitioned_start_time=*/0,
-                   /*partitioned_end_time=*/4000, unused_parameter_block)
-                   .ok());
+  EXPECT_THAT(ParameterBlockPartitioner::PartitionParameterBlock(
+                  full_parameter_block, /*partitioned_start_time=*/0,
+                  /*partitioned_end_time=*/4000, unused_parameter_block),
+              Not(IsOk()));
 }
 
 void ExpectHasOneSubblockWithDMixPMode(
@@ -401,16 +402,16 @@ TEST(PartitionParameterBlock, InvalidWhenSubblockBoundaryIsCrossedForDemixing) {
       &full_parameter_block);
 
   ParameterBlockObuMetadata unused_partitioned_parameter_block;
-  EXPECT_FALSE(ParameterBlockPartitioner::PartitionParameterBlock(
-                   full_parameter_block, /*partitioned_start_time=*/3950,
-                   /*partitioned_end_time=*/4500,
-                   unused_partitioned_parameter_block)
-                   .ok());
-  EXPECT_FALSE(ParameterBlockPartitioner::PartitionParameterBlock(
-                   full_parameter_block, /*partitioned_start_time=*/3999,
-                   /*partitioned_end_time=*/4001,
-                   unused_partitioned_parameter_block)
-                   .ok());
+  EXPECT_THAT(
+      ParameterBlockPartitioner::PartitionParameterBlock(
+          full_parameter_block, /*partitioned_start_time=*/3950,
+          /*partitioned_end_time=*/4500, unused_partitioned_parameter_block),
+      Not(IsOk()));
+  EXPECT_THAT(
+      ParameterBlockPartitioner::PartitionParameterBlock(
+          full_parameter_block, /*partitioned_start_time=*/3999,
+          /*partitioned_end_time=*/4001, unused_partitioned_parameter_block),
+      Not(IsOk()));
 }
 
 TEST(PartitionParameterBlock,
@@ -489,10 +490,10 @@ TEST(PartitionParameterBlock,
       &full_parameter_block);
 
   ParameterBlockObuMetadata partitioned_parameter_block;
-  EXPECT_FALSE(ParameterBlockPartitioner::PartitionParameterBlock(
-                   full_parameter_block, /*partitioned_start_time=*/3999,
-                   /*partitioned_end_time=*/4001, partitioned_parameter_block)
-                   .ok());
+  EXPECT_THAT(ParameterBlockPartitioner::PartitionParameterBlock(
+                  full_parameter_block, /*partitioned_start_time=*/3999,
+                  /*partitioned_end_time=*/4001, partitioned_parameter_block),
+              Not(IsOk()));
 }
 
 struct FindConstantSubblockDurationTestCase {

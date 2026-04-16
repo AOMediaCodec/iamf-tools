@@ -16,7 +16,6 @@
 #include <optional>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -30,6 +29,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 typedef ::google::protobuf::RepeatedPtrField<
     iamf_tools_cli_proto::ArbitraryObuMetadata>
@@ -174,7 +174,7 @@ TEST(Generate, FailsOnInvalidInsertionHook) {
   ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
   std::list<ArbitraryObu> arbitrary_obus;
 
-  EXPECT_FALSE(generator.Generate(arbitrary_obus).ok());
+  EXPECT_THAT(generator.Generate(arbitrary_obus), Not(IsOk()));
   EXPECT_TRUE(arbitrary_obus.empty());
 }
 
@@ -291,7 +291,7 @@ TEST_F(ArbitraryObuGeneratorTest, InvalidObuType) {
   std::list<ArbitraryObu> output_obus;
   ArbitraryObuGenerator generator(arbitrary_obu_metadata_);
 
-  EXPECT_FALSE(generator.Generate(output_obus).ok());
+  EXPECT_THAT(generator.Generate(output_obus), Not(IsOk()));
 }
 
 }  // namespace

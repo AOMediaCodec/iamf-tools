@@ -27,6 +27,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
+using ::testing::Not;
 
 using absl::StatusCode::kFailedPrecondition;
 
@@ -90,8 +91,8 @@ TEST(PushFrame, InvalidIfInputSpanHasTooManyTicks) {
   const std::vector<std::vector<InternalSampleType>> kTooManyTicks(
       kMaxInputTicks + 1, std::vector<InternalSampleType>(kNumChannels));
 
-  EXPECT_FALSE(
-      mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooManyTicks)).ok());
+  EXPECT_THAT(mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooManyTicks)),
+              Not(IsOk()));
 }
 
 TEST(PushFrame, InvalidIfInputSpanHasTooFewChannels) {
@@ -100,8 +101,8 @@ TEST(PushFrame, InvalidIfInputSpanHasTooFewChannels) {
   const std::vector<std::vector<InternalSampleType>> kTooFewChannels(
       kMaxInputTicks, std::vector<InternalSampleType>(kNumChannels - 1));
 
-  EXPECT_FALSE(
-      mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooFewChannels)).ok());
+  EXPECT_THAT(mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooFewChannels)),
+              Not(IsOk()));
 }
 
 TEST(PushFrame, InvalidIfInputSpanHasTooManyChannels) {
@@ -110,8 +111,8 @@ TEST(PushFrame, InvalidIfInputSpanHasTooManyChannels) {
   const std::vector<std::vector<InternalSampleType>> kTooManyChannels(
       kMaxInputTicks, std::vector<InternalSampleType>(kNumChannels + 1));
 
-  EXPECT_FALSE(
-      mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooManyChannels)).ok());
+  EXPECT_THAT(mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooManyChannels)),
+              Not(IsOk()));
 }
 
 TEST(Flush, ReturnsFailedPreconditionWhenCalledTwice) {

@@ -25,6 +25,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::Not;
 using enum iamf_tools_cli_proto::ChannelLabel;
 using enum ChannelLabel::Label;
 
@@ -34,7 +35,8 @@ TEST(ProtoToLabel, SucceedsForMonoInput) {
 }
 
 TEST(ProtoToLabel, FailsForInvalidInput) {
-  EXPECT_FALSE(ChannelLabelUtils::ProtoToLabel(CHANNEL_LABEL_INVALID).ok());
+  EXPECT_THAT(ChannelLabelUtils::ProtoToLabel(CHANNEL_LABEL_INVALID),
+              Not(IsOk()));
 }
 
 using ProtoLabelTestCase =
@@ -225,9 +227,9 @@ TEST(ConvertAndFillLabels, InvalidWhenThereAreDuplicateLabelsWithOutputVector) {
       CHANNEL_LABEL_R_2, CHANNEL_LABEL_CENTRE, CHANNEL_LABEL_L_2};
   std::vector<ChannelLabel::Label> output_vector = {kL2};
 
-  EXPECT_FALSE(ChannelLabelUtils::ConvertAndFillLabels(kInputWithDuplicates,
-                                                       output_vector)
-                   .ok());
+  EXPECT_THAT(ChannelLabelUtils::ConvertAndFillLabels(kInputWithDuplicates,
+                                                      output_vector),
+              Not(IsOk()));
 }
 
 TEST(ConvertAndFillLabels, InvalidWhenThereAreDuplicateLabelsWithOutputSet) {
@@ -235,9 +237,9 @@ TEST(ConvertAndFillLabels, InvalidWhenThereAreDuplicateLabelsWithOutputSet) {
       CHANNEL_LABEL_R_2, CHANNEL_LABEL_CENTRE, CHANNEL_LABEL_L_2};
   absl::flat_hash_set<ChannelLabel::Label> output_set = {kL2};
 
-  EXPECT_FALSE(
-      ChannelLabelUtils::ConvertAndFillLabels(kInputWithDuplicates, output_set)
-          .ok());
+  EXPECT_THAT(
+      ChannelLabelUtils::ConvertAndFillLabels(kInputWithDuplicates, output_set),
+      Not(IsOk()));
 }
 
 TEST(ConvertAndFillLabels, InvalidWhenThereAreUnknownLabels) {
@@ -246,9 +248,9 @@ TEST(ConvertAndFillLabels, InvalidWhenThereAreUnknownLabels) {
       CHANNEL_LABEL_INVALID};
   std::vector<ChannelLabel::Label> output;
 
-  EXPECT_FALSE(
-      ChannelLabelUtils::ConvertAndFillLabels(kInputWithDuplicates, output)
-          .ok());
+  EXPECT_THAT(
+      ChannelLabelUtils::ConvertAndFillLabels(kInputWithDuplicates, output),
+      Not(IsOk()));
 }
 
 TEST(ConvertAndFillLabels, ValidWithChannelMetadatas) {

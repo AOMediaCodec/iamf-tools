@@ -14,7 +14,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -27,6 +26,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 using enum DemixingInfoParameterData::DMixPMode;
 using enum DemixingInfoParameterData::WIdxUpdateRule;
 
@@ -100,20 +100,20 @@ TEST(DMixPModeToDownMixingParams, DefaultWDirectlyUsed) {
 
 TEST(DMixPModeToDownMixingParams, InvalidDMixPModeReserved) {
   DownMixingParams output_down_mix_args;
-  EXPECT_FALSE(DemixingInfoParameterData::DMixPModeToDownMixingParams(
-                   kDMixPModeReserved1, 5,
-                   /*w_idx_update_rule=*/
-                   kNormal, output_down_mix_args)
-                   .ok());
+  EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
+                  kDMixPModeReserved1, 5,
+                  /*w_idx_update_rule=*/
+                  kNormal, output_down_mix_args),
+              Not(IsOk()));
 }
 
 TEST(DMixPModeToDownMixingParams, InvalidWOffsetOver10) {
   DownMixingParams output_down_mix_args;
-  EXPECT_FALSE(DemixingInfoParameterData::DMixPModeToDownMixingParams(
-                   kDMixPModeReserved1, 11,
-                   /*w_idx_update_rule=*/
-                   kNormal, output_down_mix_args)
-                   .ok());
+  EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
+                  kDMixPModeReserved1, 11,
+                  /*w_idx_update_rule=*/
+                  kNormal, output_down_mix_args),
+              Not(IsOk()));
 }
 
 TEST(WriteDemixingInfoParameterData, WriteDMixPMode1) {
@@ -147,7 +147,7 @@ TEST(WriteDemixingInfoParameterData, IllegalWriteDMixPModeReserved) {
   constexpr auto kReservedDMixPMode = kDMixPModeReserved1;
   DemixingInfoParameterData data(kReservedDMixPMode, 0);
   WriteBitBuffer undetermined_wb(1);
-  EXPECT_FALSE(data.Write(undetermined_wb).ok());
+  EXPECT_THAT(data.Write(undetermined_wb), Not(IsOk()));
 }
 
 TEST(WriteDefaultDemixingInfoParameterData, Writes) {

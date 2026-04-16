@@ -110,9 +110,9 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_FailsWhenFrameIsLargerThanExpected) {
 
   // But decoding two samples per frame fails, since the decoder was configured
   // for at most one sample per frame.
-  EXPECT_FALSE(
-      lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kFourSixteenBitSamples))
-          .ok());
+  EXPECT_THAT(
+      lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kFourSixteenBitSamples)),
+      Not(IsOk()));
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {

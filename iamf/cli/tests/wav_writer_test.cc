@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <numeric>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -31,6 +32,7 @@ using ::absl_testing::IsOk;
 namespace iamf_tools {
 namespace {
 
+using ::testing::Not;
 constexpr int kNumChannels = 1;
 constexpr int kTwoChannels = 2;
 constexpr int kSampleRateHz = 16000;
@@ -154,7 +156,7 @@ TEST(DeprecatedWritePcmSamples, WriteMoreSamplesThanConfiguredFails) {
 
   // Bit depth = 16, and writing 4 bytes = 32 bits = 2 samples fails.
   std::vector<uint8_t> samples(4, 0);
-  EXPECT_FALSE(wav_writer->WritePcmSamples(samples).ok());
+  EXPECT_THAT(wav_writer->WritePcmSamples(samples), Not(IsOk()));
 }
 
 TEST(PushFrame, WriteMoreSamplesThanConfiguredFails) {
@@ -168,7 +170,8 @@ TEST(PushFrame, WriteMoreSamplesThanConfiguredFails) {
   const std::vector<std::vector<InternalSampleType>> samples(
       kNumChannels,
       std::vector<InternalSampleType>(kTooManySamples, kSampleValue));
-  EXPECT_FALSE(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)).ok());
+  EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)),
+              Not(IsOk()));
 }
 
 TEST(DeprecatedWritePcmSamples, DeprecatedWriteNonIntegerNumberOfSamplesFails) {
@@ -179,7 +182,7 @@ TEST(DeprecatedWritePcmSamples, DeprecatedWriteNonIntegerNumberOfSamplesFails) {
 
   // Bit depth = 16, and writing 3 bytes = 24 bits = 1.5 samples fails.
   std::vector<uint8_t> samples(3, 0);
-  EXPECT_FALSE(wav_writer->WritePcmSamples(samples).ok());
+  EXPECT_THAT(wav_writer->WritePcmSamples(samples), Not(IsOk()));
 }
 
 TEST(PushFrame, WriteChannelWithTooFewSamplesFails) {
@@ -191,7 +194,8 @@ TEST(PushFrame, WriteChannelWithTooFewSamplesFails) {
   // The second tick is missing a channel.
   const std::vector<std::vector<InternalSampleType>> samples = {
       {kSampleValue, kSampleValue}, {kSampleValue}};
-  EXPECT_FALSE(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)).ok());
+  EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)),
+              Not(IsOk()));
 }
 
 TEST(PushFrame, ConsumesInputSamples) {

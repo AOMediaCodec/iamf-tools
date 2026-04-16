@@ -353,11 +353,11 @@ class IamfEncoderTest : public ::testing::Test {
 TEST_F(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
   user_metadata_.Clear();
 
-  EXPECT_FALSE(IamfEncoder::Create(user_metadata_, renderer_factory_.get(),
-                                   loudness_calculator_factory_.get(),
-                                   sample_processor_factory_,
-                                   obu_sequencer_factory_)
-                   .ok());
+  EXPECT_THAT(
+      IamfEncoder::Create(user_metadata_, renderer_factory_.get(),
+                          loudness_calculator_factory_.get(),
+                          sample_processor_factory_, obu_sequencer_factory_),
+      Not(IsOk()));
 }
 
 TEST_F(IamfEncoderTest, GetRedundatantDescriptorObusIsUnimplemented) {

@@ -36,6 +36,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using AudioElementsById = DescriptorObus::AudioElementsById;
 using enum ChannelLabel::Label;
@@ -111,9 +112,9 @@ TEST(Create, FailsWhenUserMetadataContainsDuplicateAudioElementIds) {
   FillStereoDataForAudioElementId(kAudioElementId,
                                   *user_metadata.add_audio_frame_metadata());
 
-  EXPECT_FALSE(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                         GetInputWavDir(), audio_elements)
-                   .ok());
+  EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                        GetInputWavDir(), audio_elements),
+              Not(IsOk()));
 }
 
 TEST(Create, FailsWhenMatchingAudioElementObuIsMissing) {
@@ -122,9 +123,9 @@ TEST(Create, FailsWhenMatchingAudioElementObuIsMissing) {
   FillStereoDataForAudioElementId(kAudioElementId,
                                   *user_metadata.add_audio_frame_metadata());
 
-  EXPECT_FALSE(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                         GetInputWavDir(), kNoAudioElements)
-                   .ok());
+  EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                        GetInputWavDir(), kNoAudioElements),
+              Not(IsOk()));
 }
 
 TEST(Create, FailsWhenCodecConfigIsMissing) {
@@ -136,9 +137,9 @@ TEST(Create, FailsWhenCodecConfigIsMissing) {
   ASSERT_TRUE(audio_elements.contains(kAudioElementId));
   audio_elements.at(kAudioElementId).codec_config = nullptr;
 
-  EXPECT_FALSE(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                         GetInputWavDir(), audio_elements)
-                   .ok());
+  EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                        GetInputWavDir(), audio_elements),
+              Not(IsOk()));
 }
 
 TEST(Create, FailsForUnknownLabels) {
@@ -149,9 +150,9 @@ TEST(Create, FailsForUnknownLabels) {
       ->mutable_channel_metadatas(0)
       ->set_channel_label(iamf_tools_cli_proto::CHANNEL_LABEL_INVALID);
 
-  EXPECT_FALSE(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                         GetInputWavDir(), audio_elements)
-                   .ok());
+  EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                        GetInputWavDir(), audio_elements),
+              Not(IsOk()));
 }
 
 TEST(Create, SucceedsForDuplicateChannelMetadatasChannelIds) {
@@ -183,9 +184,9 @@ TEST(Create, FailsForDuplicateChannelMetadatasChannelLabels) {
       ->mutable_channel_metadatas(1)
       ->set_channel_label(kDuplicateLabel);
 
-  EXPECT_FALSE(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                         GetInputWavDir(), audio_elements)
-                   .ok());
+  EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                        GetInputWavDir(), audio_elements),
+              Not(IsOk()));
 }
 
 TEST(Create, FailsForChannelMetadataChannelIdTooLarge) {
@@ -200,9 +201,9 @@ TEST(Create, FailsForChannelMetadataChannelIdTooLarge) {
       ->mutable_channel_metadatas(kFirstChannelIndex)
       ->set_channel_id(kChannelIdTooLargeForStereoWavFile);
 
-  EXPECT_FALSE(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                         GetInputWavDir(), audio_elements)
-                   .ok());
+  EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                        GetInputWavDir(), audio_elements),
+              Not(IsOk()));
 }
 
 TEST(Create, FailsForBitDepthLowerThanFile) {
@@ -214,9 +215,9 @@ TEST(Create, FailsForBitDepthLowerThanFile) {
   // The `Initialize()` would refuse to lower the bit depth and fail.
   user_metadata.mutable_audio_frame_metadata(0)->set_wav_filename(
       "stereo_8_samples_48khz_s24le.wav");
-  EXPECT_FALSE(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                         GetInputWavDir(), audio_elements)
-                   .ok());
+  EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                        GetInputWavDir(), audio_elements),
+              Not(IsOk()));
 }
 
 TEST(Create, FailsForMismatchingSampleRates) {
@@ -228,9 +229,9 @@ TEST(Create, FailsForMismatchingSampleRates) {
   const uint32_t kWrongSampleRate = 16000;
   InitializeTestData(kWrongSampleRate, user_metadata, audio_elements);
 
-  EXPECT_FALSE(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                         GetInputWavDir(), audio_elements)
-                   .ok());
+  EXPECT_THAT(WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                        GetInputWavDir(), audio_elements),
+              Not(IsOk()));
 }
 
 void ReadOneFrameExpectFinished(WavSampleProvider& wav_sample_provider,
@@ -276,10 +277,9 @@ TEST(WavSampleProviderTest, ReadFrameFailsWithWrongAudioElementId) {
   const auto kWrongAudioElementId = kAudioElementId + 99;
   LabelSamplesMap labeled_samples;
   bool finished_reading = false;
-  EXPECT_FALSE(
-      wav_sample_provider
-          ->ReadFrames(kWrongAudioElementId, labeled_samples, finished_reading)
-          .ok());
+  EXPECT_THAT(wav_sample_provider->ReadFrames(
+                  kWrongAudioElementId, labeled_samples, finished_reading),
+              Not(IsOk()));
 }
 
 }  // namespace

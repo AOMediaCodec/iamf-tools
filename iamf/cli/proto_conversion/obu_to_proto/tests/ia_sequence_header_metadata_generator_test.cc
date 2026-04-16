@@ -27,6 +27,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsPrimaryProfile) {
   const IASequenceHeaderObu kSimpleProfileIaSequenceHeaderObu(
@@ -61,9 +62,9 @@ TEST(IaSequenceHeaderMetadataGeneratorGenerate,
       ObuHeader(), ProfileVersion::kIamfReserved255Profile,
       ProfileVersion::kIamfSimpleProfile);
 
-  EXPECT_FALSE(IaSequenceHeaderMetadataGenerator::Generate(
-                   kBaseEnhancedProfileIiaSequenceHeaderObu)
-                   .ok());
+  EXPECT_THAT(IaSequenceHeaderMetadataGenerator::Generate(
+                  kBaseEnhancedProfileIiaSequenceHeaderObu),
+              Not(IsOk()));
 }
 
 TEST(IaSequenceHeaderMetadataGeneratorGenerate,
@@ -72,9 +73,9 @@ TEST(IaSequenceHeaderMetadataGeneratorGenerate,
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfReserved255Profile);
 
-  EXPECT_FALSE(IaSequenceHeaderMetadataGenerator::Generate(
-                   kBaseEnhancedProfileIiaSequenceHeaderObu)
-                   .ok());
+  EXPECT_THAT(IaSequenceHeaderMetadataGenerator::Generate(
+                  kBaseEnhancedProfileIiaSequenceHeaderObu),
+              Not(IsOk()));
 }
 
 TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsObuHeader) {

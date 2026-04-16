@@ -31,6 +31,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 // An erroneous OBU with a constant payload with a length of 1 bit.
 class ImaginaryObuNonIntegerBytes : public ObuBase {
@@ -73,7 +74,8 @@ TEST(ObuBaseTest, InvalidWhenValidatePayloadDerivedDoesNotReadIntegerBytes) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
 
-  EXPECT_FALSE(ImaginaryObuNonIntegerBytes::CreateFromBuffer(1, *rb).ok());
+  EXPECT_THAT(ImaginaryObuNonIntegerBytes::CreateFromBuffer(1, *rb),
+              Not(IsOk()));
 }
 
 // A simple OBU with a constant payload with a length of 1 byte.
@@ -179,8 +181,8 @@ TEST(ObuBaseTest, ReadFailsWhenSizeIsTooSmall) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
 
-  EXPECT_FALSE(
-      OneByteObu::CreateFromBuffer(ObuHeader(), kSizeTooSmall, *rb).ok());
+  EXPECT_THAT(OneByteObu::CreateFromBuffer(ObuHeader(), kSizeTooSmall, *rb),
+              Not(IsOk()));
 }
 
 TEST(ObuBaseTest, ReadsFooterWhenObuSizeIsTooLarge) {

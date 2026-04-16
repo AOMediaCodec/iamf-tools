@@ -32,6 +32,7 @@ namespace adm_to_user_metadata {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 using enum iamf_tools::ProfileVersion;
 
@@ -153,10 +154,10 @@ TEST(GenerateUserMetadataAndSpliceWavFiles, InvalidWithoutAxmlChunk) {
   std::istringstream ss((std::string(kInvalidAdmWithoutAxmlChunk)));
   const std::filesystem::path output_path(GetAndCreateOutputDirectory(""));
 
-  EXPECT_FALSE(GenerateUserMetadataAndSpliceWavFiles(
-                   kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
-                   output_path, ss, kIamfBaseProfile)
-                   .ok());
+  EXPECT_THAT(GenerateUserMetadataAndSpliceWavFiles(
+                  kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
+                  output_path, ss, kIamfBaseProfile),
+              Not(IsOk()));
   EXPECT_TRUE(std::filesystem::is_empty(output_path));
 }
 
@@ -164,10 +165,10 @@ TEST(GenerateUserMetadataAndSpliceWavFiles, InvalidWithoutDataChunk) {
   std::istringstream ss((std::string(kInvalidAdmWithoutDataChunk)));
   const std::filesystem::path output_path(GetAndCreateOutputDirectory(""));
 
-  EXPECT_FALSE(GenerateUserMetadataAndSpliceWavFiles(
-                   kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
-                   output_path, ss, kIamfBaseProfile)
-                   .ok());
+  EXPECT_THAT(GenerateUserMetadataAndSpliceWavFiles(
+                  kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
+                  output_path, ss, kIamfBaseProfile),
+              Not(IsOk()));
   EXPECT_TRUE(std::filesystem::is_empty(output_path));
 }
 

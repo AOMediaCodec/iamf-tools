@@ -60,7 +60,7 @@ TEST(StreamBasedReadBitBufferTest, PushBytesFailsWithTooManyBytes) {
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   const std::vector<uint8_t> source_data(
       (kEntireObuSizeMaxTwoMegabytes * 2) + 1, 0);
-  EXPECT_FALSE(rb->PushBytes(absl::MakeConstSpan(source_data)).ok());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(source_data)), Not(IsOk()));
 }
 
 TEST(StreamBasedReadBitBufferTest, PushBytesSucceedsWithTwoMaxSizedObus) {
@@ -69,7 +69,7 @@ TEST(StreamBasedReadBitBufferTest, PushBytesSucceedsWithTwoMaxSizedObus) {
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(source_data)), IsOk());
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(source_data)), IsOk());
   const std::vector<uint8_t> one_byte(1, 0);
-  EXPECT_FALSE(rb->PushBytes(absl::MakeConstSpan(one_byte)).ok());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(one_byte)), Not(IsOk()));
 }
 
 template <typename BufferReaderType>
@@ -495,9 +495,9 @@ TYPED_TEST(
   this->CreateReadBitBuffer();
 
   uint32_t unused_output = 0;
-  EXPECT_FALSE(
-      this->rb_->ReadIso14496_1Expanded(kMaxClassSizeTooLow, unused_output)
-          .ok());
+  EXPECT_THAT(
+      this->rb_->ReadIso14496_1Expanded(kMaxClassSizeTooLow, unused_output),
+      Not(IsOk()));
 }
 
 TYPED_TEST(ReadBitBufferTest,
@@ -507,8 +507,8 @@ TYPED_TEST(ReadBitBufferTest,
   this->CreateReadBitBuffer();
 
   uint32_t unused_output = 0;
-  EXPECT_FALSE(
-      this->rb_->ReadIso14496_1Expanded(kMaxUint32, unused_output).ok());
+  EXPECT_THAT(this->rb_->ReadIso14496_1Expanded(kMaxUint32, unused_output),
+              Not(IsOk()));
 }
 
 TYPED_TEST(ReadBitBufferTest,
@@ -518,8 +518,8 @@ TYPED_TEST(ReadBitBufferTest,
   this->CreateReadBitBuffer();
 
   uint32_t unused_output = 0;
-  EXPECT_FALSE(
-      this->rb_->ReadIso14496_1Expanded(kMaxUint32, unused_output).ok());
+  EXPECT_THAT(this->rb_->ReadIso14496_1Expanded(kMaxUint32, unused_output),
+              Not(IsOk()));
 }
 
 // --- `ReadUint8Span` tests ---
@@ -832,7 +832,7 @@ TYPED_TEST(ReadBitBufferTest, ReadUnsignedLiteral32Overflow) {
   this->rb_capacity_ = 1024;
   this->CreateReadBitBuffer();
   uint32_t output = 0;
-  EXPECT_FALSE(this->rb_->ReadUnsignedLiteral(40, output).ok());
+  EXPECT_THAT(this->rb_->ReadUnsignedLiteral(40, output), Not(IsOk()));
 }
 
 TYPED_TEST(ReadBitBufferTest, ReadUnsignedLiteralMax16) {
@@ -850,7 +850,7 @@ TYPED_TEST(ReadBitBufferTest, ReadUnsignedLiteral16Overflow) {
   this->rb_capacity_ = 1024;
   this->CreateReadBitBuffer();
   uint16_t output = 0;
-  EXPECT_FALSE(this->rb_->ReadUnsignedLiteral(24, output).ok());
+  EXPECT_THAT(this->rb_->ReadUnsignedLiteral(24, output), Not(IsOk()));
 }
 
 TYPED_TEST(ReadBitBufferTest, ReadUnsignedLiteralMax8) {
@@ -868,7 +868,7 @@ TYPED_TEST(ReadBitBufferTest, ReadUnsignedLiteral8Overflow) {
   this->rb_capacity_ = 1024;
   this->CreateReadBitBuffer();
   uint8_t output = 0;
-  EXPECT_FALSE(this->rb_->ReadUnsignedLiteral(9, output).ok());
+  EXPECT_THAT(this->rb_->ReadUnsignedLiteral(9, output), Not(IsOk()));
 }
 
 TYPED_TEST(ReadBitBufferTest, StringOnlyNullCharacter) {
@@ -924,7 +924,7 @@ TYPED_TEST(ReadBitBufferTest, InvalidStringMissingNullTerminator) {
   this->rb_capacity_ = 1024;
   this->CreateReadBitBuffer();
   std::string output;
-  EXPECT_FALSE(this->rb_->ReadString(output).ok());
+  EXPECT_THAT(this->rb_->ReadString(output), Not(IsOk()));
 }
 
 TYPED_TEST(ReadBitBufferTest, InvalidStringMissingNullTerminatorMaxLength) {
@@ -932,7 +932,7 @@ TYPED_TEST(ReadBitBufferTest, InvalidStringMissingNullTerminatorMaxLength) {
   this->rb_capacity_ = 1024;
   this->CreateReadBitBuffer();
   std::string output;
-  EXPECT_FALSE(this->rb_->ReadString(output).ok());
+  EXPECT_THAT(this->rb_->ReadString(output), Not(IsOk()));
 }
 
 // ---- IgnoreBytes Tests ----
@@ -990,7 +990,7 @@ TEST(StreamBasedReadBitBufferTest, FlushFailsWhenTryingToFlushTooManyBytes) {
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   std::vector<uint8_t> output_buffer(kThreeBytes.size());
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
-  EXPECT_FALSE(rb->Flush(kThreeBytes.size() + 1).ok());
+  EXPECT_THAT(rb->Flush(kThreeBytes.size() + 1), Not(IsOk()));
 }
 
 TEST(StreamBasedReadBitBufferTest, FlushSuccessfullyEmptiesSource) {
@@ -1036,7 +1036,7 @@ TEST(StreamBasedReadBitBufferTest, TellFlushAndSeek) {
   EXPECT_EQ(rb->Tell(), 0);
   EXPECT_THAT(rb->Flush(kThreeBytes.size()), IsOk());
   // Seeking is disabled after Flush().
-  EXPECT_FALSE(rb->Seek(0).ok());
+  EXPECT_THAT(rb->Seek(0), Not(IsOk()));
 }
 
 TEST(StreamBasedReadBitBufferTest, PushBytesNumBytesAvailableSucceeds) {

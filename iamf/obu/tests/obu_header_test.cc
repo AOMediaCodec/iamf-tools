@@ -742,9 +742,9 @@ TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_FourByteObuSize) {
                                       0xff, 0xff, 0xff, 0x7f};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  EXPECT_FALSE(
-      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      Not(IsOk()));
 }
 
 TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_FiveByteObuSize) {
@@ -753,9 +753,9 @@ TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_FiveByteObuSize) {
                                       0x80, 0x80, 0x80, 0x80, 0x01};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  EXPECT_FALSE(
-      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      Not(IsOk()));
 }
 
 TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_MaxByteObuSize) {
@@ -764,9 +764,9 @@ TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_MaxByteObuSize) {
                                       0xff, 0xff, 0xff, 0xff, 0x0f};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  EXPECT_FALSE(
-      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      Not(IsOk()));
 }
 
 TEST_F(ObuHeaderTest, MaxObuSizeWithMinimalLeb128) {
@@ -793,9 +793,9 @@ TEST_F(ObuHeaderTest, InvalidEdgeOverMaxSizeWithMinimalLeb128) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
 
-  EXPECT_FALSE(
-      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      Not(IsOk()));
 }
 
 TEST_F(ObuHeaderTest, MaxObuSizeWithFixesSizeLebEightBytes) {
@@ -825,9 +825,9 @@ TEST_F(ObuHeaderTest, InvalidEdgeOverMaxSizeWithFixedSizeLebEightBytes) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
 
-  EXPECT_FALSE(
-      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      Not(IsOk()));
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateOptionalFieldsFlag) {
@@ -907,9 +907,9 @@ TEST_F(ObuHeaderTest,
       0x00};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  EXPECT_FALSE(
-      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      Not(IsOk()));
 }
 
 void ValidateAudioFrameId0WithTrim(const ObuHeader& header) {

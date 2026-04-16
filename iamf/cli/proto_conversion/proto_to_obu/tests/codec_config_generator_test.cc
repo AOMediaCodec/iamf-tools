@@ -258,7 +258,7 @@ TEST_F(CodecConfigGeneratorTest, InvalidLpcmDecoderConfigIsMissing) {
       .mutable_codec_config()
       ->clear_decoder_config_lpcm();
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, ConfiguresRedundantCopy) {
@@ -316,7 +316,7 @@ TEST_F(CodecConfigGeneratorTest, FailsForUnknownSampleFormatFlags) {
       ->mutable_decoder_config_lpcm()
       ->set_sample_format_flags(iamf_tools_cli_proto::LPCM_INVALID);
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, DeprecatedCodecIdIsNotSupported) {
@@ -325,7 +325,7 @@ TEST_F(CodecConfigGeneratorTest, DeprecatedCodecIdIsNotSupported) {
   codec_config_metadata_.at(0).mutable_codec_config()->set_deprecated_codec_id(
       CodecConfig::kCodecIdLpcm);
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, FailsForUnknownCodecId) {
@@ -333,14 +333,14 @@ TEST_F(CodecConfigGeneratorTest, FailsForUnknownCodecId) {
   codec_config_metadata_.at(0).mutable_codec_config()->set_codec_id(
       iamf_tools_cli_proto::CODEC_ID_INVALID);
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, FailsWhenCodecIdIsMissing) {
   InitMetadataForLpcm(codec_config_metadata_);
   codec_config_metadata_.at(0).mutable_codec_config()->clear_codec_id();
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, FailsWhenRollDistanceIsTooLarge) {
@@ -351,7 +351,7 @@ TEST_F(CodecConfigGeneratorTest, FailsWhenRollDistanceIsTooLarge) {
   codec_config->set_audio_roll_distance(std::numeric_limits<int16_t>::max() +
                                         1);
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, GeneratesObuForOpus) {
@@ -412,7 +412,7 @@ TEST_F(CodecConfigGeneratorTest,
       .mutable_codec_config()
       ->set_automatically_override_codec_delay(true);
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, OverridesIncorrectAudioRollDistance) {
@@ -566,7 +566,7 @@ TEST_F(CodecConfigGeneratorTest, InvalidOpusDecoderConfigIsMissing) {
       .mutable_codec_config()
       ->clear_decoder_config_opus();
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, GeneratesObuForAac) {
@@ -586,7 +586,7 @@ TEST_F(CodecConfigGeneratorTest, InvalidWhenDecoderSpecificInfoIsMissing) {
       ->mutable_decoder_config_aac()
       ->clear_decoder_specific_info();
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, IamfAacFixedFieldsMayBeOmitted) {
@@ -756,7 +756,7 @@ TEST_F(CodecConfigGeneratorTest, InvalidUnknownSamplingFrequencyIndex) {
       ->set_sample_frequency_index(
           iamf_tools_cli_proto::AAC_SAMPLE_FREQUENCY_INDEX_INVALID);
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST_F(CodecConfigGeneratorTest, ConfiguresAacWithImplicitSamplingFrequency) {
@@ -836,7 +836,7 @@ TEST_F(CodecConfigGeneratorTest, InvalidAacDecoderConfigIsMissing) {
       .mutable_codec_config()
       ->clear_decoder_config_aac();
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
 TEST(Generate, FillsTopLevelFieldsForFlac) {

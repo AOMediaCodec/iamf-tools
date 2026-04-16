@@ -27,6 +27,7 @@ namespace adm_to_user_metadata {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr int32_t kImportanceThreshold = 10;
 
@@ -101,7 +102,8 @@ void ValidateGetChunkInfo(const Bw64Reader& reader,
 TEST(BuildFromStream, FailsOnEmptyStream) {
   std::istringstream ss("");
 
-  EXPECT_FALSE(Bw64Reader::BuildFromStream(kImportanceThreshold, ss).ok());
+  EXPECT_THAT(Bw64Reader::BuildFromStream(kImportanceThreshold, ss),
+              Not(IsOk()));
 }
 
 TEST(BuildFromStream, PopulatesChunkInfo) {
@@ -163,7 +165,7 @@ TEST(BuildFromStream, ReturnsErrorWhenLookingUpUnknownChunkName) {
   ASSERT_THAT(reader, IsOk());
 
   // Returns error when Looking up an invalid chunk name returns an error.
-  EXPECT_FALSE(reader->GetChunkInfo("INVALID_CHUNK").ok());
+  EXPECT_THAT(reader->GetChunkInfo("INVALID_CHUNK"), Not(IsOk()));
 }
 
 TEST(BuildFromStream, FailsOnLargeAxmlSize) {
@@ -182,7 +184,7 @@ TEST(BuildFromStream, FailsOnLargeAxmlSize) {
 
   std::istringstream ss(wav_bytes);
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  EXPECT_FALSE(reader.ok());
+  EXPECT_THAT(reader, Not(IsOk()));
 }
 
 TEST(BuildFromStream, FailsOnAxmlSizeExceedingFile) {
@@ -198,7 +200,7 @@ TEST(BuildFromStream, FailsOnAxmlSizeExceedingFile) {
 
   std::istringstream ss(wav_bytes);
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  EXPECT_FALSE(reader.ok());
+  EXPECT_THAT(reader, Not(IsOk()));
 }
 
 }  // namespace

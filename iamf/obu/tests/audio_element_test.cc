@@ -19,7 +19,6 @@
 #include <optional>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -737,8 +736,8 @@ TEST(ChannelAudioLayerConfig,
           .expanded_loudspeaker_layout = std::nullopt};
 
   WriteBitBuffer wb(1024);
-  EXPECT_FALSE(
-      kChannelAudioLayerConfigWithInconsistentExpandedLayout.Write(wb).ok());
+  EXPECT_THAT(kChannelAudioLayerConfigWithInconsistentExpandedLayout.Write(wb),
+              Not(IsOk()));
 }
 
 TEST(ChannelAudioLayerConfig, WritesOutputGainIsPresentFields) {
@@ -919,7 +918,7 @@ TEST(ChannelAudioLayerConfig,
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
-  EXPECT_FALSE(config.Read(*buffer).ok());
+  EXPECT_THAT(config.Read(*buffer), Not(IsOk()));
 }
 
 TEST(ChannelAudioLayerConfig, ReadsExpandedLayout10_2_9_3) {
@@ -1131,21 +1130,21 @@ TEST(ScalableChannelLayoutConfigValidate, IsOkWithMultipleLayers) {
 
 TEST(ScalableChannelLayoutConfigValidate,
      IsNotOkWhenSubstreamCountDoesNotMatchWithMultipleLayers) {
-  EXPECT_FALSE(
-      kTwoLayerStereoConfig.Validate(kTwoLayerStereoSubstreamCount + 1).ok());
+  EXPECT_THAT(kTwoLayerStereoConfig.Validate(kTwoLayerStereoSubstreamCount + 1),
+              Not(IsOk()));
 }
 
 TEST(ScalableChannelLayoutConfigValidate, TooFewLayers) {
   const ScalableChannelLayoutConfig kConfigWithZeroLayer = {};
 
-  EXPECT_FALSE(kConfigWithZeroLayer.Validate(0).ok());
+  EXPECT_THAT(kConfigWithZeroLayer.Validate(0), Not(IsOk()));
 }
 
 TEST(ScalableChannelLayoutConfigValidate, TooManyLayers) {
   const ScalableChannelLayoutConfig kConfigWithZeroLayer = {
       .channel_audio_layer_configs = std::vector<ChannelAudioLayerConfig>(7)};
 
-  EXPECT_FALSE(kConfigWithZeroLayer.Validate(0).ok());
+  EXPECT_THAT(kConfigWithZeroLayer.Validate(0), Not(IsOk()));
 }
 
 TEST(ScalableChannelLayoutConfigValidate, IsOkWithOneLayerBinaural) {
@@ -1165,8 +1164,10 @@ TEST(ScalableChannelLayoutConfigValidate,
           .channel_audio_layer_configs = {kChannelAudioLayerConfigBinaural,
                                           kChannelAudioLayerConfigStereo}};
 
-  EXPECT_FALSE(kInvalidBinauralConfigWithFirstLayerStereo.Validate(2).ok());
-  EXPECT_FALSE(kInvalidBinauralConfigWithSecondLayerStereo.Validate(2).ok());
+  EXPECT_THAT(kInvalidBinauralConfigWithFirstLayerStereo.Validate(2),
+              Not(IsOk()));
+  EXPECT_THAT(kInvalidBinauralConfigWithSecondLayerStereo.Validate(2),
+              Not(IsOk()));
 }
 
 TEST(ObjectsConfigCreate, IsOkWithOneObject) {
@@ -1837,7 +1838,8 @@ TEST(TestValidateAmbisonicsMono,
       .substream_count = 4,
       .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3}};
   const DecodedUleb128 kInconsistentObuSubstreamCount = 3;
-  EXPECT_FALSE(ambisonics_mono.Validate(kInconsistentObuSubstreamCount).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(kInconsistentObuSubstreamCount),
+              Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsMono,
@@ -1846,7 +1848,7 @@ TEST(TestValidateAmbisonicsMono,
       .output_channel_count = 4,
       .substream_count = 2,
       .channel_mapping = {/*A0=*/255 /*A1=*/, 1 /*A2=*/, 0 /*A3=*/}};
-  EXPECT_FALSE(ambisonics_mono.Validate(2).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(2), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsMono, InvalidOutputChannelCount) {
@@ -1854,7 +1856,7 @@ TEST(TestValidateAmbisonicsMono, InvalidOutputChannelCount) {
       .output_channel_count = 5,
       .substream_count = 5,
       .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3, /*A4=*/4}};
-  EXPECT_FALSE(ambisonics_mono.Validate(2).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(2), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsMono, InvalidWhenSubstreamIndexIsTooLarge) {
@@ -1862,7 +1864,7 @@ TEST(TestValidateAmbisonicsMono, InvalidWhenSubstreamIndexIsTooLarge) {
       .output_channel_count = 4,
       .substream_count = 4,
       .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/4}};
-  EXPECT_FALSE(ambisonics_mono.Validate(4).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(4), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsMono,
@@ -1874,7 +1876,7 @@ TEST(TestValidateAmbisonicsMono,
       .output_channel_count = 4,
       .substream_count = 2,
       .channel_mapping = {/*A0=*/0, /*A1=*/0, /*A2=*/0, /*A3=*/0}};
-  EXPECT_FALSE(ambisonics_mono.Validate(2).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(2), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAWithMainDiagonalMatrix) {
@@ -1972,7 +1974,7 @@ TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCountMaxValue) {
       .substream_count = 255,
       .coupled_substream_count = 0,
       .demixing_matrix = std::vector<int16_t>(255 * 255, 1)};
-  EXPECT_FALSE(ambisonics_projection.Validate(255).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(255), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCount) {
@@ -1981,7 +1983,7 @@ TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCount) {
       .substream_count = 3,
       .coupled_substream_count = 0,
       .demixing_matrix = std::vector<int16_t>(3 * 3, 1)};
-  EXPECT_FALSE(ambisonics_projection.Validate(3).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(3), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -1991,7 +1993,7 @@ TEST(TestValidateAmbisonicsProjection,
       .substream_count = 5,
       .coupled_substream_count = 0,
       .demixing_matrix = std::vector<int16_t>(4 * 5, 1)};
-  EXPECT_FALSE(ambisonics_projection.Validate(5).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(5), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -2003,8 +2005,8 @@ TEST(TestValidateAmbisonicsProjection,
       .demixing_matrix = std::vector<int16_t>(4 * 4, 1)};
   const DecodedUleb128 kInconsistentObuSubstreamCount = 3;
 
-  EXPECT_FALSE(
-      ambisonics_projection.Validate(kInconsistentObuSubstreamCount).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(kInconsistentObuSubstreamCount),
+              Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -2015,7 +2017,7 @@ TEST(TestValidateAmbisonicsProjection,
       .coupled_substream_count = 3,
       .demixing_matrix = std::vector<int16_t>((1 + 3) * 4, 1)};
 
-  EXPECT_FALSE(ambisonics_projection.Validate(1).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(1), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -2026,7 +2028,7 @@ TEST(TestValidateAmbisonicsProjection,
       .coupled_substream_count = 2,
       .demixing_matrix = std::vector<int16_t>((3 + 2) * 4, 1)};
 
-  EXPECT_FALSE(ambisonics_projection.Validate(3).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(3), Not(IsOk()));
 }
 
 TEST(TestGetNextValidCount, ReturnsNextHighestCount) {
@@ -2055,9 +2057,9 @@ TEST(TestGetNextValidCount, SupportsFourteenthOrderAmbisonics) {
 
 TEST(TestGetNextValidCount, InvalidInputTooLarge) {
   uint8_t unused_next_valid_count;
-  EXPECT_FALSE(AmbisonicsConfig::GetNextValidOutputChannelCount(
-                   226, unused_next_valid_count)
-                   .ok());
+  EXPECT_THAT(AmbisonicsConfig::GetNextValidOutputChannelCount(
+                  226, unused_next_valid_count),
+              Not(IsOk()));
 }
 
 TEST(AudioElementParamEqualOperator, EqualDemixingParamDefinition) {
@@ -2121,7 +2123,7 @@ TEST(ReadAudioElementParamTest, RejectMixGainParamDefinition) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
   AudioElementParam param;
-  EXPECT_FALSE(param.ReadAndValidate(kAudioElementId, *buffer).ok());
+  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, *buffer), Not(IsOk()));
 }
 
 TEST(ReadAudioElementParamTest, ValidDemixingParamDefinition) {
@@ -2183,7 +2185,8 @@ TEST(CreateFromBuffer, InvalidWhenPayloadIsEmpty) {
   std::vector<uint8_t> source;
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
   ObuHeader header;
-  EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, 0, *buffer).ok());
+  EXPECT_THAT(AudioElementObu::CreateFromBuffer(header, 0, *buffer),
+              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
@@ -2309,7 +2312,7 @@ TEST(CreateFromBuffer, InvalidMultipleChannelConfigWithBinauralLayout) {
   ObuHeader header;
   auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
-  EXPECT_FALSE(obu.ok());
+  EXPECT_THAT(obu, Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {

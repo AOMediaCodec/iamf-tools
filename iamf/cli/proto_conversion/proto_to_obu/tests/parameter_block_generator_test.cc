@@ -51,6 +51,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 using ::testing::NotNull;
 using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using AudioElementsById = DescriptorObus::AudioElementsById;
@@ -609,7 +610,7 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   // will fail because the generator cannot find the corresponding param
   // definitions for the parameter (i.e. they are "stray").
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
-    EXPECT_FALSE(generator.AddMetadata(metadata).ok());
+    EXPECT_THAT(generator.AddMetadata(metadata), Not(IsOk()));
   }
 }
 

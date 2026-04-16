@@ -21,7 +21,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -180,9 +179,9 @@ TEST(FilterProfilesForAudioElement,
 
       kAllKnownProfileVersions;
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, all_known_profiles)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, all_known_profiles),
+              Not(IsOk()));
 
   EXPECT_TRUE(all_known_profiles.empty());
 }
@@ -256,9 +255,9 @@ TEST(FilterProfilesForAudioElement,
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, simple_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, simple_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(simple_profile.empty());
 }
@@ -271,9 +270,9 @@ TEST(FilterProfilesForAudioElement,
       kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, simple_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, simple_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(simple_profile.empty());
 }
@@ -287,9 +286,9 @@ TEST(FilterProfilesForAudioElement,
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, simple_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, simple_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(simple_profile.empty());
 }
@@ -302,9 +301,9 @@ TEST(FilterProfilesForAudioElement,
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_profile.empty());
 }
@@ -318,9 +317,9 @@ TEST(FilterProfilesForAudioElement,
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_profile.empty());
 }
@@ -334,9 +333,9 @@ TEST(FilterProfilesForAudioElement,
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_profile.empty());
 }
@@ -358,9 +357,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -382,9 +381,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -406,9 +405,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -432,9 +431,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -458,9 +457,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -482,9 +481,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -508,9 +507,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -532,9 +531,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -565,9 +564,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -582,9 +581,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, base_enhanced_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -747,10 +746,10 @@ TEST(FilterProfilesForMixPresentation,
                                         mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), simple_profile),
+      Not(IsOk()));
 
   EXPECT_TRUE(simple_profile.empty());
 }
@@ -1224,10 +1223,10 @@ TEST(FilterProfilesForMixPresentation,
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), simple_profile),
+      Not(IsOk()));
   EXPECT_TRUE(simple_profile.empty());
 }
 
@@ -1240,10 +1239,10 @@ TEST(FilterProfilesForMixPresentation,
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), simple_profile),
+      Not(IsOk()));
   EXPECT_TRUE(simple_profile.empty());
 }
 
@@ -1262,10 +1261,10 @@ TEST(
       RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), simple_profile),
+      Not(IsOk()));
 
   EXPECT_TRUE(simple_profile.empty());
 }
@@ -1284,10 +1283,10 @@ TEST(FilterProfilesForMixPresentation,
       RenderingConfig::kHeadphonesRenderingModeReserved3;
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), simple_profile),
+      Not(IsOk()));
 
   EXPECT_TRUE(simple_profile.empty());
 }
@@ -1301,9 +1300,9 @@ TEST(FilterProfilesForMixPresentation,
                                         mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
-                   audio_elements, mix_presentation_obus.front(), base_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), base_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_profile.empty());
 }
@@ -1333,9 +1332,9 @@ TEST(FilterProfilesForMixPresentation,
       codec_config_obus, audio_elements, mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
-                   audio_elements, mix_presentation_obus.front(), base_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), base_profile),
+              Not(IsOk()));
   EXPECT_TRUE(base_profile.empty());
 }
 
@@ -1353,9 +1352,9 @@ TEST(FilterProfilesForMixPresentation,
       RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
-                   audio_elements, mix_presentation_obus.front(), base_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), base_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_profile.empty());
 }
@@ -1374,9 +1373,9 @@ TEST(FilterProfilesForMixPresentation,
       RenderingConfig::kHeadphonesRenderingModeReserved3;
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
-                   audio_elements, mix_presentation_obus.front(), base_profile)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), base_profile),
+              Not(IsOk()));
 
   EXPECT_TRUE(base_profile.empty());
 }
@@ -1391,10 +1390,10 @@ TEST(FilterProfilesForMixPresentation,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
+      Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -1520,10 +1519,10 @@ TEST(FilterProfilesForMixPresentation,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
+      Not(IsOk()));
 
   EXPECT_FALSE(base_enhanced_profile.contains(kIamfBaseEnhancedProfile));
 }
@@ -1544,10 +1543,10 @@ TEST(
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
+      Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -1567,10 +1566,10 @@ TEST(FilterProfilesForMixPresentation,
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
+      Not(IsOk()));
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
@@ -1667,10 +1666,10 @@ TEST(FilterProfilesForMixPresentation,
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
       kAllKnownProfileVersions;
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), all_known_profiles)
-          .ok());
+          audio_elements, mix_presentation_obus.front(), all_known_profiles),
+      Not(IsOk()));
 
   EXPECT_TRUE(all_known_profiles.empty());
 }
@@ -1688,10 +1687,10 @@ TEST(FilterProfilesForMixPresentation,
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
       kAllKnownProfileVersions;
 
-  EXPECT_FALSE(
+  EXPECT_THAT(
       ProfileFilter::FilterProfilesForMixPresentation(
-          kNoAudioElements, mix_presentation_obus.front(), all_known_profiles)
-          .ok());
+          kNoAudioElements, mix_presentation_obus.front(), all_known_profiles),
+      Not(IsOk()));
 
   EXPECT_TRUE(all_known_profiles.empty());
 }
@@ -1712,9 +1711,9 @@ TEST(FilterProfilesForAudioElement,
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
       kAllKnownProfileVersions;
 
-  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
-                   "", *audio_element_obu, all_known_profiles)
-                   .ok());
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, all_known_profiles),
+              Not(IsOk()));
 
   EXPECT_TRUE(all_known_profiles.empty());
 }

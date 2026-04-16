@@ -15,14 +15,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <fstream>
-#include <ios>
 #include <limits>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
@@ -30,8 +26,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/obu_header.pb.h"
-#include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -40,6 +34,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
 using ::testing::HasSubstr;
+using ::testing::Not;
 
 using ::absl::MakeConstSpan;
 using ::absl::MakeSpan;
@@ -456,28 +451,28 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(NormalizedFloatingPointToInt32MalformedOutput, InvalidFloatNan) {
   int32_t undefined_result;
-  EXPECT_FALSE(
-      NormalizedFloatingPointToInt32(std::nanf(""), undefined_result).ok());
+  EXPECT_THAT(NormalizedFloatingPointToInt32(std::nanf(""), undefined_result),
+              Not(IsOk()));
 }
 
 TEST(NormalizedFloatingPointToInt32MalformedInfoput, InvalidDoubleNan) {
   int32_t undefined_result;
-  EXPECT_FALSE(
-      NormalizedFloatingPointToInt32(std::nan(""), undefined_result).ok());
+  EXPECT_THAT(NormalizedFloatingPointToInt32(std::nan(""), undefined_result),
+              Not(IsOk()));
 }
 
 TEST(NormalizedFloatingPointToInt32MalformedOutput, InvalidFloatInfinity) {
   int32_t undefined_result;
-  EXPECT_FALSE(NormalizedFloatingPointToInt32(
-                   std::numeric_limits<float>::infinity(), undefined_result)
-                   .ok());
+  EXPECT_THAT(NormalizedFloatingPointToInt32(
+                  std::numeric_limits<float>::infinity(), undefined_result),
+              Not(IsOk()));
 }
 
 TEST(NormalizedFloatingPointToInt32MalformedOutput, InvalidDoubleInfinity) {
   int32_t undefined_result;
-  EXPECT_FALSE(NormalizedFloatingPointToInt32(
-                   std::numeric_limits<double>::infinity(), undefined_result)
-                   .ok());
+  EXPECT_THAT(NormalizedFloatingPointToInt32(
+                  std::numeric_limits<double>::infinity(), undefined_result),
+              Not(IsOk()));
 }
 
 TEST(StaticCastIfInRange, SucceedsIfStaticCastSucceeds) {
@@ -493,8 +488,8 @@ TEST(StaticCastIfInRange, FailsIfStaticCastWouldFail) {
   constexpr int input = std::numeric_limits<int8_t>::max() + 1;
   int8_t output;
 
-  EXPECT_FALSE(
-      (StaticCastIfInRange<int, int8_t>(kOmitContext, input, output)).ok());
+  EXPECT_THAT((StaticCastIfInRange<int, int8_t>(kOmitContext, input, output)),
+              Not(IsOk()));
 }
 
 TEST(StaticCastIfInRange, MessageContainsContextOnError) {
@@ -637,7 +632,7 @@ TEST(LittleEndianBytesToInt32Test, InvalidTooManyBytes) {
   absl::Status status =
       LittleEndianBytesToInt32({1, 2, 3, 4, 5}, unused_result);
 
-  EXPECT_FALSE(status.ok());
+  EXPECT_THAT(status, Not(IsOk()));
   EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
@@ -645,7 +640,7 @@ TEST(LittleEndianBytesToInt32Test, InvalidTooFewBytes) {
   int32_t result = 0;
   absl::Status status = LittleEndianBytesToInt32({}, result);
 
-  EXPECT_FALSE(status.ok());
+  EXPECT_THAT(status, Not(IsOk()));
   EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
@@ -706,7 +701,7 @@ TEST(BigEndianBytesToInt32Test, InvalidTooManyBytes) {
   int32_t unused_result = 0;
   absl::Status status = BigEndianBytesToInt32({1, 2, 3, 4, 5}, unused_result);
 
-  EXPECT_FALSE(status.ok());
+  EXPECT_THAT(status, Not(IsOk()));
   EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
@@ -714,7 +709,7 @@ TEST(BigEndianBytesToInt32Test, InvalidTooFewBytes) {
   int32_t result = 0;
   absl::Status status = BigEndianBytesToInt32({}, result);
 
-  EXPECT_FALSE(status.ok());
+  EXPECT_THAT(status, Not(IsOk()));
   EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
@@ -839,21 +834,21 @@ TEST(StaticCastSpanIfInRange, FailsIfArgsAreNotEqualSize) {
   constexpr std::array<uint8_t, 4> kContainer = {1, 2, 3, 4};
 
   std::vector<char> result(kMismatchedSize);
-  EXPECT_FALSE(StaticCastSpanIfInRange(kOmitContext,
-                                       absl::MakeConstSpan(kContainer),
-                                       absl::MakeSpan(result))
-                   .ok());
+  EXPECT_THAT(
+      StaticCastSpanIfInRange(kOmitContext, absl::MakeConstSpan(kContainer),
+                              absl::MakeSpan(result)),
+      Not(IsOk()));
 }
 
 TEST(StaticCastSpanIfInRange, FailsIfStaticCastWouldBeOutOfRange) {
   constexpr std::array<int16_t, 1> kContainerWithOutOfRangeValue = {256};
 
   std::vector<char> char_based_result(kContainerWithOutOfRangeValue.size());
-  EXPECT_FALSE(StaticCastSpanIfInRange(
-                   kOmitContext,
-                   absl::MakeConstSpan(kContainerWithOutOfRangeValue),
-                   absl::MakeSpan(char_based_result))
-                   .ok());
+  EXPECT_THAT(
+      StaticCastSpanIfInRange(
+          kOmitContext, absl::MakeConstSpan(kContainerWithOutOfRangeValue),
+          absl::MakeSpan(char_based_result)),
+      Not(IsOk()));
 }
 
 TEST(StaticCastSpanIfInRange, MessageContainsContextOnError) {

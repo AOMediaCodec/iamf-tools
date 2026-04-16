@@ -20,7 +20,6 @@
 #include <variant>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -152,7 +151,7 @@ TEST_P(CodecConfigLpcmTestForSampleRate, TestCodecConfigLpcm) {
     ASSERT_THAT(obu, IsOk());
 
     WriteBitBuffer unused_wb(0);
-    EXPECT_EQ(obu->ValidateAndWriteObu(unused_wb).ok(), expect_ok);
+    EXPECT_THAT(obu->ValidateAndWriteObu(unused_wb), IsOk());
 
     // Validate the functions to get the sample rate return the expected
     // value.

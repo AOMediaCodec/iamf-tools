@@ -29,6 +29,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 using enum ChannelLabel::Label;
 
@@ -95,10 +96,10 @@ TEST(ComputeReconGain, InvalidWhenRelevantMixedSampleCannotBeFound) {
   const LabelSamplesMap label_to_decoded_samples{{kDemixedR2, kDemixedChannel}};
 
   double recon_gain;
-  EXPECT_FALSE(ReconGainGenerator::ComputeReconGain(
-                   kDemixedR2, label_to_samples, label_to_decoded_samples,
-                   /*additional_logging=*/true, recon_gain)
-                   .ok());
+  EXPECT_THAT(ReconGainGenerator::ComputeReconGain(
+                  kDemixedR2, label_to_samples, label_to_decoded_samples,
+                  /*additional_logging=*/true, recon_gain),
+              Not(IsOk()));
 }
 
 }  // namespace

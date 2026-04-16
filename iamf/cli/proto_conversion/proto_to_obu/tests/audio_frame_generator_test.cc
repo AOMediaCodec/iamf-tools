@@ -605,14 +605,12 @@ TEST(AudioFrameGenerator, AddZeroSamplesBeforeFinalizeFails) {
       global_timing_module, parameters_manager, audio_frame_generator);
 
   // Before `Finalize()` is called, adding zero samples is disallowed.
-  EXPECT_FALSE(
-      audio_frame_generator
-          ->AddSamples(kFirstAudioElementId, ChannelLabel::kL2, kEmptyFrame)
-          .ok());
-  EXPECT_FALSE(
-      audio_frame_generator
-          ->AddSamples(kFirstAudioElementId, ChannelLabel::kR2, kEmptyFrame)
-          .ok());
+  EXPECT_THAT(audio_frame_generator->AddSamples(kFirstAudioElementId,
+                                                ChannelLabel::kL2, kEmptyFrame),
+              Not(IsOk()));
+  EXPECT_THAT(audio_frame_generator->AddSamples(kFirstAudioElementId,
+                                                ChannelLabel::kR2, kEmptyFrame),
+              Not(IsOk()));
 
   // Now call `Finalize()`, after which calling `AddSamples()` with an empty
   // frame is allowed.
@@ -1036,10 +1034,10 @@ TEST(AudioFrameGenerator, InvalidIfTooFewSamplesToTrimAtEnd) {
   // Once all channels are added, frame creation will trigger. The user's
   // request for one sample trimmed at the end will be rejected because two
   // samples were required.
-  EXPECT_FALSE(audio_frame_generator
-                   ->AddSamples(kFirstAudioElementId, ChannelLabel::kR2,
-                                kFrame0L2EightSamples)
-                   .ok());
+  EXPECT_THAT(
+      audio_frame_generator->AddSamples(kFirstAudioElementId, ChannelLabel::kR2,
+                                        kFrame0L2EightSamples),
+      Not(IsOk()));
 }
 
 TEST(AudioFrameGenerator, UserMayRequestAdditionalSamplesToTrimAtEnd) {
@@ -1144,7 +1142,8 @@ TEST(AudioFrameGenerator,
 
   // Preparing the final frame reveals the automatic padding and plus the user's
   // request would result in more than one frame being trimmed from the end.
-  EXPECT_FALSE(audio_frame_generator->OutputFrames(unused_audio_frames).ok());
+  EXPECT_THAT(audio_frame_generator->OutputFrames(unused_audio_frames),
+              Not(IsOk()));
 }
 
 TEST(AudioFrameGenerator, ValidWhenAFullFrameAtStartIsRequestedToBeTrimmed) {

@@ -15,7 +15,6 @@
 #include <optional>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -29,6 +28,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 using iamf_tools_cli_proto::IASequenceHeaderObuMetadata;
 
@@ -174,7 +174,7 @@ TEST(Generate, InvalidWhenPrimaryProfileReserved255) {
   std::optional<IASequenceHeaderObu> output_obu;
   const IaSequenceHeaderGenerator generator(metadata);
 
-  EXPECT_FALSE(generator.Generate(output_obu).ok());
+  EXPECT_THAT(generator.Generate(output_obu), Not(IsOk()));
 }
 
 TEST(Generate, SetsAdditionalProfileReserved255) {
@@ -185,7 +185,7 @@ TEST(Generate, SetsAdditionalProfileReserved255) {
   std::optional<IASequenceHeaderObu> output_obu;
   const IaSequenceHeaderGenerator generator(metadata);
 
-  EXPECT_FALSE(generator.Generate(output_obu).ok());
+  EXPECT_THAT(generator.Generate(output_obu), Not(IsOk()));
 }
 
 TEST(Generate, InvalidWhenEnumIsInvalid) {
@@ -195,7 +195,7 @@ TEST(Generate, InvalidWhenEnumIsInvalid) {
 
   std::optional<IASequenceHeaderObu> unused_output_obu;
   const IaSequenceHeaderGenerator generator(metadata);
-  EXPECT_FALSE(generator.Generate(unused_output_obu).ok());
+  EXPECT_THAT(generator.Generate(unused_output_obu), Not(IsOk()));
 }
 
 TEST(Generate, NoIaSequenceHeaderObus) {
