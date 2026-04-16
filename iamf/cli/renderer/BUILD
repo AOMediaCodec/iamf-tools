@@ -179,6 +179,7 @@ cc_library(
         "//iamf/cli:demixing_module",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",

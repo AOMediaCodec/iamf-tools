@@ -38,6 +38,7 @@ using enum ChannelLabel::Label;
 using testing::DoubleEq;
 using testing::ElementsAre;
 using testing::ElementsAreArray;
+using testing::Not;
 using testing::Pointwise;
 
 TEST(ArrangeSamplesToRender, SucceedsOnEmptyFrame) {
@@ -143,6 +144,20 @@ TEST(ArrangeSamplesToRender, LeavesOmittedLabelsZeroForChannelBasedLayout) {
                                    Pointwise(DoubleEq(), {0.0, 0.0})));
 }
 
+TEST(ArrangeSamplesToRender, FailsWithOnlyOmittedLabels) {
+  const LabeledFrame kFrame = {.label_to_samples = {}};
+  constexpr size_t kNumChannels = 1;
+  constexpr size_t kNumSamples = 100;
+  const std::vector<ChannelLabel::Label> kOmittedOnlyArrangement = {kOmitted};
+  const std::vector<InternalSampleType> kEmptyChannel(kNumSamples, 0.0);
+  std::vector<absl::Span<const InternalSampleType>> samples(kNumChannels);
+  size_t num_valid_samples = 0;
+
+  EXPECT_THAT(ArrangeSamplesToRender(kFrame, kOmittedOnlyArrangement,
+                                     kEmptyChannel, samples, num_valid_samples),
+              Not(IsOk()));
+}
+
 TEST(ArrangeSamplesToRender, ExcludesSamplesToBeTrimmed) {
   const LabeledFrame kMonoLabeledFrameWithSamplesToTrim = {
       .samples_to_trim_at_end = 2,
@@ -242,6 +257,24 @@ TEST(ArrangeSamplesToRender, InvalidWhenTrimIsImplausible) {
   std::vector<absl::Span<const InternalSampleType>> samples(
       kStereoArrangement.size());
   size_t num_valid_samples = 0;
+  EXPECT_THAT(
+      ArrangeSamplesToRender(kFrameWithExcessSamplesTrimmed, kStereoArrangement,
+                             kEmptyChannel, samples, num_valid_samples),
+      Not(IsOk()));
+}
+
+TEST(ArrangeSamplesToRender, InvalidWhenTrimOverflows) {
+  // Set trim values such that their sum overflows a `DecodedUleb128`.
+  const LabeledFrame kFrameWithExcessSamplesTrimmed = {
+      .samples_to_trim_at_end = 1,
+      .samples_to_trim_at_start = std::numeric_limits<DecodedUleb128>::max(),
+      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kStereoArrangement.size());
+  size_t num_valid_samples = 0;
+
   EXPECT_THAT(
       ArrangeSamplesToRender(kFrameWithExcessSamplesTrimmed, kStereoArrangement,
                              kEmptyChannel, samples, num_valid_samples),

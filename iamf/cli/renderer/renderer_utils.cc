@@ -29,6 +29,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
@@ -62,6 +63,10 @@ absl::StatusOr<size_t> GetCommonNumTrimmedTimeTicks(
           samples_to_render.size(), " vs. ", *num_raw_time_ticks, ")"));
     }
   }
+  if (!num_raw_time_ticks.has_value()) {
+    return absl::InvalidArgumentError("No matching channels found.");
+  }
+
   if (empty_channel.size() < *num_raw_time_ticks) {
     return absl::InvalidArgumentError(absl::StrCat(
         "`empty_channel` should contain at least as many samples as other "
@@ -69,8 +74,11 @@ absl::StatusOr<size_t> GetCommonNumTrimmedTimeTicks(
         empty_channel.size(), " < ", *num_raw_time_ticks, ")"));
   }
 
-  if (*num_raw_time_ticks < (labeled_frame.samples_to_trim_at_start +
-                             labeled_frame.samples_to_trim_at_end)) {
+  uint32_t total_samples_to_trim;
+  RETURN_IF_NOT_OK(AddUint32CheckOverflow(
+      labeled_frame.samples_to_trim_at_start,
+      labeled_frame.samples_to_trim_at_end, total_samples_to_trim));
+  if (*num_raw_time_ticks < total_samples_to_trim) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Not enough samples to render samples",
         ". #Raw samples: ", *num_raw_time_ticks,
