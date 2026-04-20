@@ -154,6 +154,11 @@ absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
   DescriptorObus parsed_obus;
   const int64_t global_position_before_all_obus = read_bit_buffer.Tell();
   bool processed_ia_header = false;
+  // Tracks whether the stored IA Sequence Header is a redundant copy. If so,
+  // a subsequent non-redundant header before any temporal unit is treated as
+  // the canonical header (it overrides the redundant one) rather than the
+  // start of a new sequence.
+  bool stored_ia_header_is_redundant = false;
   bool continue_processing = true;
   while (continue_processing) {
     auto header_metadata =
@@ -215,7 +220,8 @@ absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
     absl::Status parsed_obu_status = absl::OkStatus();
     switch (header.obu_type) {
       case kObuIaSequenceHeader: {
-        if (processed_ia_header && !header.obu_redundant_copy) {
+        if (processed_ia_header && !header.obu_redundant_copy &&
+            !stored_ia_header_is_redundant) {
           ABSL_LOG(WARNING)
               << "Detected an IA Sequence without temporal units.";
           continue_processing = false;
@@ -229,6 +235,7 @@ absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
         parsed_obus.ia_sequence_header = *std::move(ia_sequence_header_obu);
         parsed_obus.ia_sequence_header.PrintObu();
         processed_ia_header = true;
+        stored_ia_header_is_redundant = header.obu_redundant_copy;
         break;
       }
       case kObuIaCodecConfig:
