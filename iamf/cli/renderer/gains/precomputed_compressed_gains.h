@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_RENDERER_PRECOMPUTED_COMPRESSED_GAINS_H_
-#define CLI_RENDERER_PRECOMPUTED_COMPRESSED_GAINS_H_
+#ifndef CLI_RENDERER_GAINS_PRECOMPUTED_COMPRESSED_GAINS_H_
+#define CLI_RENDERER_GAINS_PRECOMPUTED_COMPRESSED_GAINS_H_
 
 #include <cstdint>
 #include <string>
@@ -45,4 +45,4 @@ PrecomputedCompressedGains InitPrecomputedCompressedGains();
 
 }  // namespace iamf_tools
 
-#endif  // CLI_RENDERER_PRECOMPUTED_COMPRESSED_GAINS_H_
+#endif  // CLI_RENDERER_GAINS_PRECOMPUTED_COMPRESSED_GAINS_H_

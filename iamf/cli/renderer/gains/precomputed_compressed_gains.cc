@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/renderer/precomputed_compressed_gains.h"
+#include "iamf/cli/renderer/gains/precomputed_compressed_gains.h"
 
 #include "absl/container/flat_hash_map.h"
 
