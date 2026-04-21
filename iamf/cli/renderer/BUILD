@@ -137,8 +137,9 @@ cc_library(
         "loudspeakers_renderer.h",
     ],
     deps = [
-        ":precomputed_gains",
         ":renderer_utils",
+        "//iamf/cli/renderer/gains:precomputed_compressed_gains",
+        "//iamf/cli/renderer/gains:precomputed_compressed_gains_decoder",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:validation_utils",
