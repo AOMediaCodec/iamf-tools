@@ -1,8 +1,6 @@
 #ifndef CLI_RENDERER_GAINS_COMPRESSED_GAINS_CODEBOOK_H_
 #define CLI_RENDERER_GAINS_COMPRESSED_GAINS_CODEBOOK_H_
 
-#include <__math/roots.h>
-
 #include <cmath>
 #include <vector>
 
