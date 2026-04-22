@@ -29,6 +29,13 @@ cc_library(
     deps = ["@abseil-cpp//absl/base:no_destructor"],
 )
 
+cc_library(
+    name = "precomputed_gains",
+    srcs = ["precomputed_gains.cc"],
+    hdrs = ["precomputed_gains.h"],
+    deps = ["@abseil-cpp//absl/container:flat_hash_map"],
+)
+
 cc_test(
     name = "precomputed_compressed_gains_decoder_test",
     srcs = ["precomputed_compressed_gains_decoder_test.cc"],

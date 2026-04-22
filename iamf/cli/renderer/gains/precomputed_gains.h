@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_RENDERER_PRECOMPUTED_GAINS_H_
-#define CLI_RENDERER_PRECOMPUTED_GAINS_H_
+#ifndef CLI_RENDERER_GAINS_PRECOMPUTED_GAINS_H_
+#define CLI_RENDERER_GAINS_PRECOMPUTED_GAINS_H_
 
 #include <string>
 #include <vector>
@@ -34,4 +34,4 @@ PrecomputedGains InitPrecomputedGains();
 
 }  // namespace iamf_tools
 
-#endif  // CLI_RENDERER_PRECOMPUTED_GAINS_H_
+#endif  // CLI_RENDERER_GAINS_PRECOMPUTED_GAINS_H_

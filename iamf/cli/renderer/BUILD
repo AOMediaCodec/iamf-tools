@@ -157,13 +157,6 @@ cc_library(
 )
 
 cc_library(
-    name = "precomputed_gains",
-    srcs = ["precomputed_gains.cc"],
-    hdrs = ["precomputed_gains.h"],
-    deps = ["@abseil-cpp//absl/container:flat_hash_map"],
-)
-
-cc_library(
     name = "renderer_utils",
     srcs = ["renderer_utils.cc"],
     hdrs = ["renderer_utils.h"],
