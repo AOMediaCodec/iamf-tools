@@ -118,6 +118,34 @@ void DoesNotDieCreateFromDescriptors(const std::string& descriptor_data,
 FUZZ_TEST(IamfDecoderFuzzTest_ArbitraryBytesToDescriptors,
           DoesNotDieCreateFromDescriptors);
 
+void DoesNotDieReset(const std::string& descriptor_data,
+                     const std::string& temporal_unit_data) {
+  std::vector<uint8_t> descriptors(descriptor_data.begin(),
+                                   descriptor_data.end());
+
+  std::unique_ptr<api::IamfDecoder> iamf_decoder;
+  const api::IamfDecoder::Settings kDefaultSettings;
+  api::IamfStatus status = api::IamfDecoder::CreateFromDescriptors(
+      kDefaultSettings, descriptors.data(), descriptors.size(), iamf_decoder);
+  if (!status.ok()) {
+    return;
+  }
+
+  std::vector<uint8_t> temporal_unit(temporal_unit_data.begin(),
+                                     temporal_unit_data.end());
+  auto unused_decode_status =
+      iamf_decoder->Decode(temporal_unit.data(), temporal_unit.size());
+  OutputAllTemporalUnits(*iamf_decoder);
+
+  if (iamf_decoder->Reset().ok()) {
+    auto unused_decode_status_after_reset =
+        iamf_decoder->Decode(temporal_unit.data(), temporal_unit.size());
+    OutputAllTemporalUnits(*iamf_decoder);
+  }
+}
+
+FUZZ_TEST(IamfDecoderFuzzTest_Reset, DoesNotDieReset);
+
 void DoesNotDieAllParams(std::optional<api::OutputLayout> output_layout,
                          api::OutputSampleType output_sample_type,
                          std::optional<uint32_t> mix_presentation_id,
