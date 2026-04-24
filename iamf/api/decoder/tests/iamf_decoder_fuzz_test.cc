@@ -10,6 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -199,6 +200,153 @@ auto AnyChannelOrdering() {
       api::ChannelOrdering::kOrderingForAndroid,
   });
 }
+
+enum class OperationType {
+  kDecode,
+  kGetOutputTemporalUnit,
+  kIsTemporalUnitAvailable,
+  kIsDescriptorProcessingComplete,
+  kGetOutputMix,
+  kGetNumberOfOutputChannels,
+  kGetOutputSampleType,
+  kGetSampleRate,
+  kGetFrameSize,
+  kReset,
+  kResetWithNewMix,
+  kSignalEndOfDecoding
+};
+
+struct Operation {
+  OperationType type;
+  // Input data for methods that consume data.
+  std::string data;
+  int32_t chunk_size;
+  std::optional<api::OutputLayout> output_layout;
+  std::optional<uint32_t> mix_presentation_id;
+};
+
+void RunOperation(api::IamfDecoder& iamf_decoder, const Operation& op,
+                  size_t& seed_offset, const std::string& seed_data) {
+  switch (op.type) {
+    case OperationType::kDecode: {
+      size_t chunk_size = op.chunk_size;
+      if (seed_offset < seed_data.size()) {
+        chunk_size = std::min(chunk_size, seed_data.size() - seed_offset);
+        auto unused_status = iamf_decoder.Decode(
+            reinterpret_cast<const uint8_t*>(seed_data.data()) + seed_offset,
+            chunk_size);
+        seed_offset += chunk_size;
+      } else {
+        auto unused_status = iamf_decoder.Decode(nullptr, 0);
+      }
+      break;
+    }
+    case OperationType::kGetOutputTemporalUnit: {
+      OutputAllTemporalUnits(iamf_decoder);
+      break;
+    }
+    case OperationType::kIsTemporalUnitAvailable:
+      iamf_decoder.IsTemporalUnitAvailable();
+      break;
+    case OperationType::kIsDescriptorProcessingComplete:
+      iamf_decoder.IsDescriptorProcessingComplete();
+      break;
+    case OperationType::kGetOutputMix: {
+      api::SelectedMix selected_mix;
+      auto unused_status = iamf_decoder.GetOutputMix(selected_mix);
+      break;
+    }
+    case OperationType::kGetNumberOfOutputChannels: {
+      int num_channels = 0;
+      auto unused_status = iamf_decoder.GetNumberOfOutputChannels(num_channels);
+      break;
+    }
+    case OperationType::kGetOutputSampleType:
+      iamf_decoder.GetOutputSampleType();
+      break;
+    case OperationType::kGetSampleRate: {
+      uint32_t sample_rate = 0;
+      auto unused_status = iamf_decoder.GetSampleRate(sample_rate);
+      break;
+    }
+    case OperationType::kGetFrameSize: {
+      uint32_t frame_size = 0;
+      auto unused_status = iamf_decoder.GetFrameSize(frame_size);
+      break;
+    }
+    case OperationType::kReset: {
+      auto unused_status = iamf_decoder.Reset();
+      break;
+    }
+    case OperationType::kResetWithNewMix: {
+      api::RequestedMix requested_mix = {
+          .mix_presentation_id = op.mix_presentation_id,
+          .output_layout = op.output_layout};
+      api::SelectedMix selected_mix;
+      auto unused_status =
+          iamf_decoder.ResetWithNewMix(requested_mix, selected_mix);
+      break;
+    }
+    case OperationType::kSignalEndOfDecoding: {
+      auto unused_status = iamf_decoder.SignalEndOfDecoding();
+      break;
+    }
+  }
+}
+
+void DoesNotDieWithArbitrarySequenceOfOperations(
+    const std::string& seed_data, const std::vector<Operation>& operations) {
+  std::unique_ptr<api::IamfDecoder> iamf_decoder;
+  const api::IamfDecoder::Settings kDefaultSettings;
+
+  api::IamfStatus status =
+      api::IamfDecoder::Create(kDefaultSettings, iamf_decoder);
+  if (!status.ok()) {
+    return;
+  }
+
+  size_t seed_offset = 0;
+  for (const auto& op : operations) {
+    RunOperation(*iamf_decoder, op, seed_offset, seed_data);
+  }
+}
+
+auto AnyOperationType() {
+  return ElementOf<OperationType>(
+      {OperationType::kDecode, OperationType::kGetOutputTemporalUnit,
+       OperationType::kIsTemporalUnitAvailable,
+       OperationType::kIsDescriptorProcessingComplete,
+       OperationType::kGetOutputMix, OperationType::kGetNumberOfOutputChannels,
+       OperationType::kGetOutputSampleType, OperationType::kGetSampleRate,
+       OperationType::kGetFrameSize, OperationType::kReset,
+       OperationType::kResetWithNewMix, OperationType::kSignalEndOfDecoding});
+}
+
+auto AnyOperation() {
+  return fuzztest::StructOf<Operation>(
+      AnyOperationType(), Arbitrary<std::string>(), Arbitrary<int32_t>(),
+      OptionalOf(AnyOutputLayout()), OptionalOf(Arbitrary<uint32_t>()));
+}
+
+std::vector<std::tuple<std::string, std::vector<Operation>>> GetSeeds() {
+  auto files =
+      fuzztest::ReadFilesFromDirectory(GetRunfilesPath(kIamfFileTestPath));
+  // We have to return a tuple of string and vector of operations since that is
+  // the argument of DoesNotDieWithArbitrarySequenceOfOperations. But we don't
+  // have a specific set of operations to initially seed it with, so we leave it
+  // as an empty vector. The fuzzer will start there and proceed to add
+  // different sequences of operations.
+  std::vector<std::tuple<std::string, std::vector<Operation>>> seeds;
+  for (const auto& seed_file : files) {
+    seeds.push_back({std::get<0>(seed_file), {}});
+  }
+  return seeds;
+}
+
+FUZZ_TEST(IamfDecoderFuzzTest_RandomSequence,
+          DoesNotDieWithArbitrarySequenceOfOperations)
+    .WithDomains(Arbitrary<std::string>(), fuzztest::VectorOf(AnyOperation()))
+    .WithSeeds(GetSeeds);
 
 FUZZ_TEST(IamfDecoderFuzzTest_AllArbitraryParams, DoesNotDieAllParams)
     .WithDomains(OptionalOf(AnyOutputLayout()),      // output_layout,

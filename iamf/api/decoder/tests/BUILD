@@ -10,7 +10,7 @@ cc_test(
     data = [
         "//iamf/cli/testdata:fuzz_test_iamf",
     ],
-    shard_count = 2,
+    shard_count = 5,
     target_compatible_with = [
         "@platforms//os:linux",
     ],
