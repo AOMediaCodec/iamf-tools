@@ -46,14 +46,16 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
-using enum ChannelLabel::Label;
-using AudioElementsById = DescriptorObus::AudioElementsById;
-using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using ::testing::DoubleEq;
 using ::testing::DoubleNear;
 using ::testing::IsEmpty;
 using ::testing::Not;
 using ::testing::Pointwise;
+
+using enum ChannelLabel::Label;
+using AudioElementsById = DescriptorObus::AudioElementsById;
+using CodecConfigsById = DescriptorObus::CodecConfigsById;
+using absl::MakeConstSpan;
 
 constexpr DecodedUleb128 kAudioElementId = 137;
 constexpr std::array<uint8_t, 12> kReconGainValues = {
@@ -360,6 +362,68 @@ TEST(DemixDecodedAudioSamples, ReturnsErrorWhenChannelCountsMismatch) {
       .down_mixing_params = DownMixingParams()});
 
   // Demixing gracefully fails, as we can't determine the missing channel.
+  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(decoded_audio_frames),
+              Not(IsOk()));
+}
+
+TEST(DemixDecodedAudioSamples,
+     ReturnsErrorWhenSampleCountsMismatchAcrossChannels) {
+  AudioElementsById audio_elements;
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      {{kStereoSubstreamId, {kL2, kR2}}}, kOneLayerStereoConfig,
+      audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
+  ASSERT_THAT(demixing_module, IsOk());
+  // Configure two channels, with different sample counts.
+  const std::vector<std::vector<InternalSampleType>> kErrorMismatchedSamples = {
+      {0.0}, {0.0, 0.0}};
+  std::list<AudioFrameWithData> decoded_audio_frames = {(AudioFrameWithData{
+      .obu = AudioFrameObu(
+          ObuHeader{.num_samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                    .num_samples_to_trim_at_start = kZeroSamplesToTrimAtStart},
+          kStereoSubstreamId, {}),
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
+      .decoded_samples = MakeConstSpan(kErrorMismatchedSamples),
+      .down_mixing_params = DownMixingParams()})};
+
+  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(decoded_audio_frames),
+              Not(IsOk()));
+}
+
+TEST(DemixDecodedAudioSamples,
+     ReturnsErrorWhenSampleCountsMismatchAcrossSubstreams) {
+  AudioElementsById audio_elements;
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      {{0, {kMono}}, {1, {kL2}}}, kTwoLayerStereoConfig, audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
+  ASSERT_THAT(demixing_module, IsOk());
+  const std::vector<std::vector<InternalSampleType>> kSubstream0Samples = {
+      {0.0}};
+  const std::vector<std::vector<InternalSampleType>> kSubstream1Samples = {
+      {0.0, 0.1}};
+  std::list<AudioFrameWithData> decoded_audio_frames = {
+      // Substream 0 has one sample.
+      {.obu = AudioFrameObu(
+           ObuHeader{.num_samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                     .num_samples_to_trim_at_start = kZeroSamplesToTrimAtStart},
+           0, {}),
+       .start_timestamp = kStartTimestamp,
+       .end_timestamp = kEndTimestamp,
+       .decoded_samples = MakeConstSpan(kSubstream0Samples),
+       .down_mixing_params = DownMixingParams()},
+      // Substream 1 has two samples.
+      {.obu = AudioFrameObu(
+           ObuHeader{.num_samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                     .num_samples_to_trim_at_start = kZeroSamplesToTrimAtStart},
+           1, {}),
+       .start_timestamp = kStartTimestamp,
+       .end_timestamp = kEndTimestamp,
+       .decoded_samples = MakeConstSpan(kSubstream1Samples),
+       .down_mixing_params = DownMixingParams()}};
+
   EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(decoded_audio_frames),
               Not(IsOk()));
 }
@@ -749,6 +813,27 @@ TEST_F(DownMixingModuleTest, OneLayerStereo) {
                          substream_id_to_expected_samples_,
                          input_label_to_samples_,
                          substream_id_to_substream_data_);
+}
+
+TEST_F(DownMixingModuleTest, ReturnsErrorWhenMissingInputChannels) {
+  // Configure a two-layer stereo down-mixer.
+  ConfigureInputChannel(kL2, {0});
+  ConfigureInputChannel(kR2, {0});
+  ConfigureOutputChannel({kL2}, {{0}});
+  ConfigureOutputChannel({kMono}, {{0}});
+  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
+      {{kAudioElementId,
+        DemixingModule::DownmixingAndReconstructionConfig{
+            .user_labels = input_labels_,
+            .substream_id_to_labels = substream_id_to_labels_}}});
+  ASSERT_THAT(demixing_module, IsOk());
+
+  // Later, the L2 channel was missing.
+  input_label_to_samples_.erase(kL2);
+  EXPECT_THAT(demixing_module->DownMixSamplesToSubstreams(
+                  kAudioElementId, kIrrelevantDownMixingParams,
+                  input_label_to_samples_, substream_id_to_substream_data_),
+              Not(IsOk()));
 }
 
 TEST_F(DownMixingModuleTest, S2ToS1DownMixer) {

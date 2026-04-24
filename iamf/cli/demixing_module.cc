@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
+#include <optional>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -51,19 +52,54 @@ namespace {
 using enum ChannelLabel::Label;
 using DemixingMetadataForAudioElementId =
     DemixingModule::DemixingMetadataForAudioElementId;
+using ::absl::MakeConstSpan;
+
+// Returns the common size of all the spans in `samples` if they are all the
+// same size. Otherwise, returns an error.
+template <typename T>
+absl::StatusOr<size_t> GetCommonNumTicks(absl::Span<const T> samples) {
+  const size_t expected_size = samples.empty() ? 0 : samples[0].size();
+
+  for (size_t i = 1; i < samples.size(); ++i) {
+    RETURN_IF_NOT_OK(ValidateContainerSizeEqual("Sample count across channels",
+                                                samples[i], expected_size));
+  }
+  return expected_size;
+}
+
+// Returns the number of time ticks in the provided `label_to_samples` if all
+// channels have the same number of samples. If samples are missing, or have a
+// different number of samples, returns an error.
+absl::StatusOr<size_t> CheckPresenceAndGetCommonNumTicks(
+    const LabelSamplesMap& label_to_samples,
+    absl::Span<const ChannelLabel::Label> labels) {
+  // Fallback to 0 if no labels are provided.
+  size_t expected_size = 0;
+  for (size_t i = 0; i < labels.size(); ++i) {
+    auto it = label_to_samples.find(labels[i]);
+    if (it == label_to_samples.end()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Missing input channel: ", labels[i]));
+    }
+
+    if (i == 0) {
+      expected_size = it->second.size();
+    }
+
+    RETURN_IF_NOT_OK(ValidateContainerSizeEqual("Sample count across channels",
+                                                it->second, expected_size));
+  }
+  return expected_size;
+}
 
 absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
                              LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "S7 to S5";
 
-  // Check input to perform this down-mixing exist.
-  if (label_to_samples.find(kL7) == label_to_samples.end() ||
-      label_to_samples.find(kR7) == label_to_samples.end() ||
-      label_to_samples.find(kLss7) == label_to_samples.end() ||
-      label_to_samples.find(kLrs7) == label_to_samples.end() ||
-      label_to_samples.find(kRss7) == label_to_samples.end() ||
-      label_to_samples.find(kRrs7) == label_to_samples.end()) {
-    return absl::InvalidArgumentError("Missing some input channels");
+  absl::StatusOr<size_t> num_ticks = CheckPresenceAndGetCommonNumTicks(
+      label_to_samples, {kL7, kR7, kLss7, kLrs7, kRss7, kRrs7});
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
   }
 
   const auto& l7_samples = label_to_samples[kL7];
@@ -83,8 +119,8 @@ absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
   r5_samples = r7_samples;
 
   // Handle Ls5 and Rs5.
-  ls5_samples.resize(lss7_samples.size());
-  rs5_samples.resize(rss7_samples.size());
+  ls5_samples.resize(*num_ticks);
+  rs5_samples.resize(*num_ticks);
   for (size_t i = 0; i < ls5_samples.size(); i++) {
     ls5_samples[i] = down_mixing_params.alpha * lss7_samples[i] +
                      down_mixing_params.beta * lrs7_samples[i];
@@ -122,6 +158,13 @@ absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kRss7, label_to_samples, rss7_samples));
 
+  absl::StatusOr<size_t> num_ticks =
+      GetCommonNumTicks(MakeConstSpan({l5_samples, ls5_samples, lss7_samples,
+                                       r5_samples, rs5_samples, rss7_samples}));
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
+  }
+
   auto& l7_samples = label_to_samples[kDemixedL7];
   auto& r7_samples = label_to_samples[kDemixedR7];
   auto& lrs7_samples = label_to_samples[kDemixedLrs7];
@@ -132,10 +175,9 @@ absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
   r7_samples = {r5_samples.begin(), r5_samples.end()};
 
   // Handle Lrs7 and Rrs7.
-  const size_t num_ticks = l5_samples.size();
-  lrs7_samples.resize(num_ticks, 0.0);
-  rrs7_samples.resize(num_ticks, 0.0);
-  for (size_t i = 0; i < num_ticks; i++) {
+  lrs7_samples.resize(*num_ticks, 0.0);
+  rrs7_samples.resize(*num_ticks, 0.0);
+  for (size_t i = 0; i < *num_ticks; i++) {
     lrs7_samples[i] =
         (ls5_samples[i] - down_mixing_params.alpha * lss7_samples[i]) /
         down_mixing_params.beta;
@@ -151,12 +193,10 @@ absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
                              LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "S5 to S3";
 
-  // Check input to perform this down-mixing exist.
-  if (label_to_samples.find(kL5) == label_to_samples.end() ||
-      label_to_samples.find(kLs5) == label_to_samples.end() ||
-      label_to_samples.find(kR5) == label_to_samples.end() ||
-      label_to_samples.find(kRs5) == label_to_samples.end()) {
-    return absl::InvalidArgumentError("Missing some input channels");
+  absl::StatusOr<size_t> num_ticks = CheckPresenceAndGetCommonNumTicks(
+      label_to_samples, {kL5, kLs5, kR5, kRs5});
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
   }
 
   const auto& l5_samples = label_to_samples[kL5];
@@ -166,8 +206,8 @@ absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
 
   auto& l3_samples = label_to_samples[kL3];
   auto& r3_samples = label_to_samples[kR3];
-  l3_samples.resize(l5_samples.size());
-  r3_samples.resize(r5_samples.size());
+  l3_samples.resize(*num_ticks);
+  r3_samples.resize(*num_ticks);
   for (size_t i = 0; i < l3_samples.size(); i++) {
     l3_samples[i] = l5_samples[i] + down_mixing_params.delta * ls5_samples[i];
     r3_samples[i] = r5_samples[i] + down_mixing_params.delta * rs5_samples[i];
@@ -197,13 +237,18 @@ absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kR5, label_to_samples, r5_samples));
 
+  absl::StatusOr<size_t> num_ticks = GetCommonNumTicks(
+      MakeConstSpan({l3_samples, l5_samples, r3_samples, r5_samples}));
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
+  }
+
   auto& ls5_samples = label_to_samples[kDemixedLs5];
   auto& rs5_samples = label_to_samples[kDemixedRs5];
 
-  const size_t num_ticks = l3_samples.size();
-  ls5_samples.resize(num_ticks, 0.0);
-  rs5_samples.resize(num_ticks, 0.0);
-  for (size_t i = 0; i < num_ticks; i++) {
+  ls5_samples.resize(*num_ticks, 0.0);
+  rs5_samples.resize(*num_ticks, 0.0);
+  for (size_t i = 0; i < *num_ticks; i++) {
     ls5_samples[i] = (l3_samples[i] - l5_samples[i]) / down_mixing_params.delta;
     rs5_samples[i] = (r3_samples[i] - r5_samples[i]) / down_mixing_params.delta;
   }
@@ -215,11 +260,10 @@ absl::Status S3ToS2DownMixer(const DownMixingParams& /*down_mixing_params*/,
                              LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "S3 to S2";
 
-  // Check input to perform this down-mixing exist.
-  if (label_to_samples.find(kL3) == label_to_samples.end() ||
-      label_to_samples.find(kR3) == label_to_samples.end() ||
-      label_to_samples.find(kCentre) == label_to_samples.end()) {
-    return absl::InvalidArgumentError("Missing some input channels");
+  absl::StatusOr<size_t> num_ticks =
+      CheckPresenceAndGetCommonNumTicks(label_to_samples, {kL3, kR3, kCentre});
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
   }
 
   const auto& l3_samples = label_to_samples[kL3];
@@ -228,8 +272,8 @@ absl::Status S3ToS2DownMixer(const DownMixingParams& /*down_mixing_params*/,
 
   auto& l2_samples = label_to_samples[kL2];
   auto& r2_samples = label_to_samples[kR2];
-  l2_samples.resize(l3_samples.size());
-  r2_samples.resize(r3_samples.size());
+  l2_samples.resize(*num_ticks);
+  r2_samples.resize(*num_ticks);
   for (size_t i = 0; i < l2_samples.size(); i++) {
     l2_samples[i] = l3_samples[i] + 0.707 * c_samples[i];
     r2_samples[i] = r3_samples[i] + 0.707 * c_samples[i];
@@ -252,13 +296,18 @@ absl::Status S2ToS3Demixer(const DownMixingParams& /*down_mixing_params*/,
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kCentre, label_to_samples, c_samples));
 
+  absl::StatusOr<size_t> num_ticks =
+      GetCommonNumTicks(MakeConstSpan({l2_samples, r2_samples, c_samples}));
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
+  }
+
   auto& l3_samples = label_to_samples[kDemixedL3];
   auto& r3_samples = label_to_samples[kDemixedR3];
 
-  const size_t num_ticks = c_samples.size();
-  l3_samples.resize(num_ticks, 0.0);
-  r3_samples.resize(num_ticks, 0.0);
-  for (size_t i = 0; i < num_ticks; i++) {
+  l3_samples.resize(*num_ticks, 0.0);
+  r3_samples.resize(*num_ticks, 0.0);
+  for (size_t i = 0; i < *num_ticks; i++) {
     l3_samples[i] = (l2_samples[i] - 0.707 * c_samples[i]);
     r3_samples[i] = (r2_samples[i] - 0.707 * c_samples[i]);
   }
@@ -270,17 +319,17 @@ absl::Status S2ToS1DownMixer(const DownMixingParams& /*down_mixing_params*/,
                              LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "S2 to S1";
 
-  // Check input to perform this down-mixing exist.
-  if (label_to_samples.find(kL2) == label_to_samples.end() ||
-      label_to_samples.find(kR2) == label_to_samples.end()) {
-    return absl::UnknownError("Missing some input channels");
+  absl::StatusOr<size_t> num_ticks =
+      CheckPresenceAndGetCommonNumTicks(label_to_samples, {kL2, kR2});
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
   }
 
   const auto& l2_samples = label_to_samples[kL2];
   const auto& r2_samples = label_to_samples[kR2];
 
   auto& mono_samples = label_to_samples[kMono];
-  mono_samples.resize(l2_samples.size());
+  mono_samples.resize(*num_ticks);
   for (size_t i = 0; i < mono_samples.size(); i++) {
     mono_samples[i] = 0.5 * (l2_samples[i] + r2_samples[i]);
   }
@@ -299,10 +348,15 @@ absl::Status S1ToS2Demixer(const DownMixingParams& /*down_mixing_params*/,
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kMono, label_to_samples, mono_samples));
 
+  absl::StatusOr<size_t> num_ticks =
+      GetCommonNumTicks(MakeConstSpan({l2_samples, mono_samples}));
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
+  }
+
   auto& r2_samples = label_to_samples[kDemixedR2];
-  const size_t num_ticks = mono_samples.size();
-  r2_samples.resize(num_ticks, 0.0);
-  for (size_t i = 0; i < num_ticks; i++) {
+  r2_samples.resize(*num_ticks, 0.0);
+  for (size_t i = 0; i < *num_ticks; i++) {
     r2_samples[i] = 2.0 * mono_samples[i] - l2_samples[i];
   }
 
@@ -313,12 +367,10 @@ absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
                              LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "T4 to T2";
 
-  // Check input to perform this down-mixing exist.
-  if (label_to_samples.find(kLtf4) == label_to_samples.end() ||
-      label_to_samples.find(kLtb4) == label_to_samples.end() ||
-      label_to_samples.find(kRtf4) == label_to_samples.end() ||
-      label_to_samples.find(kRtb4) == label_to_samples.end()) {
-    return absl::UnknownError("Missing some input channels");
+  absl::StatusOr<size_t> num_ticks = CheckPresenceAndGetCommonNumTicks(
+      label_to_samples, {kLtf4, kLtb4, kRtf4, kRtb4});
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
   }
 
   const auto& ltf4_samples = label_to_samples[kLtf4];
@@ -328,8 +380,8 @@ absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
 
   auto& ltf2_samples = label_to_samples[kLtf2];
   auto& rtf2_samples = label_to_samples[kRtf2];
-  ltf2_samples.resize(ltf4_samples.size());
-  rtf2_samples.resize(rtf4_samples.size());
+  ltf2_samples.resize(*num_ticks);
+  rtf2_samples.resize(*num_ticks);
   for (size_t i = 0; i < ltf2_samples.size(); i++) {
     ltf2_samples[i] =
         ltf4_samples[i] + down_mixing_params.gamma * ltb4_samples[i];
@@ -361,12 +413,17 @@ absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kRtf4, label_to_samples, rtf4_samples));
 
+  absl::StatusOr<size_t> num_ticks = GetCommonNumTicks(
+      MakeConstSpan({ltf2_samples, ltf4_samples, rtf2_samples, rtf4_samples}));
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
+  }
+
   auto& ltb4_samples = label_to_samples[kDemixedLtb4];
   auto& rtb4_samples = label_to_samples[kDemixedRtb4];
-  const size_t num_ticks = ltf2_samples.size();
-  ltb4_samples.resize(num_ticks, 0.0);
-  rtb4_samples.resize(num_ticks, 0.0);
-  for (size_t i = 0; i < num_ticks; i++) {
+  ltb4_samples.resize(*num_ticks, 0.0);
+  rtb4_samples.resize(*num_ticks, 0.0);
+  for (size_t i = 0; i < *num_ticks; i++) {
     ltb4_samples[i] =
         (ltf2_samples[i] - ltf4_samples[i]) / down_mixing_params.gamma;
     rtb4_samples[i] =
@@ -380,12 +437,10 @@ absl::Status T2ToTf2DownMixer(const DownMixingParams& down_mixing_params,
                               LabelSamplesMap& label_to_samples) {
   ABSL_VLOG(1) << "T2 to TF2";
 
-  // Check input to perform this down-mixing exist.
-  if (label_to_samples.find(kLtf2) == label_to_samples.end() ||
-      label_to_samples.find(kLs5) == label_to_samples.end() ||
-      label_to_samples.find(kRtf2) == label_to_samples.end() ||
-      label_to_samples.find(kRs5) == label_to_samples.end()) {
-    return absl::UnknownError("Missing some input channels");
+  absl::StatusOr<size_t> num_ticks = CheckPresenceAndGetCommonNumTicks(
+      label_to_samples, {kLtf2, kLs5, kRtf2, kRs5});
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
   }
 
   const auto& ltf2_samples = label_to_samples[kLtf2];
@@ -395,8 +450,8 @@ absl::Status T2ToTf2DownMixer(const DownMixingParams& down_mixing_params,
 
   auto& ltf3_samples = label_to_samples[kLtf3];
   auto& rtf3_samples = label_to_samples[kRtf3];
-  ltf3_samples.resize(ltf2_samples.size());
-  rtf3_samples.resize(rtf2_samples.size());
+  ltf3_samples.resize(*num_ticks);
+  rtf3_samples.resize(*num_ticks);
   for (size_t i = 0; i < ltf2_samples.size(); i++) {
     ltf3_samples[i] = ltf2_samples[i] + down_mixing_params.w *
                                             down_mixing_params.delta *
@@ -432,12 +487,18 @@ absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kR5, label_to_samples, r5_samples));
 
+  absl::StatusOr<size_t> num_ticks =
+      GetCommonNumTicks(MakeConstSpan({ltf3_samples, l3_samples, l5_samples,
+                                       rtf3_samples, r3_samples, r5_samples}));
+  if (!num_ticks.ok()) {
+    return num_ticks.status();
+  }
+
   auto& ltf2_samples = label_to_samples[kDemixedLtf2];
   auto& rtf2_samples = label_to_samples[kDemixedRtf2];
-  const size_t num_ticks = ltf3_samples.size();
-  ltf2_samples.resize(num_ticks, 0.0);
-  rtf2_samples.resize(num_ticks, 0.0);
-  for (size_t i = 0; i < num_ticks; i++) {
+  ltf2_samples.resize(*num_ticks, 0.0);
+  rtf2_samples.resize(*num_ticks, 0.0);
+  for (size_t i = 0; i < *num_ticks; i++) {
     ltf2_samples[i] = ltf3_samples[i] -
                       down_mixing_params.w * (l3_samples[i] - l5_samples[i]);
     rtf2_samples[i] = rtf3_samples[i] -
@@ -647,6 +708,8 @@ absl::Status StoreSamplesForAudioElementId(
   const InternalTimestamp common_start_timestamp =
       audio_frames_or_decoded_audio_frames.begin()->start_timestamp;
 
+  // All audio frames in the list should have the same number of samples.
+  std::optional<size_t> expected_sample_count;
   for (auto& audio_frame : audio_frames_or_decoded_audio_frames) {
     const auto substream_id = audio_frame.obu.GetSubstreamId();
     auto substream_id_labels_iter = substream_id_to_labels.find(substream_id);
@@ -674,6 +737,20 @@ absl::Status StoreSamplesForAudioElementId(
     RETURN_IF_NOT_OK(ValidateEqual(
         input_samples.size(), num_channels,
         "Decoded number of channels vs. expected number of channels"));
+
+    absl::StatusOr<size_t> frame_sample_count =
+        GetCommonNumTicks(input_samples);
+    if (!frame_sample_count.ok()) {
+      return frame_sample_count.status();
+    }
+
+    if (!expected_sample_count.has_value()) {
+      expected_sample_count = *frame_sample_count;
+    } else {
+      RETURN_IF_NOT_OK(ValidateEqual(*frame_sample_count,
+                                     *expected_sample_count,
+                                     "Sample count across substreams"));
+    }
 
     int channel_index = 0;
     for (const auto& label : labels) {
