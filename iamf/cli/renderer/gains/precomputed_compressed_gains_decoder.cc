@@ -68,23 +68,49 @@ absl::StatusOr<std::vector<std::vector<double>>> DecompressMatrix(
         }
       }
     }
-  } else if (!compressed.row_ptr.empty()) {
-    // Sparse decompression. Pull uint8 values from CSR format, convert them
-    // to doubles using codebook, and place in matrix in the correct position.
-    for (int i = 0; i < num_input_channels; ++i) {
-      if (i + 1 >= compressed.row_ptr.size()) break;
-      int start_idx = compressed.row_ptr[i];
-      int end_idx = compressed.row_ptr[i + 1];
+  } else if (!compressed.sparse_blob.empty()) {
+    // Sparse decompression. Pull values from the combined blob.
+    // Layout: [row_lengths] (num_input_channels bytes) + [col_indices] (M
+    // bytes) + [codebook_indices] (M bytes), where M is the total number of
+    // non-zero elements in the matrix.
+    // - row_lengths: number of non-zero elements in each row.
+    // - col_indices: column index of each non-zero element.
+    // - codebook_indices: codebook index of each non-zero element.
+    int num_rows = num_input_channels;
+    if (compressed.sparse_blob.size() < num_rows) {
+      return absl::InvalidArgumentError("Sparse blob size too small.");
+    }
+    if ((compressed.sparse_blob.size() - num_rows) % 2 != 0) {
+      return absl::InvalidArgumentError(
+          "Mismatch between col_indices and codebook_indices size. These must "
+          "match exactly.");
+    }
 
-      for (int k = start_idx; k < end_idx; ++k) {
-        if (k >= compressed.col_indices.size() ||
-            k >= compressed.sparse_data.size()) {
-          break;
+    int total_non_zero_elements =
+        (compressed.sparse_blob.size() - num_rows) / 2;
+
+    int col_indices_start = num_rows;
+    int codebook_indices_start = num_rows + total_non_zero_elements;
+
+    // Running counter of total non-zero elements processed across all rows.
+    int non_zero_element_counter = 0;
+    const std::vector<double>& codebook = iamf_tools::GetCodebook();
+
+    for (int i = 0; i < num_rows; ++i) {
+      // row_lengths are the first num_rows bytes.
+      int row_length = compressed.sparse_blob[i];
+
+      for (int j = 0; j < row_length; ++j) {
+        // Index of the current non-zero element in the flattened arrays.
+        int element_idx = non_zero_element_counter++;
+        if (element_idx >= total_non_zero_elements) {
+          return absl::InvalidArgumentError("Corrupted sparse blob.");
         }
-        int col = compressed.col_indices[k];
-        uint8_t val_idx = compressed.sparse_data[k];
 
-        const std::vector<double>& codebook = iamf_tools::GetCodebook();
+        int col = compressed.sparse_blob[col_indices_start + element_idx];
+        uint8_t val_idx =
+            compressed.sparse_blob[codebook_indices_start + element_idx];
+
         if (col < num_output_channels && val_idx < codebook.size()) {
           decompressed[i][col] = codebook[val_idx];
         }

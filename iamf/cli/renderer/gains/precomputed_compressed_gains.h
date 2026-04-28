@@ -25,11 +25,17 @@ struct CompressedMatrix {
   // Flattened dense data (Float32).
   std::vector<float> dense_data;
 
-  // Quantized CSR data for sparse matrices.
-  std::vector<int32_t> row_ptr;
-  std::vector<int32_t> col_indices;
-  // Indices into codebook.
-  std::vector<uint8_t> sparse_data;
+  // Combined blob for sparse matrices.
+  // Layout: [row_lengths] (num_rows bytes) + [col_indices] (M bytes) +
+  // [codebook_indices] (M bytes), where M is the total number of non-zero
+  // elements in the matrix.
+  // - row_lengths: number of non-zero elements in each row. 1 byte per row.
+  // Assumes that the number of non-zero elements in each row is less than 256.
+  // - col_indices: column index of each non-zero element. 1 byte per element.
+  // Assumes that the number of columns is less than 256.
+  // - codebook_indices: codebook index of each non-zero element (1 byte per
+  // element).
+  std::vector<uint8_t> sparse_blob;
 };
 
 typedef absl::flat_hash_map<std::string,

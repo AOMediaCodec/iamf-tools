@@ -45,9 +45,8 @@ TEST(DecompressMatrixTest, DecompressSparseMatrix) {
   // Input layout "0+2+0" to output layout "0+2+0" (2 input channels, 2 output
   // channels). Row 0 has non-zero at col 0 with val 1.0 (codebook index 9). Row
   // 1 has non-zero at col 1 with val 0.5 (codebook index 5).
-  compressed.row_ptr = {0, 1, 2};
-  compressed.col_indices = {0, 1};
-  compressed.sparse_data = {6, 1};  // 1.0 and 0.5.
+  // Blob layout: row_lengths {1, 1}, col_indices {0, 1}, sparse_data {6, 1}.
+  compressed.sparse_blob = {1, 1, 0, 1, 6, 1};
 
   auto decompressed = DecompressMatrix("0+2+0", "0+2+0", compressed);
 
@@ -125,15 +124,42 @@ TEST(DecompressMatrixTest, DecompressSparseMatrixDifferentLayout) {
   // channels).
   // Row 0 has non-zero at col 2 with val 1.0.
   // Row 1 has non-zero at col 4 with val 0.5.
-  compressed.row_ptr = {0, 1, 2};
-  compressed.col_indices = {2, 4};
-  compressed.sparse_data = {6, 1};  // 1.0 and 0.5.
+  // Blob layout: row_lengths {1, 1}, col_indices {2, 4}, sparse_data {6, 1}.
+  compressed.sparse_blob = {1, 1, 2, 4, 6, 1};
 
   auto decompressed = DecompressMatrix("0+2+0", "0+5+0", compressed);
 
   EXPECT_THAT(decompressed, IsOkAndHolds(ElementsAre(
                                 ElementsAre(0.0, 0.0, 1.0, 0.0, 0.0, 0.0),
                                 ElementsAre(0.0, 0.0, 0.0, 0.0, 0.5, 0.0))));
+}
+
+TEST(DecompressMatrixTest, SparseBlobTooSmall) {
+  CompressedMatrix compressed;
+  // For "0+2+0" there are 2 input channels. The blob must be at least that
+  // large.
+  compressed.sparse_blob = {1};
+
+  EXPECT_THAT(DecompressMatrix("0+2+0", "0+2+0", compressed), Not(IsOk()));
+}
+
+TEST(DecompressMatrixTest, SparseBlobOddSizeColAndCodebookIndices) {
+  CompressedMatrix compressed;
+  // For "0+2+0" there are 2 input channels, thus two rows. The blob size minus
+  // 2 must be even.
+  compressed.sparse_blob = {1, 0, 0};
+
+  EXPECT_THAT(DecompressMatrix("0+2+0", "0+2+0", compressed), Not(IsOk()));
+}
+
+TEST(DecompressMatrixTest, SparseBlobCorruptedRowLengths) {
+  CompressedMatrix compressed;
+  // For "0+2+0" there are 2 input channels. If row_lengths claim there are
+  // more non-zero elements than is possible given the blob size, it is
+  // corrupted.
+  compressed.sparse_blob = {2, 0, 0, 1};
+
+  EXPECT_THAT(DecompressMatrix("0+2+0", "0+2+0", compressed), Not(IsOk()));
 }
 
 }  // namespace
