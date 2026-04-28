@@ -36,6 +36,32 @@ cc_library(
     deps = ["@abseil-cpp//absl/container:flat_hash_map"],
 )
 
+cc_library(
+    name = "get_gains",
+    srcs = ["get_gains.cc"],
+    hdrs = ["get_gains.h"],
+    deps = [
+        ":precomputed_compressed_gains",
+        ":precomputed_compressed_gains_decoder",
+        "//iamf/common/utils:map_utils",
+        "@abseil-cpp//absl/base:no_destructor",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "get_gains_test",
+    srcs = ["get_gains_test.cc"],
+    deps = [
+        ":get_gains",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings",
+        "@googletest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "precomputed_compressed_gains_decoder_test",
     srcs = ["precomputed_compressed_gains_decoder_test.cc"],

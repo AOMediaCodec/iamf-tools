@@ -14,22 +14,17 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <string>
-#include <utility>
 #include <vector>
 
-#include "absl/base/no_destructor.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/cli/renderer/gains/precomputed_compressed_gains.h"
-#include "iamf/cli/renderer/gains/precomputed_compressed_gains_decoder.h"
+#include "iamf/cli/renderer/gains/get_gains.h"
 #include "iamf/cli/renderer/renderer_utils.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -173,27 +168,7 @@ absl::Status RenderSamplesUsingGains(
 // generates all possible gains.
 absl::StatusOr<std::vector<std::vector<double>>> LookupPrecomputedGains(
     absl::string_view input_key, absl::string_view output_key) {
-  static const absl::NoDestructor<PrecomputedCompressedGains>
-      precomputed_compressed_gains(InitPrecomputedCompressedGains());
-
-  const std::string input_key_debug_message =
-      absl::StrCat("Precomputed gains not found for input_key= ", input_key);
-  // Search throughs two layers of maps. We want to find the gains associated
-  // with `[input_key][output_key]`.
-  auto input_key_it = precomputed_compressed_gains->find(input_key);
-  if (input_key_it == precomputed_compressed_gains->end()) [[unlikely]] {
-    return absl::NotFoundError(input_key_debug_message);
-  }
-
-  auto compressed_matrix =
-      LookupInMap(input_key_it->second, std::string(output_key),
-                  absl::StrCat(input_key_debug_message, " and output_key"));
-  if (!compressed_matrix.ok()) {
-    return compressed_matrix.status();
-  }
-
-  return DecompressMatrix(std::string(input_key), std::string(output_key),
-                          *compressed_matrix);
+  return GetGainsForLayoutPair(input_key, output_key);
 }
 
 std::optional<std::vector<std::vector<double>>> MaybeComputeDynamicGains(
