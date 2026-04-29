@@ -4,6 +4,24 @@ package(default_visibility = ["//iamf:__subpackages__"])
 
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
+    name = "ambisonics_config",
+    srcs = ["ambisonics_config.cc"],
+    hdrs = ["ambisonics_config.h"],
+    deps = [
+        ":types",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
+        "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "arbitrary_obu",
     srcs = [
         "arbitrary_obu.cc",
@@ -29,6 +47,7 @@ cc_library(
     srcs = ["audio_element.cc"],
     hdrs = ["audio_element.h"],
     deps = [
+        ":ambisonics_config",
         ":obu_base",
         ":obu_header",
         ":types",
@@ -40,7 +59,6 @@ cc_library(
         "//iamf/obu/param_definitions:extended_param_definition",
         "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:recon_gain_param_definition",
-        "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",

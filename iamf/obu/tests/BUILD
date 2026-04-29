@@ -34,6 +34,21 @@ cc_library(
 )
 
 cc_test(
+    name = "ambisonics_config_test",
+    size = "small",
+    srcs = ["ambisonics_config_test.cc"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils/tests:test_utils",
+        "//iamf/obu:ambisonics_config",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "arbitrary_obu_test",
     srcs = ["arbitrary_obu_test.cc"],
     deps = [
@@ -57,6 +72,7 @@ cc_test(
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
+        "//iamf/obu:ambisonics_config",
         "//iamf/obu:audio_element",
         "//iamf/obu:obu_header",
         "//iamf/obu:parameter_data",
