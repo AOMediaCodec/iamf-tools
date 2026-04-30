@@ -78,7 +78,7 @@ absl::StatusOr<std::vector<std::vector<double>>> DecompressMatrix(
     // - col_indices: column index of each non-zero element.
     // - codebook_indices: codebook index of each non-zero element.
     int num_rows = num_input_channels;
-    if (compressed.sparse_blob.size() < num_rows) {
+    if (compressed.sparse_blob.size() < static_cast<size_t>(num_rows)) {
       return absl::InvalidArgumentError("Sparse blob size too small.");
     }
     if ((compressed.sparse_blob.size() - num_rows) % 2 != 0) {
