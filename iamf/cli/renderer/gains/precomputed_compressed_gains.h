@@ -14,10 +14,8 @@
 #define CLI_RENDERER_GAINS_PRECOMPUTED_COMPRESSED_GAINS_H_
 
 #include <cstdint>
-#include <string>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 
 namespace iamf_tools {
@@ -38,10 +36,6 @@ struct CompressedMatrix {
   // element).
   std::vector<uint8_t> sparse_blob;
 };
-
-typedef absl::flat_hash_map<std::string,
-                            absl::flat_hash_map<std::string, CompressedMatrix>>
-    PrecomputedCompressedGains;
 
 /*!\brief Represents an entry in the table of precomputed gains.
  *

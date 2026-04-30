@@ -7,10 +7,7 @@ cc_library(
     name = "precomputed_compressed_gains",
     srcs = ["precomputed_compressed_gains.cc"],
     hdrs = ["precomputed_compressed_gains.h"],
-    deps = [
-        "@abseil-cpp//absl/container:flat_hash_map",
-        "@abseil-cpp//absl/types:span",
-    ],
+    deps = ["@abseil-cpp//absl/types:span"],
 )
 
 cc_library(
