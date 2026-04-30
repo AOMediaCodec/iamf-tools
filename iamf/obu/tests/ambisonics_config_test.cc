@@ -22,7 +22,6 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -37,7 +36,7 @@ TEST(TestValidateAmbisonicsMono, MappingInAscendingOrder) {
       .output_channel_count = 4,
       .substream_count = 4,
       .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3}};
-  EXPECT_THAT(ambisonics_mono.Validate(4), IsOk());
+  EXPECT_THAT(ambisonics_mono.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsMono, MappingInArbitraryOrder) {
@@ -46,7 +45,7 @@ TEST(TestValidateAmbisonicsMono, MappingInArbitraryOrder) {
       .output_channel_count = 4,
       .substream_count = 4,
       .channel_mapping = {/*A0=*/3, /*A1=*/1, /*A2=*/0, /*A3=*/2}};
-  EXPECT_THAT(ambisonics_mono.Validate(4), IsOk());
+  EXPECT_THAT(ambisonics_mono.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsMono, MixedOrderAmbisonics) {
@@ -56,7 +55,7 @@ TEST(TestValidateAmbisonicsMono, MixedOrderAmbisonics) {
       .output_channel_count = 4,
       .substream_count = 2,
       .channel_mapping = {/*A0=*/255, /*A1=*/1, /*A2=*/0, /*A3=*/255}};
-  EXPECT_THAT(ambisonics_mono.Validate(2), IsOk());
+  EXPECT_THAT(ambisonics_mono.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsMono,
@@ -67,18 +66,7 @@ TEST(TestValidateAmbisonicsMono,
       .output_channel_count = 4,
       .substream_count = 1,
       .channel_mapping = {/*A0=*/0, /*A1=*/0, /*A2=*/0, /*A3=*/0}};
-  EXPECT_THAT(ambisonics_mono.Validate(1), IsOk());
-}
-
-TEST(TestValidateAmbisonicsMono,
-     InvalidWhenObuSubstreamCountDoesNotEqualSubstreamCount) {
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3}};
-  const DecodedUleb128 kInconsistentObuSubstreamCount = 3;
-  EXPECT_THAT(ambisonics_mono.Validate(kInconsistentObuSubstreamCount),
-              Not(IsOk()));
+  EXPECT_THAT(ambisonics_mono.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsMono,
@@ -87,7 +75,7 @@ TEST(TestValidateAmbisonicsMono,
       .output_channel_count = 4,
       .substream_count = 2,
       .channel_mapping = {/*A0=*/255 /*A1=*/, 1 /*A2=*/, 0 /*A3=*/}};
-  EXPECT_THAT(ambisonics_mono.Validate(2), Not(IsOk()));
+  EXPECT_THAT(ambisonics_mono.Validate(), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsMono, InvalidOutputChannelCount) {
@@ -95,7 +83,7 @@ TEST(TestValidateAmbisonicsMono, InvalidOutputChannelCount) {
       .output_channel_count = 5,
       .substream_count = 5,
       .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3, /*A4=*/4}};
-  EXPECT_THAT(ambisonics_mono.Validate(2), Not(IsOk()));
+  EXPECT_THAT(ambisonics_mono.Validate(), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsMono, InvalidWhenSubstreamIndexIsTooLarge) {
@@ -103,7 +91,7 @@ TEST(TestValidateAmbisonicsMono, InvalidWhenSubstreamIndexIsTooLarge) {
       .output_channel_count = 4,
       .substream_count = 4,
       .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/4}};
-  EXPECT_THAT(ambisonics_mono.Validate(4), Not(IsOk()));
+  EXPECT_THAT(ambisonics_mono.Validate(), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsMono,
@@ -115,7 +103,7 @@ TEST(TestValidateAmbisonicsMono,
       .output_channel_count = 4,
       .substream_count = 2,
       .channel_mapping = {/*A0=*/0, /*A1=*/0, /*A2=*/0, /*A3=*/0}};
-  EXPECT_THAT(ambisonics_mono.Validate(2), Not(IsOk()));
+  EXPECT_THAT(ambisonics_mono.Validate(), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAWithMainDiagonalMatrix) {
@@ -131,7 +119,7 @@ TEST(TestValidateAmbisonicsProjection, FOAWithMainDiagonalMatrix) {
                           /* Substream 1: */ 0, 1, 0, 0,
                           /* Substream 2: */ 0, 0, 1, 0,
                           /* Substream 3: */ 0, 0, 0, 1}};
-  EXPECT_THAT(ambisonics_projection.Validate(4), IsOk());
+  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAWithArbitraryMatrix) {
@@ -147,7 +135,7 @@ TEST(TestValidateAmbisonicsProjection, FOAWithArbitraryMatrix) {
                           /* Substream 1: */ 2, 3, 4, 5,
                           /* Substream 2: */ 3, 4, 5, 6,
                           /* Substream 3: */ 4, 5, 6, 7}};
-  EXPECT_THAT(ambisonics_projection.Validate(4), IsOk());
+  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, ZerothOrderAmbisonics) {
@@ -158,7 +146,7 @@ TEST(TestValidateAmbisonicsProjection, ZerothOrderAmbisonics) {
       .demixing_matrix = {
           /*                                             ACN#: 0, */
           /* Substream 0: */ std::numeric_limits<int16_t>::max()}};
-  EXPECT_THAT(ambisonics_projection.Validate(1), IsOk());
+  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAWithOnlyA2) {
@@ -169,7 +157,7 @@ TEST(TestValidateAmbisonicsProjection, FOAWithOnlyA2) {
       .coupled_substream_count = 0,
       .demixing_matrix = {/*           ACN#: 0, 1, 2, 3 */
                           /* Substream 0: */ 0, 0, 1, 0}};
-  EXPECT_THAT(ambisonics_projection.Validate(1), IsOk());
+  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAOneCoupledStream) {
@@ -185,7 +173,7 @@ TEST(TestValidateAmbisonicsProjection, FOAOneCoupledStream) {
                           /* Substream 0_b: */ 0, 1, 0, 0,
                           /* Substream   1: */ 0, 0, 1, 0,
                           /* Substream   2: */ 0, 0, 0, 1}};
-  EXPECT_THAT(ambisonics_projection.Validate(3), IsOk());
+  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, FourteenthOrderAmbisonicsIsSupported) {
@@ -194,7 +182,7 @@ TEST(TestValidateAmbisonicsProjection, FourteenthOrderAmbisonicsIsSupported) {
       .substream_count = 225,
       .coupled_substream_count = 0,
       .demixing_matrix = std::vector<int16_t>(225 * 225, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(225), IsOk());
+  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -204,7 +192,7 @@ TEST(TestValidateAmbisonicsProjection,
       .substream_count = 113,
       .coupled_substream_count = 112,
       .demixing_matrix = std::vector<int16_t>((113 + 112) * 225, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(113), IsOk());
+  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCountMaxValue) {
@@ -213,7 +201,7 @@ TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCountMaxValue) {
       .substream_count = 255,
       .coupled_substream_count = 0,
       .demixing_matrix = std::vector<int16_t>(255 * 255, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(255), Not(IsOk()));
+  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCount) {
@@ -222,7 +210,7 @@ TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCount) {
       .substream_count = 3,
       .coupled_substream_count = 0,
       .demixing_matrix = std::vector<int16_t>(3 * 3, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(3), Not(IsOk()));
+  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -232,20 +220,7 @@ TEST(TestValidateAmbisonicsProjection,
       .substream_count = 5,
       .coupled_substream_count = 0,
       .demixing_matrix = std::vector<int16_t>(4 * 5, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(5), Not(IsOk()));
-}
-
-TEST(TestValidateAmbisonicsProjection,
-     InvalidWhenObuSubstreamCountDoesNotEqualSubstreamCount) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .coupled_substream_count = 0,
-      .demixing_matrix = std::vector<int16_t>(4 * 4, 1)};
-  const DecodedUleb128 kInconsistentObuSubstreamCount = 3;
-
-  EXPECT_THAT(ambisonics_projection.Validate(kInconsistentObuSubstreamCount),
-              Not(IsOk()));
+  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -256,7 +231,7 @@ TEST(TestValidateAmbisonicsProjection,
       .coupled_substream_count = 3,
       .demixing_matrix = std::vector<int16_t>((1 + 3) * 4, 1)};
 
-  EXPECT_THAT(ambisonics_projection.Validate(1), Not(IsOk()));
+  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -267,7 +242,7 @@ TEST(TestValidateAmbisonicsProjection,
       .coupled_substream_count = 2,
       .demixing_matrix = std::vector<int16_t>((3 + 2) * 4, 1)};
 
-  EXPECT_THAT(ambisonics_projection.Validate(3), Not(IsOk()));
+  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
 }
 
 TEST(TestGetNextValidCount, ReturnsNextHighestCount) {
@@ -309,7 +284,7 @@ TEST(AmbisonicsConfig, ValidateAndWriteMono) {
                                                 .channel_mapping = {0}}};
   WriteBitBuffer wb(1024);
 
-  EXPECT_THAT(config.ValidateAndWrite(1, wb), IsOk());
+  EXPECT_THAT(config.ValidateAndWrite(wb), IsOk());
 
   ValidateWriteResults(wb, {AmbisonicsConfig::kAmbisonicsModeMono, 1, 1, 0});
 }
@@ -320,7 +295,7 @@ TEST(AmbisonicsConfig, ReadAndValidateMono) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(kData);
   AmbisonicsConfig config;
 
-  EXPECT_THAT(config.ReadAndValidate(1, *rb), IsOk());
+  EXPECT_THAT(config.ReadAndValidate(*rb), IsOk());
 
   EXPECT_EQ(config.ambisonics_mode,
             AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeMono);
@@ -339,7 +314,7 @@ TEST(AmbisonicsConfig, ValidateAndWriteProjection) {
                                      .demixing_matrix = {100}}};
   WriteBitBuffer wb(1024);
 
-  EXPECT_THAT(config.ValidateAndWrite(1, wb), IsOk());
+  EXPECT_THAT(config.ValidateAndWrite(wb), IsOk());
 
   ValidateWriteResults(
       wb, {AmbisonicsConfig::kAmbisonicsModeProjection, 1, 1, 0, 0, 100});
@@ -351,7 +326,7 @@ TEST(AmbisonicsConfig, ReadAndValidateProjection) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(kData);
   AmbisonicsConfig config;
 
-  EXPECT_THAT(config.ReadAndValidate(1, *rb), IsOk());
+  EXPECT_THAT(config.ReadAndValidate(*rb), IsOk());
 
   EXPECT_EQ(config.ambisonics_mode,
             AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeProjection);

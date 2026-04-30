@@ -30,7 +30,8 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
-#include "iamf/obu/audio_element.h"
+#include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -102,7 +103,10 @@ struct GetChannelLabelsFromAmbisonicsMonoConfig {
           "Expected mode == `kAmbisonicsModeMono` for AmbisonicsMonoConfig");
     }
 
-    RETURN_IF_NOT_OK(config.Validate(audio_substream_ids_.size()));
+    RETURN_IF_NOT_OK(config.Validate());
+    RETURN_IF_NOT_OK(ValidateEqual<size_t>(config.substream_count,
+                                           audio_substream_ids_.size(),
+                                           "audio_substream_ids_.size()"));
     channel_labels_.resize(config.output_channel_count);
     for (size_t i = 0; i < channel_labels_.size(); ++i) {
       const uint8_t substream_id_index = config.channel_mapping[i];
@@ -146,7 +150,10 @@ struct GetChannelLabelsFromAmbisonicsProjectionConfig {
           "AmbisonicsProjectionConfig");
     }
 
-    RETURN_IF_NOT_OK(config.Validate(audio_substream_ids_.size()));
+    RETURN_IF_NOT_OK(config.Validate());
+    RETURN_IF_NOT_OK(ValidateEqual<size_t>(config.substream_count,
+                                           audio_substream_ids_.size(),
+                                           "audio_substream_ids_.size()"));
     const int num_channels =
         config.substream_count + config.coupled_substream_count;
     channel_labels_.reserve(num_channels);

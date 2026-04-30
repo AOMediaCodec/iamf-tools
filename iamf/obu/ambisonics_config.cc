@@ -93,9 +93,8 @@ absl::Status ValidateOutputChannelCount(const uint8_t channel_count) {
 
 // Writes the `AmbisonicsMonoConfig` of an ambisonics mono `AudioElementObu`.
 absl::Status ValidateAndWriteAmbisonicsMono(
-    const AmbisonicsMonoConfig& mono_config, DecodedUleb128 num_substreams,
-    WriteBitBuffer& wb) {
-  RETURN_IF_NOT_OK(mono_config.Validate(num_substreams));
+    const AmbisonicsMonoConfig& mono_config, WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(mono_config.Validate());
 
   RETURN_IF_NOT_OK(
       wb.WriteUnsignedLiteral(mono_config.output_channel_count, 8));
@@ -110,9 +109,8 @@ absl::Status ValidateAndWriteAmbisonicsMono(
 // Writes the `AmbisonicsProjectionConfig` of an ambisonics projection
 // `AudioElementObu`.
 absl::Status ValidateAndWriteAmbisonicsProjection(
-    const AmbisonicsProjectionConfig& projection_config,
-    DecodedUleb128 num_substreams, WriteBitBuffer& wb) {
-  RETURN_IF_NOT_OK(projection_config.Validate(num_substreams));
+    const AmbisonicsProjectionConfig& projection_config, WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(projection_config.Validate());
 
   // Write the main portion of the `AmbisonicsProjectionConfig`.
   RETURN_IF_NOT_OK(
@@ -131,8 +129,7 @@ absl::Status ValidateAndWriteAmbisonicsProjection(
 }
 
 absl::Status ReadAndValidateAmbisonicsProjection(
-    AmbisonicsProjectionConfig& projection_config,
-    DecodedUleb128 num_substreams, ReadBitBuffer& rb) {
+    AmbisonicsProjectionConfig& projection_config, ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(
       rb.ReadUnsignedLiteral(8, projection_config.output_channel_count));
   RETURN_IF_NOT_OK(
@@ -146,27 +143,25 @@ absl::Status ReadAndValidateAmbisonicsProjection(
     RETURN_IF_NOT_OK(rb.ReadSigned16(demixing_matrix_value));
     projection_config.demixing_matrix.push_back(demixing_matrix_value);
   }
-  RETURN_IF_NOT_OK(projection_config.Validate(num_substreams));
+  RETURN_IF_NOT_OK(projection_config.Validate());
   return absl::OkStatus();
 }
 
 absl::Status ReadAndValidateAmbisonicsMonoConfig(
-    AmbisonicsMonoConfig& mono_config, DecodedUleb128 num_substreams,
-    ReadBitBuffer& rb) {
+    AmbisonicsMonoConfig& mono_config, ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, mono_config.output_channel_count));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, mono_config.substream_count));
   const size_t channel_mapping_size = mono_config.output_channel_count;
   mono_config.channel_mapping.resize(channel_mapping_size);
   RETURN_IF_NOT_OK(
       rb.ReadUint8Span(absl::MakeSpan(mono_config.channel_mapping)));
-  RETURN_IF_NOT_OK(mono_config.Validate(num_substreams));
+  RETURN_IF_NOT_OK(mono_config.Validate());
   return absl::OkStatus();
 }
 
 }  // namespace
 
-absl::Status AmbisonicsMonoConfig::Validate(
-    DecodedUleb128 num_substreams_in_audio_element) const {
+absl::Status AmbisonicsMonoConfig::Validate() const {
   MAYBE_RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "channel_mapping", channel_mapping, output_channel_count));
@@ -175,12 +170,6 @@ absl::Status AmbisonicsMonoConfig::Validate(
         absl::StrCat("Expected substream_count=", substream_count,
                      " to be less than or equal to `output_channel_count`=",
                      output_channel_count, "."));
-  }
-  if (num_substreams_in_audio_element != substream_count) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Expected substream_count=", substream_count,
-                     " to be equal to num_substreams_in_audio_element=",
-                     num_substreams_in_audio_element, "."));
   }
 
   // Track the number of unique substream indices in the mapping.
@@ -211,8 +200,7 @@ absl::Status AmbisonicsMonoConfig::Validate(
   return absl::OkStatus();
 }
 
-absl::Status AmbisonicsProjectionConfig::Validate(
-    DecodedUleb128 num_substreams_in_audio_element) const {
+absl::Status AmbisonicsProjectionConfig::Validate() const {
   RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));
   if (coupled_substream_count > substream_count) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -227,12 +215,6 @@ absl::Status AmbisonicsProjectionConfig::Validate(
         " + substream_count= ", substream_count,
         " to be less than or equal to `output_channel_count`= ",
         output_channel_count, "."));
-  }
-  if (num_substreams_in_audio_element != substream_count) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Expected substream_count= ", substream_count,
-                     " to be equal to num_substreams_in_audio_element= ",
-                     num_substreams_in_audio_element, "."));
   }
 
   const size_t expected_num_elements = GetNumDemixingMatrixElements(*this);
@@ -269,8 +251,7 @@ absl::Status AmbisonicsConfig::GetNextValidOutputChannelCount(
       ". Max=", kValidAmbisonicChannelCounts.back(), "."));
 }
 
-absl::Status AmbisonicsConfig::ValidateAndWrite(
-    DecodedUleb128 num_substreams_in_audio_element, WriteBitBuffer& wb) const {
+absl::Status AmbisonicsConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(
       wb.WriteUleb128(static_cast<DecodedUleb128>(ambisonics_mode)));
 
@@ -278,19 +259,16 @@ absl::Status AmbisonicsConfig::ValidateAndWrite(
     using enum AmbisonicsConfig::AmbisonicsMode;
     case kAmbisonicsModeMono:
       return ValidateAndWriteAmbisonicsMono(
-          std::get<AmbisonicsMonoConfig>(ambisonics_config),
-          num_substreams_in_audio_element, wb);
+          std::get<AmbisonicsMonoConfig>(ambisonics_config), wb);
     case kAmbisonicsModeProjection:
       return ValidateAndWriteAmbisonicsProjection(
-          std::get<AmbisonicsProjectionConfig>(ambisonics_config),
-          num_substreams_in_audio_element, wb);
+          std::get<AmbisonicsProjectionConfig>(ambisonics_config), wb);
     default:
       return absl::OkStatus();
   }
 }
 
-absl::Status AmbisonicsConfig::ReadAndValidate(
-    DecodedUleb128 num_substreams_in_audio_element, ReadBitBuffer& rb) {
+absl::Status AmbisonicsConfig::ReadAndValidate(ReadBitBuffer& rb) {
   DecodedUleb128 ambisonics_mode_uleb;
   RETURN_IF_NOT_OK(rb.ReadULeb128(ambisonics_mode_uleb));
   ambisonics_mode = static_cast<AmbisonicsMode>(ambisonics_mode_uleb);
@@ -299,14 +277,12 @@ absl::Status AmbisonicsConfig::ReadAndValidate(
     case kAmbisonicsModeMono: {
       ambisonics_config = AmbisonicsMonoConfig();
       return ReadAndValidateAmbisonicsMonoConfig(
-          std::get<AmbisonicsMonoConfig>(ambisonics_config),
-          num_substreams_in_audio_element, rb);
+          std::get<AmbisonicsMonoConfig>(ambisonics_config), rb);
     }
     case kAmbisonicsModeProjection: {
       ambisonics_config = AmbisonicsProjectionConfig();
       return ReadAndValidateAmbisonicsProjection(
-          std::get<AmbisonicsProjectionConfig>(ambisonics_config),
-          num_substreams_in_audio_element, rb);
+          std::get<AmbisonicsProjectionConfig>(ambisonics_config), rb);
     }
     default:
       return absl::OkStatus();
@@ -322,6 +298,11 @@ void AmbisonicsConfig::Print() const {
     LogAmbisonicsProjectionConfig(
         std::get<AmbisonicsProjectionConfig>(ambisonics_config));
   }
+}
+
+uint8_t AmbisonicsConfig::GetNumSubstreams() const {
+  return std::visit([](const auto& config) { return config.substream_count; },
+                    ambisonics_config);
 }
 
 }  // namespace iamf_tools

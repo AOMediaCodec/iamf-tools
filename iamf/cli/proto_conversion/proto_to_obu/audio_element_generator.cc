@@ -35,6 +35,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
@@ -451,7 +452,7 @@ absl::StatusOr<AmbisonicsMonoConfig> GetAmbisonicsMonoConfig(
       MakeSpan(mono_config.channel_mapping)));
   // Validate the mono config. This ensures no substream indices should be out
   // of bounds.
-  RETURN_IF_NOT_OK(mono_config.Validate(num_substreams_in_obu));
+  RETURN_IF_NOT_OK(mono_config.Validate());
   return mono_config;
 }
 
@@ -500,7 +501,7 @@ absl::StatusOr<AmbisonicsProjectionConfig> GetAmbisonicsProjectionConfig(
       "AmbisonicsProjectionConfig.demixing_matrix",
       input_projection_config.demixing_matrix(),
       MakeSpan(projection_config.demixing_matrix)));
-  RETURN_IF_NOT_OK(projection_config.Validate(num_substreams_in_obu));
+  RETURN_IF_NOT_OK(projection_config.Validate());
   return projection_config;
 }
 

@@ -35,11 +35,9 @@ struct AmbisonicsMonoConfig {
 
   /*!\brief Validates the configuration.
    *
-   * \param num_substreams_in_audio_element Number of substreams in the
-   *        corresponding OBU.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status Validate(DecodedUleb128 num_substreams_in_audio_element) const;
+  absl::Status Validate() const;
 
   uint8_t output_channel_count;  // (C).
   uint8_t substream_count;       // (N).
@@ -55,11 +53,9 @@ struct AmbisonicsProjectionConfig {
 
   /*!\brief Validates the configuration.
    *
-   * \param num_substreams_in_audio_element Number of substreams in the
-   *        corresponding OBU.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status Validate(DecodedUleb128 num_substreams_in_audio_element) const;
+  absl::Status Validate() const;
 
   uint8_t output_channel_count;     // (C).
   uint8_t substream_count;          // (N).
@@ -99,26 +95,26 @@ struct AmbisonicsConfig {
 
   /*!\brief Validates and writes the configuration.
    *
-   * \param num_substreams_in_audio_element Number of substreams in the
-   *        corresponding OBU.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if successful.
    */
-  absl::Status ValidateAndWrite(DecodedUleb128 num_substreams_in_audio_element,
-                                WriteBitBuffer& wb) const;
+  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
 
   /*!\brief Reads and validates the configuration from a buffer.
    *
-   * \param num_substreams_in_audio_element Number of substreams in the
-   *        corresponding OBU.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if successful.
    */
-  absl::Status ReadAndValidate(DecodedUleb128 num_substreams_in_audio_element,
-                               ReadBitBuffer& rb);
+  absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
   /*!\brief Prints logging information about the configuration. */
   void Print() const;
+
+  /*!\brief Gets the number of substreams in the configuration.
+   *
+   * \return Number of substreams.
+   */
+  uint8_t GetNumSubstreams() const;
 
   AmbisonicsMode ambisonics_mode;  // Serialized to a ULEB128.
 

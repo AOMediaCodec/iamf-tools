@@ -164,6 +164,8 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:numeric_utils",
+        "//iamf/common/utils:validation_utils",
+        "//iamf/obu:ambisonics_config",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",

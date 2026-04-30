@@ -42,7 +42,6 @@ cc_test(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
         "//iamf/obu:ambisonics_config",
-        "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
     ],

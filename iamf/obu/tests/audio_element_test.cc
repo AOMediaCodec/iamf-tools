@@ -2028,6 +2028,36 @@ TEST(CreateFromBuffer, InvalidMultipleChannelConfigWithBinauralLayout) {
   EXPECT_THAT(obu, Not(IsOk()));
 }
 
+TEST(CreateFromBuffer, RejectMismatchedSubstreamCountAmbisonicsMono) {
+  std::vector<uint8_t> source = {
+      // `audio_element_id`.
+      1,
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementSceneBased << 5,
+      // `codec_config_id`.
+      2,
+      // `num_substreams`.
+      3,  // Inconsistent (Claims 3 substreams here).
+      // `audio_substream_ids`
+      100, 101, 102,
+      // `num_parameters`.
+      0,
+
+      // AmbisonicsMonoConfig.
+      static_cast<uint8_t>(
+          AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeMono),
+      4,          // `output_channel_count`
+      4,          // `substream_count` (But claims 4 substreams here).
+      0, 1, 2, 3  // `channel_mapping`
+  };
+  const int64_t payload_size = source.size();
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
+  ObuHeader header;
+
+  EXPECT_THAT(AudioElementObu::CreateFromBuffer(header, payload_size, *buffer),
+              Not(IsOk()));
+}
+
 TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
   std::vector<uint8_t> source = {
       // `audio_element_id`.

@@ -397,9 +397,11 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForMonoAmbisonics(
     absl::Span<const uint8_t> channel_mapping) {
   AmbisonicsMonoConfig mono_config = {
       .output_channel_count = static_cast<uint8_t>(channel_mapping.size()),
+      // The number of substreams must equal to the number of audio substream
+      // IDs.
       .substream_count = static_cast<uint8_t>(audio_substream_ids.size()),
       .channel_mapping = {channel_mapping.begin(), channel_mapping.end()}};
-  RETURN_IF_NOT_OK(mono_config.Validate(audio_substream_ids.size()));
+  RETURN_IF_NOT_OK(mono_config.Validate());
   return AudioElementObu(
       header, audio_element_id, kAudioElementSceneBased, reserved,
       codec_config_id, audio_substream_ids,
@@ -415,10 +417,12 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForProjectionAmbisonics(
     absl::Span<const int16_t> demixing_matrix) {
   AmbisonicsProjectionConfig projection_config = {
       .output_channel_count = output_channel_count,
+      // The number of substreams must equal to the number of audio substream
+      // IDs.
       .substream_count = static_cast<uint8_t>(audio_substream_ids.size()),
       .coupled_substream_count = coupled_substream_count,
       .demixing_matrix = {demixing_matrix.begin(), demixing_matrix.end()}};
-  RETURN_IF_NOT_OK(projection_config.Validate(audio_substream_ids.size()));
+  RETURN_IF_NOT_OK(projection_config.Validate());
 
   return AudioElementObu(
       header, audio_element_id, kAudioElementSceneBased, reserved,
@@ -516,9 +520,13 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
       return ValidateAndWriteScalableChannelLayout(
           std::get<ScalableChannelLayoutConfig>(config_), GetNumSubstreams(),
           wb);
-    case kAudioElementSceneBased:
-      return std::get<AmbisonicsConfig>(config_).ValidateAndWrite(
-          GetNumSubstreams(), wb);
+    case kAudioElementSceneBased: {
+      const auto& ambisonics_config = std::get<AmbisonicsConfig>(config_);
+      RETURN_IF_NOT_OK(ValidateEqual<DecodedUleb128>(
+          GetNumSubstreams(), ambisonics_config.GetNumSubstreams(),
+          "OBU and `AmbisonicsConfig` substream count"));
+      return ambisonics_config.ValidateAndWrite(wb);
+    }
     case kAudioElementObjectBased:
       return WriteObjectsConfig(std::get<ObjectsConfig>(config_), wb);
     default: {
@@ -575,10 +583,15 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
       return ReadAndValidateScalableChannelLayout(
           std::get<ScalableChannelLayoutConfig>(config_), GetNumSubstreams(),
           rb);
-    case kAudioElementSceneBased:
+    case kAudioElementSceneBased: {
       config_ = AmbisonicsConfig();
-      return std::get<AmbisonicsConfig>(config_).ReadAndValidate(
-          GetNumSubstreams(), rb);
+      auto& ambisonics_config = std::get<AmbisonicsConfig>(config_);
+      RETURN_IF_NOT_OK(ambisonics_config.ReadAndValidate(rb));
+      RETURN_IF_NOT_OK(ValidateEqual<DecodedUleb128>(
+          GetNumSubstreams(), ambisonics_config.GetNumSubstreams(),
+          "OBU and `AmbisonicsConfig` substream count"));
+      return absl::OkStatus();
+    }
     case kAudioElementObjectBased: {
       auto objects_config = ObjectsConfig::CreateFromBuffer(rb);
       if (!objects_config.ok()) {
