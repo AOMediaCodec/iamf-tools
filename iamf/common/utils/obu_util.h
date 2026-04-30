@@ -69,7 +69,7 @@ absl::StatusOr<T> GetParameterSubblockDuration(
   }
 
   // Otherwise the duration is implicit.
-  if (subblock_index == num_subblocks - 1 &&
+  if (static_cast<T>(subblock_index) == num_subblocks - 1 &&
       num_subblocks * constant_subblock_duration > total_duration) {
     // Sometimes the last subblock duration is shorter. The spec describes how
     // to calculate the special case: "If NS x CSD > D, the actual duration of
