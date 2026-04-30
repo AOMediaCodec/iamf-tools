@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/types/span.h"
 
 namespace iamf_tools {
 
@@ -42,12 +43,26 @@ typedef absl::flat_hash_map<std::string,
                             absl::flat_hash_map<std::string, CompressedMatrix>>
     PrecomputedCompressedGains;
 
-/*!\brief Fills precomputed compressed gains matrices.
+/*!\brief Represents an entry in the table of precomputed gains.
  *
- * \return Map from input layout name to output layout name to precomputed
- *         compressed gains.
+ * Each entry maps an input and output layout pair to either a dense or
+ * sparse precomputed compressed gain matrix.
  */
-PrecomputedCompressedGains InitPrecomputedCompressedGains();
+struct PrecomputedGainEntry {
+  const char* input_layout;
+  const char* output_layout;
+  bool is_dense;
+  const float* dense_data;
+  int dense_size;
+  const uint8_t* sparse_blob;
+  int sparse_size;
+};
+
+/*!\brief Gets the table of precomputed gains.
+ *
+ * \return A span of entries representing all precomputed gains.
+ */
+absl::Span<const PrecomputedGainEntry> GetPrecomputedGainsTable();
 
 }  // namespace iamf_tools
 

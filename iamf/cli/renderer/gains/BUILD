@@ -7,7 +7,10 @@ cc_library(
     name = "precomputed_compressed_gains",
     srcs = ["precomputed_compressed_gains.cc"],
     hdrs = ["precomputed_compressed_gains.h"],
-    deps = ["@abseil-cpp//absl/container:flat_hash_map"],
+    deps = [
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/types:span",
+    ],
 )
 
 cc_library(
@@ -56,6 +59,7 @@ cc_test(
     srcs = ["get_gains_test.cc"],
     deps = [
         ":get_gains",
+        ":precomputed_compressed_gains",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings",
         "@googletest//:gtest_main",

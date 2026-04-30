@@ -15,41 +15,35 @@
 #include <string>
 #include <vector>
 
-#include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/renderer/gains/precomputed_compressed_gains.h"
 #include "iamf/cli/renderer/gains/precomputed_compressed_gains_decoder.h"
-#include "iamf/common/utils/map_utils.h"
 
 namespace iamf_tools {
 
 absl::StatusOr<std::vector<std::vector<double>>> GetGainsForLayoutPair(
     absl::string_view input_key, absl::string_view output_key) {
-  static const absl::NoDestructor<PrecomputedCompressedGains>
-      precomputed_compressed_gains(InitPrecomputedCompressedGains());
-
-  const std::string input_key_debug_message =
-      absl::StrCat("Precomputed gains not found for input_key= ", input_key);
-
-  // Search through two layers of maps. We want to find the gains associated
-  // with `[input_key][output_key]`.
-  auto input_key_it = precomputed_compressed_gains->find(input_key);
-  if (input_key_it == precomputed_compressed_gains->end()) [[unlikely]] {
-    return absl::NotFoundError(input_key_debug_message);
+  for (const auto& entry : GetPrecomputedGainsTable()) {
+    if (entry.input_layout == input_key && entry.output_layout == output_key) {
+      CompressedMatrix compressed_matrix;
+      if (entry.is_dense) {
+        compressed_matrix.dense_data.assign(
+            entry.dense_data, entry.dense_data + entry.dense_size);
+      } else {
+        compressed_matrix.sparse_blob.assign(
+            entry.sparse_blob, entry.sparse_blob + entry.sparse_size);
+      }
+      return DecompressMatrix(std::string(input_key), std::string(output_key),
+                              compressed_matrix);
+    }
   }
 
-  auto compressed_matrix =
-      LookupInMap(input_key_it->second, std::string(output_key),
-                  absl::StrCat(input_key_debug_message, " and output_key"));
-  if (!compressed_matrix.ok()) {
-    return compressed_matrix.status();
-  }
-
-  return DecompressMatrix(std::string(input_key), std::string(output_key),
-                          *compressed_matrix);
+  return absl::NotFoundError(
+      absl::StrCat("Precomputed gains not found for input_key= ", input_key,
+                   " and output_key= ", output_key));
 }
 
 }  // namespace iamf_tools
