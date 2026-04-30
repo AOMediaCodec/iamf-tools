@@ -816,7 +816,6 @@ LookupLabelsToReconstruct(const AudioElementObu& obu) {
     case kAudioElementSceneBased:
       // OK. Ambisonics does not have any channels to be reconstructed.
       return absl::flat_hash_set<ChannelLabel::Label>{};
-      break;
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unsupported audio element type= ", obu.GetAudioElementType()));

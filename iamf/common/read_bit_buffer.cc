@@ -230,7 +230,7 @@ absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128& uleb128) {
 
 absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128& uleb128,
                                         int8_t& encoded_uleb128_size) {
-  static const ByteAccumulator little_endian_accumulator =
+  const ByteAccumulator little_endian_accumulator =
       [&](uint64_t byte, int index, uint64_t& accumulated_value) {
         accumulated_value |= (byte & 0x7f) << (7 * index);
       };
@@ -243,7 +243,7 @@ absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128& uleb128,
 
 absl::Status ReadBitBuffer::ReadIso14496_1Expanded(uint32_t max_class_size,
                                                    uint32_t& size_of_instance) {
-  static const ByteAccumulator big_endian_accumulator =
+  const ByteAccumulator big_endian_accumulator =
       [](uint64_t byte, int /*index*/, uint64_t& accumulated_value) {
         accumulated_value = accumulated_value << 7 | (byte & 0x7f);
       };

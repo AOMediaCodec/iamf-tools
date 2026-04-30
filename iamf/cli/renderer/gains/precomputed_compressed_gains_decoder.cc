@@ -12,6 +12,7 @@
 
 #include "iamf/cli/renderer/gains/precomputed_compressed_gains_decoder.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -59,7 +60,7 @@ absl::StatusOr<std::vector<std::vector<double>>> DecompressMatrix(
   if (!compressed.dense_data.empty()) {
     // Dense decompression. Pull float values from flattened vector, cast to
     // doubles and place in matrix in the correct position.
-    int idx = 0;
+    size_t idx = 0;
     for (int i = 0; i < num_input_channels; ++i) {
       for (int j = 0; j < num_output_channels; ++j) {
         if (idx < compressed.dense_data.size()) {
@@ -111,7 +112,8 @@ absl::StatusOr<std::vector<std::vector<double>>> DecompressMatrix(
         uint8_t val_idx =
             compressed.sparse_blob[codebook_indices_start + element_idx];
 
-        if (col < num_output_channels && val_idx < codebook.size()) {
+        if (col < num_output_channels &&
+            static_cast<size_t>(val_idx) < codebook.size()) {
           decompressed[i][col] = codebook[val_idx];
         }
       }

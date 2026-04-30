@@ -45,9 +45,9 @@ struct CodecConfig {
   };
 
   template <typename Sink>
-  friend void AbslStringify(Sink& sink, const CodecId& codec_id) {
+  friend void AbslStringify(Sink& sink, const CodecId& id) {
     std::string human_readable_codec_id;
-    switch (codec_id) {
+    switch (id) {
       case kCodecIdOpus:
         human_readable_codec_id = "Opus";
         break;
@@ -65,7 +65,7 @@ struct CodecConfig {
         break;
     }
 
-    sink.Append(absl::StrCat("0x", absl::Hex(codec_id, absl::kZeroPad8), " ( ",
+    sink.Append(absl::StrCat("0x", absl::Hex(id, absl::kZeroPad8), " ( ",
                              human_readable_codec_id, " )"));
   }
 

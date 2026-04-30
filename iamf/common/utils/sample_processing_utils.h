@@ -75,10 +75,10 @@ absl::Status ConvertInterleavedToChannelTime(
 
   output.resize(num_channels);
   const auto num_ticks = samples.size() / num_channels;
-  for (int c = 0; c < num_channels; ++c) {
+  for (size_t c = 0; c < num_channels; ++c) {
     auto& output_for_channel = output[c];
     output_for_channel.resize(num_ticks);
-    for (int t = 0; t < num_ticks; ++t) {
+    for (size_t t = 0; t < num_ticks; ++t) {
       const auto status = transform_samples(samples[t * num_channels + c],
                                             output_for_channel[t]);
       if (!status.ok()) [[unlikely]] {
@@ -118,9 +118,9 @@ absl::Status ConvertChannelTimeToInterleaved(
 
   const auto num_channels = input.size();
   output.resize(num_channels * num_ticks);
-  for (int c = 0; c < num_channels; ++c) {
+  for (size_t c = 0; c < num_channels; ++c) {
     const auto& input_for_channel = input[c];
-    for (int t = 0; t < num_ticks; ++t) {
+    for (size_t t = 0; t < num_ticks; ++t) {
       OutputType transformed_sample;
       const auto status =
           transform_samples(input_for_channel[t], transformed_sample);

@@ -40,7 +40,7 @@ absl::Status ValidateContainerSizeEqual(absl::string_view field_name,
                                         const Container& container,
                                         ReportedSize reported_size) {
   const auto actual_size = container.size();
-  if (actual_size == reported_size) [[likely]] {
+  if (static_cast<ReportedSize>(actual_size) == reported_size) [[likely]] {
     return absl::OkStatus();
   }
   return absl::InvalidArgumentError(absl::StrCat(

@@ -94,13 +94,13 @@ Layout MakeLayout(LoudspeakersSsConventionLayout::SoundSystem sound_system) {
   return {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
           .specific_layout =
               LoudspeakersSsConventionLayout{.sound_system = sound_system}};
-};
+}
 
 Layout MakeBinauralLayout() {
   return {
       .layout_type = Layout::kLayoutTypeBinaural,
       .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
-};
+}
 
 }  // namespace
 

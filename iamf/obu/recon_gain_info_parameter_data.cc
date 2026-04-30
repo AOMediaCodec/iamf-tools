@@ -113,7 +113,7 @@ void ReconGainInfoParameterData::Print() const {
   }
 
   ABSL_LOG(INFO) << "    // recon_gain_is_present_flags: ";
-  for (const auto& flag : recon_gain_is_present_flags) {
+  for (auto flag : recon_gain_is_present_flags) {
     ABSL_LOG(INFO) << "    //   " << absl::StrCat(flag);
   }
 }

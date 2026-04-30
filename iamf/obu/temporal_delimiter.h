@@ -55,7 +55,7 @@ class TemporalDelimiterObu : public ObuBase {
   /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override {
     // There is nothing to print for a Temporal Delimiter OBU.
-  };
+  }
 
   // Temporal delimiter has no payload
 
@@ -78,7 +78,7 @@ class TemporalDelimiterObu : public ObuBase {
   absl::Status ReadAndValidatePayloadDerived(int64_t /*payload_size*/,
                                              ReadBitBuffer& rb) override {
     return absl::OkStatus();
-  };
+  }
 };
 }  // namespace iamf_tools
 

@@ -71,7 +71,7 @@ absl::Status InsertParamDefinitionAndCheckEquivalence(
   }
 
   return absl::OkStatus();
-};
+}
 
 absl::Status FillReconGainAuxiliaryData(
     const AudioElementWithData& audio_element,

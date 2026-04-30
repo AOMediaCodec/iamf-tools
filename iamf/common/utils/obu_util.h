@@ -54,7 +54,7 @@ absl::StatusOr<T> GetParameterSubblockDuration(
         subblock_duration_getter_from_parameter_block,
     absl::AnyInvocable<absl::StatusOr<T>(int)>
         subblock_duration_getter_from_parameter_definition) {
-  if (subblock_index > num_subblocks) {
+  if (static_cast<T>(subblock_index) > num_subblocks) {
     return absl::InvalidArgumentError("subblock_index > num_subblocks");
   }
 

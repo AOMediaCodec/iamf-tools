@@ -23,7 +23,7 @@
 
 namespace iamf_tools {
 
-SampleProcessorBase::~SampleProcessorBase() {};
+SampleProcessorBase::~SampleProcessorBase() {}
 
 absl::Status SampleProcessorBase::PushFrame(
     absl::Span<const absl::Span<const InternalSampleType>>

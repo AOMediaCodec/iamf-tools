@@ -329,7 +329,7 @@ class ObuProcessor {
       } else if constexpr (std::is_same_v<T, AudioFrameWithData>) {
         return audio_frames;
       }
-    };
+    }
   };
 
   std::optional<uint32_t> output_sample_rate_;
