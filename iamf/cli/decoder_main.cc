@@ -218,6 +218,9 @@ int main(int argc, char** argv) {
 
   // Source file to stream to the decoder.
   std::ifstream input_stream(input_filename, std::ios::binary | std::ios::in);
+  if (!input_stream.is_open() || input_stream.fail()) {
+    ABSL_LOG(FATAL) << "Failed to open input file: " << input_filename;
+  }
   // Buffer to feed to the decoder. Read in chunks of length `block_size` from
   // the source file.
   std::vector<uint8_t> input_buffer(block_size);
@@ -229,7 +232,7 @@ int main(int argc, char** argv) {
   // Reuse the same output buffer between calls.
   std::vector<uint8_t> reusable_sample_buffer;
 
-  while (!input_stream.eof()) {
+  while (input_stream.good()) {
     const auto next_chunk = ReadChunk(input_stream, input_buffer);
     ABSL_LOG_EVERY_N_SEC(INFO, 5)
         << "Decoding. " << next_chunk.size() << " bytes.";
@@ -270,6 +273,9 @@ int main(int argc, char** argv) {
       // support the case where we get the entire file at once, and the
       // descriptors and temporal units are all available in this iteration.
       int num_temporal_units_processed;
+      if (wav_writer == nullptr) {
+        ABSL_LOG(FATAL) << "Wav writer is null";
+      }
       auto status = DumpPendingTemporalUnitsToWav(
           *decoder, reusable_sample_buffer, *wav_writer,
           num_temporal_units_processed);
