@@ -16,7 +16,7 @@ cc_test(
     ],
     deps = [
         "//iamf/api/decoder:iamf_decoder",
-        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/cli/tests:iamf_status_adl",
         "//iamf/cli/tests/portable:get_test_path",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "@abseil-cpp//absl/status:status_matchers",

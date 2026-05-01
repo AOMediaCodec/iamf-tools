@@ -42,12 +42,12 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/sample_processor_base.h"
+#include "iamf/cli/tests/iamf_status_adl.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/numeric_utils.h"
-#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/mix_presentation.h"
@@ -56,11 +56,6 @@
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-
-namespace api {
-// Enable `IsOk` and `Not(IsOk)` for `IamfStatus` via ADL.
-inline const IamfStatus& GetStatus(const IamfStatus& status) { return status; }
-}  // namespace api
 
 /*!\brief Processes the input standalone IAMF Sequence to output containers.
  *

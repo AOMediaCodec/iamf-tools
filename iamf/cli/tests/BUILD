@@ -17,6 +17,7 @@ cc_library(
         "//iamf:__subpackages__",
     ],
     deps = [
+        ":iamf_status_adl",
         "@googletest//:gtest",
         "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/container:flat_hash_map",
@@ -74,6 +75,18 @@ cc_library(
         "//iamf/obu/param_definitions:recon_gain_param_definition",
         "@protobuf",
         # [internal] Placeholder for fine-grained protobuf dependency: "io",
+    ],
+)
+
+cc_library(
+    name = "iamf_status_adl",
+    testonly = True,
+    hdrs = ["iamf_status_adl.h"],
+    visibility = [
+        "//iamf:__subpackages__",
+    ],
+    deps = [
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
     ],
 )
 
