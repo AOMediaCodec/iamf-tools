@@ -55,7 +55,7 @@ cc_test(
         "@fuzztest//fuzztest",
         "@abseil-cpp//absl/strings:string_view",
         "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/cli/tests/portable:get_test_path",
         "//iamf/include/iamf_tools:iamf_encoder_factory",
         "@protobuf",
         # [internal] Placeholder for fine-grained protobuf dependency: "io",

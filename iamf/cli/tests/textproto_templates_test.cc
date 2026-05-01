@@ -22,6 +22,7 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/tests/portable/get_test_path.h"
 
 namespace iamf_tools {
 namespace {

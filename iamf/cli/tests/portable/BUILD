@@ -6,6 +6,9 @@ cc_library(
     testonly = True,
     srcs = ["get_test_path.cc"],
     hdrs = ["get_test_path.h"],
+    visibility = [
+        "//iamf:__subpackages__",
+    ],
     deps = ["@abseil-cpp//absl/strings:string_view"],
 )
 

@@ -7,8 +7,12 @@ package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
 cc_library(
     name = "cli_test_utils",
     testonly = True,
-    srcs = ["cli_test_utils.cc"],
-    hdrs = ["cli_test_utils.h"],
+    srcs = [
+        "cli_test_utils.cc",
+    ],
+    hdrs = [
+        "cli_test_utils.h",
+    ],
     visibility = [
         "//iamf:__subpackages__",
     ],
@@ -282,6 +286,7 @@ cc_test(
         "//iamf/cli/proto:output_audio_format_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/tests/portable:get_test_path",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
@@ -741,6 +746,7 @@ cc_test(
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/tests/portable:get_test_path",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
@@ -757,6 +763,7 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:wav_reader",
+        "//iamf/cli/tests/portable:get_test_path",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
         "@googletest//:gtest_main",
@@ -779,6 +786,7 @@ cc_test(
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/tests/portable:get_test_path",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_map",

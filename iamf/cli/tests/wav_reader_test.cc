@@ -26,6 +26,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/tests/portable/get_test_path.h"
 
 namespace iamf_tools {
 namespace {

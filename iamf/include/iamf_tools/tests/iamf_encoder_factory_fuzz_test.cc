@@ -18,7 +18,7 @@
 #include "absl/strings/string_view.h"
 #include "fuzztest/fuzztest.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/tests/portable/get_test_path.h"
 #include "iamf/include/iamf_tools/iamf_encoder_factory.h"
 #include "src/google/protobuf/io/zero_copy_stream_impl.h"
 #include "src/google/protobuf/text_format.h"

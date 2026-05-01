@@ -29,7 +29,6 @@
 #include <utility>
 #include <vector>
 
-// [internal] Placeholder for get runfiles header.
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -535,14 +534,6 @@ std::string GetAndCreateOutputDirectory(absl::string_view suffix) {
   EXPECT_TRUE(
       std::filesystem::create_directories(output_directory, error_code));
   return output_directory;
-}
-
-std::string GetRunfilesPath(absl::string_view path) {
-  return (std::filesystem::current_path() / path).string();
-}
-
-std::string GetRunfilesFile(absl::string_view path, std::string_view filename) {
-  return ((std::filesystem::current_path() / path) / filename).string();
 }
 
 std::vector<uint8_t> SerializeObusExpectOk(
