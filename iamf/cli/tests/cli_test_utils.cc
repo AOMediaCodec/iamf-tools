@@ -62,6 +62,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
@@ -77,6 +78,7 @@
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/rendering_config.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/io/zero_copy_stream_impl.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
@@ -455,19 +457,9 @@ void GetFullOrderAmbisonicsMonoArguments(
     const int order, AmbisonicsConfig& ambisonics_config,
     std::vector<DecodedUleb128>& audio_substream_ids,
     SubstreamIdLabelsMap& substream_id_to_labels) {
-  const int max_channel_number = (order + 1) * (order + 1);
-  std::vector<uint8_t> channel_mapping;
-  for (int i = 0; i < max_channel_number; i++) {
-    channel_mapping.push_back(static_cast<uint8_t>(i));
-  }
-  ambisonics_config = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config = AmbisonicsMonoConfig{
-          .output_channel_count = static_cast<uint8_t>(max_channel_number),
-          .substream_count = static_cast<uint8_t>(max_channel_number),
-          .channel_mapping = channel_mapping}};
-  GetAudioSubstreamIdsAndLabelsMap(max_channel_number, audio_substream_ids,
-                                   substream_id_to_labels);
+  ambisonics_config = MakeFullOrderAmbisonicsMonoConfig(order);
+  GetAudioSubstreamIdsAndLabelsMap(ambisonics_config.GetNumSubstreams(),
+                                   audio_substream_ids, substream_id_to_labels);
 }
 
 void GetFullOrderAmbisonicsProjectionArguments(
@@ -485,7 +477,6 @@ void GetFullOrderAmbisonicsProjectionArguments(
     }
   }
   ambisonics_config = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config = AmbisonicsProjectionConfig{
           .output_channel_count = static_cast<uint8_t>(max_channel_number),
           .substream_count = static_cast<uint8_t>(max_channel_number),

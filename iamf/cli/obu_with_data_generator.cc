@@ -38,6 +38,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -787,7 +788,7 @@ absl::Status ObuWithDataGenerator::FinalizeAmbisonicsConfig(
   }
   const auto& ambisonics_config =
       std::get<AmbisonicsConfig>(audio_element_obu.config_);
-  switch (ambisonics_config.ambisonics_mode) {
+  switch (ambisonics_config.GetAmbisonicsMode()) {
     case AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeMono:
       return FinalizeAmbisonicsMonoConfig(
           audio_element_obu,
@@ -802,7 +803,7 @@ absl::Status ObuWithDataGenerator::FinalizeAmbisonicsConfig(
     default:
       return absl::UnimplementedError(
           StrCat("Unimplemented Ambisonics mode: ",
-                 ambisonics_config.ambisonics_mode));
+                 ambisonics_config.GetAmbisonicsMode()));
   }
 }
 

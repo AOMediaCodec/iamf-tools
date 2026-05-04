@@ -332,10 +332,10 @@ absl::Status GetChannelLabelsForAmbisonics(
     std::vector<ChannelLabel::Label>& channel_labels) {
   return std::visit(
       overloaded{GetChannelLabelsFromAmbisonicsMonoConfig{
-                     ambisonics_config.ambisonics_mode, audio_substream_ids,
+                     ambisonics_config.GetAmbisonicsMode(), audio_substream_ids,
                      substream_id_to_labels, channel_labels},
                  GetChannelLabelsFromAmbisonicsProjectionConfig{
-                     ambisonics_config.ambisonics_mode, audio_substream_ids,
+                     ambisonics_config.GetAmbisonicsMode(), audio_substream_ids,
                      substream_id_to_labels, channel_labels}},
       ambisonics_config.ambisonics_config);
 }
@@ -343,9 +343,9 @@ absl::Status GetChannelLabelsForAmbisonics(
 absl::StatusOr<const std::vector<int16_t>*> GetDemixingMatrix(
     const AmbisonicsConfig& ambisonics_config) {
   return std::visit(overloaded{GetNullDemixingMatrixFromAmbisonicsMonoConfig{
-                                   ambisonics_config.ambisonics_mode},
+                                   ambisonics_config.GetAmbisonicsMode()},
                                GetDemixingMatrixFromAmbisonicsProjectionConfig{
-                                   ambisonics_config.ambisonics_mode}},
+                                   ambisonics_config.GetAmbisonicsMode()}},
                     ambisonics_config.ambisonics_config);
 }
 

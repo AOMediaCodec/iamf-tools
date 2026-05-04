@@ -26,7 +26,7 @@
 #include "iamf/cli/renderer/renderer_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
-#include "iamf/obu/audio_element.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
@@ -211,7 +211,7 @@ absl::Status RenderAmbisonicsToLoudspeakers(
     std::vector<std::vector<InternalSampleType>>& rendered_samples) {
   // Exclude unsupported mode first, and deal with only mono or projection
   // in the rest of the code.
-  const auto mode = ambisonics_config.ambisonics_mode;
+  const auto mode = ambisonics_config.GetAmbisonicsMode();
   if (mode != AmbisonicsConfig::kAmbisonicsModeMono &&
       mode != AmbisonicsConfig::kAmbisonicsModeProjection) {
     return absl::UnimplementedError(

@@ -26,6 +26,7 @@ cc_test(
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto_conversion/proto_to_obu:audio_element_generator",
         "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:ambisonics_config",
         "//iamf/obu:audio_element",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",

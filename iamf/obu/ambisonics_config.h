@@ -116,9 +116,10 @@ struct AmbisonicsConfig {
    */
   uint8_t GetNumSubstreams() const;
 
-  AmbisonicsMode ambisonics_mode;  // Serialized to a ULEB128.
+  AmbisonicsMode GetAmbisonicsMode() const;
 
-  // The active field depends on `ambisonics_mode`.
+  // `ambisonics_mode` is inferred from the contents of the `ambisonics_config`
+  // variant.
   std::variant<AmbisonicsMonoConfig, AmbisonicsProjectionConfig>
       ambisonics_config;
 };

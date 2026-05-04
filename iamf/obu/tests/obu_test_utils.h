@@ -19,10 +19,18 @@
 #include "gmock/gmock.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 
 namespace iamf_tools {
+
+/*!\brief Creates a full-order Mono AmbisonicsConfig for testing.
+ *
+ * \param order Ambisonics order (0, 1, 2, etc. max 14).
+ * \return Mono-coded AmbisonicsConfig with a filled mapping.
+ */
+AmbisonicsConfig MakeFullOrderAmbisonicsMonoConfig(int order);
 
 /*!\brief A mock OBU. */
 class MockObu : public ObuBase {

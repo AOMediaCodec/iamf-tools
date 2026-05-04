@@ -21,13 +21,16 @@ cc_library(
 cc_library(
     name = "obu_test_utils",
     testonly = True,
+    srcs = ["obu_test_utils.cc"],
     hdrs = ["obu_test_utils.h"],
     visibility = ["//iamf:__subpackages__"],
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/obu:ambisonics_config",
         "//iamf/obu:obu_base",
         "//iamf/obu:obu_header",
+        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status",
         "@googletest//:gtest",
     ],

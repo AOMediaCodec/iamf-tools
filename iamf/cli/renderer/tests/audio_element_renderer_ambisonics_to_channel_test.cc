@@ -17,14 +17,14 @@
 #include <limits>
 #include <vector>
 
-#include "absl/status/status_matchers.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/obu/audio_element.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 namespace iamf_tools {
 namespace {
@@ -54,38 +54,22 @@ const Layout k7_1_2Layout = {
     .specific_layout =
         LoudspeakersSsConventionLayout{.sound_system = kSoundSystem10_2_7_0}};
 
-const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig = {
-    .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-    .ambisonics_config = AmbisonicsMonoConfig{.output_channel_count = 1,
-                                              .substream_count = 1,
-                                              .channel_mapping = {0}}};
+const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig =
+    MakeFullOrderAmbisonicsMonoConfig(0);
 const std::vector<DecodedUleb128> kFullZerothOrderAudioSubstreamIds = {0};
 
-const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig = {
-    .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-    .ambisonics_config = AmbisonicsMonoConfig{.output_channel_count = 4,
-                                              .substream_count = 4,
-                                              .channel_mapping = {0, 1, 2, 3}}};
+const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig =
+    MakeFullOrderAmbisonicsMonoConfig(1);
 const std::vector<DecodedUleb128> kFullFirstOrderAudioSubstreamIds = {0, 1, 2,
                                                                       3};
 
-const AmbisonicsConfig kFullThirdOrderAmbisonicsConfig = {
-    .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-    .ambisonics_config =
-        AmbisonicsMonoConfig{.output_channel_count = 16,
-                             .substream_count = 16,
-                             .channel_mapping = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-                                                 10, 11, 12, 13, 14, 15}}};
+const AmbisonicsConfig kFullThirdOrderAmbisonicsConfig =
+    MakeFullOrderAmbisonicsMonoConfig(3);
 const std::vector<DecodedUleb128> kFullThirdOrderAudioSubstreamIds = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
-const AmbisonicsConfig kFullFourthOrderAmbisonicsConfig = {
-    .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-    .ambisonics_config = AmbisonicsMonoConfig{
-        .output_channel_count = 25,
-        .substream_count = 25,
-        .channel_mapping = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-                            13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}}};
+const AmbisonicsConfig kFullFourthOrderAmbisonicsConfig =
+    MakeFullOrderAmbisonicsMonoConfig(4);
 const std::vector<DecodedUleb128> kFullFourthOrderAudioSubstreamIds = {
     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
     13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
@@ -175,7 +159,6 @@ TEST(CreateFromAmbisonicsConfig, DoesNotSupportBinauralOutput) {
 
 TEST(CreateFromAmbisonicsConfig, SupportsMixedFirstOrderAmbisonics) {
   const AmbisonicsConfig kMixedFirstOrderAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
       .ambisonics_config =
           AmbisonicsMonoConfig{.output_channel_count = 4,
                                .substream_count = 3,
@@ -224,7 +207,6 @@ const std::vector<int16_t> kNegativeEpsilonIdentityFoa =
 
 TEST(CreateFromAmbisonicsConfig, Projection) {
   const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config =
           AmbisonicsProjectionConfig{.output_channel_count = 4,
                                      .substream_count = 4,
@@ -244,7 +226,6 @@ TEST(CreateFromAmbisonicsConfig, Projection) {
 TEST(CreateFromAmbisonicsConfig,
      SupportsAmbisonicsProjectionConfigWithCoupledSubstreams) {
   const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config =
           AmbisonicsProjectionConfig{.output_channel_count = 4,
                                      .substream_count = 2,
@@ -271,7 +252,6 @@ TEST(CreateFromAmbisonicsConfig, SupportedMixedOrderProjectionConfig) {
       /* Channel 2: */ 0,        0,        0, kMaxGain};
 
   const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config =
           AmbisonicsProjectionConfig{.output_channel_count = 4,
                                      .substream_count = 3,
@@ -309,14 +289,12 @@ TEST(RenderFrames, AcnZeroIsSymmetric) {
 
 TEST(RenderFrames, UsesDemixingMatrix) {
   const AmbisonicsConfig kAmbisonicsProjectionConfigIdentity = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config =
           AmbisonicsProjectionConfig{.output_channel_count = 4,
                                      .substream_count = 4,
                                      .coupled_substream_count = 0,
                                      .demixing_matrix = kEpsilonIdentityFoa}};
   const AmbisonicsConfig kAmbisonicsProjectionConfigIdentityInverse = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config = AmbisonicsProjectionConfig{
           .output_channel_count = 4,
           .substream_count = 4,

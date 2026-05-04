@@ -19,9 +19,11 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/rendering_config.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 
 namespace iamf_tools {
 namespace {
@@ -48,17 +50,11 @@ const ScalableChannelLayoutConfig kMonoScalableChannelLayoutConfig = {
 const ScalableChannelLayoutConfig kStereoScalableChannelLayoutConfig = {
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutStereo}}};
 
-const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig = {
-    .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-    .ambisonics_config = AmbisonicsMonoConfig{.output_channel_count = 1,
-                                              .substream_count = 1,
-                                              .channel_mapping = {0}}};
+const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig =
+    MakeFullOrderAmbisonicsMonoConfig(0);
 
-const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig = {
-    .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-    .ambisonics_config = AmbisonicsMonoConfig{.output_channel_count = 4,
-                                              .substream_count = 4,
-                                              .channel_mapping = {0, 1, 2, 3}}};
+const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig =
+    MakeFullOrderAmbisonicsMonoConfig(1);
 
 const ExtensionConfig kExtensionConfig = {.audio_element_config_bytes = {}};
 

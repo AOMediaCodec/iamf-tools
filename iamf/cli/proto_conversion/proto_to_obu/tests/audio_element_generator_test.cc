@@ -27,6 +27,7 @@
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
@@ -464,7 +465,7 @@ TEST(Generate, GeneratesFirstOrderAmbisonics) {
   const auto& ambisonics_config =
       GetConfigForAudioElementIdExpectOk<AmbisonicsConfig>(kAudioElementId,
                                                            output_obus);
-  EXPECT_EQ(ambisonics_config.ambisonics_mode,
+  EXPECT_EQ(ambisonics_config.GetAmbisonicsMode(),
             AmbisonicsConfig::kAmbisonicsModeMono);
   const auto* ambisonics_mono_config =
       std::get_if<AmbisonicsMonoConfig>(&ambisonics_config.ambisonics_config);

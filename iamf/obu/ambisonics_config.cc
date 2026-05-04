@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -253,9 +254,9 @@ absl::Status AmbisonicsConfig::GetNextValidOutputChannelCount(
 
 absl::Status AmbisonicsConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(
-      wb.WriteUleb128(static_cast<DecodedUleb128>(ambisonics_mode)));
+      wb.WriteUleb128(static_cast<DecodedUleb128>(GetAmbisonicsMode())));
 
-  switch (ambisonics_mode) {
+  switch (GetAmbisonicsMode()) {
     using enum AmbisonicsConfig::AmbisonicsMode;
     case kAmbisonicsModeMono:
       return ValidateAndWriteAmbisonicsMono(
@@ -271,8 +272,7 @@ absl::Status AmbisonicsConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
 absl::Status AmbisonicsConfig::ReadAndValidate(ReadBitBuffer& rb) {
   DecodedUleb128 ambisonics_mode_uleb;
   RETURN_IF_NOT_OK(rb.ReadULeb128(ambisonics_mode_uleb));
-  ambisonics_mode = static_cast<AmbisonicsMode>(ambisonics_mode_uleb);
-  switch (ambisonics_mode) {
+  switch (static_cast<AmbisonicsMode>(ambisonics_mode_uleb)) {
     using enum AmbisonicsConfig::AmbisonicsMode;
     case kAmbisonicsModeMono: {
       ambisonics_config = AmbisonicsMonoConfig();
@@ -291,10 +291,11 @@ absl::Status AmbisonicsConfig::ReadAndValidate(ReadBitBuffer& rb) {
 
 void AmbisonicsConfig::Print() const {
   ABSL_VLOG(1) << "  ambisonics_config:";
-  ABSL_VLOG(1) << "    ambisonics_mode= " << absl::StrCat(ambisonics_mode);
-  if (ambisonics_mode == AmbisonicsConfig::kAmbisonicsModeMono) {
+  ABSL_VLOG(1) << "    ambisonics_mode= " << absl::StrCat(GetAmbisonicsMode());
+  if (GetAmbisonicsMode() == AmbisonicsConfig::kAmbisonicsModeMono) {
     LogAmbisonicsMonoConfig(std::get<AmbisonicsMonoConfig>(ambisonics_config));
-  } else if (ambisonics_mode == AmbisonicsConfig::kAmbisonicsModeProjection) {
+  } else if (GetAmbisonicsMode() ==
+             AmbisonicsConfig::kAmbisonicsModeProjection) {
     LogAmbisonicsProjectionConfig(
         std::get<AmbisonicsProjectionConfig>(ambisonics_config));
   }
@@ -303,6 +304,19 @@ void AmbisonicsConfig::Print() const {
 uint8_t AmbisonicsConfig::GetNumSubstreams() const {
   return std::visit([](const auto& config) { return config.substream_count; },
                     ambisonics_config);
+}
+
+AmbisonicsConfig::AmbisonicsMode AmbisonicsConfig::GetAmbisonicsMode() const {
+  return std::visit(
+      [](const auto& config) {
+        using Type = std::decay_t<decltype(config)>;
+        if constexpr (std::is_same_v<Type, AmbisonicsMonoConfig>) {
+          return kAmbisonicsModeMono;
+        } else if constexpr (std::is_same_v<Type, AmbisonicsProjectionConfig>) {
+          return kAmbisonicsModeProjection;
+        }
+      },
+      ambisonics_config);
 }
 
 }  // namespace iamf_tools

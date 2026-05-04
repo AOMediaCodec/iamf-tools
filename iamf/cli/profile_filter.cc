@@ -29,6 +29,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -224,7 +225,7 @@ absl::Status FilterAmbisonicsConfig(
   }
 
   auto ambisonics_mode =
-      std::get<AmbisonicsConfig>(audio_element_obu.config_).ambisonics_mode;
+      std::get<AmbisonicsConfig>(audio_element_obu.config_).GetAmbisonicsMode();
   switch (ambisonics_mode) {
     using enum AmbisonicsConfig::AmbisonicsMode;
     case AmbisonicsConfig::kAmbisonicsModeMono:

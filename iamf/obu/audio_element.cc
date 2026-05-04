@@ -402,11 +402,9 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForMonoAmbisonics(
       .substream_count = static_cast<uint8_t>(audio_substream_ids.size()),
       .channel_mapping = {channel_mapping.begin(), channel_mapping.end()}};
   RETURN_IF_NOT_OK(mono_config.Validate());
-  return AudioElementObu(
-      header, audio_element_id, kAudioElementSceneBased, reserved,
-      codec_config_id, audio_substream_ids,
-      AmbisonicsConfig{.ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-                       .ambisonics_config = mono_config});
+  return AudioElementObu(header, audio_element_id, kAudioElementSceneBased,
+                         reserved, codec_config_id, audio_substream_ids,
+                         AmbisonicsConfig{.ambisonics_config = mono_config});
 }
 
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateForProjectionAmbisonics(
@@ -427,9 +425,7 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForProjectionAmbisonics(
   return AudioElementObu(
       header, audio_element_id, kAudioElementSceneBased, reserved,
       codec_config_id, audio_substream_ids,
-      AmbisonicsConfig{
-          .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
-          .ambisonics_config = projection_config});
+      AmbisonicsConfig{.ambisonics_config = projection_config});
 }
 
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateForObjects(

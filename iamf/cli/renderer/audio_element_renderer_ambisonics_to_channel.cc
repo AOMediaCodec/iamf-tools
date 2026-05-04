@@ -28,7 +28,7 @@
 #include "iamf/cli/renderer/loudspeakers_renderer.h"
 #include "iamf/cli/renderer/renderer_utils.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/obu/audio_element.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 namespace iamf_tools {
@@ -41,7 +41,7 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
     const Layout& playback_layout, size_t num_samples_per_frame) {
   // Exclude unsupported modes first, and deal with only mono or projection
   // in the rest of the code.
-  const auto mode = ambisonics_config.ambisonics_mode;
+  const auto mode = ambisonics_config.GetAmbisonicsMode();
   if (mode != AmbisonicsConfig::kAmbisonicsModeMono &&
       mode != AmbisonicsConfig::kAmbisonicsModeProjection) {
     ABSL_LOG(ERROR) << "Unsupported ambisonics mode. mode= " << mode;

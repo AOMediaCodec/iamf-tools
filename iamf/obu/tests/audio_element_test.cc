@@ -2096,7 +2096,6 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
       .substream_count = 4,
       .channel_mapping = {0, 1, 2, 3}};
   AmbisonicsConfig expected_ambisonics_config = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
       .ambisonics_config = expected_ambisonics_mono_config};
   EXPECT_EQ(std::get<AmbisonicsConfig>(obu.value().config_),
             expected_ambisonics_config);
@@ -2255,7 +2254,6 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
       .demixing_matrix = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                           16}};
   AmbisonicsConfig expected_ambisonics_config = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config = expected_ambisonics_projection_config};
   AmbisonicsConfig actual_ambisonics_config =
       std::get<AmbisonicsConfig>(obu.value().config_);

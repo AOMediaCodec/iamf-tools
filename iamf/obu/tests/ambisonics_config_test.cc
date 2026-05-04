@@ -277,11 +277,10 @@ TEST(TestGetNextValidCount, InvalidInputTooLarge) {
 }
 
 TEST(AmbisonicsConfig, ValidateAndWriteMono) {
-  AmbisonicsConfig config = {
-      .ambisonics_mode = AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeMono,
-      .ambisonics_config = AmbisonicsMonoConfig{.output_channel_count = 1,
-                                                .substream_count = 1,
-                                                .channel_mapping = {0}}};
+  AmbisonicsConfig config = {.ambisonics_config =
+                                 AmbisonicsMonoConfig{.output_channel_count = 1,
+                                                      .substream_count = 1,
+                                                      .channel_mapping = {0}}};
   WriteBitBuffer wb(1024);
 
   EXPECT_THAT(config.ValidateAndWrite(wb), IsOk());
@@ -297,21 +296,18 @@ TEST(AmbisonicsConfig, ReadAndValidateMono) {
 
   EXPECT_THAT(config.ReadAndValidate(*rb), IsOk());
 
-  EXPECT_EQ(config.ambisonics_mode,
+  EXPECT_EQ(config.GetAmbisonicsMode(),
             AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeMono);
   EXPECT_TRUE(
       std::holds_alternative<AmbisonicsMonoConfig>(config.ambisonics_config));
 }
 
 TEST(AmbisonicsConfig, ValidateAndWriteProjection) {
-  AmbisonicsConfig config = {
-      .ambisonics_mode =
-          AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeProjection,
-      .ambisonics_config =
-          AmbisonicsProjectionConfig{.output_channel_count = 1,
-                                     .substream_count = 1,
-                                     .coupled_substream_count = 0,
-                                     .demixing_matrix = {100}}};
+  AmbisonicsConfig config = {.ambisonics_config = AmbisonicsProjectionConfig{
+                                 .output_channel_count = 1,
+                                 .substream_count = 1,
+                                 .coupled_substream_count = 0,
+                                 .demixing_matrix = {100}}};
   WriteBitBuffer wb(1024);
 
   EXPECT_THAT(config.ValidateAndWrite(wb), IsOk());
@@ -328,7 +324,7 @@ TEST(AmbisonicsConfig, ReadAndValidateProjection) {
 
   EXPECT_THAT(config.ReadAndValidate(*rb), IsOk());
 
-  EXPECT_EQ(config.ambisonics_mode,
+  EXPECT_EQ(config.GetAmbisonicsMode(),
             AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeProjection);
   EXPECT_TRUE(std::holds_alternative<AmbisonicsProjectionConfig>(
       config.ambisonics_config));

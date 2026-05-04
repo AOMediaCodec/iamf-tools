@@ -25,8 +25,9 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/obu/audio_element.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -380,11 +381,8 @@ INSTANTIATE_TEST_SUITE_P(GetAmbisonicsOrderForOutRangeChannelCount,
                          ChannelCountTest, testing::Range<uint8_t>(226, 255));
 
 TEST(GetChannelLabelsForAmbisonicsTest, FullZerothOrderAmbisonicsMono) {
-  const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config = AmbisonicsMonoConfig{.output_channel_count = 1,
-                                                .substream_count = 1,
-                                                .channel_mapping = {0}}};
+  const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig =
+      MakeFullOrderAmbisonicsMonoConfig(0);
   const std::vector<DecodedUleb128> kFullZerothOrderAudioSubstreamIds = {100};
   const SubstreamIdLabelsMap kZerothOrderSubstreamIdToLabels = {{100, {kA0}}};
 
@@ -398,12 +396,8 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullZerothOrderAmbisonicsMono) {
 }
 
 TEST(GetChannelLabelsForAmbisonicsTest, FullFirstOrderAmbisonicsMono) {
-  const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config =
-          AmbisonicsMonoConfig{.output_channel_count = 4,
-                               .substream_count = 4,
-                               .channel_mapping = {0, 1, 2, 3}}};
+  const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig =
+      MakeFullOrderAmbisonicsMonoConfig(1);
   const std::vector<DecodedUleb128> kFullFirstOrderAudioSubstreamIds = {
       100, 101, 102, 103};
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {
@@ -419,12 +413,8 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullFirstOrderAmbisonicsMono) {
 }
 
 TEST(GetChannelLabelsForAmbisonicsTest, FullSecondOrderAmbisonicsMono) {
-  const AmbisonicsConfig kFullSecondOrderAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config =
-          AmbisonicsMonoConfig{.output_channel_count = 9,
-                               .substream_count = 9,
-                               .channel_mapping = {0, 1, 2, 3, 4, 5, 6, 7, 8}}};
+  const AmbisonicsConfig kFullSecondOrderAmbisonicsConfig =
+      MakeFullOrderAmbisonicsMonoConfig(2);
   const std::vector<DecodedUleb128> kFullSecondOrderAudioSubstreamIds = {
       100, 101, 102, 103, 104, 105, 106, 107, 108};
   const SubstreamIdLabelsMap kSecondOrderSubstreamIdToLabels = {
@@ -442,13 +432,8 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullSecondOrderAmbisonicsMono) {
 }
 
 TEST(GetChannelLabelsForAmbisonicsTest, FullThirdOrderAmbisonicsMono) {
-  const AmbisonicsConfig kFullThirdOrderAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config =
-          AmbisonicsMonoConfig{.output_channel_count = 16,
-                               .substream_count = 16,
-                               .channel_mapping = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-                                                   10, 11, 12, 13, 14, 15}}};
+  const AmbisonicsConfig kFullThirdOrderAmbisonicsConfig =
+      MakeFullOrderAmbisonicsMonoConfig(3);
   const std::vector<DecodedUleb128> kFullThirdOrderAudioSubstreamIds = {
       100, 101, 102, 103, 104, 105, 106, 107,
       108, 109, 110, 111, 112, 113, 114, 115};
@@ -470,14 +455,8 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullThirdOrderAmbisonicsMono) {
 }
 
 TEST(GetChannelLabelsForAmbisonicsTest, FullFourthOrderAmbisonicsMono) {
-  const AmbisonicsConfig kFullFourthOrderAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config = AmbisonicsMonoConfig{
-          .output_channel_count = 25,
-          .substream_count = 25,
-          .channel_mapping = {0,  1,  2,  3,  4,  5,  6,  7,  8,
-                              9,  10, 11, 12, 13, 14, 15, 16, 17,
-                              18, 19, 20, 21, 22, 23, 24}}};
+  const AmbisonicsConfig kFullFourthOrderAmbisonicsConfig =
+      MakeFullOrderAmbisonicsMonoConfig(4);
   const std::vector<DecodedUleb128> kFullFourthOrderAudioSubstreamIds = {
       100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
       113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124};
@@ -507,7 +486,6 @@ TEST(GetChannelLabelsForAmbisonicsTest, MixedFirstOrderAmbisonicsMono) {
   // Only 3 substreams provided for a total of 4 channels; missing channel
   // index = 1.
   const AmbisonicsConfig kMixedFirstOrderAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
       .ambisonics_config = AmbisonicsMonoConfig{
           .output_channel_count = 4,
           .substream_count = 3,
@@ -532,7 +510,6 @@ TEST(GetChannelLabelsForAmbisonicsTest, FullFirstOrderAmbisonicsProjection) {
   // Values in the demixing matrix doesn't matter here.
   const std::vector<int16_t> kAllZeroDemixingMatrix(16, 0);
   const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config = AmbisonicsProjectionConfig{
           .output_channel_count = 4,
           .substream_count = 4,
@@ -556,7 +533,6 @@ TEST(GetChannelLabelsForAmbisonicsTest,
   // Values in the demixing matrix doesn't matter here.
   const std::vector<int16_t> kAllZeroDemixingMatrix(16, 0);
   const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config = AmbisonicsProjectionConfig{
           .output_channel_count = 4,
           .substream_count = 2,
@@ -580,7 +556,6 @@ TEST(GetChannelLabelsForAmbisonicsTest, MixedFirstOrderAmbisonicsProjection) {
   // each having 4 elements (= 12 elements in total).
   const std::vector<int16_t> kAllZeroDemixingMatrix(12, 0);
   const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config = AmbisonicsProjectionConfig{
           .output_channel_count = 4,
           .substream_count = 3,
@@ -599,59 +574,9 @@ TEST(GetChannelLabelsForAmbisonicsTest, MixedFirstOrderAmbisonicsProjection) {
   EXPECT_THAT(channel_labels, ElementsAre(kA0, /*missing kA1, */ kA2, kA3));
 }
 
-TEST(GetChannelLabelsForAmbisonicsTest, InvalidMonoModeWithProjectionConfig) {
-  // Values in the demixing matrix doesn't matter here.
-  const std::vector<int16_t> kAllZeroDemixingMatrix(16, 0);
-
-  // Construct an invalid ambisonics config, where the mode is mono but the
-  // field `.ambisonics_config` contains an `AmbisonicsProjectionConfig`.
-  const AmbisonicsConfig kInvalidAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config = AmbisonicsProjectionConfig{
-          .output_channel_count = 4,
-          .substream_count = 4,
-          .coupled_substream_count = 0,
-          .demixing_matrix = kAllZeroDemixingMatrix}};
-  const std::vector<DecodedUleb128> kFullFirstOrderAudioSubstreamIds = {
-      100, 101, 102, 103};
-  const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {
-      {100, {kA0}}, {101, {kA1}}, {102, {kA2}}, {103, {kA3}}};
-
-  std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_THAT(GetChannelLabelsForAmbisonics(
-                  kInvalidAmbisonicsConfig, kFullFirstOrderAudioSubstreamIds,
-                  kFirstOrderSubstreamIdToLabels, channel_labels),
-              Not(IsOk()));
-}
-
-TEST(GetChannelLabelsForAmbisonicsTest, InvalidProjectionModeWithMonoConfig) {
-  // Construct an invalid ambisonics config, where the mode is projection but
-  // the field `.ambisonics_config` contains an `AmbisonicsMonoConfig`.
-  const AmbisonicsConfig kInvalidAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
-      .ambisonics_config =
-          AmbisonicsMonoConfig{.output_channel_count = 4,
-                               .substream_count = 4,
-                               .channel_mapping = {0, 1, 2, 3}}};
-  const std::vector<DecodedUleb128> kFullFirstOrderAudioSubstreamIds = {
-      100, 101, 102, 103};
-  const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {
-      {100, {kA0}}, {101, {kA1}}, {102, {kA2}}, {103, {kA3}}};
-
-  std::vector<ChannelLabel::Label> channel_labels;
-  EXPECT_THAT(GetChannelLabelsForAmbisonics(
-                  kInvalidAmbisonicsConfig, kFullFirstOrderAudioSubstreamIds,
-                  kFirstOrderSubstreamIdToLabels, channel_labels),
-              Not(IsOk()));
-}
-
 TEST(GetDemixingMatrix, ReturnsNullPointerForMonoConfig) {
-  const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config =
-          AmbisonicsMonoConfig{.output_channel_count = 4,
-                               .substream_count = 4,
-                               .channel_mapping = {0, 1, 2, 3}}};
+  const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig =
+      MakeFullOrderAmbisonicsMonoConfig(1);
 
   auto demixing_matrix = GetDemixingMatrix(kFullFirstOrderAmbisonicsConfig);
   ASSERT_THAT(demixing_matrix, IsOk());
@@ -662,7 +587,6 @@ TEST(GetDemixingMatrix, ReturnsNonNullDemixingMatrixForMonoConfig) {
   const std::vector<int16_t> kExpectedDemixingMatrix{
       15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
   const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
       .ambisonics_config = AmbisonicsProjectionConfig{
           .output_channel_count = 4,
           .substream_count = 4,
@@ -673,34 +597,6 @@ TEST(GetDemixingMatrix, ReturnsNonNullDemixingMatrixForMonoConfig) {
   ASSERT_THAT(demixing_matrix, IsOk());
   ASSERT_NE(*demixing_matrix, nullptr);
   EXPECT_EQ(**demixing_matrix, kExpectedDemixingMatrix);
-}
-
-TEST(GetDemixingMatrix, InvalidMonoModeWithProjectionConfig) {
-  // Values in the demixing matrix doesn't matter here.
-  const std::vector<int16_t> kAllZeroDemixingMatrix(16, 0);
-
-  // Construct an invalid ambisonics config, where the mode is mono but the
-  // field `.ambisonics_config` contains an `AmbisonicsProjectionConfig`.
-  const AmbisonicsConfig kInvalidAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
-      .ambisonics_config = AmbisonicsProjectionConfig{
-          .output_channel_count = 4,
-          .substream_count = 4,
-          .coupled_substream_count = 0,
-          .demixing_matrix = kAllZeroDemixingMatrix}};
-  EXPECT_THAT(GetDemixingMatrix(kInvalidAmbisonicsConfig), Not(IsOk()));
-}
-
-TEST(GetDemixingMatrix, InvalidProjectionModeWithMonoConfig) {
-  // Construct an invalid ambisonics config, where the mode is projection but
-  // the field `.ambisonics_config` contains an `AmbisonicsMonoConfig`.
-  const AmbisonicsConfig kInvalidAmbisonicsConfig = {
-      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
-      .ambisonics_config =
-          AmbisonicsMonoConfig{.output_channel_count = 4,
-                               .substream_count = 4,
-                               .channel_mapping = {0, 1, 2, 3}}};
-  EXPECT_THAT(GetDemixingMatrix(kInvalidAmbisonicsConfig), Not(IsOk()));
 }
 
 TEST(ProjectSamplesToRender, ProjectionReordersChannelsAndHalvesValues) {
