@@ -23,7 +23,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/obu/audio_element.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -83,16 +83,6 @@ absl::Status GetChannelLabelsForAmbisonics(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     std::vector<ChannelLabel::Label>& channel_labels);
 
-/*!\brief Gets a demixing matrix from an ambisonics-based config.
- *
- * \param ambisonics_config Config for the ambisonics layout.
- * \return Pointer to a demixing matrix stored in a 1D array in column-major
- *         order for ambisonics projection mode. `nullptr` for ambisonics
- *         mono mode. Specific status on failure.
- */
-absl::StatusOr<const std::vector<int16_t>*> GetDemixingMatrix(
-    const AmbisonicsConfig& ambisonics_config);
-
 /*!\brief Projects samples using the demixing matrix.
  *
  * \param input_samples Input samples arranged in (channel, time).
@@ -104,7 +94,7 @@ absl::StatusOr<const std::vector<int16_t>*> GetDemixingMatrix(
  */
 absl::Status ProjectSamplesToRender(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
-    const std::vector<int16_t>& demixing_matrix,
+    absl::Span<const int16_t> demixing_matrix,
     std::vector<std::vector<InternalSampleType>>& projected_samples);
 
 }  // namespace iamf_tools

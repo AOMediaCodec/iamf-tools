@@ -465,7 +465,6 @@ absl::StatusOr<AmbisonicsProjectionConfig> GetAmbisonicsProjectionConfig(
   }
   const auto& input_projection_config =
       input_config.ambisonics_projection_config();
-  AmbisonicsProjectionConfig projection_config;
   const int expected_demixing_matrix_size =
       (input_projection_config.substream_count() +
        input_projection_config.coupled_substream_count()) *
@@ -478,26 +477,28 @@ absl::StatusOr<AmbisonicsProjectionConfig> GetAmbisonicsProjectionConfig(
                ", but `demixing_matrix` has ",
                input_projection_config.demixing_matrix_size(), " elements."));
   }
+  uint8_t output_channel_count;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "AmbisonicsProjectionConfig.output_channel_count",
-      input_projection_config.output_channel_count(),
-      projection_config.output_channel_count));
+      input_projection_config.output_channel_count(), output_channel_count));
+  uint8_t substream_count;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "AmbisonicsProjectionConfig.substream_count",
-      input_projection_config.substream_count(),
-      projection_config.substream_count));
+      input_projection_config.substream_count(), substream_count));
+  uint8_t coupled_substream_count;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "AmbisonicsProjectionConfig.coupled_substream_count",
       input_projection_config.coupled_substream_count(),
-      projection_config.coupled_substream_count));
-  projection_config.demixing_matrix.resize(expected_demixing_matrix_size);
+      coupled_substream_count));
 
+  std::vector<int16_t> demixing_matrix(expected_demixing_matrix_size);
   RETURN_IF_NOT_OK(StaticCastSpanIfInRange<int32_t, int16_t>(
       "AmbisonicsProjectionConfig.demixing_matrix",
-      input_projection_config.demixing_matrix(),
-      MakeSpan(projection_config.demixing_matrix)));
-  RETURN_IF_NOT_OK(projection_config.Validate());
-  return projection_config;
+      input_projection_config.demixing_matrix(), MakeSpan(demixing_matrix)));
+
+  return AmbisonicsProjectionConfig::Create(
+      output_channel_count, substream_count, coupled_substream_count,
+      demixing_matrix);
 }
 
 absl::StatusOr<AudioElementWithData> CreateAmbisonicsMonoAudioElementWithData(
@@ -545,6 +546,7 @@ CreateAmbisonicsProjectionAudioElementWithData(
   if (!projection_config.ok()) {
     return projection_config.status();
   }
+  const auto& demixing_view = projection_config->GetDemixingMatrixView();
   absl::StatusOr<AudioElementObu> obu =
       AudioElementObu::CreateForProjectionAmbisonics(
           GetHeaderFromMetadata(audio_element_metadata.obu_header()),
@@ -552,9 +554,9 @@ CreateAmbisonicsProjectionAudioElementWithData(
           audio_element_metadata.reserved(),
           audio_element_metadata.codec_config_id(),
           audio_element_metadata.audio_substream_ids(),
-          projection_config->output_channel_count,
-          projection_config->coupled_substream_count,
-          projection_config->demixing_matrix);
+          projection_config->GetOutputChannelCount(),
+          projection_config->GetCoupledSubstreamCount(),
+          std::vector<int16_t>(demixing_view.begin(), demixing_view.end()));
   if (!obu.ok()) {
     return obu.status();
   }

@@ -533,11 +533,11 @@ absl::Status FinalizeAmbisonicsProjectionConfig(
     const AmbisonicsProjectionConfig& projection_config,
     SubstreamIdLabelsMap& substream_id_to_labels) {
   if (audio_element_obu.GetNumSubstreams() !=
-      static_cast<uint32_t>(projection_config.substream_count)) {
+      static_cast<uint32_t>(projection_config.GetSubstreamCount())) {
     return InvalidArgumentError(
         StrCat("`num_substreams` different from `substream_count`: (",
                audio_element_obu.GetNumSubstreams(), " vs ",
-               projection_config.substream_count, ")"));
+               projection_config.GetSubstreamCount(), ")"));
   }
 
   // For projection mode, assume coupled substreams (using 2 channels) come
@@ -545,9 +545,10 @@ absl::Status FinalizeAmbisonicsProjectionConfig(
   for (int i = 0; i < static_cast<int>(audio_element_obu.GetNumSubstreams());
        ++i) {
     const std::list<int> ambisonic_channel_numbers =
-        i < projection_config.coupled_substream_count
+        i < projection_config.GetCoupledSubstreamCount()
             ? std::list<int>{2 * i, 2 * i + 1}
-            : std::list<int>{2 * projection_config.coupled_substream_count + i};
+            : std::list<int>{2 * projection_config.GetCoupledSubstreamCount() +
+                             i};
     for (const auto ambisonic_channel_number : ambisonic_channel_numbers) {
       const auto ambisonics_label =
           ChannelLabel::AmbisonicsChannelNumberToLabel(

@@ -169,7 +169,6 @@ cc_library(
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:ambisonics_config",
-        "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "@abseil-cpp//absl/base:no_destructor",

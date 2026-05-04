@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -110,23 +111,71 @@ class AmbisonicsMonoConfig {
   std::vector<uint8_t> channel_mapping_;
 };
 
-/*!\brief Configuration on-coded Ambisonics. */
-struct AmbisonicsProjectionConfig {
+/*!\brief Configuration for projection-coded Ambisonics.
+ *
+ * Invariant: this class and its utility functions always are consistent with
+ * the constraints in the IAMF spec.
+ *
+ */
+class AmbisonicsProjectionConfig {
+ public:
   friend bool operator==(const AmbisonicsProjectionConfig& lhs,
                          const AmbisonicsProjectionConfig& rhs) = default;
 
-  /*!\brief Validates the configuration.
+  /*!\brief Creates an `AmbisonicsProjectionConfig` and validates its settings.
    *
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * \param output_channel_count `output_channel_count` (C).
+   * \param substream_count `substream_count` (N).
+   * \param coupled_substream_count `coupled_substream_count` (M).
+   * \param demixing_matrix Demixing matrix of size (N + M) * C.
+   * \return `AmbisonicsProjectionConfig` config or a specific status on
+   * failure.
    */
-  absl::Status Validate() const;
+  static absl::StatusOr<AmbisonicsProjectionConfig> Create(
+      uint8_t output_channel_count, uint8_t substream_count,
+      uint8_t coupled_substream_count,
+      absl::Span<const int16_t> demixing_matrix);
 
-  uint8_t output_channel_count;     // (C).
-  uint8_t substream_count;          // (N).
-  uint8_t coupled_substream_count;  // (M).
+  /*!\brief Creates an `AmbisonicsProjectionConfig` from a buffer and validates
+   * its settings.
+   *
+   * \param rb Buffer from which to read variables.
+   * \return `AmbisonicsProjectionConfig` config or a specific status on
+   * failure.
+   */
+  static absl::StatusOr<AmbisonicsProjectionConfig> CreateFromBuffer(
+      ReadBitBuffer& rb);
 
-  // Vector of length (N + M) * C.
-  std::vector<int16_t> demixing_matrix;
+  uint8_t GetOutputChannelCount() const { return output_channel_count_; }
+  uint8_t GetSubstreamCount() const { return substream_count_; }
+  uint8_t GetCoupledSubstreamCount() const { return coupled_substream_count_; }
+
+  /*!\brief Gets a view of the demixing matrix.
+   *
+   * \return Span of demixing matrix elements.
+   */
+  absl::Span<const int16_t> GetDemixingMatrixView() const {
+    return absl::MakeConstSpan(demixing_matrix_);
+  }
+
+ private:
+  /*!\brief Constructor for use by `Create()`.
+   *
+   * \param output_channel_count `output_channel_count` (C).
+   * \param substream_count `substream_count` (N).
+   * \param coupled_substream_count `coupled_substream_count` (M).
+   * \param demixing_matrix Demixing matrix of size (N + M) * C.
+   */
+  AmbisonicsProjectionConfig(uint8_t output_channel_count,
+                             uint8_t substream_count,
+                             uint8_t coupled_substream_count,
+                             absl::Span<const int16_t> demixing_matrix);
+
+  uint8_t output_channel_count_;     // (C).
+  uint8_t substream_count_;          // (N).
+  uint8_t coupled_substream_count_;  // (M).
+
+  std::vector<int16_t> demixing_matrix_;
 };
 
 /*!\brief Config to reconstruct an Audio Element OBU using Ambisonics layout.
@@ -187,6 +236,14 @@ struct AmbisonicsConfig {
   uint8_t GetNumSubstreams() const;
 
   AmbisonicsMode GetAmbisonicsMode() const;
+
+  /*!\brief Gets a view of the demixing matrix.
+   *
+   * \return Span of demixing matrix elements stored in a 1D array in
+   *     column-major order for ambisonics projection mode. `std::nullopt` for
+   *     ambisonics mono mode.
+   */
+  std::optional<absl::Span<const int16_t>> GetDemixingMatrix() const;
 
   // `ambisonics_mode` is inferred from the contents of the `ambisonics_config`
   // variant.

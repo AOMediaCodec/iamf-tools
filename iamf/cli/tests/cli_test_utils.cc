@@ -476,12 +476,11 @@ void GetFullOrderAmbisonicsProjectionArguments(
       demxing_matrix[index] = (i == j) ? kMaxGain : 0;
     }
   }
-  ambisonics_config = {
-      .ambisonics_config = AmbisonicsProjectionConfig{
-          .output_channel_count = static_cast<uint8_t>(max_channel_number),
-          .substream_count = static_cast<uint8_t>(max_channel_number),
-          .coupled_substream_count = 0,
-          .demixing_matrix = demxing_matrix}};
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      static_cast<uint8_t>(max_channel_number),
+      static_cast<uint8_t>(max_channel_number), 0, demxing_matrix);
+  ASSERT_THAT(projection_config, IsOk());
+  ambisonics_config = {.ambisonics_config = *projection_config};
   GetAudioSubstreamIdsAndLabelsMap(max_channel_number, audio_substream_ids,
                                    substream_id_to_labels);
 }

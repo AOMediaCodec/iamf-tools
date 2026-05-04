@@ -27,7 +27,9 @@ namespace iamf_tools {
 namespace {
 
 using absl_testing::IsOk;
+using ::testing::ElementsAreArray;
 using ::testing::Not;
+using ::testing::Optional;
 
 TEST(AmbisonicsMonoConfigCreate, MappingInAscendingOrder) {
   // Users may map the Ambisonics Channel Number to substreams in numerical
@@ -102,143 +104,146 @@ TEST(AmbisonicsMonoConfigCreate,
               Not(IsOk()));
 }
 
-TEST(TestValidateAmbisonicsProjection, FOAWithMainDiagonalMatrix) {
+TEST(AmbisonicsProjectionConfigCreate, FOAWithMainDiagonalMatrix) {
   // Typical users MAY create a matrix with non-zero values on the main
   // diagonal and zeroes in other entries. This results in one Ambisonics
   // Channel Number (ACN) represented per substream.
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .coupled_substream_count = 0,
-      .demixing_matrix = {/*           ACN#: 0, 1, 2, 3 */
-                          /* Substream 0: */ 1, 0, 0, 0,
-                          /* Substream 1: */ 0, 1, 0, 0,
-                          /* Substream 2: */ 0, 0, 1, 0,
-                          /* Substream 3: */ 0, 0, 0, 1}};
-  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/4,
+                  /*substream_count=*/4,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/
+                  {/*           ACN#: 0, 1, 2, 3 */
+                   /* Substream 0: */ 1, 0, 0, 0,
+                   /* Substream 1: */ 0, 1, 0, 0,
+                   /* Substream 2: */ 0, 0, 1, 0,
+                   /* Substream 3: */ 0, 0, 0, 1}),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsProjection, FOAWithArbitraryMatrix) {
+TEST(AmbisonicsProjectionConfigCreate, FOAWithArbitraryMatrix) {
   // Users MAY set arbitrary values anywhere in this matrix, but the size MUST
   // comply with the spec. This results in multiple Ambisonics Channel Numbers
   // (ACNs) per substream.
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .coupled_substream_count = 0,
-      .demixing_matrix = {/*           ACN#: 0, 1, 2, 3 */
-                          /* Substream 0: */ 1, 2, 3, 4,
-                          /* Substream 1: */ 2, 3, 4, 5,
-                          /* Substream 2: */ 3, 4, 5, 6,
-                          /* Substream 3: */ 4, 5, 6, 7}};
-  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/4,
+                  /*substream_count=*/4,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/
+                  {/*           ACN#: 0, 1, 2, 3 */
+                   /* Substream 0: */ 1, 2, 3, 4,
+                   /* Substream 1: */ 2, 3, 4, 5,
+                   /* Substream 2: */ 3, 4, 5, 6,
+                   /* Substream 3: */ 4, 5, 6, 7}),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsProjection, ZerothOrderAmbisonics) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 1,
-      .substream_count = 1,
-      .coupled_substream_count = 0,
-      .demixing_matrix = {
-          /*                                             ACN#: 0, */
-          /* Substream 0: */ std::numeric_limits<int16_t>::max()}};
-  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
+TEST(AmbisonicsProjectionConfigCreate, ZerothOrderAmbisonics) {
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/1,
+                  /*substream_count=*/1,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/
+                  {/*                                             ACN#: 0, */
+                   /* Substream 0: */ std::numeric_limits<int16_t>::max()}),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsProjection, FOAWithOnlyA2) {
+TEST(AmbisonicsProjectionConfigCreate, FOAWithOnlyA2) {
   // Fewer substreams than `output_channel_count` are allowed.
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 4,
-      .substream_count = 1,
-      .coupled_substream_count = 0,
-      .demixing_matrix = {/*           ACN#: 0, 1, 2, 3 */
-                          /* Substream 0: */ 0, 0, 1, 0}};
-  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/4,
+                  /*substream_count=*/1,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/
+                  {/*           ACN#: 0, 1, 2, 3 */
+                   /* Substream 0: */ 0, 0, 1, 0}),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsProjection, FOAOneCoupledStream) {
+TEST(AmbisonicsProjectionConfigCreate, FOAOneCoupledStream) {
   // The first `coupled_substream_count` substreams are coupled. Each pair in
   // the coupling has a column in the bitstream (written as a row in this
   // test). The remaining streams are decoupled.
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 4,
-      .substream_count = 3,
-      .coupled_substream_count = 1,
-      .demixing_matrix = {/*             ACN#: 0, 1, 2, 3 */
-                          /* Substream 0_a: */ 1, 0, 0, 0,
-                          /* Substream 0_b: */ 0, 1, 0, 0,
-                          /* Substream   1: */ 0, 0, 1, 0,
-                          /* Substream   2: */ 0, 0, 0, 1}};
-  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/4,
+                  /*substream_count=*/3,
+                  /*coupled_substream_count=*/1,
+                  /*demixing_matrix=*/
+                  {/*             ACN#: 0, 1, 2, 3 */
+                   /* Substream 0_a: */ 1, 0, 0, 0,
+                   /* Substream 0_b: */ 0, 1, 0, 0,
+                   /* Substream   1: */ 0, 0, 1, 0,
+                   /* Substream   2: */ 0, 0, 0, 1}),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsProjection, FourteenthOrderAmbisonicsIsSupported) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 225,
-      .substream_count = 225,
-      .coupled_substream_count = 0,
-      .demixing_matrix = std::vector<int16_t>(225 * 225, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
+TEST(AmbisonicsProjectionConfigCreate, FourteenthOrderAmbisonicsIsSupported) {
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/225,
+                  /*substream_count=*/225,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/std::vector<int16_t>(225 * 225, 1)),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsProjection,
+TEST(AmbisonicsProjectionConfigCreate,
      FourteenthOrderAmbisonicsWithCoupledSubstreamsIsSupported) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 225,
-      .substream_count = 113,
-      .coupled_substream_count = 112,
-      .demixing_matrix = std::vector<int16_t>((113 + 112) * 225, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(), IsOk());
+  EXPECT_THAT(
+      AmbisonicsProjectionConfig::Create(
+          /*output_channel_count=*/225,
+          /*substream_count=*/113,
+          /*coupled_substream_count=*/112,
+          /*demixing_matrix=*/std::vector<int16_t>((113 + 112) * 225, 1)),
+      IsOk());
 }
 
-TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCountMaxValue) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 255,
-      .substream_count = 255,
-      .coupled_substream_count = 0,
-      .demixing_matrix = std::vector<int16_t>(255 * 255, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
+TEST(AmbisonicsProjectionConfigCreate, InvalidOutputChannelCountMaxValue) {
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/255,
+                  /*substream_count=*/255,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/std::vector<int16_t>(255 * 255, 1)),
+              Not(IsOk()));
 }
 
-TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCount) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 3,
-      .substream_count = 3,
-      .coupled_substream_count = 0,
-      .demixing_matrix = std::vector<int16_t>(3 * 3, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
+TEST(AmbisonicsProjectionConfigCreate, InvalidOutputChannelCount) {
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/3,
+                  /*substream_count=*/3,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/std::vector<int16_t>(3 * 3, 1)),
+              Not(IsOk()));
 }
 
-TEST(TestValidateAmbisonicsProjection,
+TEST(AmbisonicsProjectionConfigCreate,
      InvalidWhenSubstreamCountIsGreaterThanOutputChannelCount) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 4,
-      .substream_count = 5,
-      .coupled_substream_count = 0,
-      .demixing_matrix = std::vector<int16_t>(4 * 5, 1)};
-  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/4,
+                  /*substream_count=*/5,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/std::vector<int16_t>(4 * 5, 1)),
+              Not(IsOk()));
 }
 
-TEST(TestValidateAmbisonicsProjection,
+TEST(AmbisonicsProjectionConfigCreate,
      InvalidWhenCoupledSubstreamCountIsGreaterThanSubstreamCount) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 4,
-      .substream_count = 1,
-      .coupled_substream_count = 3,
-      .demixing_matrix = std::vector<int16_t>((1 + 3) * 4, 1)};
-
-  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/4,
+                  /*substream_count=*/1,
+                  /*coupled_substream_count=*/3,
+                  /*demixing_matrix=*/std::vector<int16_t>((1 + 3) * 4, 1)),
+              Not(IsOk()));
 }
 
-TEST(TestValidateAmbisonicsProjection,
+TEST(AmbisonicsProjectionConfigCreate,
      InvalidWhenSubstreamCountPlusCoupledSubstreamCountIsTooLarge) {
-  const AmbisonicsProjectionConfig ambisonics_projection = {
-      .output_channel_count = 4,
-      .substream_count = 3,
-      .coupled_substream_count = 2,
-      .demixing_matrix = std::vector<int16_t>((3 + 2) * 4, 1)};
-
-  EXPECT_THAT(ambisonics_projection.Validate(), Not(IsOk()));
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/4,
+                  /*substream_count=*/3,
+                  /*coupled_substream_count=*/2,
+                  /*demixing_matrix=*/std::vector<int16_t>((3 + 2) * 4, 1)),
+              Not(IsOk()));
 }
 
 TEST(TestGetNextValidCount, ReturnsNextHighestCount) {
@@ -299,11 +304,13 @@ TEST(AmbisonicsConfig, ReadAndValidateMono) {
 }
 
 TEST(AmbisonicsConfig, ValidateAndWriteProjection) {
-  AmbisonicsConfig config = {.ambisonics_config = AmbisonicsProjectionConfig{
-                                 .output_channel_count = 1,
-                                 .substream_count = 1,
-                                 .coupled_substream_count = 0,
-                                 .demixing_matrix = {100}}};
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      /*output_channel_count=*/1,
+      /*substream_count=*/1,
+      /*coupled_substream_count=*/0,
+      /*demixing_matrix=*/{100});
+  ASSERT_THAT(projection_config.status(), IsOk());
+  AmbisonicsConfig config = {.ambisonics_config = *projection_config};
   WriteBitBuffer wb(1024);
 
   EXPECT_THAT(config.ValidateAndWrite(wb), IsOk());
@@ -324,6 +331,31 @@ TEST(AmbisonicsConfig, ReadAndValidateProjection) {
             AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeProjection);
   EXPECT_TRUE(std::holds_alternative<AmbisonicsProjectionConfig>(
       config.ambisonics_config));
+}
+
+TEST(AmbisonicsConfig, GetDemixingMatrixReturnsNulloptForMonoConfig) {
+  const auto mono_config = AmbisonicsMonoConfig::Create(
+      /*substream_count=*/1, /*channel_mapping=*/{0});
+  ASSERT_THAT(mono_config.status(), IsOk());
+  AmbisonicsConfig config = {.ambisonics_config = *mono_config};
+
+  EXPECT_FALSE(config.GetDemixingMatrix().has_value());
+}
+
+TEST(AmbisonicsConfig, GetDemixingMatrixReturnsDataForProjectionConfig) {
+  const std::vector<int16_t> kExpectedDemixingMatrix{
+      16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+  const auto projection_config = AmbisonicsProjectionConfig::Create(
+      /*output_channel_count=*/4,
+      /*substream_count=*/4,
+      /*coupled_substream_count=*/0, kExpectedDemixingMatrix);
+  ASSERT_THAT(projection_config.status(), IsOk());
+  AmbisonicsConfig config = {.ambisonics_config = *projection_config};
+
+  auto demixing_matrix = config.GetDemixingMatrix();
+
+  EXPECT_THAT(demixing_matrix,
+              Optional(ElementsAreArray(kExpectedDemixingMatrix)));
 }
 
 }  // namespace

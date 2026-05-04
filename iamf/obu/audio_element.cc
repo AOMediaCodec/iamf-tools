@@ -416,19 +416,23 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForProjectionAmbisonics(
     absl::Span<const DecodedUleb128> audio_substream_ids,
     uint8_t output_channel_count, uint8_t coupled_substream_count,
     absl::Span<const int16_t> demixing_matrix) {
-  AmbisonicsProjectionConfig projection_config = {
-      .output_channel_count = output_channel_count,
-      // The number of substreams must equal to the number of audio substream
-      // IDs.
-      .substream_count = static_cast<uint8_t>(audio_substream_ids.size()),
-      .coupled_substream_count = coupled_substream_count,
-      .demixing_matrix = {demixing_matrix.begin(), demixing_matrix.end()}};
-  RETURN_IF_NOT_OK(projection_config.Validate());
+  // The number of substreams must equal to the number of audio substream
+  // IDs.
+  uint8_t substream_count;
+  RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
+      "Audio substream count", audio_substream_ids.size(), substream_count));
+  absl::StatusOr<AmbisonicsProjectionConfig> projection_config =
+      AmbisonicsProjectionConfig::Create(output_channel_count, substream_count,
+                                         coupled_substream_count,
+                                         demixing_matrix);
+  if (!projection_config.ok()) {
+    return projection_config.status();
+  }
 
   return AudioElementObu(
       header, audio_element_id, kAudioElementSceneBased, reserved,
       codec_config_id, audio_substream_ids,
-      AmbisonicsConfig{.ambisonics_config = projection_config});
+      AmbisonicsConfig{.ambisonics_config = *projection_config});
 }
 
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateForObjects(

@@ -56,7 +56,6 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
-        "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",

@@ -2246,24 +2246,19 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
   ObuHeader header;
   auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
-  // Validate
-  EXPECT_THAT(obu, IsOk());
-  EXPECT_EQ(obu.value().GetAudioElementType(),
-            AudioElementObu::kAudioElementSceneBased);
-  EXPECT_EQ(obu.value().GetNumSubstreams(), 4);
-
-  AmbisonicsProjectionConfig expected_ambisonics_projection_config = {
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .coupled_substream_count = 0,
-      .demixing_matrix = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                          16}};
-  AmbisonicsConfig expected_ambisonics_config = {
-      .ambisonics_config = expected_ambisonics_projection_config};
-  AmbisonicsConfig actual_ambisonics_config =
-      std::get<AmbisonicsConfig>(obu.value().config_);
-  EXPECT_EQ(std::get<AmbisonicsConfig>(obu.value().config_),
-            expected_ambisonics_config);
+  // Validate.
+  const AmbisonicsConfig* actual_ambisonics_config =
+      std::get_if<AmbisonicsConfig>(&obu->config_);
+  ASSERT_NE(actual_ambisonics_config, nullptr);
+  const auto* projection_config = std::get_if<AmbisonicsProjectionConfig>(
+      &actual_ambisonics_config->ambisonics_config);
+  ASSERT_NE(projection_config, nullptr);
+  EXPECT_EQ(projection_config->GetOutputChannelCount(), 4);
+  EXPECT_EQ(projection_config->GetSubstreamCount(), 4);
+  EXPECT_EQ(projection_config->GetCoupledSubstreamCount(), 0);
+  EXPECT_THAT(
+      projection_config->GetDemixingMatrixView(),
+      ElementsAre(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16));
 }
 
 }  // namespace

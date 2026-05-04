@@ -178,19 +178,25 @@ TEST_P(MixedOrderAmbisonicsProjectionTest, CreationSucceeds) {
   substream_id_to_labels.erase(kSubstreamIdToRemove);
 
   // Copy and rewrite the ambisonics projection config.
-  auto& ambisonics_projection_config =
+  const auto& old_config =
       std::get<AmbisonicsProjectionConfig>(ambisonics_config.ambisonics_config);
 
   // Decrease the total substream count.
-  ambisonics_projection_config.substream_count--;
+  const uint8_t new_substream_count = old_config.GetSubstreamCount() - 1;
 
-  // Modify the demixing matrix: remove the column with index == 1.
+  // Modify the demixing matrix: remove the column (channel) with index == 1.
   const int column_height = (order + 1) * (order + 1);
+  auto demixing_matrix =
+      std::vector<int16_t>(old_config.GetDemixingMatrixView().begin(),
+                           old_config.GetDemixingMatrixView().end());
+
   auto column_iter_first =
-      ambisonics_projection_config.demixing_matrix.begin() +
-      kMissingChannelIndex * column_height;
-  ambisonics_projection_config.demixing_matrix.erase(
-      column_iter_first, column_iter_first + column_height);
+      demixing_matrix.begin() + kMissingChannelIndex * column_height;
+  demixing_matrix.erase(column_iter_first, column_iter_first + column_height);
+
+  ambisonics_config.ambisonics_config = *AmbisonicsProjectionConfig::Create(
+      old_config.GetOutputChannelCount(), new_substream_count,
+      old_config.GetCoupledSubstreamCount(), demixing_matrix);
 
   // Create and expect non-null.
   EXPECT_NE(AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
@@ -454,19 +460,25 @@ TEST(RenderLabeledFrame, RendersMixedOrderFoaProjectionToBinaural) {
   substream_id_to_labels.erase(kSubstreamIdToRemove);
 
   // Copy and rewrite the ambisonics projection config.
-  auto& ambisonics_projection_config =
+  const auto& old_config =
       std::get<AmbisonicsProjectionConfig>(ambisonics_config.ambisonics_config);
 
   // Decrease the total substream count.
-  ambisonics_projection_config.substream_count--;
+  const uint8_t new_substream_count = old_config.GetSubstreamCount() - 1;
 
   // Modify the demixing matrix: remove the column with index == 1.
   const int column_height = (kFirstOrder + 1) * (kFirstOrder + 1);
+  auto demixing_matrix =
+      std::vector<int16_t>(old_config.GetDemixingMatrixView().begin(),
+                           old_config.GetDemixingMatrixView().end());
+
   auto column_iter_first =
-      ambisonics_projection_config.demixing_matrix.begin() +
-      kMissingChannelIndex * column_height;
-  ambisonics_projection_config.demixing_matrix.erase(
-      column_iter_first, column_iter_first + column_height);
+      demixing_matrix.begin() + kMissingChannelIndex * column_height;
+  demixing_matrix.erase(column_iter_first, column_iter_first + column_height);
+
+  ambisonics_config.ambisonics_config = *AmbisonicsProjectionConfig::Create(
+      old_config.GetOutputChannelCount(), new_substream_count,
+      old_config.GetCoupledSubstreamCount(), demixing_matrix);
 
   // Create and expect non-null.
   auto renderer = AudioElementRendererBinaural::CreateFromAmbisonicsConfig(

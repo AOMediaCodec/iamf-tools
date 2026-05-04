@@ -150,14 +150,13 @@ struct GetChannelLabelsFromAmbisonicsProjectionConfig {
           "AmbisonicsProjectionConfig");
     }
 
-    RETURN_IF_NOT_OK(config.Validate());
-    RETURN_IF_NOT_OK(ValidateEqual<size_t>(config.substream_count,
+    RETURN_IF_NOT_OK(ValidateEqual<size_t>(config.GetSubstreamCount(),
                                            audio_substream_ids_.size(),
                                            "audio_substream_ids_.size()"));
     const int num_channels =
-        config.substream_count + config.coupled_substream_count;
+        config.GetSubstreamCount() + config.GetCoupledSubstreamCount();
     channel_labels_.reserve(num_channels);
-    for (int i = 0; i < config.substream_count; i++) {
+    for (int i = 0; i < config.GetSubstreamCount(); i++) {
       const auto substream_id = audio_substream_ids_[i];
       const auto& labels = LookupInMap(substream_id_to_labels_, substream_id,
                                        "Labels for substream ID");
@@ -176,33 +175,6 @@ struct GetChannelLabelsFromAmbisonicsProjectionConfig {
     }
 
     return absl::OkStatus();
-  }
-};
-
-struct GetNullDemixingMatrixFromAmbisonicsMonoConfig {
-  AmbisonicsConfig::AmbisonicsMode mode_;
-  absl::StatusOr<const std::vector<int16_t>*> operator()(
-      const AmbisonicsMonoConfig& config) {
-    if (mode_ != AmbisonicsConfig::kAmbisonicsModeMono) {
-      return absl::InvalidArgumentError(
-          "Expected mode == `kAmbisonicsModeMono` for AmbisonicsMonoConfig");
-    }
-    return nullptr;
-  }
-};
-
-struct GetDemixingMatrixFromAmbisonicsProjectionConfig {
-  AmbisonicsConfig::AmbisonicsMode mode_;
-  absl::StatusOr<const std::vector<int16_t>*> operator()(
-      const AmbisonicsProjectionConfig& config) {
-    if (mode_ != AmbisonicsConfig::kAmbisonicsModeProjection) {
-      return absl::InvalidArgumentError(
-          "Expected mode == `kAmbisonicsModeProjection` for "
-          "AmbisonicsProjectionConfig");
-    }
-
-    return &config.demixing_matrix;
-    ;
   }
 };
 
@@ -340,18 +312,9 @@ absl::Status GetChannelLabelsForAmbisonics(
       ambisonics_config.ambisonics_config);
 }
 
-absl::StatusOr<const std::vector<int16_t>*> GetDemixingMatrix(
-    const AmbisonicsConfig& ambisonics_config) {
-  return std::visit(overloaded{GetNullDemixingMatrixFromAmbisonicsMonoConfig{
-                                   ambisonics_config.GetAmbisonicsMode()},
-                               GetDemixingMatrixFromAmbisonicsProjectionConfig{
-                                   ambisonics_config.GetAmbisonicsMode()}},
-                    ambisonics_config.ambisonics_config);
-}
-
 absl::Status ProjectSamplesToRender(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
-    const std::vector<int16_t>& demixing_matrix,
+    absl::Span<const int16_t> demixing_matrix,
     std::vector<std::vector<InternalSampleType>>& projected_samples) {
   if (input_samples.empty() || demixing_matrix.empty()) {
     return absl::InvalidArgumentError(

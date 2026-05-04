@@ -15,8 +15,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <sstream>
-#include <string>
+#include <optional>
 #include <type_traits>
 #include <variant>
 #include <vector>
@@ -26,6 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
@@ -37,47 +37,27 @@ namespace iamf_tools {
 
 namespace {
 
-size_t GetNumDemixingMatrixElements(const AmbisonicsProjectionConfig& config) {
-  const size_t c = static_cast<size_t>(config.output_channel_count);
-  const size_t n = static_cast<size_t>(config.substream_count);
-  const size_t m = static_cast<size_t>(config.coupled_substream_count);
-
-  return (n + m) * c;
-}
-
 void LogAmbisonicsMonoConfig(const AmbisonicsMonoConfig& mono_config) {
   ABSL_VLOG(1) << "  ambisonics_mono_config:";
-  ABSL_VLOG(1) << "    output_channel_count:"
+  ABSL_VLOG(1) << "    output_channel_count: "
                << absl::StrCat(mono_config.GetOutputChannelCount());
-  ABSL_VLOG(1) << "    substream_count:"
+  ABSL_VLOG(1) << "    substream_count: "
                << absl::StrCat(mono_config.GetSubstreamCount());
-  std::stringstream channel_mapping_stream;
-  auto channel_mapping = mono_config.GetChannelMappingView();
-  for (int c = 0; c < mono_config.GetOutputChannelCount(); c++) {
-    channel_mapping_stream << absl::StrCat(channel_mapping[c]) << ", ";
-  }
-  ABSL_VLOG(1) << "    channel_mapping: [ " << channel_mapping_stream.str()
+  ABSL_VLOG(1) << "    channel_mapping: ["
+               << absl::StrJoin(mono_config.GetChannelMappingView(), ", ")
                << "]";
 }
 
-void LogAmbisonicsProjectionConfig(
-    const AmbisonicsProjectionConfig& projection_config) {
+void LogAmbisonicsProjectionConfig(const AmbisonicsProjectionConfig& config) {
   ABSL_VLOG(1) << "  ambisonics_projection_config:";
-  ABSL_VLOG(1) << "    output_channel_count:"
-               << absl::StrCat(projection_config.output_channel_count);
+  ABSL_VLOG(1) << "    output_channel_count: "
+               << absl::StrCat(config.GetOutputChannelCount());
   ABSL_VLOG(1) << "    substream_count:"
-               << absl::StrCat(projection_config.substream_count);
+               << absl::StrCat(config.GetSubstreamCount());
   ABSL_VLOG(1) << "    coupled_substream_count:"
-               << absl::StrCat(projection_config.coupled_substream_count);
-  std::string demixing_matrix_string;
-  for (int i = 0; i < (projection_config.substream_count +
-                       projection_config.coupled_substream_count) *
-                          projection_config.output_channel_count;
-       i++) {
-    absl::StrAppend(&demixing_matrix_string,
-                    projection_config.demixing_matrix[i], ",");
-  }
-  ABSL_VLOG(1) << "    demixing_matrix: [ " << demixing_matrix_string << "]";
+               << absl::StrCat(config.GetCoupledSubstreamCount());
+  ABSL_VLOG(1) << "    demixing_matrix: [ "
+               << absl::StrJoin(config.GetDemixingMatrixView(), ", ") << "]";
 }
 
 absl::Status ValidateOutputChannelCount(const uint8_t channel_count) {
@@ -105,42 +85,21 @@ absl::Status WriteAmbisonicsMono(const AmbisonicsMonoConfig& mono_config,
 
 // Writes the `AmbisonicsProjectionConfig` of an ambisonics projection
 // `AudioElementObu`.
-absl::Status ValidateAndWriteAmbisonicsProjection(
+absl::Status WriteAmbisonicsProjection(
     const AmbisonicsProjectionConfig& projection_config, WriteBitBuffer& wb) {
-  RETURN_IF_NOT_OK(projection_config.Validate());
-
   // Write the main portion of the `AmbisonicsProjectionConfig`.
   RETURN_IF_NOT_OK(
-      wb.WriteUnsignedLiteral(projection_config.output_channel_count, 8));
+      wb.WriteUnsignedLiteral(projection_config.GetOutputChannelCount(), 8));
   RETURN_IF_NOT_OK(
-      wb.WriteUnsignedLiteral(projection_config.substream_count, 8));
+      wb.WriteUnsignedLiteral(projection_config.GetSubstreamCount(), 8));
   RETURN_IF_NOT_OK(
-      wb.WriteUnsignedLiteral(projection_config.coupled_substream_count, 8));
+      wb.WriteUnsignedLiteral(projection_config.GetCoupledSubstreamCount(), 8));
 
   // Loop to write the `demixing_matrix`.
-  for (size_t i = 0; i < projection_config.demixing_matrix.size(); i++) {
-    RETURN_IF_NOT_OK(wb.WriteSigned16(projection_config.demixing_matrix[i]));
+  for (int16_t val : projection_config.GetDemixingMatrixView()) {
+    RETURN_IF_NOT_OK(wb.WriteSigned16(val));
   }
 
-  return absl::OkStatus();
-}
-
-absl::Status ReadAndValidateAmbisonicsProjection(
-    AmbisonicsProjectionConfig& projection_config, ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(
-      rb.ReadUnsignedLiteral(8, projection_config.output_channel_count));
-  RETURN_IF_NOT_OK(
-      rb.ReadUnsignedLiteral(8, projection_config.substream_count));
-  RETURN_IF_NOT_OK(
-      rb.ReadUnsignedLiteral(8, projection_config.coupled_substream_count));
-  const size_t demixing_matrix_size =
-      GetNumDemixingMatrixElements(projection_config);
-  for (size_t i = 0; i < demixing_matrix_size; ++i) {
-    int16_t demixing_matrix_value;
-    RETURN_IF_NOT_OK(rb.ReadSigned16(demixing_matrix_value));
-    projection_config.demixing_matrix.push_back(demixing_matrix_value);
-  }
-  RETURN_IF_NOT_OK(projection_config.Validate());
   return absl::OkStatus();
 }
 
@@ -203,7 +162,10 @@ AmbisonicsMonoConfig::AmbisonicsMonoConfig(
     : substream_count_(substream_count),
       channel_mapping_(channel_mapping.begin(), channel_mapping.end()) {}
 
-absl::Status AmbisonicsProjectionConfig::Validate() const {
+absl::StatusOr<AmbisonicsProjectionConfig> AmbisonicsProjectionConfig::Create(
+    uint8_t output_channel_count, uint8_t substream_count,
+    uint8_t coupled_substream_count,
+    absl::Span<const int16_t> demixing_matrix) {
   RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));
   if (coupled_substream_count > substream_count) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -220,12 +182,46 @@ absl::Status AmbisonicsProjectionConfig::Validate() const {
         output_channel_count, "."));
   }
 
-  const size_t expected_num_elements = GetNumDemixingMatrixElements(*this);
+  const size_t expected_num_elements =
+      (static_cast<size_t>(substream_count) + coupled_substream_count) *
+      output_channel_count;
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "demixing_matrix", demixing_matrix, expected_num_elements));
 
-  return absl::OkStatus();
+  return AmbisonicsProjectionConfig(output_channel_count, substream_count,
+                                    coupled_substream_count, demixing_matrix);
 }
+
+absl::StatusOr<AmbisonicsProjectionConfig>
+AmbisonicsProjectionConfig::CreateFromBuffer(ReadBitBuffer& rb) {
+  uint8_t output_channel_count;
+  uint8_t substream_count;
+  uint8_t coupled_substream_count;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, output_channel_count));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, substream_count));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, coupled_substream_count));
+
+  const size_t demixing_matrix_size =
+      (static_cast<size_t>(substream_count) + coupled_substream_count) *
+      output_channel_count;
+  std::vector<int16_t> demixing_matrix;
+  demixing_matrix.reserve(demixing_matrix_size);
+  for (size_t i = 0; i < demixing_matrix_size; ++i) {
+    int16_t demixing_matrix_value;
+    RETURN_IF_NOT_OK(rb.ReadSigned16(demixing_matrix_value));
+    demixing_matrix.push_back(demixing_matrix_value);
+  }
+  return Create(output_channel_count, substream_count, coupled_substream_count,
+                demixing_matrix);
+}
+
+AmbisonicsProjectionConfig::AmbisonicsProjectionConfig(
+    uint8_t output_channel_count, uint8_t substream_count,
+    uint8_t coupled_substream_count, absl::Span<const int16_t> demixing_matrix)
+    : output_channel_count_(output_channel_count),
+      substream_count_(substream_count),
+      coupled_substream_count_(coupled_substream_count),
+      demixing_matrix_(demixing_matrix.begin(), demixing_matrix.end()) {}
 
 absl::Status AmbisonicsConfig::GetNextValidOutputChannelCount(
     uint8_t requested_output_channel_count,
@@ -264,7 +260,7 @@ absl::Status AmbisonicsConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
       return WriteAmbisonicsMono(
           std::get<AmbisonicsMonoConfig>(ambisonics_config), wb);
     case kAmbisonicsModeProjection:
-      return ValidateAndWriteAmbisonicsProjection(
+      return WriteAmbisonicsProjection(
           std::get<AmbisonicsProjectionConfig>(ambisonics_config), wb);
     default:
       return absl::OkStatus();
@@ -285,9 +281,12 @@ absl::Status AmbisonicsConfig::ReadAndValidate(ReadBitBuffer& rb) {
       return absl::OkStatus();
     }
     case kAmbisonicsModeProjection: {
-      ambisonics_config = AmbisonicsProjectionConfig();
-      return ReadAndValidateAmbisonicsProjection(
-          std::get<AmbisonicsProjectionConfig>(ambisonics_config), rb);
+      auto projection_config = AmbisonicsProjectionConfig::CreateFromBuffer(rb);
+      if (!projection_config.ok()) {
+        return projection_config.status();
+      }
+      ambisonics_config = *projection_config;
+      return absl::OkStatus();
     }
     default:
       return absl::OkStatus();
@@ -307,21 +306,15 @@ void AmbisonicsConfig::Print() const {
 }
 
 uint8_t AmbisonicsConfig::GetOutputChannelCount() const {
-  if (std::holds_alternative<AmbisonicsMonoConfig>(ambisonics_config)) {
-    return std::get<AmbisonicsMonoConfig>(ambisonics_config)
-        .GetOutputChannelCount();
-  }
-  return std::get<AmbisonicsProjectionConfig>(ambisonics_config)
-      .output_channel_count;
+  return std::visit(
+      [](const auto& config) { return config.GetOutputChannelCount(); },
+      ambisonics_config);
 }
 
 uint8_t AmbisonicsConfig::GetNumSubstreams() const {
-  if (std::holds_alternative<AmbisonicsMonoConfig>(ambisonics_config)) {
-    return std::get<AmbisonicsMonoConfig>(ambisonics_config)
-        .GetSubstreamCount();
-  }
-  return std::get<AmbisonicsProjectionConfig>(ambisonics_config)
-      .substream_count;
+  return std::visit(
+      [](const auto& config) { return config.GetSubstreamCount(); },
+      ambisonics_config);
 }
 
 AmbisonicsConfig::AmbisonicsMode AmbisonicsConfig::GetAmbisonicsMode() const {
@@ -335,6 +328,15 @@ AmbisonicsConfig::AmbisonicsMode AmbisonicsConfig::GetAmbisonicsMode() const {
         }
       },
       ambisonics_config);
+}
+
+std::optional<absl::Span<const int16_t>> AmbisonicsConfig::GetDemixingMatrix()
+    const {
+  if (std::holds_alternative<AmbisonicsProjectionConfig>(ambisonics_config)) {
+    return std::get<AmbisonicsProjectionConfig>(ambisonics_config)
+        .GetDemixingMatrixView();
+  }
+  return std::nullopt;
 }
 
 }  // namespace iamf_tools

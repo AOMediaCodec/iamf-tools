@@ -179,7 +179,7 @@ AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
     return nullptr;
   }
   return absl::WrapUnique(new AudioElementRendererBinaural(
-      *ordered_labels, /*demixing_matrix=*/nullptr, std::move(obr),
+      *ordered_labels, /*demixing_matrix=*/std::nullopt, std::move(obr),
       num_samples_per_frame));
 }
 
@@ -222,34 +222,30 @@ AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
     return nullptr;
   }
 
-  // Gets the demixing matrix if available.
-  const auto demixing_matrix = GetDemixingMatrix(ambisonics_config);
-  if (!demixing_matrix.ok()) {
-    ABSL_LOG(ERROR) << demixing_matrix.status();
-    return nullptr;
-  }
-
   return absl::WrapUnique(new AudioElementRendererBinaural(
-      ordered_labels, *demixing_matrix, std::move(obr), num_samples_per_frame));
+      ordered_labels, ambisonics_config.GetDemixingMatrix(), std::move(obr),
+      num_samples_per_frame));
 }
 
 AudioElementRendererBinaural::AudioElementRendererBinaural(
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    const std::vector<int16_t>* demixing_matrix,
+    std::optional<absl::Span<const int16_t>> demixing_matrix,
     std::unique_ptr<obr::ObrImpl> obr, size_t num_samples_per_frame)
     : AudioElementRendererBase(ordered_labels, num_samples_per_frame,
                                /*num_output_channels=*/kNumBinauralChannels),
       obr_(std::move(obr)),
       input_buffer_(
           // Input may be projected using the demixing matrix.
-          demixing_matrix == nullptr
-              ? ordered_labels.size()
-              : demixing_matrix->size() / ordered_labels.size(),
+          demixing_matrix.has_value()
+              ? demixing_matrix->size() / ordered_labels.size()
+              : ordered_labels.size(),
           num_samples_per_frame_),
       output_buffer_(num_output_channels_, num_samples_per_frame_),
-      demixing_matrix_(demixing_matrix == nullptr
-                           ? std::nullopt
-                           : OptionalDemixingMatrix{*demixing_matrix}) {}
+      demixing_matrix_(
+          demixing_matrix.has_value()
+              ? std::make_optional(std::vector<int16_t>(
+                    demixing_matrix->begin(), demixing_matrix->end()))
+              : std::nullopt) {}
 
 absl::Status AudioElementRendererBinaural::RenderSamples(
     absl::Span<const absl::Span<const InternalSampleType>> samples_to_render) {

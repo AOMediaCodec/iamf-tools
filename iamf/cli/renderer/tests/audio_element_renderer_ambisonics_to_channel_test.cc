@@ -211,12 +211,14 @@ const std::vector<int16_t> kNegativeEpsilonIdentityFoa =
      kMaxGain * -1};
 
 TEST(CreateFromAmbisonicsConfig, Projection) {
-  const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_config =
-          AmbisonicsProjectionConfig{.output_channel_count = 4,
-                                     .substream_count = 4,
-                                     .coupled_substream_count = 0,
-                                     .demixing_matrix = kEpsilonIdentityFoa}};
+  const auto ambisonics_config = AmbisonicsProjectionConfig::Create(
+      /*output_channel_count=*/4,
+      /*substream_count=*/4,
+      /*coupled_substream_count=*/0,
+      /*demixing_matrix=*/kEpsilonIdentityFoa);
+  ASSERT_THAT(ambisonics_config, IsOk());
+  const AmbisonicsConfig kAmbisonicsProjectionConfig = {.ambisonics_config =
+                                                            *ambisonics_config};
   const std::vector<DecodedUleb128> kFirstOrderAudioSubstreamIds = {0, 1, 2, 3};
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {
       {0, {kA0}}, {1, {kA1}}, {2, {kA2}}, {3, {kA3}}};
@@ -230,12 +232,14 @@ TEST(CreateFromAmbisonicsConfig, Projection) {
 
 TEST(CreateFromAmbisonicsConfig,
      SupportsAmbisonicsProjectionConfigWithCoupledSubstreams) {
-  const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_config =
-          AmbisonicsProjectionConfig{.output_channel_count = 4,
-                                     .substream_count = 2,
-                                     .coupled_substream_count = 2,
-                                     .demixing_matrix = kEpsilonIdentityFoa}};
+  const auto ambisonics_config = AmbisonicsProjectionConfig::Create(
+      /*output_channel_count=*/4,
+      /*substream_count=*/2,
+      /*coupled_substream_count=*/2,
+      /*demixing_matrix=*/kEpsilonIdentityFoa);
+  ASSERT_THAT(ambisonics_config, IsOk());
+  const AmbisonicsConfig kAmbisonicsProjectionConfig = {.ambisonics_config =
+                                                            *ambisonics_config};
   const std::vector<DecodedUleb128> kFirstOrderAudioSubstreamIds = {0, 1};
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {{0, {kA0, kA1}},
                                                                {1, {kA2, kA3}}};
@@ -255,13 +259,14 @@ TEST(CreateFromAmbisonicsConfig, SupportedMixedOrderProjectionConfig) {
       /* Channel 0: */ kMaxGain, 0,        0, 0,
       /* Channel 1: */ 0,        kMaxGain, 0, 0,
       /* Channel 2: */ 0,        0,        0, kMaxGain};
-
-  const AmbisonicsConfig kAmbisonicsProjectionConfig = {
-      .ambisonics_config =
-          AmbisonicsProjectionConfig{.output_channel_count = 4,
-                                     .substream_count = 3,
-                                     .coupled_substream_count = 0,
-                                     .demixing_matrix = kNearIdentityMixedFoa}};
+  const auto ambisonics_config = AmbisonicsProjectionConfig::Create(
+      /*output_channel_count=*/4,
+      /*substream_count=*/3,
+      /*coupled_substream_count=*/0,
+      /*demixing_matrix=*/kNearIdentityMixedFoa);
+  ASSERT_THAT(ambisonics_config, IsOk());
+  const AmbisonicsConfig kAmbisonicsProjectionConfig = {.ambisonics_config =
+                                                            *ambisonics_config};
   const std::vector<DecodedUleb128> kFirstOrderAudioSubstreamIds = {0, 1, 2};
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {
       {0, {kA0}}, {1, {kA1}}, {2, {kA3}}};
@@ -293,18 +298,25 @@ TEST(RenderFrames, AcnZeroIsSymmetric) {
 }
 
 TEST(RenderFrames, UsesDemixingMatrix) {
+  const auto ambisonics_projection_config_identity =
+      AmbisonicsProjectionConfig::Create(
+          /*output_channel_count=*/4,
+          /*substream_count=*/4,
+          /*coupled_substream_count=*/0,
+          /*demixing_matrix=*/kEpsilonIdentityFoa);
+  ASSERT_THAT(ambisonics_projection_config_identity, IsOk());
   const AmbisonicsConfig kAmbisonicsProjectionConfigIdentity = {
-      .ambisonics_config =
-          AmbisonicsProjectionConfig{.output_channel_count = 4,
-                                     .substream_count = 4,
-                                     .coupled_substream_count = 0,
-                                     .demixing_matrix = kEpsilonIdentityFoa}};
+      .ambisonics_config = *ambisonics_projection_config_identity};
+  const auto ambisonics_projection_config_identity_inverse =
+      AmbisonicsProjectionConfig::Create(
+          /*output_channel_count=*/4,
+          /*substream_count=*/4,
+          /*coupled_substream_count=*/0,
+          /*demixing_matrix=*/kNegativeEpsilonIdentityFoa);
+  ASSERT_THAT(ambisonics_projection_config_identity_inverse, IsOk());
   const AmbisonicsConfig kAmbisonicsProjectionConfigIdentityInverse = {
-      .ambisonics_config = AmbisonicsProjectionConfig{
-          .output_channel_count = 4,
-          .substream_count = 4,
-          .coupled_substream_count = 0,
-          .demixing_matrix = kNegativeEpsilonIdentityFoa}};
+      .ambisonics_config = *ambisonics_projection_config_identity_inverse};
+
   const std::vector<DecodedUleb128> kFirstOrderAudioSubstreamIds = {0, 1, 2, 3};
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {
       {0, {kA0}}, {1, {kA1}}, {2, {kA2}}, {3, {kA3}}};

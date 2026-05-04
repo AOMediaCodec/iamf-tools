@@ -24,6 +24,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/types.h"
 #include "obr/audio_buffer/audio_buffer.h"
@@ -95,15 +96,15 @@ class AudioElementRendererBinaural : public AudioElementRendererBase {
   /*!\brief Constructor.
    *
    * \param ordered_labels Ordered list of channel labels to render.
-   * \param demixing_matrix Pointer to a demixing matrix used to project
-   *        input samples. Only used when rendering inputs in ambisonics mono
-   *        mode. Pass in `nullptr` otherwise.
+   * \param demixing_matrix Demixing matrix used to project input samples.
+   *     Only active when rendering inputs in ambisonics projection mode. Pass
+   *     in `std::nullopt` otherwise.
    * \param obr Instance of an OBR renderer.
    * \param num_samples_per_frame Number of samples per frame.
    */
   AudioElementRendererBinaural(
       const std::vector<ChannelLabel::Label>& ordered_labels,
-      const std::vector<int16_t>* demixing_matrix,
+      std::optional<absl::Span<const int16_t>> demixing_matrix,
       std::unique_ptr<obr::ObrImpl> obr, size_t num_samples_per_frame);
 
   /*!\brief Renders samples.
