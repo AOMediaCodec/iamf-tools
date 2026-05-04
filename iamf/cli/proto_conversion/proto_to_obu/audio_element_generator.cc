@@ -419,7 +419,6 @@ absl::StatusOr<AudioElementWithData> CreateChannelBasedAudioElementWithData(
 //                    not needed, or are checked at OBU creation.
 absl::StatusOr<AmbisonicsMonoConfig> GetAmbisonicsMonoConfig(
     DecodedUleb128 audio_element_id_for_debugging,
-    DecodedUleb128 num_substreams_in_obu,
     const iamf_tools_cli_proto::AmbisonicsConfig& input_config) {
   if (!input_config.has_ambisonics_mono_config()) {
     return InvalidArgumentError(
@@ -428,7 +427,6 @@ absl::StatusOr<AmbisonicsMonoConfig> GetAmbisonicsMonoConfig(
                "`ambisonics_mono_config` field."));
   }
   const auto& input_mono_config = input_config.ambisonics_mono_config();
-  AmbisonicsMonoConfig mono_config;
   if (input_mono_config.channel_mapping_size() !=
       input_mono_config.output_channel_count()) {
     return InvalidArgumentError(StrCat(
@@ -438,22 +436,19 @@ absl::StatusOr<AmbisonicsMonoConfig> GetAmbisonicsMonoConfig(
         input_mono_config.channel_mapping_size(), " elements."));
   }
   // Set output channel count, etc.
+  uint8_t output_channel_count;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "AmbisonicsMonoConfig.output_channel_count",
-      input_mono_config.output_channel_count(),
-      mono_config.output_channel_count));
+      input_mono_config.output_channel_count(), output_channel_count));
+  uint8_t substream_count;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "AmbisonicsMonoConfig.substream_count",
-      input_mono_config.substream_count(), mono_config.substream_count));
-  mono_config.channel_mapping.resize(input_mono_config.channel_mapping_size());
+      input_mono_config.substream_count(), substream_count));
+  std::vector<uint8_t> channel_mapping(output_channel_count);
   RETURN_IF_NOT_OK(StaticCastSpanIfInRange<uint32_t, uint8_t>(
       "AmbisonicsMonoConfig.channel_mapping",
-      input_mono_config.channel_mapping(),
-      MakeSpan(mono_config.channel_mapping)));
-  // Validate the mono config. This ensures no substream indices should be out
-  // of bounds.
-  RETURN_IF_NOT_OK(mono_config.Validate());
-  return mono_config;
+      input_mono_config.channel_mapping(), MakeSpan(channel_mapping)));
+  return AmbisonicsMonoConfig::Create(substream_count, channel_mapping);
 }
 
 // TODO(b/456734866): Simplify `GetAmbisonicsProjectionConfig`. Some fields are
@@ -510,8 +505,7 @@ absl::StatusOr<AudioElementWithData> CreateAmbisonicsMonoAudioElementWithData(
     const CodecConfigObu& codec_config_obu) {
   const auto& input_config = audio_element_metadata.ambisonics_config();
   auto mono_config = GetAmbisonicsMonoConfig(
-      audio_element_metadata.audio_element_id(),
-      audio_element_metadata.audio_substream_ids_size(), input_config);
+      audio_element_metadata.audio_element_id(), input_config);
   if (!mono_config.ok()) {
     return mono_config.status();
   }
@@ -523,7 +517,7 @@ absl::StatusOr<AudioElementWithData> CreateAmbisonicsMonoAudioElementWithData(
           audio_element_metadata.reserved(),
           audio_element_metadata.codec_config_id(),
           audio_element_metadata.audio_substream_ids(),
-          mono_config->channel_mapping);
+          mono_config->GetChannelMappingView());
 
   if (!obu.ok()) {
     return obu.status();

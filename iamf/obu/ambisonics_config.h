@@ -18,14 +18,21 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
-/*!\brief Configuration for mono-coded Ambisonics. */
-struct AmbisonicsMonoConfig {
+/*!\brief Configuration for mono-coded Ambisonics.
+ *
+ * Invariant: this class and its utility functions always are consistent with
+ * the constraints in the IAMF spec.
+ */
+class AmbisonicsMonoConfig {
+ public:
   // RFC 8486 reserves 255 to signal an inactive ACN (ambisonics channel
   // number).
   static constexpr uint8_t kInactiveAmbisonicsChannelNumber = 255;
@@ -33,20 +40,77 @@ struct AmbisonicsMonoConfig {
   friend bool operator==(const AmbisonicsMonoConfig& lhs,
                          const AmbisonicsMonoConfig& rhs) = default;
 
-  /*!\brief Validates the configuration.
+  /*!\brief Default constructor for help when held in an `std::variant`.
    *
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * Initializes in a valid state for zeroth order Ambisonics.
    */
-  absl::Status Validate() const;
+  [[deprecated("Use Create() instead.")]]
+  AmbisonicsMonoConfig()
+      : AmbisonicsMonoConfig(1, {0}) {}
 
-  uint8_t output_channel_count;  // (C).
-  uint8_t substream_count;       // (N).
+  /*!\brief Creates an `AmbisonicsMonoConfig` and validates its settings.
+   *
+   * \param substream_count `substream_count` (N).
+   * \param channel_mapping `channel_mapping`. Size implies
+   *     `output_channel_count` (C).
+   * \return Config or a specific status on failure.
+   */
+  static absl::StatusOr<AmbisonicsMonoConfig> Create(
+      uint8_t substream_count, absl::Span<const uint8_t> channel_mapping);
+
+  /*!\brief Creates an `AmbisonicsMonoConfig` from a buffer and validates its
+   * settings.
+   *
+   * \param rb Buffer from which to read variables.
+   * \return Config or a specific status on failure.
+   */
+  static absl::StatusOr<AmbisonicsMonoConfig> CreateFromBuffer(
+      ReadBitBuffer& rb);
+
+  /*!\brief Gets the number of output channels in the configuration.
+   *
+   * \return Number of output channels.
+   */
+  uint8_t GetOutputChannelCount() const {
+    return static_cast<uint8_t>(channel_mapping_.size());
+  }
+
+  /*!\brief Gets the number of substreams in the configuration.
+   *
+   * \return Number of substreams.
+   */
+  uint8_t GetSubstreamCount() const { return substream_count_; }
+
+  /*!\brief Gets a read-only view of the channel mapping.
+   *
+   * The index in the returned span is the Ambisonics Channel Number (ACN). The
+   * value represents the substream indices. A value of
+   * `kInactiveAmbisonicsChannelNumber` implies that the ACN is dropped.
+   *
+   * \return Span of channel mapping indices.
+   */
+  absl::Span<const uint8_t> GetChannelMappingView() const {
+    return absl::MakeConstSpan(channel_mapping_);
+  }
+
+ private:
+  /*!\brief Constructor for use by `Create()`.
+   *
+   * \param substream_count `substream_count` (N).
+   * \param channel_mapping `channel_mapping`. Size implies
+   *     `output_channel_count` (C).
+   */
+  AmbisonicsMonoConfig(uint8_t substream_count,
+                       absl::Span<const uint8_t> channel_mapping);
+
+  // `output_channel_count` is inferred from the size of the `channel_mapping`.
+  uint8_t substream_count_;  // (N).
 
   // Vector of length (C).
-  std::vector<uint8_t> channel_mapping;
+  std::vector<uint8_t> channel_mapping_;
 };
 
-/*!\brief Configuration for projection-coded Ambisonics. */
+/*!\brief Configuration on-coded Ambisonics. */
 struct AmbisonicsProjectionConfig {
   friend bool operator==(const AmbisonicsProjectionConfig& lhs,
                          const AmbisonicsProjectionConfig& rhs) = default;
@@ -109,6 +173,12 @@ struct AmbisonicsConfig {
 
   /*!\brief Prints logging information about the configuration. */
   void Print() const;
+
+  /*!\brief Gets the number of output channels in the configuration.
+   *
+   * \return Number of output channels.
+   */
+  uint8_t GetOutputChannelCount() const;
 
   /*!\brief Gets the number of substreams in the configuration.
    *

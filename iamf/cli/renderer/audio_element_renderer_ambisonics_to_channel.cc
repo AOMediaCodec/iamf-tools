@@ -47,16 +47,7 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
     ABSL_LOG(ERROR) << "Unsupported ambisonics mode. mode= " << mode;
     return nullptr;
   }
-  const bool is_mono = mode == AmbisonicsConfig::kAmbisonicsModeMono;
 
-  // Input key for ambisonics is "A{ambisonics_order}".
-  const int output_channel_count =
-      is_mono
-          ? std::get<AmbisonicsMonoConfig>(ambisonics_config.ambisonics_config)
-                .output_channel_count
-          : std::get<AmbisonicsProjectionConfig>(
-                ambisonics_config.ambisonics_config)
-                .output_channel_count;
   std::vector<ChannelLabel::Label> channel_labels;
   if (const auto status =
           GetChannelLabelsForAmbisonics(ambisonics_config, audio_substream_ids,
@@ -73,8 +64,9 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
   }
 
   int ambisonics_order = 0;
-  if (const auto status =
-          GetAmbisonicsOrder(output_channel_count, ambisonics_order);
+  // Input key for ambisonics is "A{ambisonics_order}".
+  if (const auto status = GetAmbisonicsOrder(
+          ambisonics_config.GetOutputChannelCount(), ambisonics_order);
       !status.ok()) {
     ABSL_LOG(ERROR) << status;
     return nullptr;

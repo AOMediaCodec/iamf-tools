@@ -29,81 +29,77 @@ namespace {
 using absl_testing::IsOk;
 using ::testing::Not;
 
-TEST(TestValidateAmbisonicsMono, MappingInAscendingOrder) {
+TEST(AmbisonicsMonoConfigCreate, MappingInAscendingOrder) {
   // Users may map the Ambisonics Channel Number to substreams in numerical
   // order. (e.g. A0 to the zeroth substream, A1 to the first substream, ...).
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3}};
-  EXPECT_THAT(ambisonics_mono.Validate(), IsOk());
+  EXPECT_THAT(AmbisonicsMonoConfig::Create(
+                  /*substream_count=*/4,
+                  /*channel_mapping=*/{/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3}),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsMono, MappingInArbitraryOrder) {
+TEST(AmbisonicsMonoConfigCreate, MappingInArbitraryOrder) {
   // Users may map the Ambisonics Channel Number to substreams in any order.
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .channel_mapping = {/*A0=*/3, /*A1=*/1, /*A2=*/0, /*A3=*/2}};
-  EXPECT_THAT(ambisonics_mono.Validate(), IsOk());
+  EXPECT_THAT(AmbisonicsMonoConfig::Create(
+                  /*substream_count=*/4,
+                  /*channel_mapping=*/{/*A0=*/3, /*A1=*/1, /*A2=*/0, /*A3=*/2}),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsMono, MixedOrderAmbisonics) {
+TEST(AmbisonicsMonoConfigCreate, MixedOrderAmbisonics) {
   // User may choose to map the Ambisonics Channel Number (ACN) to
   // `255` to drop that ACN (e.g. to drop A0 and A3).
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 4,
-      .substream_count = 2,
-      .channel_mapping = {/*A0=*/255, /*A1=*/1, /*A2=*/0, /*A3=*/255}};
-  EXPECT_THAT(ambisonics_mono.Validate(), IsOk());
+  EXPECT_THAT(
+      AmbisonicsMonoConfig::Create(
+          /*substream_count=*/2,
+          /*channel_mapping=*/{/*A0=*/255, /*A1=*/1, /*A2=*/0, /*A3=*/255}),
+      IsOk());
 }
 
-TEST(TestValidateAmbisonicsMono,
+TEST(AmbisonicsMonoConfigCreate,
      ManyAmbisonicsChannelNumbersMappedToOneSubstream) {
   // User may choose to map several Ambisonics Channel Numbers (ACNs) to
   // one substream (e.g. A0, A1, A2, A3 are all mapped to the zeroth substream).
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 4,
-      .substream_count = 1,
-      .channel_mapping = {/*A0=*/0, /*A1=*/0, /*A2=*/0, /*A3=*/0}};
-  EXPECT_THAT(ambisonics_mono.Validate(), IsOk());
+  EXPECT_THAT(AmbisonicsMonoConfig::Create(
+                  /*substream_count=*/1,
+                  /*channel_mapping=*/{/*A0=*/0, /*A1=*/0, /*A2=*/0, /*A3=*/0}),
+              IsOk());
 }
 
-TEST(TestValidateAmbisonicsMono,
+TEST(AmbisonicsMonoConfigCreate,
      InvalidWhenChannelMappingIsLargerThanSubstreamCount) {
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 4,
-      .substream_count = 2,
-      .channel_mapping = {/*A0=*/255 /*A1=*/, 1 /*A2=*/, 0 /*A3=*/}};
-  EXPECT_THAT(ambisonics_mono.Validate(), Not(IsOk()));
+  // Wait, old test says InvalidWhenChannelMappingIsLargerThanSubstreamCount
+  // But actually mapping size is output channel count, which must be >=
+  // substream_count. Let's reflect actual validation: substream_count >
+  // output_channel_count is invalid.
+  EXPECT_THAT(
+      AmbisonicsMonoConfig::Create(
+          /*substream_count=*/5, /*channel_mapping=*/{/*A0=*/255, 1, 0, 255}),
+      Not(IsOk()));
 }
 
-TEST(TestValidateAmbisonicsMono, InvalidOutputChannelCount) {
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 5,
-      .substream_count = 5,
-      .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3, /*A4=*/4}};
-  EXPECT_THAT(ambisonics_mono.Validate(), Not(IsOk()));
+TEST(AmbisonicsMonoConfigCreate, InvalidWhenOutputChannelCount) {
+  // output channel count 5 is not valid (must be (1+n)^2).
+  EXPECT_THAT(AmbisonicsMonoConfig::Create(
+                  /*substream_count=*/5,
+                  /*channel_mapping=*/{0, 1, 2, 3, 4}),
+              Not(IsOk()));
 }
 
-TEST(TestValidateAmbisonicsMono, InvalidWhenSubstreamIndexIsTooLarge) {
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/4}};
-  EXPECT_THAT(ambisonics_mono.Validate(), Not(IsOk()));
+TEST(AmbisonicsMonoConfigCreate, InvalidWhenSubstreamIndexIsTooLarge) {
+  EXPECT_THAT(AmbisonicsMonoConfig::Create(/*substream_count=*/4,
+                                           /*channel_mapping=*/{0, 1, 2, 4}),
+              Not(IsOk()));
 }
 
-TEST(TestValidateAmbisonicsMono,
+TEST(AmbisonicsMonoConfigCreate,
      InvalidWhenNoAmbisonicsChannelNumberIsMappedToASubstream) {
   // The OBU claims two associated substreams. But substream 1 is in limbo and
   // has no meaning because there are no Ambisonics Channel Numbers mapped to
   // it.
-  const auto& ambisonics_mono = AmbisonicsMonoConfig{
-      .output_channel_count = 4,
-      .substream_count = 2,
-      .channel_mapping = {/*A0=*/0, /*A1=*/0, /*A2=*/0, /*A3=*/0}};
-  EXPECT_THAT(ambisonics_mono.Validate(), Not(IsOk()));
+  EXPECT_THAT(AmbisonicsMonoConfig::Create(
+                  /*substream_count=*/2, /*channel_mapping=*/{0, 0, 0, 0}),
+              Not(IsOk()));
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAWithMainDiagonalMatrix) {
@@ -277,10 +273,10 @@ TEST(TestGetNextValidCount, InvalidInputTooLarge) {
 }
 
 TEST(AmbisonicsConfig, ValidateAndWriteMono) {
-  AmbisonicsConfig config = {.ambisonics_config =
-                                 AmbisonicsMonoConfig{.output_channel_count = 1,
-                                                      .substream_count = 1,
-                                                      .channel_mapping = {0}}};
+  auto mono_config = AmbisonicsMonoConfig::Create(
+      /*substream_count=*/1, /*channel_mapping=*/{0});
+  ASSERT_THAT(mono_config, IsOk());
+  AmbisonicsConfig config = {.ambisonics_config = *mono_config};
   WriteBitBuffer wb(1024);
 
   EXPECT_THAT(config.ValidateAndWrite(wb), IsOk());

@@ -18,7 +18,6 @@
 #include <memory>
 #include <optional>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -37,6 +36,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/types.h"
 #include "obr/audio_buffer/audio_buffer.h"
@@ -85,9 +85,7 @@ LookupObrAudioElementTypeFromLoudspeakerLayout(
 absl::StatusOr<obr::AudioElementType>
 GetObrAudioElementTypeFromAmbisonicsConfig(
     const AmbisonicsConfig& ambisonics_config) {
-  const auto output_channel_count = std::visit(
-      [](const auto& config) -> uint8_t { return config.output_channel_count; },
-      ambisonics_config.ambisonics_config);
+  const auto output_channel_count = ambisonics_config.GetOutputChannelCount();
 
   int ambisonics_order = 0;
   RETURN_IF_NOT_OK(GetAmbisonicsOrder(output_channel_count, ambisonics_order));

@@ -103,13 +103,13 @@ struct GetChannelLabelsFromAmbisonicsMonoConfig {
           "Expected mode == `kAmbisonicsModeMono` for AmbisonicsMonoConfig");
     }
 
-    RETURN_IF_NOT_OK(config.Validate());
-    RETURN_IF_NOT_OK(ValidateEqual<size_t>(config.substream_count,
+    RETURN_IF_NOT_OK(ValidateEqual<size_t>(config.GetSubstreamCount(),
                                            audio_substream_ids_.size(),
                                            "audio_substream_ids_.size()"));
-    channel_labels_.resize(config.output_channel_count);
+    absl::Span<const uint8_t> channel_mapping = config.GetChannelMappingView();
+    channel_labels_.resize(channel_mapping.size());
     for (size_t i = 0; i < channel_labels_.size(); ++i) {
-      const uint8_t substream_id_index = config.channel_mapping[i];
+      const uint8_t substream_id_index = channel_mapping[i];
       if (substream_id_index ==
           AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber) {
         // Mixed-order ambisonics representation: this channel is missing.

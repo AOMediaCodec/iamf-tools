@@ -220,16 +220,8 @@ absl::Status RenderAmbisonicsToLoudspeakers(
   const bool is_mono = mode == AmbisonicsConfig::kAmbisonicsModeMono;
 
   // Input key for ambisonics is "A{ambisonics_order}".
-  const uint8_t output_channel_count =
-      is_mono
-          ? std::get<AmbisonicsMonoConfig>(ambisonics_config.ambisonics_config)
-                .output_channel_count
-          : std::get<AmbisonicsProjectionConfig>(
-                ambisonics_config.ambisonics_config)
-                .output_channel_count;
-
-  RETURN_IF_NOT_OK(
-      ValidateContainerSizeEqual("gains", gains, output_channel_count));
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+      "gains", gains, ambisonics_config.GetOutputChannelCount()));
 
   RETURN_IF_NOT_OK(RenderSamplesUsingGains(
       input_samples, gains,

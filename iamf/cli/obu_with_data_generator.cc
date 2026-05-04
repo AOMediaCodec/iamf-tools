@@ -504,10 +504,10 @@ absl::Status FinalizeAmbisonicsMonoConfig(
   // Fill `substream_id_to_labels`. `channel_mapping` encodes the mapping of
   // Ambisonics Channel Number (ACN) to substream index.
   for (size_t ambisonics_channel_number = 0;
-       ambisonics_channel_number < mono_config.channel_mapping.size();
+       ambisonics_channel_number < mono_config.GetChannelMappingView().size();
        ++ambisonics_channel_number) {
     const uint8_t obu_substream_index =
-        mono_config.channel_mapping[ambisonics_channel_number];
+        mono_config.GetChannelMappingView()[ambisonics_channel_number];
     if (obu_substream_index ==
         AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber) {
       ABSL_LOG(INFO) << "Detected mixed-order ambisonics with  A"

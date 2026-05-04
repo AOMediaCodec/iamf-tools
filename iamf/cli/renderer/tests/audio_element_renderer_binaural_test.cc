@@ -13,6 +13,7 @@
 #include "iamf/cli/renderer/audio_element_renderer_binaural.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
@@ -21,6 +22,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/types.h"
 
@@ -106,21 +108,23 @@ TEST_P(MixedOrderAmbisonicsMonoTest, CreationSucceeds) {
   audio_substream_ids.erase(audio_substream_ids.begin() + kMissingChannelIndex);
   substream_id_to_labels.erase(kSubstreamIdToRemove);
 
-  // Copy and rewrite the ambisonics mono config.
-  auto ambisonics_mono_config =
-      std::get<AmbisonicsMonoConfig>(ambisonics_config.ambisonics_config);
-
-  // Decrease the total substream count.
-  ambisonics_mono_config.substream_count--;
-
-  // Modify the channel mapping: now that there are one-fewer substreams,
+  // Copy and rewrite the ambisonics mono config dynamically.
+  const auto& original_channel_mapping =
+      std::get<AmbisonicsMonoConfig>(ambisonics_config.ambisonics_config)
+          .GetChannelMappingView();
+  std::vector<uint8_t> channel_mapping(original_channel_mapping.begin(),
+                                       original_channel_mapping.end());
+  // Modify the channel mapping: now that there is one-fewer substream,
   // remove the last element (corresponding to the last substream index) and
   // insert the inactive channel number at position `kMissingChannelIndex`.
-  ambisonics_mono_config.channel_mapping.pop_back();
-  ambisonics_mono_config.channel_mapping.insert(
-      ambisonics_mono_config.channel_mapping.begin() + kMissingChannelIndex,
+  channel_mapping.pop_back();
+  channel_mapping.insert(
+      channel_mapping.begin() + kMissingChannelIndex,
       AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber);
-  ambisonics_config.ambisonics_config = ambisonics_mono_config;
+
+  ambisonics_config.ambisonics_config = *AmbisonicsMonoConfig::Create(
+      /*substream_count=*/static_cast<uint8_t>(audio_substream_ids.size()),
+      channel_mapping);
 
   // Create and expect non-null.
   EXPECT_NE(AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
@@ -174,7 +178,7 @@ TEST_P(MixedOrderAmbisonicsProjectionTest, CreationSucceeds) {
   substream_id_to_labels.erase(kSubstreamIdToRemove);
 
   // Copy and rewrite the ambisonics projection config.
-  auto ambisonics_projection_config =
+  auto& ambisonics_projection_config =
       std::get<AmbisonicsProjectionConfig>(ambisonics_config.ambisonics_config);
 
   // Decrease the total substream count.
@@ -187,7 +191,6 @@ TEST_P(MixedOrderAmbisonicsProjectionTest, CreationSucceeds) {
       kMissingChannelIndex * column_height;
   ambisonics_projection_config.demixing_matrix.erase(
       column_iter_first, column_iter_first + column_height);
-  ambisonics_config.ambisonics_config = ambisonics_projection_config;
 
   // Create and expect non-null.
   EXPECT_NE(AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
@@ -362,21 +365,23 @@ TEST(RenderLabeledFrame, RendersMixedOrderFoaMonoToBinaural) {
   audio_substream_ids.erase(audio_substream_ids.begin() + kMissingChannelIndex);
   substream_id_to_labels.erase(kSubstreamIdToRemove);
 
-  // Copy and rewrite the ambisonics mono config.
-  auto ambisonics_mono_config =
-      std::get<AmbisonicsMonoConfig>(ambisonics_config.ambisonics_config);
-
-  // Decrease the total substream count.
-  ambisonics_mono_config.substream_count--;
-
-  // Modify the channel mapping: now that there are one-fewer substreams,
+  // Copy and rewrite the ambisonics mono config dynamically.
+  const auto& original_channel_mapping =
+      std::get<AmbisonicsMonoConfig>(ambisonics_config.ambisonics_config)
+          .GetChannelMappingView();
+  std::vector<uint8_t> channel_mapping(original_channel_mapping.begin(),
+                                       original_channel_mapping.end());
+  // Modify the channel mapping: now that there is one-fewer substream,
   // remove the last element (corresponding to the last substream index) and
   // insert the inactive channel number at position `kMissingChannelIndex`.
-  ambisonics_mono_config.channel_mapping.pop_back();
-  ambisonics_mono_config.channel_mapping.insert(
-      ambisonics_mono_config.channel_mapping.begin() + kMissingChannelIndex,
+  channel_mapping.pop_back();
+  channel_mapping.insert(
+      channel_mapping.begin() + kMissingChannelIndex,
       AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber);
-  ambisonics_config.ambisonics_config = ambisonics_mono_config;
+
+  ambisonics_config.ambisonics_config = *AmbisonicsMonoConfig::Create(
+      /*substream_count=*/static_cast<uint8_t>(audio_substream_ids.size()),
+      channel_mapping);
 
   // Create and expect non-null.
   auto renderer = AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
@@ -449,7 +454,7 @@ TEST(RenderLabeledFrame, RendersMixedOrderFoaProjectionToBinaural) {
   substream_id_to_labels.erase(kSubstreamIdToRemove);
 
   // Copy and rewrite the ambisonics projection config.
-  auto ambisonics_projection_config =
+  auto& ambisonics_projection_config =
       std::get<AmbisonicsProjectionConfig>(ambisonics_config.ambisonics_config);
 
   // Decrease the total substream count.
@@ -462,7 +467,6 @@ TEST(RenderLabeledFrame, RendersMixedOrderFoaProjectionToBinaural) {
       kMissingChannelIndex * column_height;
   ambisonics_projection_config.demixing_matrix.erase(
       column_iter_first, column_iter_first + column_height);
-  ambisonics_config.ambisonics_config = ambisonics_projection_config;
 
   // Create and expect non-null.
   auto renderer = AudioElementRendererBinaural::CreateFromAmbisonicsConfig(

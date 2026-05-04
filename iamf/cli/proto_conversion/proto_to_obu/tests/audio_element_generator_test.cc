@@ -470,9 +470,10 @@ TEST(Generate, GeneratesFirstOrderAmbisonics) {
   const auto* ambisonics_mono_config =
       std::get_if<AmbisonicsMonoConfig>(&ambisonics_config.ambisonics_config);
   ASSERT_NE(ambisonics_mono_config, nullptr);
-  EXPECT_EQ(ambisonics_mono_config->output_channel_count, 4);
-  EXPECT_EQ(ambisonics_mono_config->substream_count, 4);
-  EXPECT_THAT(ambisonics_mono_config->channel_mapping, ElementsAre(0, 1, 2, 3));
+  EXPECT_EQ(ambisonics_mono_config->GetOutputChannelCount(), 4);
+  EXPECT_EQ(ambisonics_mono_config->GetSubstreamCount(), 4);
+  EXPECT_THAT(ambisonics_mono_config->GetChannelMappingView(),
+              ElementsAre(0, 1, 2, 3));
 }
 
 TEST(Generate, FirstOrderMonoAmbisonicsLargeSubstreamIds) {

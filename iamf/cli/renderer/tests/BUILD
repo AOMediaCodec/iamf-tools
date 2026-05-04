@@ -43,6 +43,7 @@ cc_test(
         "//iamf/cli:channel_label",
         "//iamf/cli/renderer:audio_element_renderer_binaural",
         "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:ambisonics_config",
         "//iamf/obu:audio_element",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",

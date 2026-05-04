@@ -24,6 +24,7 @@
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/ambisonics_config.h"
@@ -395,16 +396,18 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForMonoAmbisonics(
     DecodedUleb128 codec_config_id,
     absl::Span<const DecodedUleb128> audio_substream_ids,
     absl::Span<const uint8_t> channel_mapping) {
-  AmbisonicsMonoConfig mono_config = {
-      .output_channel_count = static_cast<uint8_t>(channel_mapping.size()),
-      // The number of substreams must equal to the number of audio substream
-      // IDs.
-      .substream_count = static_cast<uint8_t>(audio_substream_ids.size()),
-      .channel_mapping = {channel_mapping.begin(), channel_mapping.end()}};
-  RETURN_IF_NOT_OK(mono_config.Validate());
+  // The number of substreams must equal to the number of audio substream IDs.
+  uint8_t num_substreams;
+  RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
+      "Audio substream count", audio_substream_ids.size(), num_substreams));
+  absl::StatusOr<AmbisonicsMonoConfig> mono_config =
+      AmbisonicsMonoConfig::Create(num_substreams, channel_mapping);
+  if (!mono_config.ok()) {
+    return mono_config.status();
+  }
   return AudioElementObu(header, audio_element_id, kAudioElementSceneBased,
                          reserved, codec_config_id, audio_substream_ids,
-                         AmbisonicsConfig{.ambisonics_config = mono_config});
+                         AmbisonicsConfig{.ambisonics_config = *mono_config});
 }
 
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateForProjectionAmbisonics(

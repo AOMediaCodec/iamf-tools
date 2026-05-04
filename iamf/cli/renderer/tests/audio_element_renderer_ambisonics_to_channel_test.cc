@@ -17,6 +17,7 @@
 #include <limits>
 #include <vector>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
@@ -28,6 +29,8 @@
 #include "iamf/obu/types.h"
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 using enum ChannelLabel::Label;
 
@@ -158,11 +161,13 @@ TEST(CreateFromAmbisonicsConfig, DoesNotSupportBinauralOutput) {
 // =========== Mixed-order ambisonics mono config ===========
 
 TEST(CreateFromAmbisonicsConfig, SupportsMixedFirstOrderAmbisonics) {
+  auto mono_config = AmbisonicsMonoConfig::Create(
+      /*substream_count=*/3,
+      /*channel_mapping=*/{
+          0, AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber, 1, 2});
+  ASSERT_THAT(mono_config, IsOk());
   const AmbisonicsConfig kMixedFirstOrderAmbisonicsConfig = {
-      .ambisonics_config =
-          AmbisonicsMonoConfig{.output_channel_count = 4,
-                               .substream_count = 3,
-                               .channel_mapping = {0, 255, 1, 2}}};
+      .ambisonics_config = *mono_config};
   const std::vector<DecodedUleb128> kMixedFirstOrderAudioSubstreamIds = {0, 1,
                                                                          2};
   const SubstreamIdLabelsMap kMixedFirstOrderSubstreamIdToLabels = {

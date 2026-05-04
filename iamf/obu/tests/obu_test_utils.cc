@@ -31,11 +31,8 @@ AmbisonicsConfig MakeFullOrderAmbisonicsMonoConfig(int order) {
   std::vector<uint8_t> channel_mapping(channel_count);
   std::iota(channel_mapping.begin(), channel_mapping.end(), 0);
 
-  return AmbisonicsConfig{
-      .ambisonics_config = AmbisonicsMonoConfig{
-          .output_channel_count = static_cast<uint8_t>(channel_count),
-          .substream_count = static_cast<uint8_t>(channel_count),
-          .channel_mapping = channel_mapping}};
+  return AmbisonicsConfig{.ambisonics_config = *AmbisonicsMonoConfig::Create(
+                              channel_count, channel_mapping)};
 }
 
 }  // namespace iamf_tools

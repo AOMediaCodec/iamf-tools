@@ -486,12 +486,11 @@ TEST(GetChannelLabelsForAmbisonicsTest, MixedFirstOrderAmbisonicsMono) {
   // Only 3 substreams provided for a total of 4 channels; missing channel
   // index = 1.
   const AmbisonicsConfig kMixedFirstOrderAmbisonicsConfig = {
-      .ambisonics_config = AmbisonicsMonoConfig{
-          .output_channel_count = 4,
-          .substream_count = 3,
-          .channel_mapping = {
+      .ambisonics_config = *AmbisonicsMonoConfig::Create(
+          /*substream_count=*/3,
+          /*channel_mapping=*/{
               0, AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber, 1,
-              2}}};
+              2})};
   const std::vector<DecodedUleb128> kMixedFirstOrderAudioSubstreamIds = {
       100, 102, 103};
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {

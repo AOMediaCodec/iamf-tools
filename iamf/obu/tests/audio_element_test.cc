@@ -16,6 +16,7 @@
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <variant>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
@@ -40,6 +41,7 @@ namespace iamf_tools {
 namespace {
 
 using absl_testing::IsOk;
+using ::testing::ElementsAre;
 using ::testing::Not;
 
 using absl::MakeConstSpan;
@@ -2091,14 +2093,17 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
             AudioElementObu::kAudioElementSceneBased);
   EXPECT_EQ(obu.value().GetNumSubstreams(), 4);
 
-  AmbisonicsMonoConfig expected_ambisonics_mono_config = {
-      .output_channel_count = 4,
-      .substream_count = 4,
-      .channel_mapping = {0, 1, 2, 3}};
-  AmbisonicsConfig expected_ambisonics_config = {
-      .ambisonics_config = expected_ambisonics_mono_config};
-  EXPECT_EQ(std::get<AmbisonicsConfig>(obu.value().config_),
-            expected_ambisonics_config);
+  const auto* actual_ambisonics_config =
+      std::get_if<AmbisonicsConfig>(&obu->config_);
+  ASSERT_NE(actual_ambisonics_config, nullptr);
+  EXPECT_EQ(actual_ambisonics_config->GetAmbisonicsMode(),
+            AmbisonicsConfig::kAmbisonicsModeMono);
+  const auto* actual_mono_config = std::get_if<AmbisonicsMonoConfig>(
+      &actual_ambisonics_config->ambisonics_config);
+  EXPECT_EQ(actual_mono_config->GetSubstreamCount(), 4);
+  EXPECT_EQ(actual_mono_config->GetOutputChannelCount(), 4);
+  EXPECT_THAT(actual_mono_config->GetChannelMappingView(),
+              ElementsAre(0, 1, 2, 3));
 }
 
 TEST(CreateFromBuffer, InvalidObjectConfigSizeZero) {
