@@ -11,14 +11,13 @@
  */
 #include "iamf/cli/renderer/gains/precomputed_compressed_gains.h"
 
-#include <cstddef>
 #include <cstdint>
 
 #include "absl/types/span.h"
 
 namespace iamf_tools {
 
-// Generated on Thu Apr 30 17:03:44 2026, GMT
+// Generated on Fri May  1 21:31:51 2026, GMT
 static constexpr float kDense_0[] = {0.707107, 0.707107};
 static constexpr uint8_t kSparse_1[] = {1, 2, 6};
 static constexpr uint8_t kSparse_2[] = {1, 2, 6};
