@@ -16,6 +16,7 @@ cc_test(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "//iamf/obu/tests:obu_test_utils",
+        "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
     ],
 )
