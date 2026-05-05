@@ -17,10 +17,9 @@
 #include <string>
 #include <vector>
 
-#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "fuzztest/fuzztest.h"
-#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 // [internal] Placeholder for FLAC fuzzing include.
 #include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/cli/tests/iamf_status_adl.h"
@@ -30,7 +29,6 @@
 namespace iamf_tools {
 namespace {
 
-using ::absl_testing::IsOk;
 using api::OutputLayout;
 using ::fuzztest::Arbitrary;
 using ::fuzztest::ElementOf;
@@ -63,10 +61,9 @@ void OutputAllTemporalUnits(api::IamfDecoder& iamf_decoder) {
   const int bytes_per_sample =
       GetBytesPerSample(iamf_decoder.GetOutputSampleType());
   uint32_t frame_size;
-  ASSERT_THAT(iamf_decoder.GetFrameSize(frame_size), IsOk());
+  ASSERT_TRUE(iamf_decoder.GetFrameSize(frame_size).ok());
   int num_output_channels;
-  ASSERT_THAT(iamf_decoder.GetNumberOfOutputChannels(num_output_channels),
-              IsOk());
+  ASSERT_TRUE(iamf_decoder.GetNumberOfOutputChannels(num_output_channels).ok());
   // Extract and throw away all temporal units.
   std::vector<uint8_t> output_buffer(bytes_per_sample * frame_size *
                                      num_output_channels);
@@ -81,8 +78,8 @@ void DoesNotDieWithBasicDecode(const std::string& data) {
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
   const api::IamfDecoder::Settings kStereoLayoutSettings = {
       .requested_mix = {.output_layout = kStereoLayout}};
-  ASSERT_THAT(api::IamfDecoder::Create(kStereoLayoutSettings, iamf_decoder),
-              IsOk());
+  ASSERT_TRUE(
+      api::IamfDecoder::Create(kStereoLayoutSettings, iamf_decoder).ok());
 
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   auto decode_status = iamf_decoder->Decode(bitstream.data(), bitstream.size());
@@ -161,7 +158,7 @@ void DoesNotDieAllParams(std::optional<api::OutputLayout> output_layout,
       .channel_ordering = channel_ordering,
       .requested_output_sample_type = output_sample_type,
   };
-  ASSERT_THAT(api::IamfDecoder::Create(kSettings, iamf_decoder), IsOk());
+  ASSERT_TRUE(api::IamfDecoder::Create(kSettings, iamf_decoder).ok());
 
   auto unused_decode_status =
       iamf_decoder->Decode(bitstream.data(), bitstream.size());

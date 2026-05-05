@@ -19,7 +19,6 @@ cc_test(
         "//iamf/cli/tests:iamf_status_adl",
         "//iamf/cli/tests/portable:get_test_path",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
-        "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
         "@fuzztest//fuzztest",
         "@googletest//:gtest_main",
