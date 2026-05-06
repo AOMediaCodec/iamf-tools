@@ -36,7 +36,7 @@ class DecoderBase {
               uint32_t num_samples_per_channel)
       : channel_count_(channel_count),
         num_samples_per_channel_(num_samples_per_channel) {
-    decoded_samples_.reserve(num_samples_per_channel_);
+    decoded_samples_.reserve(channel_count_.num_channels());
   }
 
   /*!\brief Destructor.
