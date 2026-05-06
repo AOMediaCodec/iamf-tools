@@ -587,7 +587,8 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
           std::get<ScalableChannelLayoutConfig>(config_), GetNumSubstreams(),
           rb);
     case kAudioElementSceneBased: {
-      config_ = AmbisonicsConfig();
+      config_ = AmbisonicsConfig{.ambisonics_config =
+                                     *AmbisonicsMonoConfig::Create(1, {0})};
       auto& ambisonics_config = std::get<AmbisonicsConfig>(config_);
       RETURN_IF_NOT_OK(ambisonics_config.ReadAndValidate(rb));
       RETURN_IF_NOT_OK(ValidateEqual<DecodedUleb128>(
