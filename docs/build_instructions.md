@@ -18,7 +18,7 @@ Windows requires some additional prerequisites:
 
 -   MSYS32: See [msys2.org](https://www.msys2.org/) for installation
     instructions.
--   MSCV: Follow Bazel's
+-   MSVC: Follow Bazel's
     [Build on Windows](https://bazel.build/configure/windows) for installation
     instructions.
 -   Address
