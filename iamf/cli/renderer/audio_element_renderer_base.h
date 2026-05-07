@@ -66,7 +66,7 @@ class AudioElementRendererBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status Finalize() {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     is_finalized_ = true;
     return absl::OkStatus();
   }
@@ -79,7 +79,7 @@ class AudioElementRendererBase {
    * \return `true` if the render is finalized. `false` otherwise.
    */
   virtual bool IsFinalized() const {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     return is_finalized_;
   }
 

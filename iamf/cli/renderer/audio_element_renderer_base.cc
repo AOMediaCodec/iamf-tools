@@ -39,7 +39,7 @@ AudioElementRendererBase::~AudioElementRendererBase() {}
 
 absl::StatusOr<size_t> AudioElementRendererBase::RenderLabeledFrame(
     const LabeledFrame& labeled_frame) {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
 
   size_t num_valid_samples = 0;
   RETURN_IF_NOT_OK(iamf_tools::ArrangeSamplesToRender(
@@ -55,7 +55,7 @@ absl::StatusOr<size_t> AudioElementRendererBase::RenderLabeledFrame(
 
 void AudioElementRendererBase::Flush(
     std::vector<std::vector<InternalSampleType>>& rendered_samples) {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
 
   // Append samples in each channel of `rendered_samples_` to the corresponding
   // channel of the output `rendered_samples`.

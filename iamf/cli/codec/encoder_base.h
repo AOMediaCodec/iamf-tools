@@ -87,7 +87,7 @@ class EncoderBase {
    * \return True if there is any finished audio frame.
    */
   bool FramesAvailable() const {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     return !finalized_audio_frames_.empty();
   }
 
@@ -97,7 +97,7 @@ class EncoderBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Pop(std::list<AudioFrameWithData>& audio_frames) {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     if (!finalized_audio_frames_.empty()) {
       audio_frames.splice(audio_frames.end(), finalized_audio_frames_,
                           finalized_audio_frames_.begin());
@@ -113,7 +113,7 @@ class EncoderBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status Finalize() {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     finished_ = true;
     return absl::OkStatus();
   }
@@ -123,7 +123,7 @@ class EncoderBase {
    * \return True if the encoder has been closed.
    */
   bool Finished() const {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     return finished_ && finalized_audio_frames_.empty();
   }
 
