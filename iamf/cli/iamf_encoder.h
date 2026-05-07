@@ -189,7 +189,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
    *
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status FinalizeEncode();
+  absl::Status FinalizeEncode() override;
 
   /*!\brief Outputs a const reference to the Audio Elements.
    *
