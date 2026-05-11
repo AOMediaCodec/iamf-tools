@@ -1307,5 +1307,36 @@ TEST(ResetWithNewMix, ResetWithNewMixFailsInStandaloneCase) {
       Not(IsOk()));
 }
 
+TEST(ResetWithNewMix, ResetWithNewMixClearsStaleChannelReorderer) {
+  const std::vector<uint8_t> descriptors = GenerateBasicDescriptorObus();
+  const api::IamfDecoder::Settings settings = {
+      .requested_mix = {.output_layout =
+                            api::OutputLayout::kItu2051_SoundSystemI_0_7_0},
+      .channel_ordering = api::ChannelOrdering::kOrderingForAndroid,
+  };
+  std::unique_ptr<api::IamfDecoder> decoder;
+  ASSERT_THAT(api::IamfDecoder::CreateFromDescriptors(
+                  settings, descriptors.data(), descriptors.size(), decoder),
+              IsOk());
+  const AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                                  kEightSampleAudioFrame);
+  const auto temporal_unit = SerializeObusExpectOk({&audio_frame});
+  // Decoding works fine with the initial layout.
+  ASSERT_THAT(decoder->Decode(temporal_unit.data(), temporal_unit.size()),
+              IsOk());
+
+  // Resetting may make the old ordering logic irrelevant.
+  api::SelectedMix selected_mix;
+  ASSERT_THAT(
+      decoder->ResetWithNewMix(
+          {.output_layout = api::OutputLayout::kIAMF_Binaural}, selected_mix),
+      IsOk());
+
+  // Decoding again works, even though it uses fewer channels and a different
+  // channel ordering.
+  EXPECT_THAT(decoder->Decode(temporal_unit.data(), temporal_unit.size()),
+              IsOk());
+}
+
 }  // namespace
 }  // namespace iamf_tools

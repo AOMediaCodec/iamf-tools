@@ -499,6 +499,9 @@ IamfStatus IamfDecoder::Reset() {
   // Clear the rendered samples.
   state_->rendered_samples = {};
 
+  // Clear the channel reorderer.
+  state_->channel_reorderer = std::nullopt;
+
   // Set state.
   state_->status = DecoderStatus::kAcceptingData;
   // Create a new read bit buffer.
