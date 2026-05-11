@@ -406,6 +406,17 @@ TEST(AacDecoderConfig, ReadExtensions) {
             std::vector<uint8_t>({'a', 'b', 'c'}));
 }
 
+TEST(AacDecoderConfig, ReadFailsWhenExtensionExceedsTwoMegabytes) {
+  // Signal a massive ISO 14496-1 expandable size field.
+  constexpr auto data = std::to_array<uint8_t>(
+      {AacDecoderConfig::kDecoderConfigDescriptorTag, 0x87, 0x80, 0x80, 0x7F});
+  AacDecoderConfig decoder_config;
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
+
+  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb),
+              Not(IsOk()));
+}
+
 TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
   AacDecoderConfig decoder_config;
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(

@@ -26,6 +26,7 @@
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/types.h"
 
 // These defines are not part of an official API and are likely to change or be
 // removed.  Please do not depend on them.
@@ -115,7 +116,14 @@ absl::Status AdvanceBufferToPosition(absl::string_view debugging_context,
     return absl::OkStatus();
   } else if (actual_position < expected_position) {
     // Advance and consume the extension.
-    extension.resize((expected_position - actual_position) / 8);
+    const int64_t extension_size_bytes =
+        (expected_position - actual_position) / 8;
+    if (extension_size_bytes > kEntireObuSizeMaxTwoMegabytes) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Extension size ", extension_size_bytes,
+                       " exceeds maximum OBU size (2 MB)."));
+    }
+    extension.resize(extension_size_bytes);
     return rb.ReadUint8Span(absl::MakeSpan(extension));
   } else {
     // The buffer is already past the position.
