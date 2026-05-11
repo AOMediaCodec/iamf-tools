@@ -19,6 +19,7 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/common/q_format_or_floating_point.h"
@@ -26,6 +27,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -155,6 +157,11 @@ ElementGainOffsetConfig::CreateFromBuffer(ReadBitBuffer& rb) {
   // Else it is an extension type.
   uint32_t element_gain_offset_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(element_gain_offset_size));
+  if (element_gain_offset_size > kEntireObuSizeMaxTwoMegabytes) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "element_gain_offset_size= ", element_gain_offset_size,
+        " exceeds maximum."));
+  }
   std::vector<uint8_t> element_gain_offset_bytes(element_gain_offset_size);
   RETURN_IF_NOT_OK(rb.ReadUint8Span(MakeSpan(element_gain_offset_bytes)));
   return CreateExtensionType(element_gain_offset_config_type,
