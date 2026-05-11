@@ -46,6 +46,7 @@
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
@@ -89,7 +90,8 @@ PolarParamDefinition CreatePolarParamDefinition(
   param_definition.parameter_rate_ =
       input_param_definition.param_definition().parameter_rate();
   param_definition.param_definition_mode_ =
-      input_param_definition.param_definition().param_definition_mode();
+      static_cast<ParamDefinition::ParamDefinitionMode>(
+          input_param_definition.param_definition().param_definition_mode());
   param_definition.duration_ =
       input_param_definition.param_definition().duration();
   param_definition.constant_subblock_duration_ =
@@ -110,7 +112,8 @@ Cart8ParamDefinition CreateCart8ParamDefinition(
   param_definition.parameter_rate_ =
       input_param_definition.param_definition().parameter_rate();
   param_definition.param_definition_mode_ =
-      input_param_definition.param_definition().param_definition_mode();
+      static_cast<ParamDefinition::ParamDefinitionMode>(
+          input_param_definition.param_definition().param_definition_mode());
   param_definition.duration_ =
       input_param_definition.param_definition().duration();
   param_definition.constant_subblock_duration_ =
@@ -129,7 +132,8 @@ Cart16ParamDefinition CreateCart16ParamDefinition(
   param_definition.parameter_rate_ =
       input_param_definition.param_definition().parameter_rate();
   param_definition.param_definition_mode_ =
-      input_param_definition.param_definition().param_definition_mode();
+      static_cast<ParamDefinition::ParamDefinitionMode>(
+          input_param_definition.param_definition().param_definition_mode());
   param_definition.duration_ =
       input_param_definition.param_definition().duration();
   param_definition.constant_subblock_duration_ =
@@ -149,7 +153,8 @@ DualPolarParamDefinition CreateDualPolarParamDefinition(
   param_definition.parameter_rate_ =
       input_param_definition.param_definition().parameter_rate();
   param_definition.param_definition_mode_ =
-      input_param_definition.param_definition().param_definition_mode();
+      static_cast<ParamDefinition::ParamDefinitionMode>(
+          input_param_definition.param_definition().param_definition_mode());
   param_definition.duration_ =
       input_param_definition.param_definition().duration();
   param_definition.constant_subblock_duration_ =
@@ -178,7 +183,8 @@ DualCart8ParamDefinition CreateDualCart8ParamDefinition(
   param_definition.parameter_rate_ =
       input_param_definition.param_definition().parameter_rate();
   param_definition.param_definition_mode_ =
-      input_param_definition.param_definition().param_definition_mode();
+      static_cast<ParamDefinition::ParamDefinitionMode>(
+          input_param_definition.param_definition().param_definition_mode());
   param_definition.duration_ =
       input_param_definition.param_definition().duration();
   param_definition.constant_subblock_duration_ =
@@ -204,7 +210,8 @@ DualCart16ParamDefinition CreateDualCart16ParamDefinition(
   param_definition.parameter_rate_ =
       input_param_definition.param_definition().parameter_rate();
   param_definition.param_definition_mode_ =
-      input_param_definition.param_definition().param_definition_mode();
+      static_cast<ParamDefinition::ParamDefinitionMode>(
+          input_param_definition.param_definition().param_definition_mode());
   param_definition.duration_ =
       input_param_definition.param_definition().duration();
   param_definition.constant_subblock_duration_ =

@@ -42,7 +42,8 @@ constexpr DecodedUleb128 kDuration = 64;
 void PopulateParameterDefinitionMode0(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = kParameterRate;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = kDuration;
   param_definition.constant_subblock_duration_ = kDuration;
   param_definition.reserved_ = 0;
@@ -245,7 +246,8 @@ TEST(DemixingParamDefinitionValidate, InvalidWhenImpliedNumSubblocksIsNotOne) {
 
 TEST(DemixingParamDefinitionValidate, InvalidWhenParamDefinitionModeIsOne) {
   auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.param_definition_mode_ = true;
+  demixing_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   EXPECT_THAT(demixing_param_definition.Validate(), Not(IsOk()));
 }

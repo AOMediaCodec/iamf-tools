@@ -36,6 +36,7 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
@@ -677,7 +678,8 @@ MixPresentationObu MakeMixPresentationObuWithAudioElementIdsInSubmixes(
   common_mix_gain_param_definition.parameter_id_ = kCommonMixGainParameterId;
   common_mix_gain_param_definition.parameter_rate_ =
       kCommonMixGainParameterRate;
-  common_mix_gain_param_definition.param_definition_mode_ = true;
+  common_mix_gain_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   common_mix_gain_param_definition.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(0);
   const std::vector<MixPresentationLayout> layouts = {

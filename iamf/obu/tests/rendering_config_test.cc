@@ -230,7 +230,8 @@ TEST(ValidateAndWrite, WritesRenderingConfigPolarParamDefinition) {
   PolarParamDefinition polar_param_definition_1;
   polar_param_definition_1.parameter_id_ = 1;
   polar_param_definition_1.parameter_rate_ = 1;
-  polar_param_definition_1.param_definition_mode_ = false;
+  polar_param_definition_1.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   polar_param_definition_1.duration_ = 10;
   polar_param_definition_1.constant_subblock_duration_ = 10;
   polar_param_definition_1.default_azimuth_ = 2;
@@ -240,7 +241,8 @@ TEST(ValidateAndWrite, WritesRenderingConfigPolarParamDefinition) {
   PolarParamDefinition polar_param_definition_2;
   polar_param_definition_2.parameter_id_ = 2;
   polar_param_definition_2.parameter_rate_ = 1;
-  polar_param_definition_2.param_definition_mode_ = false;
+  polar_param_definition_2.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   polar_param_definition_2.duration_ = 10;
   polar_param_definition_2.constant_subblock_duration_ = 10;
   polar_param_definition_2.default_azimuth_ = 181;
@@ -301,7 +303,8 @@ TEST(ValidateAndWrite, WritesRenderingConfigCart8ParamDefinition) {
   Cart8ParamDefinition cart8_param_definition;
   cart8_param_definition.parameter_id_ = 1;
   cart8_param_definition.parameter_rate_ = 1;
-  cart8_param_definition.param_definition_mode_ = false;
+  cart8_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   cart8_param_definition.duration_ = 10;
   cart8_param_definition.constant_subblock_duration_ = 10;
   cart8_param_definition.default_x_ = 1;
@@ -345,7 +348,8 @@ TEST(ValidateAndWrite, WritesRenderingConfigCart16ParamDefinition) {
   Cart16ParamDefinition cart16_param_definition;
   cart16_param_definition.parameter_id_ = 1;
   cart16_param_definition.parameter_rate_ = 1;
-  cart16_param_definition.param_definition_mode_ = false;
+  cart16_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   cart16_param_definition.duration_ = 10;
   cart16_param_definition.constant_subblock_duration_ = 10;
   cart16_param_definition.default_x_ = 1;
@@ -392,7 +396,8 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualPolarParamDefinition) {
   DualPolarParamDefinition dual_polar_param_definition;
   dual_polar_param_definition.parameter_id_ = 1;
   dual_polar_param_definition.parameter_rate_ = 1;
-  dual_polar_param_definition.param_definition_mode_ = false;
+  dual_polar_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   dual_polar_param_definition.duration_ = 10;
   dual_polar_param_definition.constant_subblock_duration_ = 10;
   dual_polar_param_definition.default_first_azimuth_ = 2;
@@ -447,7 +452,8 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualCart8ParamDefinition) {
   DualCart8ParamDefinition dual_cart8_param_definition;
   dual_cart8_param_definition.parameter_id_ = 1;
   dual_cart8_param_definition.parameter_rate_ = 1;
-  dual_cart8_param_definition.param_definition_mode_ = false;
+  dual_cart8_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   dual_cart8_param_definition.duration_ = 10;
   dual_cart8_param_definition.constant_subblock_duration_ = 10;
   dual_cart8_param_definition.default_first_x_ = 1;
@@ -501,7 +507,8 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualCart16ParamDefinition) {
   DualCart16ParamDefinition dual_cart16_param_definition;
   dual_cart16_param_definition.parameter_id_ = 1;
   dual_cart16_param_definition.parameter_rate_ = 1;
-  dual_cart16_param_definition.param_definition_mode_ = false;
+  dual_cart16_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   dual_cart16_param_definition.duration_ = 10;
   dual_cart16_param_definition.constant_subblock_duration_ = 10;
   dual_cart16_param_definition.default_first_x_ = 1;
@@ -640,7 +647,8 @@ TEST(RenderingConfigCreateFromBuffer, PolarParamDefinitionRenderingConfig) {
   ASSERT_NE(first_param_definition, nullptr);
   EXPECT_EQ(first_param_definition->parameter_id_, 1);
   EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_, false);
+  EXPECT_EQ(first_param_definition->param_definition_mode_,
+            ParamDefinition::kModeScheduleInParamDefinition);
   EXPECT_EQ(first_param_definition->duration_, 10);
   EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
   EXPECT_EQ(first_param_definition->default_azimuth_, 2);
@@ -687,7 +695,8 @@ TEST(RenderingConfigCreateFromBuffer, Cart8ParamDefinitionRenderingConfig) {
   ASSERT_NE(first_param_definition, nullptr);
   EXPECT_EQ(first_param_definition->parameter_id_, 1);
   EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_, false);
+  EXPECT_EQ(first_param_definition->param_definition_mode_,
+            ParamDefinition::kModeScheduleInParamDefinition);
   EXPECT_EQ(first_param_definition->duration_, 10);
   EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
   EXPECT_EQ(first_param_definition->default_x_, 1);
@@ -736,7 +745,8 @@ TEST(RenderingConfigCreateFromBuffer, Cart16ParamDefinitionRenderingConfig) {
   ASSERT_NE(first_param_definition, nullptr);
   EXPECT_EQ(first_param_definition->parameter_id_, 1);
   EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_, false);
+  EXPECT_EQ(first_param_definition->param_definition_mode_,
+            ParamDefinition::kModeScheduleInParamDefinition);
   EXPECT_EQ(first_param_definition->duration_, 10);
   EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
   EXPECT_EQ(first_param_definition->default_x_, 1);
@@ -789,7 +799,8 @@ TEST(RenderingConfigCreateFromBuffer, DualPolarParamDefinitionRenderingConfig) {
   ASSERT_NE(first_param_definition, nullptr);
   EXPECT_EQ(first_param_definition->parameter_id_, 1);
   EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_, false);
+  EXPECT_EQ(first_param_definition->param_definition_mode_,
+            ParamDefinition::kModeScheduleInParamDefinition);
   EXPECT_EQ(first_param_definition->duration_, 10);
   EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
   EXPECT_EQ(first_param_definition->default_first_azimuth_, 2);
@@ -844,7 +855,8 @@ TEST(RenderingConfigCreateFromBuffer, DualCart8ParamDefinitionRenderingConfig) {
   ASSERT_NE(first_param_definition, nullptr);
   EXPECT_EQ(first_param_definition->parameter_id_, 1);
   EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_, false);
+  EXPECT_EQ(first_param_definition->param_definition_mode_,
+            ParamDefinition::kModeScheduleInParamDefinition);
   EXPECT_EQ(first_param_definition->duration_, 10);
   EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
   EXPECT_EQ(first_param_definition->default_first_x_, 1);
@@ -906,7 +918,8 @@ TEST(RenderingConfigCreateFromBuffer,
   ASSERT_NE(first_param_definition, nullptr);
   EXPECT_EQ(first_param_definition->parameter_id_, 1);
   EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_, false);
+  EXPECT_EQ(first_param_definition->param_definition_mode_,
+            ParamDefinition::kModeScheduleInParamDefinition);
   EXPECT_EQ(first_param_definition->duration_, 10);
   EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
   EXPECT_EQ(first_param_definition->default_first_x_, 1);

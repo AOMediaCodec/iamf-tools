@@ -40,7 +40,8 @@ constexpr DecodedUleb128 kDuration = 64;
 void PopulateParameterDefinitionMode1(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   param_definition.reserved_ = 0;
 }
 
@@ -58,7 +59,8 @@ void InitSubblockDurations(
 TEST(ExtendedParamDefinition, CopyConstructible) {
   ExtendedParamDefinition extended_param_definition(
       ParamDefinition::kParameterDefinitionReservedStart);
-  extended_param_definition.param_definition_mode_ = 1;
+  extended_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   extended_param_definition.parameter_id_ = kParameterId;
   extended_param_definition.parameter_rate_ = kParameterRate;
   extended_param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};

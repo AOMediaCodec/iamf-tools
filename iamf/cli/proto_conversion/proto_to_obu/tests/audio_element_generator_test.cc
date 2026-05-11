@@ -818,7 +818,8 @@ TEST(Generate, GeneratesDemixingParameterDefinition) {
   DemixingParamDefinition expected_demixing_param_definition;
   expected_demixing_param_definition.parameter_id_ = 998;
   expected_demixing_param_definition.parameter_rate_ = 48000;
-  expected_demixing_param_definition.param_definition_mode_ = 0;
+  expected_demixing_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   expected_demixing_param_definition.duration_ = 8;
   expected_demixing_param_definition.constant_subblock_duration_ = 8;
   expected_demixing_param_definition.reserved_ = 10;
@@ -912,7 +913,8 @@ TEST(Generate, GeneratesReconGainParameterDefinition) {
       kAudioElementId);
   expected_recon_gain_param_definition.parameter_id_ = 998;
   expected_recon_gain_param_definition.parameter_rate_ = 48000;
-  expected_recon_gain_param_definition.param_definition_mode_ = 0;
+  expected_recon_gain_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   expected_recon_gain_param_definition.duration_ = 8;
   expected_recon_gain_param_definition.constant_subblock_duration_ = 8;
   expected_recon_gain_param_definition.reserved_ = 10;

@@ -40,6 +40,7 @@
 #include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
@@ -467,7 +468,8 @@ TEST(Generate, CopiesRenderingConfigWithPolarParamDefinition) {
   PolarParamDefinition expected_polar_param_definition;
   expected_polar_param_definition.parameter_id_ = 1;
   expected_polar_param_definition.parameter_rate_ = 16000;
-  expected_polar_param_definition.param_definition_mode_ = 1;
+  expected_polar_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   expected_polar_param_definition.duration_ = 1;
   expected_polar_param_definition.constant_subblock_duration_ = true;
   expected_polar_param_definition.default_azimuth_ = 1;
@@ -518,7 +520,8 @@ TEST(Generate, CopiesRenderingConfigWithCart8ParamDefinition) {
   Cart8ParamDefinition expected_cart8_param_definition;
   expected_cart8_param_definition.parameter_id_ = 1;
   expected_cart8_param_definition.parameter_rate_ = 16000;
-  expected_cart8_param_definition.param_definition_mode_ = 1;
+  expected_cart8_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   expected_cart8_param_definition.duration_ = 1;
   expected_cart8_param_definition.constant_subblock_duration_ = true;
   expected_cart8_param_definition.default_x_ = 1;
@@ -569,7 +572,8 @@ TEST(Generate, CopiesRenderingConfigWithCart16ParamDefinition) {
   Cart16ParamDefinition expected_cart16_param_definition;
   expected_cart16_param_definition.parameter_id_ = 1;
   expected_cart16_param_definition.parameter_rate_ = 16000;
-  expected_cart16_param_definition.param_definition_mode_ = 1;
+  expected_cart16_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   expected_cart16_param_definition.duration_ = 1;
   expected_cart16_param_definition.constant_subblock_duration_ = true;
   expected_cart16_param_definition.default_x_ = 1;
@@ -624,7 +628,8 @@ TEST(Generate, CopiesRenderingConfigWithDualPolarParamDefinition) {
   DualPolarParamDefinition expected_dual_polar_param_definition;
   expected_dual_polar_param_definition.parameter_id_ = 1;
   expected_dual_polar_param_definition.parameter_rate_ = 16000;
-  expected_dual_polar_param_definition.param_definition_mode_ = 1;
+  expected_dual_polar_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   expected_dual_polar_param_definition.duration_ = 1;
   expected_dual_polar_param_definition.constant_subblock_duration_ = true;
   expected_dual_polar_param_definition.default_first_azimuth_ = 1;
@@ -682,7 +687,8 @@ TEST(Generate, CopiesRenderingConfigWithDualCart8ParamDefinition) {
   DualCart8ParamDefinition expected_dual_cart8_param_definition;
   expected_dual_cart8_param_definition.parameter_id_ = 1;
   expected_dual_cart8_param_definition.parameter_rate_ = 16000;
-  expected_dual_cart8_param_definition.param_definition_mode_ = 1;
+  expected_dual_cart8_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   expected_dual_cart8_param_definition.duration_ = 1;
   expected_dual_cart8_param_definition.constant_subblock_duration_ = true;
   expected_dual_cart8_param_definition.default_first_x_ = 1;
@@ -741,7 +747,8 @@ TEST(Generate, CopiesRenderingConfigWithDualCart16ParamDefinition) {
   DualCart16ParamDefinition expected_dual_cart16_param_definition;
   expected_dual_cart16_param_definition.parameter_id_ = 1;
   expected_dual_cart16_param_definition.parameter_rate_ = 16000;
-  expected_dual_cart16_param_definition.param_definition_mode_ = 1;
+  expected_dual_cart16_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   expected_dual_cart16_param_definition.duration_ = 1;
   expected_dual_cart16_param_definition.constant_subblock_duration_ = true;
   expected_dual_cart16_param_definition.default_first_x_ = 1;

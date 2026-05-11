@@ -59,7 +59,8 @@ DemixingParamDefinition CreateDemixingInfoParamDefinition(
   DemixingParamDefinition param_definition;
   param_definition.parameter_id_ = 4;
   param_definition.parameter_rate_ = 5;
-  param_definition.param_definition_mode_ = false;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.reserved_ = 0;
   param_definition.duration_ = 64;
   param_definition.constant_subblock_duration_ = 64;

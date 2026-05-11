@@ -98,7 +98,8 @@ void SetParamDefinitionCommonFields(DecodedUleb128 parameter_id,
                                     ParamDefinition& param_definition) {
   param_definition.parameter_id_ = parameter_id;
   param_definition.parameter_rate_ = parameter_rate;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.reserved_ = 0;
   param_definition.duration_ = duration;
   param_definition.constant_subblock_duration_ = duration;
@@ -376,7 +377,8 @@ void AddMixPresentationObuWithConfigurableLayouts(
   MixGainParamDefinition common_mix_gain_param_definition;
   common_mix_gain_param_definition.parameter_id_ = mix_gain_parameter_id;
   common_mix_gain_param_definition.parameter_rate_ = parameter_rate;
-  common_mix_gain_param_definition.param_definition_mode_ = true;
+  common_mix_gain_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   common_mix_gain_param_definition.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(0);
   std::vector<MixPresentationLayout> layouts;

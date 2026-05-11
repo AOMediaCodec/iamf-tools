@@ -74,7 +74,8 @@ constexpr std::array<DecodedUleb128, 3> kThreeSubblockDurations = {1, 2, 3};
 
 MixGainParamDefinition CreateParamDefinitionMode0() {
   MixGainParamDefinition param_definition;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = kParameterRate;
   param_definition.duration_ = kDuration;
@@ -84,7 +85,8 @@ MixGainParamDefinition CreateParamDefinitionMode0() {
 
 MixGainParamDefinition CreateParamDefinitionMode1() {
   MixGainParamDefinition param_definition;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = kParameterRate;
   return param_definition;
@@ -295,7 +297,8 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   // Sanity check that the OBU is valid.
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
@@ -349,7 +352,8 @@ TEST(CreateFromBuffer, ParamDefinitionMode1) {
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
       param_definition, *buffer);
@@ -402,7 +406,8 @@ TEST(CreateFromBuffer, ReturnsErrorWhenNumSubblocksIsGreaterThanTotalDuration) {
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
@@ -427,7 +432,8 @@ TEST(CreateFromBuffer, FailsWhenNumSubblocksIsGreaterThan192000) {
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
@@ -462,7 +468,8 @@ TEST(CreateFromBuffer, ParamDefinitionMode0) {
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = 10;
   param_definition.constant_subblock_duration_ = 0;
   param_definition.InitializeSubblockDurations(3);
@@ -525,7 +532,8 @@ TEST(CreateFromBuffer, FailsWhenSubblockDurationsAreInconsistent) {
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
                   param_definition, *buffer),
@@ -553,7 +561,8 @@ TEST(CreateFromBuffer, InvalidWhenParamDefinitionIdDoesNotMatchBitstream) {
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
                   param_definition, *buffer),
@@ -582,7 +591,8 @@ TEST(CreateFromBuffer, DemixingParamDefinitionMode0) {
   DemixingParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = 10;
   param_definition.constant_subblock_duration_ = 10;
   param_definition.InitializeSubblockDurations(1);
@@ -614,7 +624,8 @@ class ParameterBlockObuTestBase : public ObuTestBase {
         parameter_id_(3),
         metadata_args_({
             .parameter_rate = 1,
-            .param_definition_mode = 0,
+            .param_definition_mode =
+                ParamDefinition::kModeScheduleInParamDefinition,
             .reserved = 0,
         }),
         duration_args_({
@@ -645,7 +656,7 @@ class ParameterBlockObuTestBase : public ObuTestBase {
 
   struct {
     DecodedUleb128 parameter_rate;
-    bool param_definition_mode;
+    ParamDefinition::ParamDefinitionMode param_definition_mode;
     uint8_t reserved;
 
     // From the Audio Element. Only used when `param_definition_type ==
@@ -675,7 +686,8 @@ class ParameterBlockObuTestBase : public ObuTestBase {
         metadata_args_.param_definition_mode;
     param_definition_->reserved_ = metadata_args_.reserved;
 
-    if (param_definition_->param_definition_mode_ == 0) {
+    if (param_definition_->param_definition_mode_ ==
+        ParamDefinition::kModeScheduleInParamDefinition) {
       // Values will be referenced from `metadata_.param_definition`;
       // overwrite them with those from `duration_args_`.
       param_definition_->duration_ = duration_args_.duration;
@@ -700,7 +712,8 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     // Code within `iamf_tools` will find the associated Audio Element or Mix
     // Presentation OBU and use that metadata. For testing here the metadata is
     // initialized based on `metadata_args_`.
-    if (param_definition_->param_definition_mode_ == 0) {
+    if (param_definition_->param_definition_mode_ ==
+        ParamDefinition::kModeScheduleInParamDefinition) {
       obu_ = ParameterBlockObu::CreateMode0(header_, *param_definition_);
     } else if (duration_args_.subblock_durations.empty()) {
       obu_ = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
@@ -790,7 +803,8 @@ TEST_F(MixGainParameterBlockTest, ExtensionHeader) {
 }
 
 TEST_F(MixGainParameterBlockTest, OneSubblockParamDefinitionMode1) {
-  metadata_args_.param_definition_mode = 1;
+  metadata_args_.param_definition_mode =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   expected_header_ = {kObuIaParameterBlock << 3, 6};
   expected_payload_ = {// `parameter_id`.
@@ -806,7 +820,8 @@ TEST_F(MixGainParameterBlockTest, OneSubblockParamDefinitionMode1) {
 }
 
 TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
-  metadata_args_.param_definition_mode = 1;
+  metadata_args_.param_definition_mode =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   duration_args_ = {
       .duration = 21,
@@ -884,7 +899,8 @@ TEST_F(MixGainParameterBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
       .num_subblocks = 2,
       .subblock_durations = {6, 7},
   };
-  metadata_args_.param_definition_mode = true;
+  metadata_args_.param_definition_mode =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   mix_gain_parameter_data_ = {{kAnimateStep, AnimationStepInt16{9}},
                               {kAnimateStep, AnimationStepInt16{10}}};
@@ -966,7 +982,8 @@ TEST_F(DemixingParameterBlockTest, DMixPMode2) {
 
 TEST_F(DemixingParameterBlockTest,
        ValidateAndWriteObuFailsWhenParamDefinitionMode1HasTooManySubblocks) {
-  metadata_args_.param_definition_mode = true;
+  metadata_args_.param_definition_mode =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   duration_args_ = {
       .duration = 4,
@@ -988,7 +1005,8 @@ TEST_F(DemixingParameterBlockTest,
 
 TEST_F(DemixingParameterBlockTest,
        ValidateAndWriteObuFailsWithInvalidWhenParamDefinitionModeIsOne) {
-  metadata_args_.param_definition_mode = true;
+  metadata_args_.param_definition_mode =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -1230,7 +1248,8 @@ TEST_F(ReconGainBlockTest, ValidateAndWriteObuFailsWithMoreThanOneSubblock) {
 
 TEST_F(ReconGainBlockTest,
        ValidateAndWriteObuFailsWithWhenParamDefinitionModeIsOne) {
-  metadata_args_.param_definition_mode = true;
+  metadata_args_.param_definition_mode =
+      ParamDefinition::kModeScheduleInParameterBlock;
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
 
@@ -1325,7 +1344,8 @@ TEST_F(ExtensionParameterBlockTest, TwoSubblocksParamDefinitionMode0) {
 }
 
 TEST_F(ExtensionParameterBlockTest, TwoSubblocksParamDefinitionMode1) {
-  metadata_args_.param_definition_mode = true;
+  metadata_args_.param_definition_mode =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   duration_args_ = {.duration = 64, .constant_subblock_duration = 32};
 

@@ -54,14 +54,16 @@ class MockParamDefinition : public ParamDefinition {
 void PopulateParameterDefinitionMode1(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   param_definition.reserved_ = 0;
 }
 
 void PopulateParameterDefinitionMode0(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = kParameterRate;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = kDuration;
   param_definition.constant_subblock_duration_ = kDuration;
   param_definition.reserved_ = 0;
@@ -81,7 +83,8 @@ ReconGainParamDefinition CreateReconGainParamDefinition() {
   ReconGainParamDefinition recon_gain_param_definition(0);
   recon_gain_param_definition.parameter_id_ = 0;
   recon_gain_param_definition.parameter_rate_ = 1;
-  recon_gain_param_definition.param_definition_mode_ = false;
+  recon_gain_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   recon_gain_param_definition.duration_ = 64;
   recon_gain_param_definition.constant_subblock_duration_ = 64;
   return recon_gain_param_definition;
@@ -250,7 +253,8 @@ TEST(ReconGainParamDefinitionValidate,
 
 TEST(ReconGainParamDefinitionValidate, InvalidWhenParamDefinitionModeIsOne) {
   auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.param_definition_mode_ = true;
+  recon_gain_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
 
   EXPECT_THAT(recon_gain_param_definition.Validate(), Not(IsOk()));
 }

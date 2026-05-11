@@ -13,7 +13,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
@@ -42,14 +41,16 @@ constexpr DecodedUleb128 kDuration = 64;
 void PopulateParameterDefinitionMode1(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   param_definition.reserved_ = 0;
 }
 
 void PopulateParameterDefinitionMode0(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = kParameterRate;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = kDuration;
   param_definition.constant_subblock_duration_ = kDuration;
   param_definition.reserved_ = 0;
@@ -183,7 +184,8 @@ TEST(MixGainParamDefinitionValidateAndWrite,
      ParamDefinitionMode0WithConstantSubblockDurationNonZero) {
   MixGainParamDefinition param_definition;
   PopulateParameterDefinitionMode1(param_definition);
-  param_definition.param_definition_mode_ = false;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = 3;
   param_definition.constant_subblock_duration_ = 3;
   WriteBitBuffer wb(kDefaultBufferSize);
@@ -208,7 +210,8 @@ TEST(MixGainParamDefinitionValidateAndWrite,
      ParamDefinitionMode0WithConstantSubblockDurationZeroIncludesDurations) {
   MixGainParamDefinition param_definition;
   PopulateParameterDefinitionMode1(param_definition);
-  param_definition.param_definition_mode_ = false;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = 10;
   param_definition.constant_subblock_duration_ = 0;
   InitSubblockDurations(param_definition, {1, 2, 3, 4});

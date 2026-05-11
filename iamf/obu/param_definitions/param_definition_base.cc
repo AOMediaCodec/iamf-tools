@@ -40,7 +40,8 @@ absl::Status ValidateSpecificParamDefinition(
     case kParameterDefinitionDemixing:
     case kParameterDefinitionReconGain:
       RETURN_IF_NOT_OK(ValidateEqual(
-          param_definition.param_definition_mode_, uint8_t{0},
+          param_definition.param_definition_mode_,
+          ParamDefinition::kModeScheduleInParamDefinition,
           absl::StrCat("`param_definition_mode` for parameter_id= ",
                        param_definition.parameter_id_)));
       RETURN_IF_NOT_OK(
@@ -106,11 +107,12 @@ absl::Status ParamDefinition::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUleb128(parameter_rate_));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(param_definition_mode_, 1));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_, 7));
-  if (param_definition_mode_ != 0) {
+  if (param_definition_mode_ != kModeScheduleInParamDefinition) {
     return absl::OkStatus();
   }
 
-  // Write the fields dependent on `param_definition_mode == 0`.
+  // Write the fields dependent on `param_definition_mode ==
+  // kModeScheduleInParamDefinition`.
   RETURN_IF_NOT_OK(wb.WriteUleb128(duration_));
   RETURN_IF_NOT_OK(wb.WriteUleb128(constant_subblock_duration_));
   if (constant_subblock_duration_ != 0) {
@@ -129,13 +131,17 @@ absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   // Read the fields that are always present in `param_definition`.
   RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_id_));
   RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_rate_));
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(1, param_definition_mode_));
+  uint8_t param_definition_mode;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(1, param_definition_mode));
+  param_definition_mode_ =
+      static_cast<ParamDefinitionMode>(param_definition_mode);
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(7, reserved_));
-  if (param_definition_mode_ != 0) {
+  if (param_definition_mode_ != kModeScheduleInParamDefinition) {
     return absl::OkStatus();
   }
 
-  // Read the fields dependent on `param_definition_mode == 0`.
+  // Read the fields dependent on `param_definition_mode ==
+  // kModeScheduleInParamDefinition`.
   RETURN_IF_NOT_OK(rb.ReadULeb128(duration_));
   RETURN_IF_NOT_OK(rb.ReadULeb128(constant_subblock_duration_));
   if (constant_subblock_duration_ != 0) {
@@ -166,7 +172,7 @@ void ParamDefinition::Print() const {
   ABSL_LOG(INFO) << "  param_definition_mode= "
                  << absl::StrCat(param_definition_mode_);
   ABSL_LOG(INFO) << "  reserved= " << absl::StrCat(reserved_);
-  if (param_definition_mode_ == 0) {
+  if (param_definition_mode_ == kModeScheduleInParamDefinition) {
     ABSL_LOG(INFO) << "  duration= " << duration_;
     ABSL_LOG(INFO) << "  constant_subblock_duration= "
                    << constant_subblock_duration_;
@@ -183,7 +189,8 @@ void ParamDefinition::Print() const {
 }
 
 bool ParamDefinition::IncludeSubblockDurationArray() const {
-  return param_definition_mode_ == 0 && constant_subblock_duration_ == 0;
+  return param_definition_mode_ == kModeScheduleInParamDefinition &&
+         constant_subblock_duration_ == 0;
 }
 
 absl::Status ParamDefinition::Validate() const {
@@ -196,9 +203,10 @@ absl::Status ParamDefinition::Validate() const {
         "Parameter rate should not be zero. Parameter ID= ", parameter_id));
   }
 
-  // Fields below are conditional on `param_definition_mode == 1`. Otherwise
-  // these are defined directly in the Parameter Block OBU.
-  if (param_definition_mode_ == 0) {
+  // Fields below are conditional on `param_definition_mode ==
+  // kModeScheduleInParamDefinition`. Otherwise these are defined directly in
+  // the Parameter Block OBU.
+  if (param_definition_mode_ == kModeScheduleInParamDefinition) {
     if (duration_ == 0) {
       status = absl::InvalidArgumentError(absl::StrCat(
           "Duration should not be zero. Parameter ID = ", parameter_id));

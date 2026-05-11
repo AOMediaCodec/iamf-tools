@@ -38,6 +38,7 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 
@@ -92,7 +93,8 @@ DemixingParamDefinition CreateDemixingParamDefinition(
   DemixingParamDefinition demixing_param_definition;
   demixing_param_definition.parameter_id_ = parameter_id;
   demixing_param_definition.parameter_rate_ = 48000;
-  demixing_param_definition.param_definition_mode_ = 0;
+  demixing_param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   demixing_param_definition.duration_ = 8;
   demixing_param_definition.constant_subblock_duration_ = 8;
   demixing_param_definition.reserved_ = 10;

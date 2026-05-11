@@ -393,7 +393,8 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   void FillCommonParamDefinition(DecodedUleb128 parameter_id,
                                  ParamDefinition& param_definition) {
     param_definition.parameter_id_ = parameter_id;
-    param_definition.param_definition_mode_ = 0;
+    param_definition.param_definition_mode_ =
+        ParamDefinition::kModeScheduleInParamDefinition;
     param_definition.duration_ = 8;
     param_definition.parameter_rate_ = 1;
     param_definition.InitializeSubblockDurations(1);
@@ -756,7 +757,8 @@ TEST(GenerateParameterBlockWithData, ValidParameterBlock) {
       param_definition_variants;
   DemixingParamDefinition param_definition;
   param_definition.parameter_id_ = kFirstParameterId;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = static_cast<DecodedUleb128>(kDuration);
   param_definition.parameter_rate_ = 1;
   param_definition_variants.emplace(kFirstParameterId, param_definition);

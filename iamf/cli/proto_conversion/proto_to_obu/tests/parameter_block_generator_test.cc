@@ -41,6 +41,7 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
@@ -268,7 +269,8 @@ void AddMixGainParamDefinition(
       QFormatOrFloatingPoint::MakeFromQ7_8(default_mix_gain);
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 48000;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   param_definition.reserved_ = 0;
   param_definition_variants.emplace(kParameterId, param_definition);
 }

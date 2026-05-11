@@ -64,7 +64,8 @@ absl::Status CopyParamDefinition(
   param_definition.parameter_rate_ = input_param_definition.parameter_rate();
 
   param_definition.param_definition_mode_ =
-      input_param_definition.param_definition_mode();
+      static_cast<ParamDefinition::ParamDefinitionMode>(
+          input_param_definition.param_definition_mode());
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "ParamDefinition.reserved", input_param_definition.reserved(),
       param_definition.reserved_));

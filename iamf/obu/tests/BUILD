@@ -196,6 +196,7 @@ cc_test(
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",

@@ -488,9 +488,11 @@ absl::Status PopulateCommonFields(
     ParameterBlockWithData& parameter_block_with_data) {
   // Get the duration from the parameter definition or the OBU itself as
   // applicable.
-  const DecodedUleb128 duration = param_definition.param_definition_mode_ == 1
-                                      ? parameter_block_metadata.duration()
-                                      : param_definition.duration_;
+  const DecodedUleb128 duration =
+      param_definition.param_definition_mode_ ==
+              ParamDefinition::kModeScheduleInParameterBlock
+          ? parameter_block_metadata.duration()
+          : param_definition.duration_;
 
   // Populate the timing information.
   RETURN_IF_NOT_OK(global_timing_module.GetNextParameterBlockTimestamps(
@@ -500,7 +502,8 @@ absl::Status PopulateCommonFields(
       parameter_block_with_data.end_timestamp));
 
   // Create the OBU.
-  if (param_definition.param_definition_mode_ == 0) {
+  if (param_definition.param_definition_mode_ ==
+      ParamDefinition::kModeScheduleInParamDefinition) {
     // Timing shared in the parameter definition.
     parameter_block_with_data.obu = ParameterBlockObu::CreateMode0(
         GetHeaderFromMetadata(parameter_block_metadata.obu_header()),

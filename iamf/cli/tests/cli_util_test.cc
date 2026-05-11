@@ -242,7 +242,8 @@ RenderingConfigParamDefinition MakePolarRenderingConfigParamDefinition(
   PolarParamDefinition param_definition;
   param_definition.parameter_id_ = parameter_id;
   param_definition.parameter_rate_ = parameter_rate;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.default_azimuth_ = azimuth;
   param_definition.default_elevation_ = elevation;
   param_definition.default_distance_ = distance;
@@ -384,7 +385,8 @@ TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
   // Fields in `ReconGainParamDefinition`.
   EXPECT_EQ(recon_gain_param_definition->parameter_id_, kParameterId);
   EXPECT_EQ(recon_gain_param_definition->parameter_rate_, kParameterRate);
-  EXPECT_EQ(recon_gain_param_definition->param_definition_mode_, 0);
+  EXPECT_EQ(recon_gain_param_definition->param_definition_mode_,
+            ParamDefinition::kModeScheduleInParamDefinition);
   EXPECT_EQ(recon_gain_param_definition->duration_, 1);
   EXPECT_EQ(recon_gain_param_definition->constant_subblock_duration_, 1);
   EXPECT_EQ(recon_gain_param_definition->audio_element_id_, kAudioElementId);

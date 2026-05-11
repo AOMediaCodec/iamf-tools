@@ -45,6 +45,7 @@
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/temporal_delimiter.h"
@@ -669,7 +670,8 @@ TEST(ProcessTemporalUnit, SkipsStrayParameterBlocks) {
   param_definition.parameter_id_ = kStrayParameterBlockId;
   constexpr DecodedUleb128 kParameterBlockDuration = 10;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = kParameterBlockDuration;
   param_definition.constant_subblock_duration_ = kParameterBlockDuration;
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;

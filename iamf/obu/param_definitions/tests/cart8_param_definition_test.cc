@@ -33,7 +33,8 @@ constexpr int32_t kBufferSize = 256;
 void PopulateParamDefinition(ParamDefinition* param_definition) {
   param_definition->parameter_id_ = 1;
   param_definition->parameter_rate_ = 1;
-  param_definition->param_definition_mode_ = 0;
+  param_definition->param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition->duration_ = 10;
   param_definition->constant_subblock_duration_ = 10;
   param_definition->reserved_ = 0;
@@ -61,7 +62,8 @@ TEST(Cart8ParamDefinitionTest, ReadAndValidateSucceeds) {
   EXPECT_THAT(param_definition.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(param_definition.parameter_id_, 1);
   EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_EQ(param_definition.param_definition_mode_, 0);
+  EXPECT_EQ(param_definition.param_definition_mode_,
+            ParamDefinition::kModeScheduleInParamDefinition);
   EXPECT_EQ(param_definition.duration_, 10);
   EXPECT_EQ(param_definition.constant_subblock_duration_, 10);
   EXPECT_EQ(param_definition.default_x_, 1);

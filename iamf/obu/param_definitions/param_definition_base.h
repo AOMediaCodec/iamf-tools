@@ -57,6 +57,16 @@ class ParamDefinition {
     kParameterDefinitionReservedEnd = std::numeric_limits<DecodedUleb128>::max()
   };
 
+  /*!\brief Descriptive names for `parameter_definition_mode_`.
+   *
+   * The spec just calls these "mode 0" and "mode 1", but this results in poor
+   * readability, and it can be easy to confuse the two modes.
+   */
+  enum ParamDefinitionMode : uint8_t {
+    kModeScheduleInParamDefinition = 0,
+    kModeScheduleInParameterBlock = 1,
+  };
+
   /*!\brief Default constructor.
    *
    * After constructing `InitializeSubblockDurations()` MUST be called
@@ -148,10 +158,11 @@ class ParamDefinition {
 
   DecodedUleb128 parameter_id_ = 0;
   DecodedUleb128 parameter_rate_ = 0;
-  uint8_t param_definition_mode_ = 0;  // 1 bit.
-  uint8_t reserved_ = 0;               // 7 bits.
+  ParamDefinitionMode param_definition_mode_ = kModeScheduleInParamDefinition;
+  uint8_t reserved_ = 0;  // 7 bits.
 
-  // All fields below are only included if `param_definition_mode_ == 0`.
+  // All fields below are only included if `param_definition_mode_ ==
+  // kModeScheduleInParamDefinition`.
   DecodedUleb128 duration_ = 0;
   DecodedUleb128 constant_subblock_duration_ = 0;
 
@@ -172,7 +183,8 @@ class ParamDefinition {
   // Type of this parameter definition.
   std::optional<ParameterDefinitionType> type_ = std::nullopt;
 
-  // `num_subblocks` is only included if `param_definition_mode_ == 0` and
+  // `num_subblocks` is only included if `param_definition_mode_ ==
+  // ParamDefinition::kModeScheduleInParamDefinition` and
   // `constant_subblock_duration == 0`.
   DecodedUleb128 num_subblocks_ = 0;
 

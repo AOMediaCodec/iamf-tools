@@ -52,14 +52,16 @@ class MockParamDefinition : public ParamDefinition {
 void PopulateParameterDefinitionMode1(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ = 1;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParameterBlock;
   param_definition.reserved_ = 0;
 }
 
 void PopulateParameterDefinitionMode0(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = kParameterRate;
-  param_definition.param_definition_mode_ = 0;
+  param_definition.param_definition_mode_ =
+      ParamDefinition::kModeScheduleInParamDefinition;
   param_definition.duration_ = kDuration;
   param_definition.constant_subblock_duration_ = kDuration;
   param_definition.reserved_ = 0;
