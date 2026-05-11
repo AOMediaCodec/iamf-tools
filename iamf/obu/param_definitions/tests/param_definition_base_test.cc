@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/param_definitions/param_definition_base.h"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -31,7 +32,8 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::Not;
 
-constexpr int32_t kDefaultBufferSize = 64;
+using absl::MakeConstSpan;
+
 constexpr DecodedUleb128 kParameterId = 0;
 constexpr DecodedUleb128 kParameterRate = 48000;
 constexpr DecodedUleb128 kDuration = 64;
@@ -249,5 +251,27 @@ TEST(SetSubblockDuration, InvalidWhenSubblockIndexIsNegative) {
 
   EXPECT_THAT(param_definition.SetSubblockDuration(-1, 0), Not(IsOk()));
 }
+
+TEST(ReadAndValidate, InvalidWhenNumSubblocksExceedsMaximum) {
+  constexpr auto source = std::to_array<uint8_t>(
+      {// Parameter ID.
+       0x00,
+       // Parameter Rate.
+       1,
+       // Param Definition Mode (upper bit), next 7 bits reserved.
+       0x00,
+       // `duration` (64).
+       0xc0, 0x00,
+       // `constant_subblock_duration`.
+       0x00,
+       // `num_subblocks` (exceeds maximum 192000).
+       0x81, 0xf7, 0x0b});
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
+  MockParamDefinition param_definition;
+
+  EXPECT_THAT(param_definition.ParamDefinition::ReadAndValidate(*buffer),
+              Not(IsOk()));
+}
+
 }  // namespace
 }  // namespace iamf_tools

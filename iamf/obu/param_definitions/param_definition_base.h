@@ -34,6 +34,13 @@ namespace iamf_tools {
  */
 class ParamDefinition {
  public:
+  /*!\brief Static limit on num_subblocks prevents OOMs from implausible values.
+   *
+   * The maximum sample rate is 192000 Hz and maximum duration is 1 second.
+   * Therefore the theoretical maximum number of subblocks is 192000.
+   */
+  static constexpr DecodedUleb128 kMaxNumSubblocks = 192000;
+
   /*!\brief A `DecodedUleb128` enum for the type of parameter. */
   enum ParameterDefinitionType : DecodedUleb128 {
     kParameterDefinitionMixGain = 0,

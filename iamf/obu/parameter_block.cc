@@ -432,11 +432,9 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
         absl::StrCat("Implausible number of subblocks = ", num_subblocks,
                      "is greater than the total duration = ", GetDuration()));
   }
-  // A static limit on num_subblocks prevents OOMs from implausible values.
-  // The maximum sample rate is 192000 Hz and maximum duration is 1 second.
-  // Therefore the theoretical maximum number of subblocks is 192000.
-  if (num_subblocks > 192000) {
-    return absl::InvalidArgumentError("num_subblocks > 192000");
+  if (num_subblocks > ParamDefinition::kMaxNumSubblocks) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("num_subblocks > ", ParamDefinition::kMaxNumSubblocks));
   }
 
   subblocks_.resize(num_subblocks);

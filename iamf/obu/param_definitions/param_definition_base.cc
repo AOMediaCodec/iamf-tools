@@ -144,7 +144,7 @@ absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 
   // Loop to read the `subblock_durations` array if it should be included.
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks_));
-  if (num_subblocks_ > kEntireObuSizeMaxTwoMegabytes) {
+  if (num_subblocks_ > ParamDefinition::kMaxNumSubblocks) {
     return absl::InvalidArgumentError(
         absl::StrCat("num_subblocks= ", num_subblocks_, " exceeds maximum."));
   }
