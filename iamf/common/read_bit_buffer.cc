@@ -402,6 +402,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
   // Read the final several bits in the last byte.
   int64_t num_bits_in_final_byte = expected_final_position % 8;
   remaining_bits_to_read -= num_bits_in_final_byte;
+  RETURN_IF_NOT_OK(Seek(Tell()));
   ReadUnsignedLiteralBits(bit_buffer_, buffer_size_bits_, buffer_bit_offset_,
                           num_bits_in_final_byte, output);
   ABSL_CHECK_EQ(remaining_bits_to_read, 0) << remaining_bits_to_read;

@@ -292,6 +292,19 @@ TYPED_TEST(ReadBitBufferTest, ReadUnsignedLiteralAfterSeek) {
   EXPECT_EQ(output_literal, 0b0000000);
 }
 
+TYPED_TEST(ReadBitBufferTest,
+           ReloadsBufferWhenNonByteMultipleReadCrossesCapacityBound) {
+  this->source_data_ = {0x00, 0x01, 0x80};
+  this->rb_capacity_ = 2;
+  this->CreateReadBitBuffer();
+
+  uint64_t literal = 0;
+  // Reading 17 bits forces a buffer reload.
+  EXPECT_THAT(this->rb_->ReadUnsignedLiteral(17, literal), IsOk());
+
+  EXPECT_EQ(literal, 3);
+}
+
 // ---- ReadULeb128 Tests -----
 
 // Successful Uleb128 reads.
