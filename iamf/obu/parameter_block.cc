@@ -110,6 +110,11 @@ ParameterBlockObu::CreateMode1ConstantSubblockDuration(
                          "called when constant_subblock_duration != 0.";
     return nullptr;
   }
+  if (duration == 0) {
+    ABSL_LOG(WARNING)
+        << "CreateMode1ConstantSubblockDuration() duration must be > 0.";
+    return nullptr;
+  }
   auto parameter_block_obu =
       absl::WrapUnique(new ParameterBlockObu(header, param_definition));
 
@@ -146,6 +151,11 @@ ParameterBlockObu::CreateMode1VariableSubblockDuration(
              "calculating the total duration.";
       return nullptr;
     }
+  }
+  if (duration == 0) {
+    ABSL_LOG(WARNING)
+        << "CreateMode1VariableSubblockDuration() total duration must be > 0.";
+    return nullptr;
   }
 
   auto parameter_block_obu =
@@ -408,6 +418,11 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
     if (constant_subblock_duration_ == 0) {
       RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks_));
     }
+  }
+
+  if (GetDuration() == 0) {
+    return absl::InvalidArgumentError(
+        "Parameter Block OBU duration must be > 0.");
   }
 
   const auto num_subblocks = GetNumSubblocks();

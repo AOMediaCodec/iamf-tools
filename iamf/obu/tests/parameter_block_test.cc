@@ -183,6 +183,15 @@ TEST(CreateMode1ConstantSubblockDuration,
       nullptr);
 }
 
+TEST(CreateMode1ConstantSubblockDuration, ReturnsNullptrWhenDurationIsZero) {
+  auto param_definition = CreateParamDefinitionMode1();
+
+  EXPECT_EQ(ParameterBlockObu::CreateMode1ConstantSubblockDuration(
+                ObuHeader(), param_definition, /*duration=*/0,
+                kConstantSubblockDuration),
+            nullptr);
+}
+
 TEST(CreateMode1ConstantSubblockDuration,
      ReturnsNullptrWhenConstantSubblockDurationIsZero) {
   auto param_definition = CreateParamDefinitionMode1();
@@ -225,6 +234,40 @@ TEST(CreateMode1VariableSubblockDuration,
       ParameterBlockObu::CreateMode1VariableSubblockDuration(
           ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
       nullptr);
+}
+
+TEST(CreateMode1VariableSubblockDuration, ReturnsNullptrWhenDurationIsZero) {
+  auto param_definition = CreateParamDefinitionMode1();
+  const std::vector<DecodedUleb128> subblock_durations = {0, 0};
+
+  EXPECT_EQ(
+      ParameterBlockObu::CreateMode1VariableSubblockDuration(
+          ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
+      nullptr);
+}
+
+TEST(CreateFromBuffer, InvalidWhenDurationIsZero) {
+  // Parameter with duration 0.
+  const std::vector<uint8_t> kParameterBlockWithZeroDuration = {
+      // Parameter ID.
+      kParameterId,
+      // Duration.
+      0x00,
+      // Constant subblock duration.
+      0x00,
+      // Number of subblocks.
+      0x00,
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kParameterBlockWithZeroDuration));
+  MixGainParamDefinition param_definition = CreateParamDefinitionMode1();
+  param_definition.parameter_id_ = kParameterId;
+
+  EXPECT_THAT(
+      ParameterBlockObu::CreateFromBuffer(
+          ObuHeader{.obu_type = kObuIaParameterBlock},
+          kParameterBlockWithZeroDuration.size(), param_definition, *buffer),
+      Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
