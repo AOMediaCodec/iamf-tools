@@ -184,6 +184,7 @@ cc_library(
     srcs = ["element_gain_offset_config.cc"],
     hdrs = ["element_gain_offset_config.h"],
     deps = [
+        ":types",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",

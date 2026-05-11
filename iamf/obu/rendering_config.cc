@@ -258,6 +258,11 @@ absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, reserved));
   DecodedUleb128 rendering_config_extension_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(rendering_config_extension_size));
+  if (rendering_config_extension_size > kEntireObuSizeMaxTwoMegabytes) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "rendering_config_extension_size= ", rendering_config_extension_size,
+        " exceeds maximum."));
+  }
   if (rendering_config_extension_size == 0) {
     return RenderingConfig{
         .headphones_rendering_mode = headphones_rendering_mode_enum,
