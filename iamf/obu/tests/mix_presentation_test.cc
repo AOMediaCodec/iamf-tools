@@ -565,6 +565,25 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
   InitAndTestWrite();
 }
 
+TEST(ReadAndValidate, FailsWithExtensionSizeTooLarge) {
+  constexpr auto kInfotypeSizeTooLargeBytes = std::to_array<uint8_t>(
+      {// `loudness_layout`.
+       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+       0x80,  // `info_type` with `kAnyLayoutExtension` bit set.
+       0,
+       18,  // `integrated_loudness`.
+       0,
+       19,  // `digital_peak`.
+            // `info_type_size`.
+       0x81, 0x80, 0x80, 0x01});
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kInfotypeSizeTooLargeBytes));
+  MixPresentationLayout layout;
+
+  EXPECT_THAT(layout.ReadAndValidate(*rb), Not(IsOk()));
+}
+
 TEST_F(MixPresentationObuTest,
        ValidateAndWriteFailsWithIllegalIamfStringOver128Bytes) {
   // Create a string that has no null terminator in the first 128 bytes.

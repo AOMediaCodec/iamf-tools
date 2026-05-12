@@ -268,6 +268,9 @@ absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
   if (loudness.info_type & LoudnessInfo::kAnyLayoutExtension) {
     DecodedUleb128 info_type_size;
     RETURN_IF_NOT_OK(rb.ReadULeb128(info_type_size));
+    RETURN_IF_NOT_OK(ValidateInRange(
+        info_type_size, {DecodedUleb128{0}, kEntireObuSizeMaxTwoMegabytes},
+        "info_type_size"));
     loudness.layout_extension.info_type_bytes.resize(info_type_size);
     RETURN_IF_NOT_OK(rb.ReadUint8Span(
         absl::MakeSpan(loudness.layout_extension.info_type_bytes)));
