@@ -92,6 +92,18 @@ TEST(CreateFromBuffer, FailsWithTruncatedExtension) {
   EXPECT_THAT(ElementGainOffsetConfig::CreateFromBuffer(*rb), Not(IsOk()));
 }
 
+TEST(CreateFromBuffer, FailsWithExtensionSizeTooLarge) {
+  constexpr auto kElementGainOffsetSizeTooLargeBuffer =
+      std::to_array<uint8_t>({// `element_gain_offset_config_type`.
+                              2,
+                              // `element_gain_offset_size`.
+                              0x81, 0x80, 0x80, 0x01});
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kElementGainOffsetSizeTooLargeBuffer));
+
+  EXPECT_THAT(ElementGainOffsetConfig::CreateFromBuffer(*rb), Not(IsOk()));
+}
+
 TEST(Write, ValueTypeMatchesExpected) {
   const auto config = ElementGainOffsetConfig::MakeValueType(
       /*element_gain_offset=*/QFormatOrFloatingPoint::MakeFromQ7_8(256));

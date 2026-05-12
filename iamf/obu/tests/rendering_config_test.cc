@@ -590,6 +590,19 @@ TEST(ValidateAndWrite, WritesElementGainOffsetConfig) {
   ValidateWriteResults(wb, kExpectedPayload);
 }
 
+TEST(RenderingConfigCreateFromBuffer, FailsWithExtensionSizeTooLarge) {
+  constexpr auto kRenderingConfigSizeTooLargeBuffer = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+       // `binaural_filter_profile` (2), reserved (3).
+       0,
+       // `rendering_config_extension_size`.
+       0x81, 0x80, 0x80, 0x01});
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kRenderingConfigSizeTooLargeBuffer));
+
+  EXPECT_THAT(RenderingConfig::CreateFromBuffer(*rb), Not(IsOk()));
+}
+
 TEST(RenderingConfigCreateFromBuffer, NoExtensionBytes) {
   constexpr auto kSource = std::to_array<uint8_t>({
       kHeadphonesRenderingModeBinauralWorldLocked << 6,
