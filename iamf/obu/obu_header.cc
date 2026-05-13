@@ -295,20 +295,28 @@ absl::Status ObuHeader::ReadAndValidate(
                                     num_samples_to_trim_at_start_size));
   }
   int8_t extension_header_size_size = 0;
+  DecodedUleb128 extension_header_size = 0;
   if (obu_extension_flag) {
-    DecodedUleb128 extension_header_size = 0;
     RETURN_IF_NOT_OK(
         rb.ReadULeb128(extension_header_size, extension_header_size_size));
-    extension_header_bytes = std::vector<uint8_t>(extension_header_size);
-    RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(*extension_header_bytes)));
+    // Avoid reading in the (possibly large) extension, until we know it is
+    // plausible.
   }
+
+  // `obu_size` measures the size of the entire OBU after itself. It's
+  // possible that the trimming information and/or the extension header are
+  // implausibly large.
   output_payload_serialized_size =
       GetObuPayloadSize(obu_size, num_samples_to_trim_at_end_size,
                         num_samples_to_trim_at_start_size,
-                        extension_header_size_size, GetExtensionHeaderSize());
+                        extension_header_size_size, extension_header_size);
   if (output_payload_serialized_size < 0) {
     return absl::InvalidArgumentError(
         "obu_size not valid for OBU flags. Negative remaining payload size.");
+  }
+  if (obu_extension_flag) {
+    extension_header_bytes = std::vector<uint8_t>(extension_header_size);
+    RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(*extension_header_bytes)));
   }
 
   RETURN_IF_NOT_OK(Validate(*this));

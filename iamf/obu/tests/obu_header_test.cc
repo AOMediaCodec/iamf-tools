@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/obu_header.h"
 
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -767,6 +768,23 @@ TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_MaxByteObuSize) {
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       Not(IsOk()));
+}
+
+TEST(ObuHeader, ReadAndValidateFailsWithExtensionSizeTooLarge) {
+  constexpr auto kHeaderWithExtensionSizeTooLarge = std::to_array<uint8_t>(
+      {// `obu_type` = kObuIaSequenceHeader, `obu_extension_flag` = 1.
+       kObuIaSequenceHeader << kObuTypeBitShift | kObuExtensionFlagBitMask,
+       // `obu_size`.
+       10,
+       // `extension_header_size`.
+       0x81, 0x80, 0x80, 0x01});
+  ObuHeader header;
+  int64_t payload_serialized_size;
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(kHeaderWithExtensionSizeTooLarge));
+
+  EXPECT_THAT(header.ReadAndValidate(*read_bit_buffer, payload_serialized_size),
+              Not(IsOk()));
 }
 
 TEST_F(ObuHeaderTest, MaxObuSizeWithMinimalLeb128) {
