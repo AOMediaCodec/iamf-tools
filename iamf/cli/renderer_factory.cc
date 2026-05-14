@@ -143,27 +143,32 @@ RendererFactory::CreateRendererForLayout(
                 LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}};
   }
 
+  std::unique_ptr<AudioElementRendererBase> renderer;
   switch (audio_element_type) {
     case AudioElementObu::kAudioElementSceneBased:
-      return MaybeCreateAmbisonicsRenderer(
+      renderer = MaybeCreateAmbisonicsRenderer(
           use_binaural, audio_substream_ids, substream_id_to_labels,
           audio_element_config, playback_layout, num_samples_per_frame,
           sample_rate);
+      break;
     case AudioElementObu::kAudioElementChannelBased:
-      return MaybeCreateChannelRenderer(use_binaural, audio_element_config,
-                                        playback_layout, num_samples_per_frame,
-                                        sample_rate);
+      renderer = MaybeCreateChannelRenderer(use_binaural, audio_element_config,
+                                            playback_layout,
+                                            num_samples_per_frame, sample_rate);
+      break;
     case AudioElementObu::kAudioElementObjectBased:
       ABSL_LOG(WARNING) << "Object-based audio elements are not supported.";
-      return nullptr;
+      break;
     case AudioElementObu::kAudioElementBeginReserved:
     case AudioElementObu::kAudioElementEndReserved:
       ABSL_LOG(WARNING) << "Unsupported audio_element_type_= "
                         << audio_element_type;
-      return nullptr;
+      break;
   }
-  // The above switch is exhaustive.
-  ABSL_LOG(FATAL) << "Unsupported audio_element_type_= " << audio_element_type;
+  if (renderer != nullptr) {
+    renderer->SetTrimmingSettings(trimming_settings_);
+  }
+  return renderer;
 }
 
 }  // namespace iamf_tools

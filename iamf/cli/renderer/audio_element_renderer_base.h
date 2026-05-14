@@ -83,6 +83,15 @@ class AudioElementRendererBase {
     return is_finalized_;
   }
 
+  /*!\brief Sets the trimming settings for this renderer.
+   *
+   * \param trimming_settings Trimming configuration to use.
+   */
+  void SetTrimmingSettings(TrimmingSettings trimming_settings) {
+    absl::MutexLock lock(mutex_);
+    trimming_settings_ = trimming_settings;
+  }
+
  protected:
   /*!\brief Constructor.
    *
@@ -124,6 +133,9 @@ class AudioElementRendererBase {
 
   bool is_finalized_ ABSL_GUARDED_BY(mutex_) = false;
   const LabeledFrame* current_labeled_frame_ ABSL_GUARDED_BY(mutex_) = nullptr;
+  // Determines whether frame start/end sample trimming is applied when
+  // arranging samples.
+  TrimmingSettings trimming_settings_ ABSL_GUARDED_BY(mutex_);
 };
 
 }  // namespace iamf_tools

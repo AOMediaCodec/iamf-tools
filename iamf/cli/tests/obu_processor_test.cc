@@ -93,8 +93,6 @@ constexpr DecodedUleb128 kSampleRate = 48000;
 constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
 constexpr size_t kTwoChannels = 2;
 
-constexpr DecodedUleb128 kImplicitSubstreamId = 0;
-
 constexpr int kObuTypeBitShift = 3;
 constexpr int64_t kBufferCapacity = 1024;
 constexpr std::nullopt_t kNoDesiredMixPresentationId = std::nullopt;
@@ -1449,7 +1447,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RenderingNothingReturnsOk) {
   auto obu_processor = ObuProcessor::CreateForRendering(
       kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
@@ -1516,7 +1514,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
   auto obu_processor = ObuProcessor::CreateForRendering(
       kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
@@ -1579,7 +1577,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   auto obu_processor = ObuProcessor::CreateForRendering(
       kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
@@ -1648,7 +1646,7 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereo) {
   auto obu_processor = ObuProcessor::CreateForRendering(
       kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
@@ -1694,7 +1692,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
     auto obu_processor = ObuProcessor::CreateForRendering(
         kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
         /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-        insufficient_data);
+        TrimmingSettings{}, insufficient_data);
     ASSERT_THAT(obu_processor, NotNull());
     ASSERT_FALSE(insufficient_data);
 
@@ -1777,7 +1775,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   auto obu_processor = ObuProcessor::CreateForRendering(
       kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
@@ -1797,7 +1795,7 @@ TEST(RenderTemporalUnitAndMeasureLoudness,
   auto obu_processor = ObuProcessor::CreateForRendering(
       kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
   // Configure a stray audio frame.
@@ -1891,7 +1889,7 @@ TEST(CreateForRendering,
   auto obu_processor = ObuProcessor::CreateForRendering(
       kProfilesTooLow, kNoDesiredMixPresentationId, kStereoLayout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
 
   EXPECT_FALSE(insufficient_data);
   EXPECT_THAT(obu_processor, IsNull());
@@ -1938,7 +1936,7 @@ TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
   auto obu_processor = ObuProcessor::CreateForRendering(
       kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, k5_1_Layout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   EXPECT_THAT(obu_processor, NotNull());
   absl::StatusOr<Layout> output_layout = obu_processor->GetOutputLayout();
   EXPECT_THAT(output_layout, IsOkAndHolds(forwarded_layout));
@@ -1988,7 +1986,7 @@ TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
   auto obu_processor = ObuProcessor::CreateForRendering(
       kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, k5_1_Layout,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   EXPECT_THAT(obu_processor, NotNull());
   absl::StatusOr<Layout> output_layout = obu_processor->GetOutputLayout();
   EXPECT_THAT(output_layout, IsOkAndHolds(forwarded_layout));
@@ -2052,7 +2050,7 @@ TEST(CreateForRendering, CanChooseLayoutByMixPresentationIdOnly) {
       kIamfV1_0_0ErrataProfiles, kSecondMixPresentationId,
       /*desired_layout=*/std::nullopt,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      TrimmingSettings{}, insufficient_data);
   EXPECT_THAT(obu_processor, NotNull());
   absl::StatusOr<Layout> output_layout = obu_processor->GetOutputLayout();
   EXPECT_THAT(output_layout, IsOkAndHolds(forwarded_layout));

@@ -37,6 +37,7 @@ namespace iamf_tools {
  * \param empty_channel Vector of an all-zero channel. All output spans of
  *        channels corresponding to missing labels
  *        (`ChannelLabel::Label::kOmitted`) will point to this vector.
+ * \param trimming_settings Settings to enable/disable trimming at start/end.
  * \param samples_to_render Output samples to render in (channel, time) axes.
  *        Samples which should be trimmed are omitted from the output.
  * \param num_valid_ticks Number of valid time ticks in the returned
@@ -47,6 +48,7 @@ absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
     const std::vector<InternalSampleType>& empty_channel,
+    TrimmingSettings trimming_settings,
     std::vector<absl::Span<const InternalSampleType>>& samples_to_render,
     size_t& num_valid_ticks);
 

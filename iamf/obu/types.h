@@ -51,6 +51,14 @@ typedef double InternalSampleType;
  */
 typedef int64_t InternalTimestamp;
 
+/*!\brief Internal trimming configuration for the decoder. */
+struct TrimmingSettings {
+  // If true, the decoder trims start samples as specified in the frames.
+  bool trim_beginning = true;
+  // If true, the decoder trims trailing samples as specified in the frames.
+  bool trim_end = true;
+};
+
 }  // namespace iamf_tools
 
 #endif  // OBU_LEB128_H_

@@ -175,6 +175,18 @@ enum class ChannelOrdering {
   kOrderingForAndroid = 1,
 };
 
+// Settings for trimming audio frames.
+// When decoding audio that is encapsulated in an MP4, the trimming may be done
+// by any other layer, for example, the MP4 library may already expect to handle
+// trimming itself based on the `edts` and `elst` boxes.  Set the appropriate
+// members of this struct to `false` to disable trimming in the decoder.
+struct TrimmingSettings {
+  // If true, the decoder will trim `num_samples_to_trim_at_start`
+  bool trim_beginning = true;
+  // If true, the decoder will trim `num_samples_to_trim_at_end`
+  bool trim_end = true;
+};
+
 }  // namespace api
 }  // namespace iamf_tools
 

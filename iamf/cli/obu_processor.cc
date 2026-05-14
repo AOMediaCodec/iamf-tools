@@ -465,7 +465,7 @@ std::unique_ptr<ObuProcessor> absl_nullable ObuProcessor::CreateForRendering(
     const std::optional<uint32_t>& desired_mix_presentation_id,
     const std::optional<Layout>& desired_layout, bool is_exhaustive_and_exact,
     ReadBitBuffer* absl_nonnull read_bit_buffer,
-    bool& output_insufficient_data) {
+    TrimmingSettings trimming_settings, bool& output_insufficient_data) {
   // `output_insufficient_data` indicates a specific error condition and so is
   // true iff we've received valid data but need more of it.
   output_insufficient_data = false;
@@ -482,8 +482,8 @@ std::unique_ptr<ObuProcessor> absl_nullable ObuProcessor::CreateForRendering(
   }
 
   if (const auto status = obu_processor->InitializeForRendering(
-          desired_profile_versions, desired_mix_presentation_id,
-          desired_layout);
+          desired_profile_versions, desired_mix_presentation_id, desired_layout,
+          trimming_settings);
       !status.ok()) {
     ABSL_LOG(ERROR) << status;
     return nullptr;
@@ -523,7 +523,8 @@ absl::StatusOr<Layout> ObuProcessor::GetOutputLayout() const {
 absl::Status ObuProcessor::InitializeForRendering(
     const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
     const std::optional<uint32_t>& desired_mix_presentation_id,
-    const std::optional<Layout>& desired_layout) {
+    const std::optional<Layout>& desired_layout,
+    TrimmingSettings trimming_settings) {
   if (descriptors_.mix_presentation_obus.empty()) {
     return absl::InvalidArgumentError("No mix presentation OBUs found.");
   }
@@ -568,7 +569,8 @@ absl::Status ObuProcessor::InitializeForRendering(
   // Configure simplified audio pipeline, from the simplified mix presentation.
   absl::StatusOr<RenderingModels> rendering_models =
       ConfigureSimplifiedAudioProcessingPipeline(descriptors_.audio_elements,
-                                                 *simplified_mix_presentation);
+                                                 *simplified_mix_presentation,
+                                                 trimming_settings);
   if (!rendering_models.ok()) {
     return rendering_models.status();
   }
@@ -723,7 +725,8 @@ ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
 absl::StatusOr<ObuProcessor::RenderingModels>
 ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
     const DescriptorObus::AudioElementsById& audio_elements,
-    const MixPresentationObu& simplified_mix_presentation) {
+    const MixPresentationObu& simplified_mix_presentation,
+    TrimmingSettings trimming_settings) {
   // The audio elements IDs that are relevant to the selected mix presentation.
   absl::flat_hash_set<DecodedUleb128> relevant_audio_element_ids;
   for (const auto& sub_mix : simplified_mix_presentation.sub_mixes_) {
@@ -767,7 +770,7 @@ ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
   // Create the mix presentation finalizer which is used to render the output
   // files. We neither trust the user-provided loudness, nor care about the
   // calculated loudness.
-  const RendererFactory renderer_factory;
+  const RendererFactory renderer_factory(trimming_settings);
   absl::StatusOr<RenderingMixPresentationFinalizer> mix_presentation_finalizer =
       RenderingMixPresentationFinalizer::Create(
           /*renderer_factory=*/&renderer_factory,

@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+-   Add optional setting to disable trimming of audio at start or end by the
+    decoder.
+
 ### Removed
 
 -   Drop support `channel_ids` and `channel_labels` in `AudioElementObuMetadata`

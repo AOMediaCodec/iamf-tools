@@ -45,7 +45,8 @@ namespace {
 absl::StatusOr<size_t> GetCommonNumTrimmedTimeTicks(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    const std::vector<InternalSampleType>& empty_channel) {
+    const std::vector<InternalSampleType>& empty_channel,
+    TrimmingSettings trimming_settings) {
   std::optional<size_t> num_raw_time_ticks;
   for (const auto& label : ordered_labels) {
     if (label == ChannelLabel::kOmitted) {
@@ -75,20 +76,25 @@ absl::StatusOr<size_t> GetCommonNumTrimmedTimeTicks(
         empty_channel.size(), " < ", *num_raw_time_ticks, ")"));
   }
 
+  const uint32_t samples_to_trim_at_start =
+      trimming_settings.trim_beginning ? labeled_frame.samples_to_trim_at_start
+                                       : 0;
+  const uint32_t samples_to_trim_at_end =
+      trimming_settings.trim_end ? labeled_frame.samples_to_trim_at_end : 0;
+
   uint32_t total_samples_to_trim;
   RETURN_IF_NOT_OK(AddUint32CheckOverflow(
-      labeled_frame.samples_to_trim_at_start,
-      labeled_frame.samples_to_trim_at_end, total_samples_to_trim));
+      samples_to_trim_at_start, samples_to_trim_at_end, total_samples_to_trim));
   if (*num_raw_time_ticks < total_samples_to_trim) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Not enough samples to render samples",
-        ". #Raw samples: ", *num_raw_time_ticks,
-        ", samples to trim at start: ", labeled_frame.samples_to_trim_at_start,
-        ", samples to trim at end: ", labeled_frame.samples_to_trim_at_end));
+    return absl::InvalidArgumentError(
+        absl::StrCat("Not enough samples to render samples",
+                     ". #Raw samples: ", *num_raw_time_ticks,
+                     ", samples to trim at start: ", samples_to_trim_at_start,
+                     ", samples to trim at end: ", samples_to_trim_at_end));
   }
 
-  return *num_raw_time_ticks - labeled_frame.samples_to_trim_at_start -
-         labeled_frame.samples_to_trim_at_end;
+  return *num_raw_time_ticks - samples_to_trim_at_start -
+         samples_to_trim_at_end;
 }
 
 struct GetChannelLabelsFromAmbisonicsMonoConfig {
@@ -188,6 +194,7 @@ absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
     const std::vector<InternalSampleType>& empty_channel,
+    TrimmingSettings trimming_settings,
     std::vector<absl::Span<const InternalSampleType>>& samples_to_render,
     size_t& num_valid_ticks) {
   if (ordered_labels.empty()) {
@@ -195,11 +202,15 @@ absl::Status ArrangeSamplesToRender(
   }
 
   const auto common_num_trimmed_time_ticks = GetCommonNumTrimmedTimeTicks(
-      labeled_frame, ordered_labels, empty_channel);
+      labeled_frame, ordered_labels, empty_channel, trimming_settings);
   if (!common_num_trimmed_time_ticks.ok()) {
     return common_num_trimmed_time_ticks.status();
   }
   num_valid_ticks = *common_num_trimmed_time_ticks;
+
+  const uint32_t samples_to_trim_at_start =
+      trimming_settings.trim_beginning ? labeled_frame.samples_to_trim_at_start
+                                       : 0;
 
   const auto num_channels = ordered_labels.size();
   for (size_t c = 0; c < num_channels; ++c) {
@@ -216,8 +227,8 @@ absl::Status ArrangeSamplesToRender(
     }
 
     // Return the valid portion after trimming.
-    samples_to_render[c] = channel_samples.subspan(
-        labeled_frame.samples_to_trim_at_start, num_valid_ticks);
+    samples_to_render[c] =
+        channel_samples.subspan(samples_to_trim_at_start, num_valid_ticks);
   }
 
   return absl::OkStatus();

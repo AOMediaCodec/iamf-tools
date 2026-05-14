@@ -154,9 +154,9 @@ static void BM_ArrangeSamplesToRender(benchmark::State& state) {
 
   // Measure the calls to `ArrangeSamplesToRender()`.
   for (auto _ : state) {
-    auto status =
-        ArrangeSamplesToRender(labeled_frame, ordered_labels, kEmptyChannel,
-                               samples_to_render, num_valid_samples);
+    auto status = ArrangeSamplesToRender(labeled_frame, ordered_labels,
+                                         kEmptyChannel, TrimmingSettings{},
+                                         samples_to_render, num_valid_samples);
     ABSL_CHECK_OK(status);
   }
 }

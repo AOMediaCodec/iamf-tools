@@ -31,6 +31,7 @@ IamfDecoder::Settings ApiToInternalSettings(
       .channel_ordering = settings.channel_ordering,
       .requested_profile_versions = settings.requested_profile_versions,
       .requested_output_sample_type = settings.requested_output_sample_type,
+      .trimming_settings = settings.trimming_settings,
   };
   return internal_settings;
 }

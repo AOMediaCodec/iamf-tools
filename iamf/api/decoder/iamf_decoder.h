@@ -62,6 +62,9 @@ class IamfDecoder : public api::IamfDecoderInterface {
     // Specifies the desired bit depth for the output samples.
     OutputSampleType requested_output_sample_type =
         OutputSampleType::kInt32LittleEndian;
+
+    // Specifies the trimming settings for decoding audio frames.
+    TrimmingSettings trimming_settings;
   };
 
   // Dtor cannot be inline (so it must be declared and defined in the source

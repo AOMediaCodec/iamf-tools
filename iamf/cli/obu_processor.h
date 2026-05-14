@@ -89,6 +89,7 @@ class ObuProcessor {
    *        descriptor OBUs.
    * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
    *        bitstream.
+   * \param trimming_settings Trimming settings to apply during rendering.
    * \param output_insufficient_data True iff the bitstream provided is
    *        insufficient to process all descriptor OBUs and there is no other
    *        error.
@@ -99,7 +100,7 @@ class ObuProcessor {
       const std::optional<uint32_t>& desired_mix_presentation_id,
       const std::optional<Layout>& desired_layout, bool is_exhaustive_and_exact,
       ReadBitBuffer* absl_nonnull read_bit_buffer,
-      bool& output_insufficient_data);
+      TrimmingSettings trimming_settings, bool& output_insufficient_data);
 
   /*!\brief Gets the sample rate of the output audio.
    *
@@ -236,11 +237,13 @@ class ObuProcessor {
    *
    * \param audio_elements Audio elements, irrelevant ones will be ignored.
    * \param simplified_mix_presentation Simplified mix presentation to render.
+   * \param trimming_settings Trimming settings to pass to the renderer factory.
    */
   static absl::StatusOr<RenderingModels>
   ConfigureSimplifiedAudioProcessingPipeline(
       const DescriptorObus::AudioElementsById& audio_elements,
-      const MixPresentationObu& simplified_mix_presentation);
+      const MixPresentationObu& simplified_mix_presentation,
+      TrimmingSettings trimming_settings);
 
   /*!\brief Performs internal initialization of the OBU processor.
    *
@@ -278,7 +281,8 @@ class ObuProcessor {
   absl::Status InitializeForRendering(
       const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
       const std::optional<uint32_t>& desired_mix_presentation_id,
-      const std::optional<Layout>& desired_layout);
+      const std::optional<Layout>& desired_layout,
+      TrimmingSettings trimming_settings);
 
   struct DecodingLayoutInfo {
     DecodedUleb128 mix_presentation_id;

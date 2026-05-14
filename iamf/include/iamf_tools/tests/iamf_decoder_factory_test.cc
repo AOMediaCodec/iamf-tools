@@ -100,6 +100,18 @@ TEST(Create, SucceedsWithBinauralOutput) {
   EXPECT_NE(decoder, nullptr);
 }
 
+TEST(Create, SucceedsWithCustomTrimmingSettings) {
+  IamfDecoderFactory::Settings settings = {
+      .trimming_settings =
+          {
+              .trim_beginning = false,
+              .trim_end = false,
+          },
+  };
+  auto decoder = IamfDecoderFactory::Create(settings);
+  EXPECT_NE(decoder, nullptr);
+}
+
 TEST(Create, SucceedsWithEmptySettings) {
   auto decoder = IamfDecoderFactory::Create({});
   EXPECT_NE(decoder, nullptr);

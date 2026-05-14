@@ -54,6 +54,8 @@ class IamfDecoderFactory {
     // Specifies the desired bit depth for the output samples.
     OutputSampleType requested_output_sample_type =
         OutputSampleType::kInt32LittleEndian;
+
+    TrimmingSettings trimming_settings;
   };
 
   /*!\brief Creates an IamfDecoderInterface.
