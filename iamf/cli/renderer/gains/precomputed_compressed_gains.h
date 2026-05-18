@@ -46,10 +46,11 @@ struct PrecomputedGainEntry {
   const char* input_layout;
   const char* output_layout;
   bool is_dense;
-  const float* dense_data;
-  int dense_size;
-  const uint8_t* sparse_blob;
-  int sparse_size;
+  union {
+    const float* dense_data;
+    const uint8_t* sparse_blob;
+  };
+  int size;
 };
 
 /*!\brief Gets the table of precomputed gains.

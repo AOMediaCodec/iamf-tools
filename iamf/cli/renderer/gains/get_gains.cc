@@ -30,11 +30,11 @@ absl::StatusOr<std::vector<std::vector<double>>> GetGainsForLayoutPair(
     if (entry.input_layout == input_key && entry.output_layout == output_key) {
       CompressedMatrix compressed_matrix;
       if (entry.is_dense) {
-        compressed_matrix.dense_data.assign(
-            entry.dense_data, entry.dense_data + entry.dense_size);
+        compressed_matrix.dense_data.assign(entry.dense_data,
+                                            entry.dense_data + entry.size);
       } else {
-        compressed_matrix.sparse_blob.assign(
-            entry.sparse_blob, entry.sparse_blob + entry.sparse_size);
+        compressed_matrix.sparse_blob.assign(entry.sparse_blob,
+                                             entry.sparse_blob + entry.size);
       }
       return DecompressMatrix(std::string(input_key), std::string(output_key),
                               compressed_matrix);
