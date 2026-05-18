@@ -366,6 +366,7 @@ cc_test(
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/user_metadata_builder:audio_element_metadata_builder",
+        "//iamf/cli/user_metadata_builder:codec_config_obu_metadata_builder",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common:read_bit_buffer",
         "//iamf/include/iamf_tools:iamf_tools_encoder_api_types",

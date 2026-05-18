@@ -12,6 +12,8 @@ and this project adheres to
 
 -   Add optional setting to disable trimming of audio at start or end by the
     decoder.
+-   Add `IamfEncoderInterface::GetEncoderDelay` to retrieve the total encoder
+    delay.
 
 ### Removed
 

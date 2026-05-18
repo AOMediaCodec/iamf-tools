@@ -47,6 +47,7 @@
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
+#include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -133,24 +134,10 @@ void AddMetadataObu(UserMetadata& user_metadata) {
 }
 
 void AddCodecConfig(UserMetadata& user_metadata) {
-  auto* new_codec_config = user_metadata.add_codec_config_metadata();
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        codec_config_id: 200
-        codec_config {
-          codec_id: CODEC_ID_LPCM
-          num_samples_per_frame: 8
-          audio_roll_distance: 0
-          decoder_config_lpcm {
-            sample_format_flags: LPCM_LITTLE_ENDIAN
-            sample_rate: 16000
-          }
-        }
-      )pb",
-      new_codec_config));
-  new_codec_config->mutable_codec_config()
-      ->mutable_decoder_config_lpcm()
-      ->set_sample_size(kExpectedPcmBitDepth);
+  *user_metadata.add_codec_config_metadata() =
+      CodecConfigObuMetadataBuilder::GetLpcmCodecConfigObuMetadata(
+          /*codec_config_id=*/200, /*num_samples_per_frame=*/8,
+          /*sample_size=*/kExpectedPcmBitDepth, /*sample_rate=*/16000);
 }
 
 void AddAudioElement(UserMetadata& user_metadata) {
@@ -842,6 +829,26 @@ TEST_F(IamfEncoderTest, OutputSampleProcessorFactoryIgnoresBitDepthOverride) {
   sample_processor_factory_ = mock_sample_processor_factory.AsStdFunction();
 
   CreateExpectOk();
+}
+
+TEST_F(IamfEncoderTest, GetEncoderDelayReturnsExpectedDelayForLpcm) {
+  SetupDescriptorObus();
+  auto iamf_encoder = CreateExpectOk();
+
+  EXPECT_EQ(iamf_encoder.GetEncoderDelay(), 0);
+}
+
+TEST_F(IamfEncoderTest, GetEncoderDelayReturnsExpectedDelayForOpus) {
+  AddIaSequenceHeader(user_metadata_);
+  *user_metadata_.add_codec_config_metadata() =
+      CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
+          kCodecConfigId, /*num_samples_per_frame=*/960);
+  AddAudioElement(user_metadata_);
+  AddMixPresentation(user_metadata_);
+  AddAudioFrame(user_metadata_);
+  auto iamf_encoder = CreateExpectOk();
+
+  EXPECT_NE(iamf_encoder.GetEncoderDelay(), 0);
 }
 
 // TODO(b/349321277): Add more tests.

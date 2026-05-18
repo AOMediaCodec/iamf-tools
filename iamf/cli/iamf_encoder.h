@@ -146,6 +146,17 @@ class IamfEncoder : public api::IamfEncoderInterface {
       bool redundant_copy, std::vector<uint8_t>& descriptor_obus,
       bool& output_obus_are_finalized) const override;
 
+  /*!\brief Gets the encoder delay in samples.
+   *
+   * Certain settings or codecs have an inherent delay in the encoding process.
+   * E.g. pre-skip in Opus. Typically the output Audio Frame OBUs will signal
+   * this delay by signalling `samples_to_trim_at_start`. This delay may be
+   * useful to help synchronize the input audio with the output temporal units.
+   *
+   * \return Encoder delay in samples.
+   */
+  uint32_t GetEncoderDelay() const override;
+
   /*!\brief Returns whether this encoder is generating data OBUs.
    *
    * \return True if still generating data OBUs.
@@ -199,7 +210,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
   [[deprecated("Use GetDescriptorObus() instead.")]]
   const DescriptorObus::AudioElementsById& GetAudioElements() const;
 
-  /*!\brief Outputs a const reference to the prelimary Mix Presentation OBUs.
+  /*!\brief Outputs a const reference to the preliminary Mix Presentation OBUs.
    *
    * When `GeneratingTemporalUnits()` is true, this function will return the
    * preliminary mix presentation OBUs. These are not finalized, and thus almost

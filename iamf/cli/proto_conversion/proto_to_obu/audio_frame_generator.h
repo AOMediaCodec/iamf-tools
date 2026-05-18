@@ -170,6 +170,17 @@ class AudioFrameGenerator {
    */
   absl::Status OutputFrames(std::list<AudioFrameWithData>& audio_frames);
 
+  /*!\brief Returns the effective codec delay for the underlying encoders.
+   *
+   * In some cases, some underlying streams may have different codec delays
+   * (e.g. multiple codecs in the same IA sequence). For streams to remain
+   * synchronized, the encoder with the longest codec delay determines the
+   * effective delay of all streams.
+   *
+   * \return Maximum codec delay.
+   */
+  uint32_t GetEncoderDelay() const { return max_codec_delay_; }
+
  private:
   // State of an audio frame generator.
   enum GeneratorState {
@@ -205,7 +216,8 @@ class AudioFrameGenerator {
       absl::flat_hash_map<uint32_t, SubstreamData>
           substream_id_to_substream_data,
       absl::flat_hash_map<uint32_t, TrimmingState>
-          substream_id_to_trimming_state)
+          substream_id_to_trimming_state,
+      uint32_t max_codec_delay)
       : audio_element_id_to_labels_(std::move(audio_element_id_to_labels)),
         audio_elements_(audio_elements),
         substream_id_to_encoder_(std::move(substream_id_to_encoder)),
@@ -217,7 +229,8 @@ class AudioFrameGenerator {
         parameters_manager_(parameters_manager),
         global_timing_module_(global_timing_module),
         state_(substream_id_to_encoder_.empty() ? kFlushingRemaining
-                                                : kTakingSamples) {}
+                                                : kTakingSamples),
+        max_codec_delay_(max_codec_delay) {}
 
   // Mapping from Audio Element ID to labels.
   const absl::flat_hash_map<DecodedUleb128,
@@ -249,6 +262,9 @@ class AudioFrameGenerator {
   ParametersManager& parameters_manager_;
   GlobalTimingModule& global_timing_module_;
   GeneratorState state_ ABSL_GUARDED_BY(mutex_);
+
+  // Maximum codec delay among all encoders in samples.
+  const uint32_t max_codec_delay_;
 
   // Mutex to protect data accessed in different threads.
   mutable absl::Mutex mutex_;

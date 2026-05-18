@@ -90,6 +90,7 @@ cc_test(
         "//iamf/cli/proto_conversion/proto_to_obu:codec_config_generator",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/cli/user_metadata_builder:audio_element_metadata_builder",
+        "//iamf/cli/user_metadata_builder:codec_config_obu_metadata_builder",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common/utils:numeric_utils",
         "//iamf/obu:audio_frame",

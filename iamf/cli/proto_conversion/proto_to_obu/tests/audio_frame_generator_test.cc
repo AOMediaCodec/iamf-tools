@@ -39,6 +39,7 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
+#include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_frame.h"
@@ -1294,6 +1295,77 @@ TEST(AudioFrameGenerator, NoAudioFrames) {
   std::list<AudioFrameWithData> audio_frames;
   FlushAudioFrameGeneratorExpectOk(*audio_frame_generator, audio_frames);
   EXPECT_TRUE(audio_frames.empty());
+}
+
+TEST(GetEncoderDelay, ReturnsZeroForLpcm) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
+      kNoParamDefinitions;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
+  std::unique_ptr<ParametersManager> parameters_manager;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(
+      user_metadata, kNoParamDefinitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
+
+  EXPECT_EQ(audio_frame_generator->GetEncoderDelay(), 0);
+}
+
+TEST(GetEncoderDelay, ReturnsNonZeroDelayForOpus) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  *user_metadata.add_codec_config_metadata() =
+      CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
+          kCodecConfigId, /*num_samples_per_frame=*/960);
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kFirstAudioElementId, kFirstSubstreamId);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_start_includes_codec_delay(false);
+
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
+      kNoParamDefinitions;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
+  std::unique_ptr<ParametersManager> parameters_manager;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(
+      user_metadata, kNoParamDefinitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
+
+  EXPECT_NE(audio_frame_generator->GetEncoderDelay(), 0);
+}
+
+TEST(GetEncoderDelay, ReturnsMaxDelayAmongMultipleAudioElements) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_start_includes_codec_delay(false);
+  constexpr uint32_t kSecondCodecConfigId = 100;
+  *user_metadata.add_codec_config_metadata() =
+      CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
+          kSecondCodecConfigId, /*num_samples_per_frame=*/960);
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kSecondAudioElementId, kSecondSubstreamId);
+  user_metadata.mutable_audio_element_metadata(1)->set_codec_config_id(
+      kSecondCodecConfigId);
+  user_metadata.mutable_audio_frame_metadata(1)
+      ->set_samples_to_trim_at_start_includes_codec_delay(false);
+
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
+      kNoParamDefinitions;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
+  std::unique_ptr<ParametersManager> parameters_manager;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(
+      user_metadata, kNoParamDefinitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
+
+  EXPECT_NE(audio_frame_generator->GetEncoderDelay(), 0);
 }
 
 TEST(AudioFrameGenerator, MultipleCallsToAddSamplesSucceed) {

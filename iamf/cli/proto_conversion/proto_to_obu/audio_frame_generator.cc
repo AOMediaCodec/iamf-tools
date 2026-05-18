@@ -653,7 +653,8 @@ AudioFrameGenerator::Create(
     // Sequences.
     return absl::WrapUnique(
         new AudioFrameGenerator({}, {}, demixing_module, parameters_manager,
-                                global_timing_module, {}, {}, {}));
+                                global_timing_module, {}, {}, {},
+                                /*max_codec_delay=*/0));
   }
 
   // Mapping from Codec Config ID to additional codec config metadata used
@@ -784,7 +785,7 @@ AudioFrameGenerator::Create(
       parameters_manager, global_timing_module,
       std::move(substream_id_to_encoder),
       std::move(substream_id_to_substream_data),
-      std::move(substream_id_to_trimming_state)));
+      std::move(substream_id_to_trimming_state), max_codec_delay));
 }
 
 absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(

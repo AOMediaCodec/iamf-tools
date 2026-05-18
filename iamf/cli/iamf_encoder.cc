@@ -434,6 +434,12 @@ absl::Status IamfEncoder::GetDescriptorObus(
   return absl::OkStatus();
 }
 
+uint32_t IamfEncoder::GetEncoderDelay() const {
+  return audio_frame_generator_ == nullptr
+             ? 0
+             : audio_frame_generator_->GetEncoderDelay();
+}
+
 bool IamfEncoder::GeneratingTemporalUnits() const {
   // Once the `AudioFrameGenerator` is done, and there are no more extraneous
   // timestamped arbitrary OBUs, we are done.

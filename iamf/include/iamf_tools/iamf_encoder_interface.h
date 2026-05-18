@@ -134,6 +134,17 @@ class IamfEncoderInterface {
       bool redundant_copy, std::vector<uint8_t>& descriptor_obus,
       bool& output_obus_are_finalized) const = 0;
 
+  /*!\brief Gets the encoder delay in samples.
+   *
+   * Certain settings or codecs have an inherent delay in the encoding process.
+   * E.g. pre-skip in Opus. Typically the output Audio Frame OBUs will signal
+   * this delay by signalling `samples_to_trim_at_start`. This delay may be
+   * useful to help synchronize the input audio with the output temporal units.
+   *
+   * \return Encoder delay in samples.
+   */
+  virtual uint32_t GetEncoderDelay() const = 0;
+
   /*!\brief Returns whether this encoder is generating temporal units.
    *
    * \return True until the last temporal unit is output, then false.
