@@ -185,31 +185,31 @@ TEST(CreateFromAmbisonicsConfig, SupportsMixedFirstOrderAmbisonics) {
 // =========== Full-order ambisonics projection config ===========
 
 const int16_t kMaxGain = std::numeric_limits<int16_t>::max();
-const std::vector<int16_t> kEpsilonIdentityFoa =
-    {/*           ACN#: 0, 1, 2, 3 */
-     /* Channel 0: */ kMaxGain, 0,        0,        0,
-     /* Channel 1: */ 0,        kMaxGain, 0,        0,
-     /* Channel 2: */ 0,        0,        kMaxGain, 0,
-     /* Channel 3: */ 0,        0,        0,        kMaxGain};
+const std::vector<int16_t> kEpsilonIdentityFoa = {
+    /*           ACN#: 0, 1, 2, 3 */
+    /* Channel 0: */ kMaxGain, 0,        0,        0,
+    /* Channel 1: */ 0,        kMaxGain, 0,        0,
+    /* Channel 2: */ 0,        0,        kMaxGain, 0,
+    /* Channel 3: */ 0,        0,        0,        kMaxGain};
 
-const std::vector<int16_t> kNegativeEpsilonIdentityFoa =
-    {/*           ACN#: 0, 1, 2, 3 */
-     /* Channel 0: */ kMaxGain * -1,
-     0,
-     0,
-     0,
-     /* Channel 1: */ 0,
-     kMaxGain * -1,
-     0,
-     0,
-     /* Channel 2: */ 0,
-     0,
-     kMaxGain * -1,
-     0,
-     /* Channel 3: */ 0,
-     0,
-     0,
-     kMaxGain * -1};
+const std::vector<int16_t> kNegativeEpsilonIdentityFoa = {
+    /*           ACN#: 0, 1, 2, 3 */
+    /* Channel 0: */ kMaxGain * -1,
+    0,
+    0,
+    0,
+    /* Channel 1: */ 0,
+    kMaxGain * -1,
+    0,
+    0,
+    /* Channel 2: */ 0,
+    0,
+    kMaxGain * -1,
+    0,
+    /* Channel 3: */ 0,
+    0,
+    0,
+    kMaxGain * -1};
 
 TEST(CreateFromAmbisonicsConfig, Projection) {
   const auto ambisonics_config = AmbisonicsProjectionConfig::Create(
