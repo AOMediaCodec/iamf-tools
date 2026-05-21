@@ -90,30 +90,6 @@ class ParamDefinition {
    */
   DecodedUleb128 GetNumSubblocks() const;
 
-  /*!\brief Initializes the subblock durations.
-   *
-   * This must be called before calling `SetSubblockDuration()` and
-   * `GetSubblockDuration()`.
-   *
-   * \param num_subblocks Number of subblocks.
-   */
-  void InitializeSubblockDurations(DecodedUleb128 num_subblocks);
-
-  /*!\brief Gets the subblock duration.
-   *
-   * \param subblock_index Index of the subblock to get the duration.
-   * \return Duration of the subblock.
-   */
-  DecodedUleb128 GetSubblockDuration(int subblock_index) const;
-
-  /*!\brief Sets the subblock duration.
-   *
-   * \param subblock_index Index of the subblock to set the duration.
-   * \param duration Duration to set.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status SetSubblockDuration(int subblock_index, DecodedUleb128 duration);
-
   /*!\brief Validates the parameter definition called by `ValidateAndWrite()`.
    *
    * \return `absl::OkStatus()` if successful. A specific status on failure.
@@ -204,16 +180,6 @@ class ParamDefinition {
   friend bool operator==(const ParamDefinition& lhs,
                          const ParamDefinition& rhs) = default;
 
-  DecodedUleb128 parameter_id_ = 0;
-  DecodedUleb128 parameter_rate_ = 0;
-  ParamDefinitionMode param_definition_mode_ = kModeScheduleInParamDefinition;
-  uint8_t reserved_ = 0;  // 7 bits.
-
-  // All fields below are only included if `param_definition_mode_ ==
-  // kModeScheduleInParamDefinition`.
-  DecodedUleb128 duration_ = 0;
-  DecodedUleb128 constant_subblock_duration_ = 0;
-
  protected:
   /*!\brief Constructor with a passed-in type used by sub-classes.
    *
@@ -240,6 +206,16 @@ class ParamDefinition {
 
   // Type of this parameter definition.
   std::optional<ParameterDefinitionType> type_ = std::nullopt;
+
+  DecodedUleb128 parameter_id_ = 0;
+  DecodedUleb128 parameter_rate_ = 0;
+  ParamDefinitionMode param_definition_mode_ = kModeScheduleInParamDefinition;
+  uint8_t reserved_ = 0;  // 7 bits.
+
+  // All fields below are only included if `param_definition_mode_ ==
+  // kModeScheduleInParamDefinition`.
+  DecodedUleb128 duration_ = 0;
+  DecodedUleb128 constant_subblock_duration_ = 0;
 
   // `num_subblocks` is only included if `param_definition_mode_ ==
   // ParamDefinition::kModeScheduleInParamDefinition` and

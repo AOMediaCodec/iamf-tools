@@ -28,6 +28,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::ElementsAre;
 using ::testing::Not;
 
 using absl::MakeConstSpan;
@@ -176,12 +177,8 @@ TEST(GetSubblockDuration, MatchesExplicitSetSubblockDurations) {
   args.subblock_durations = {kSubblockDuration0, kSubblockDuration1};
   MockParamDefinition param_definition(args);
 
-  EXPECT_EQ(param_definition.GetSubblockDuration(0), kSubblockDuration0);
-  EXPECT_EQ(param_definition.GetSubblockDuration(1), kSubblockDuration1);
-
-  EXPECT_EQ(
-      param_definition.GetSubblockDurations(),
-      std::vector<DecodedUleb128>({kSubblockDuration0, kSubblockDuration1}));
+  EXPECT_THAT(param_definition.GetSubblockDurations(),
+              ElementsAre(kSubblockDuration0, kSubblockDuration1));
 }
 
 TEST(ReadAndValidate, InvalidWhenNumSubblocksExceedsMaximum) {

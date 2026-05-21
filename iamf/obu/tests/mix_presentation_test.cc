@@ -54,16 +54,6 @@ constexpr int kElementGainOffsetFlagBitShift = 5;
 
 class MixPresentationObuTest : public ObuTestBase, public testing::Test {
  public:
-  // Used to populate a `MixPresentationSubMix`.
-  struct DynamicSubMixArguments {
-    // Outer vector has length `num_audio_elements`. Inner has length
-    // `num_subblocks`.
-    std::vector<std::vector<uint32_t>> element_mix_gain_subblocks;
-
-    // Length `num_subblocks`.
-    std::vector<uint32_t> output_mix_gain_subblocks;
-  };
-
   MixPresentationObuTest()
       : ObuTestBase(
             /*expected_header=*/{kObuIaMixPresentation << 3, 47},
@@ -115,8 +105,6 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                                         .integrated_loudness = 18,
                                         .digital_peak = 19,
                                         .true_peak = 20}}}}}),
-        dynamic_sub_mix_args_({{.element_mix_gain_subblocks = {{}},
-                                .output_mix_gain_subblocks = {}}}),
         mix_presentation_tags_(std::nullopt) {
     MixGainParamDefinition element_mix_gain(
         MakeScheduleInParameterBlockBaseArgs(/*parameter_id=*/12,
@@ -152,61 +140,11 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
   // Length `num_sub_mixes`.
   std::vector<MixPresentationSubMix> sub_mixes_;
 
-  // Length `num_sub_mixes`.
-  std::vector<DynamicSubMixArguments> dynamic_sub_mix_args_;
-
   std::optional<MixPresentationTags> mix_presentation_tags_;
 
  private:
-  // Copies over data into the output argument `obu->sub_mix[i]`.
-  void InitSubMixDynamicMemory(int i) {
-    // The sub-mix to initialize.
-    auto& sub_mix = sub_mixes_[i];
-    const auto& sub_mix_args = dynamic_sub_mix_args_[i];
-
-    // Create and initialize memory for the subblock durations within each
-    // audio element.
-    ASSERT_EQ(sub_mix_args.element_mix_gain_subblocks.size(),
-              sub_mix.audio_elements.size());
-    for (int j = 0; j < sub_mix.audio_elements.size(); ++j) {
-      auto& audio_element = sub_mix.audio_elements[j];
-      const auto& audio_element_args =
-          sub_mix_args.element_mix_gain_subblocks[j];
-
-      audio_element.element_mix_gain.InitializeSubblockDurations(
-          static_cast<DecodedUleb128>(audio_element_args.size()));
-      ASSERT_EQ(audio_element_args.size(),
-                audio_element.element_mix_gain.GetNumSubblocks());
-      for (int k = 0; k < audio_element_args.size(); ++k) {
-        EXPECT_THAT(audio_element.element_mix_gain.SetSubblockDuration(
-                        k, audio_element_args[k]),
-                    IsOk());
-      }
-    }
-
-    // Create and initialize memory for the subblock durations within the
-    // output mix config.
-
-    sub_mix.output_mix_gain.InitializeSubblockDurations(
-        static_cast<DecodedUleb128>(
-            sub_mix_args.output_mix_gain_subblocks.size()));
-    ASSERT_EQ(sub_mix_args.output_mix_gain_subblocks.size(),
-              sub_mix.output_mix_gain.GetNumSubblocks());
-    for (int j = 0; j < sub_mix_args.output_mix_gain_subblocks.size(); ++j) {
-      EXPECT_THAT(sub_mix.output_mix_gain.SetSubblockDuration(
-                      j, sub_mix_args.output_mix_gain_subblocks[j]),
-                  IsOk());
-    }
-  }
-
   // Copies over data into the output argument `obu`.
   void InitMixPresentationObu() {
-    // Allocate and initialize some dynamic memory within `sub_mixes`.
-    ASSERT_EQ(dynamic_sub_mix_args_.size(), sub_mixes_.size());
-    for (int i = 0; i < sub_mixes_.size(); ++i) {
-      InitSubMixDynamicMemory(i);
-    }
-
     // Construct and transfer ownership of the memory to the OBU.
     obu_ = std::make_unique<MixPresentationObu>(
         header_, mix_presentation_id_, count_label_, annotations_language_,
@@ -247,7 +185,6 @@ TEST_F(MixPresentationObuTest, ExtensionHeader) {
 
 TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidNumSubMixes) {
   sub_mixes_.clear();
-  dynamic_sub_mix_args_.clear();
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -295,7 +232,6 @@ TEST_F(MixPresentationObuTest,
   ASSERT_EQ(sub_mixes_[0].audio_elements.size(), 1);
   // Add an extra audio element to sub-mix.
   sub_mixes_[0].audio_elements.push_back(sub_mixes_[0].audio_elements[0]);
-  dynamic_sub_mix_args_[0].element_mix_gain_subblocks = {{}, {}};
 
   // It is forbidden to have duplicate audio element IDs within a mix
   // presentation OBU.
@@ -313,7 +249,6 @@ TEST_F(MixPresentationObuTest,
   // Reconfigure the sub-mix to have no audio elements and no `element_mix`
   // gains which are typically 1:1 with the audio elements.
   sub_mixes_[0].audio_elements.clear();
-  dynamic_sub_mix_args_[0].element_mix_gain_subblocks.clear();
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -702,9 +637,6 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
       /*parameter_id=*/25, /*parameter_rate=*/26));
   output_mix_gain.default_mix_gain_ = QFormatOrFloatingPoint::MakeFromQ7_8(27);
   sub_mixes_.back().output_mix_gain = output_mix_gain;
-
-  dynamic_sub_mix_args_.push_back(
-      {.element_mix_gain_subblocks = {{}}, .output_mix_gain_subblocks = {}});
 
   expected_header_ = {kObuIaMixPresentation << 3, 93};
   expected_payload_ = {

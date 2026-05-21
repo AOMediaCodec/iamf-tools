@@ -11,7 +11,6 @@
  */
 #include "iamf/obu/param_definitions/param_definition_base.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -92,35 +91,6 @@ DecodedUleb128 ParamDefinition::GetNumSubblocks() const {
 
 absl::Span<const DecodedUleb128> ParamDefinition::GetSubblockDurations() const {
   return absl::MakeConstSpan(subblock_durations_);
-}
-
-void ParamDefinition::InitializeSubblockDurations(
-    const uint32_t num_subblocks) {
-  // Check if the `subblock_durations` is included.
-  if (!IncludeSubblockDurationArray()) {
-    subblock_durations_.clear();
-  } else {
-    num_subblocks_ = num_subblocks;
-    subblock_durations_.resize(num_subblocks);
-  }
-}
-
-DecodedUleb128 ParamDefinition::GetSubblockDuration(int subblock_index) const {
-  return subblock_durations_[subblock_index];
-}
-
-absl::Status ParamDefinition::SetSubblockDuration(int subblock_index,
-                                                  DecodedUleb128 duration) {
-  if (subblock_index < 0 ||
-      static_cast<size_t>(subblock_index) >= subblock_durations_.size()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Subblock index ", subblock_index,
-                     " is out of bounds. `subblock_durations_.size()`= ",
-                     subblock_durations_.size()));
-  }
-
-  subblock_durations_[subblock_index] = duration;
-  return absl::OkStatus();
 }
 
 absl::Status ParamDefinition::ValidateAndWrite(WriteBitBuffer& wb) const {
@@ -204,9 +174,10 @@ void ParamDefinition::Print() const {
 
     // Subblock durations.
     if (constant_subblock_duration_ == 0) {
-      for (DecodedUleb128 k = 0; k < GetNumSubblocks(); k++) {
-        ABSL_LOG(INFO) << "  subblock_durations[" << k
-                       << "]= " << GetSubblockDuration(k);
+      auto subblock_durations = GetSubblockDurations();
+      for (DecodedUleb128 i = 0; i < subblock_durations.size(); i++) {
+        ABSL_LOG(INFO) << "  subblock_durations[" << i
+                       << "]= " << subblock_durations[i];
       }
     }
   }

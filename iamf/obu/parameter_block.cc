@@ -291,7 +291,17 @@ absl::StatusOr<DecodedUleb128> ParameterBlockObu::GetSubblockDuration(
       subblock_index, GetNumSubblocks(), GetConstantSubblockDuration(),
       GetDuration(), param_definition_.GetParamDefinitionMode(),
       [this](int i) { return *this->subblocks_[i].subblock_duration; },
-      [this](int i) { return this->param_definition_.GetSubblockDuration(i); });
+      [this](int i) -> absl::StatusOr<DecodedUleb128> {
+        absl::Span<const DecodedUleb128> subblock_durations =
+            param_definition_.GetSubblockDurations();
+        if (i >= subblock_durations.size()) {
+          return absl::InvalidArgumentError(
+              absl::StrCat("Subblock index ", i,
+                           " is out of range for subblock durations. Size = ",
+                           subblock_durations.size()));
+        }
+        return subblock_durations[i];
+      });
 }
 
 absl::Status ParameterBlockObu::GetLinearMixGain(
