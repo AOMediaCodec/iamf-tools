@@ -69,7 +69,7 @@ absl::Status InitializeInternal(
        param_definition_variants) {
     const DecodedUleb128 parameter_rate = std::visit(
         [](const auto& param_definition) {
-          return param_definition.parameter_rate_;
+          return param_definition.GetParameterRate();
         },
         param_definition_variant);
     RETURN_IF_NOT_OK(

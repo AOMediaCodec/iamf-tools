@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/parameter_data.h"
@@ -139,6 +140,48 @@ class ParamDefinition {
    * \return Type of this parameter definition.
    */
   std::optional<ParameterDefinitionType> GetType() const { return type_; }
+
+  /*!\brief Gets the parameter ID.
+   *
+   * \return Parameter ID.
+   */
+  DecodedUleb128 GetParameterId() const;
+
+  /*!\brief Gets the parameter rate.
+   *
+   * \return Parameter rate.
+   */
+  DecodedUleb128 GetParameterRate() const;
+
+  /*!\brief Gets the parameter definition mode.
+   *
+   * \return Parameter definition mode.
+   */
+  ParamDefinitionMode GetParamDefinitionMode() const;
+
+  /*!\brief Gets the reserved field.
+   *
+   * \return Reserved field.
+   */
+  uint8_t GetReserved() const;
+
+  /*!\brief Gets the duration.
+   *
+   * \return Duration.
+   */
+  DecodedUleb128 GetDuration() const;
+
+  /*!\brief Gets the constant subblock duration.
+   *
+   * \return Constant subblock duration.
+   */
+  DecodedUleb128 GetConstantSubblockDuration() const;
+
+  /*!\brief Gets the subblock durations.
+   *
+   * \return Subblock durations.
+   */
+  absl::Span<const DecodedUleb128> GetSubblockDurations() const;
 
   /*!\brief Creates a parameter data.
    *

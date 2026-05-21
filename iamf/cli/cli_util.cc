@@ -49,7 +49,7 @@ absl::Status InsertParamDefinitionAndCheckEquivalence(
         param_definition_variants) {
   const auto parameter_id = std::visit(
       [](const auto& param_definition) {
-        return param_definition.parameter_id_;
+        return param_definition.GetParameterId();
       },
       param_definition_variant_to_insert);
   const auto [existing_param_definition_iter, inserted] =

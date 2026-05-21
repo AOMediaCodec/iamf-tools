@@ -66,7 +66,7 @@ uint8_t GetParameterDefinitionMode(
     const ParamDefinitionVariant& parameter_definition_variant) {
   return std::visit(
       [](const auto& param_definition) {
-        return param_definition.param_definition_mode_;
+        return param_definition.GetParamDefinitionMode();
       },
       parameter_definition_variant);
 }
@@ -492,7 +492,7 @@ absl::Status PopulateCommonFields(
       param_definition.param_definition_mode_ ==
               ParamDefinition::kModeScheduleInParameterBlock
           ? parameter_block_metadata.duration()
-          : param_definition.duration_;
+          : param_definition.GetDuration();
 
   // Populate the timing information.
   RETURN_IF_NOT_OK(global_timing_module.GetNextParameterBlockTimestamps(

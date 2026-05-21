@@ -211,7 +211,7 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
         id_to_parameter_block,
     const MixGainParamDefinition& mix_gain,
     std::vector<float>& linear_mix_gain_per_tick) {
-  if (mix_gain.parameter_rate_ != common_sample_rate) {
+  if (mix_gain.GetParameterRate() != common_sample_rate) {
     // TODO(b/283281856): Support resampling parameter blocks.
     return absl::UnimplementedError(
         "Parameter blocks that require resampling are not supported yet.");
@@ -222,7 +222,7 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
       linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
       std::pow(10.0f, mix_gain.default_mix_gain_.GetFloatingPoint() / 20.0f));
   auto parameter_block_iter =
-      id_to_parameter_block.find(mix_gain.parameter_id_);
+      id_to_parameter_block.find(mix_gain.GetParameterId());
   if (parameter_block_iter == id_to_parameter_block.end()) {
     // Default mix gain will be used for this frame. Logic elsewhere validates
     // the rest of the audio frames have consistent coverage.

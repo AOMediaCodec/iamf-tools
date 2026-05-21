@@ -658,12 +658,12 @@ TEST(RenderingConfigCreateFromBuffer, PolarParamDefinitionRenderingConfig) {
       &rendering_config->rendering_config_param_definitions[0]
            .param_definition);
   ASSERT_NE(first_param_definition, nullptr);
-  EXPECT_EQ(first_param_definition->parameter_id_, 1);
-  EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_,
+  EXPECT_EQ(first_param_definition->GetParameterId(), 1);
+  EXPECT_EQ(first_param_definition->GetParameterRate(), 1);
+  EXPECT_EQ(first_param_definition->GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(first_param_definition->duration_, 10);
-  EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
+  EXPECT_EQ(first_param_definition->GetDuration(), 10);
+  EXPECT_EQ(first_param_definition->GetConstantSubblockDuration(), 10);
   EXPECT_EQ(first_param_definition->default_azimuth_, 2);
   EXPECT_EQ(first_param_definition->default_elevation_, 3);
   EXPECT_EQ(first_param_definition->default_distance_, 4);
@@ -706,12 +706,12 @@ TEST(RenderingConfigCreateFromBuffer, Cart8ParamDefinitionRenderingConfig) {
       &rendering_config->rendering_config_param_definitions[0]
            .param_definition);
   ASSERT_NE(first_param_definition, nullptr);
-  EXPECT_EQ(first_param_definition->parameter_id_, 1);
-  EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_,
+  EXPECT_EQ(first_param_definition->GetParameterId(), 1);
+  EXPECT_EQ(first_param_definition->GetParameterRate(), 1);
+  EXPECT_EQ(first_param_definition->GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(first_param_definition->duration_, 10);
-  EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
+  EXPECT_EQ(first_param_definition->GetDuration(), 10);
+  EXPECT_EQ(first_param_definition->GetConstantSubblockDuration(), 10);
   EXPECT_EQ(first_param_definition->default_x_, 1);
   EXPECT_EQ(first_param_definition->default_y_, 2);
   EXPECT_EQ(first_param_definition->default_z_, 3);
@@ -756,12 +756,12 @@ TEST(RenderingConfigCreateFromBuffer, Cart16ParamDefinitionRenderingConfig) {
       &rendering_config->rendering_config_param_definitions[0]
            .param_definition);
   ASSERT_NE(first_param_definition, nullptr);
-  EXPECT_EQ(first_param_definition->parameter_id_, 1);
-  EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_,
+  EXPECT_EQ(first_param_definition->GetParameterId(), 1);
+  EXPECT_EQ(first_param_definition->GetParameterRate(), 1);
+  EXPECT_EQ(first_param_definition->GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(first_param_definition->duration_, 10);
-  EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
+  EXPECT_EQ(first_param_definition->GetDuration(), 10);
+  EXPECT_EQ(first_param_definition->GetConstantSubblockDuration(), 10);
   EXPECT_EQ(first_param_definition->default_x_, 1);
   EXPECT_EQ(first_param_definition->default_y_, 2);
   EXPECT_EQ(first_param_definition->default_z_, 3);
@@ -810,12 +810,12 @@ TEST(RenderingConfigCreateFromBuffer, DualPolarParamDefinitionRenderingConfig) {
       &rendering_config->rendering_config_param_definitions[0]
            .param_definition);
   ASSERT_NE(first_param_definition, nullptr);
-  EXPECT_EQ(first_param_definition->parameter_id_, 1);
-  EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_,
+  EXPECT_EQ(first_param_definition->GetParameterId(), 1);
+  EXPECT_EQ(first_param_definition->GetParameterRate(), 1);
+  EXPECT_EQ(first_param_definition->GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(first_param_definition->duration_, 10);
-  EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
+  EXPECT_EQ(first_param_definition->GetDuration(), 10);
+  EXPECT_EQ(first_param_definition->GetConstantSubblockDuration(), 10);
   EXPECT_EQ(first_param_definition->default_first_azimuth_, 2);
   EXPECT_EQ(first_param_definition->default_first_elevation_, 3);
   EXPECT_EQ(first_param_definition->default_first_distance_, 4);
@@ -866,12 +866,12 @@ TEST(RenderingConfigCreateFromBuffer, DualCart8ParamDefinitionRenderingConfig) {
       &rendering_config->rendering_config_param_definitions[0]
            .param_definition);
   ASSERT_NE(first_param_definition, nullptr);
-  EXPECT_EQ(first_param_definition->parameter_id_, 1);
-  EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_,
+  EXPECT_EQ(first_param_definition->GetParameterId(), 1);
+  EXPECT_EQ(first_param_definition->GetParameterRate(), 1);
+  EXPECT_EQ(first_param_definition->GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(first_param_definition->duration_, 10);
-  EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
+  EXPECT_EQ(first_param_definition->GetDuration(), 10);
+  EXPECT_EQ(first_param_definition->GetConstantSubblockDuration(), 10);
   EXPECT_EQ(first_param_definition->default_first_x_, 1);
   EXPECT_EQ(first_param_definition->default_first_y_, 2);
   EXPECT_EQ(first_param_definition->default_first_z_, 3);
@@ -929,12 +929,12 @@ TEST(RenderingConfigCreateFromBuffer,
       &rendering_config->rendering_config_param_definitions[0]
            .param_definition);
   ASSERT_NE(first_param_definition, nullptr);
-  EXPECT_EQ(first_param_definition->parameter_id_, 1);
-  EXPECT_EQ(first_param_definition->parameter_rate_, 1);
-  EXPECT_EQ(first_param_definition->param_definition_mode_,
+  EXPECT_EQ(first_param_definition->GetParameterId(), 1);
+  EXPECT_EQ(first_param_definition->GetParameterRate(), 1);
+  EXPECT_EQ(first_param_definition->GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(first_param_definition->duration_, 10);
-  EXPECT_EQ(first_param_definition->constant_subblock_duration_, 10);
+  EXPECT_EQ(first_param_definition->GetDuration(), 10);
+  EXPECT_EQ(first_param_definition->GetConstantSubblockDuration(), 10);
   EXPECT_EQ(first_param_definition->default_first_x_, 1);
   EXPECT_EQ(first_param_definition->default_first_y_, 2);
   EXPECT_EQ(first_param_definition->default_first_z_, 3);
@@ -1092,9 +1092,9 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
       rendering_config_param_definition->param_definition));
   const auto& param_definition = std::get<PolarParamDefinition>(
       rendering_config_param_definition->param_definition);
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_FALSE(param_definition.GetParamDefinitionMode());
   EXPECT_EQ(param_definition.default_azimuth_, 2);
   EXPECT_EQ(param_definition.default_elevation_, 3);
   EXPECT_EQ(param_definition.default_distance_, 4);
@@ -1126,9 +1126,9 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
       rendering_config_param_definition->param_definition));
   const auto& param_definition = std::get<Cart8ParamDefinition>(
       rendering_config_param_definition->param_definition);
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_FALSE(param_definition.GetParamDefinitionMode());
   EXPECT_EQ(param_definition.default_x_, 1);
   EXPECT_EQ(param_definition.default_y_, 2);
   EXPECT_EQ(param_definition.default_z_, 3);
@@ -1160,9 +1160,9 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
       rendering_config_param_definition->param_definition));
   const auto& param_definition = std::get<Cart16ParamDefinition>(
       rendering_config_param_definition->param_definition);
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_FALSE(param_definition.GetParamDefinitionMode());
   EXPECT_EQ(param_definition.default_x_, 1);
   EXPECT_EQ(param_definition.default_y_, 2);
   EXPECT_EQ(param_definition.default_z_, 3);
@@ -1199,9 +1199,9 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
       rendering_config_param_definition->param_definition));
   const auto& param_definition = std::get<DualPolarParamDefinition>(
       rendering_config_param_definition->param_definition);
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_FALSE(param_definition.GetParamDefinitionMode());
   EXPECT_EQ(param_definition.default_first_azimuth_, 2);
   EXPECT_EQ(param_definition.default_first_elevation_, 3);
   EXPECT_EQ(param_definition.default_first_distance_, 4);
@@ -1239,9 +1239,9 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
       rendering_config_param_definition->param_definition));
   const auto& param_definition = std::get<DualCart8ParamDefinition>(
       rendering_config_param_definition->param_definition);
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_FALSE(param_definition.GetParamDefinitionMode());
   EXPECT_EQ(param_definition.default_first_x_, 1);
   EXPECT_EQ(param_definition.default_first_y_, 2);
   EXPECT_EQ(param_definition.default_first_z_, 3);
@@ -1292,9 +1292,9 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
       rendering_config_param_definition->param_definition));
   const auto& param_definition = std::get<DualCart16ParamDefinition>(
       rendering_config_param_definition->param_definition);
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_FALSE(param_definition.GetParamDefinitionMode());
   EXPECT_EQ(param_definition.default_first_x_, 1);
   EXPECT_EQ(param_definition.default_first_y_, 2);
   EXPECT_EQ(param_definition.default_first_z_, 3);

@@ -81,7 +81,7 @@ absl::StatusOr<DecodedUleb128> ParameterBlockObu::PeekParameterId(
 
 std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode0(
     const ObuHeader& header, const ParamDefinition& param_definition) {
-  if (param_definition.param_definition_mode_ !=
+  if (param_definition.GetParamDefinitionMode() !=
       ParamDefinition::kModeScheduleInParamDefinition) {
     ABSL_LOG(WARNING) << "CreateMode0() should only be called when "
                          "param_definition_mode == 0.";
@@ -100,7 +100,7 @@ std::unique_ptr<ParameterBlockObu>
 ParameterBlockObu::CreateMode1ConstantSubblockDuration(
     const ObuHeader& header, const ParamDefinition& param_definition,
     DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration) {
-  if (param_definition.param_definition_mode_ !=
+  if (param_definition.GetParamDefinitionMode() !=
       ParamDefinition::kModeScheduleInParameterBlock) {
     ABSL_LOG(WARNING)
         << "CreateMode1ConstantSubblockDuration() should only be called when "
@@ -133,7 +133,7 @@ std::unique_ptr<ParameterBlockObu>
 ParameterBlockObu::CreateMode1VariableSubblockDuration(
     const ObuHeader& header, const ParamDefinition& param_definition,
     absl::Span<const DecodedUleb128> subblock_durations) {
-  if (param_definition.param_definition_mode_ !=
+  if (param_definition.GetParamDefinitionMode() !=
       ParamDefinition::kModeScheduleInParameterBlock) {
     ABSL_LOG(WARNING) << "CreateMode1VariableSubblockDuration() should only be "
                          "called when `param_definition_mode` is 1.";
@@ -193,7 +193,7 @@ ParameterBlockObu::CreateFromBuffer(const ObuHeader& header,
 ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
                                      const ParamDefinition& param_definition)
     : ObuBase(header, kObuIaParameterBlock),
-      parameter_id_(param_definition.parameter_id_),
+      parameter_id_(param_definition.GetParameterId()),
       param_definition_(param_definition) {}
 
 absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
@@ -246,7 +246,7 @@ DecodedUleb128 ParameterBlockObu::GetDuration() const {
       ParamDefinition::kModeScheduleInParameterBlock) {
     return duration_;
   } else {
-    return param_definition_.duration_;
+    return param_definition_.GetDuration();
   }
 }
 
@@ -255,7 +255,7 @@ DecodedUleb128 ParameterBlockObu::GetConstantSubblockDuration() const {
       ParamDefinition::kModeScheduleInParameterBlock) {
     return constant_subblock_duration_;
   } else {
-    return param_definition_.constant_subblock_duration_;
+    return param_definition_.GetConstantSubblockDuration();
   }
 }
 
@@ -289,7 +289,7 @@ absl::StatusOr<DecodedUleb128> ParameterBlockObu::GetSubblockDuration(
     int subblock_index) const {
   return GetParameterSubblockDuration<DecodedUleb128>(
       subblock_index, GetNumSubblocks(), GetConstantSubblockDuration(),
-      GetDuration(), param_definition_.param_definition_mode_,
+      GetDuration(), param_definition_.GetParamDefinitionMode(),
       [this](int i) { return *this->subblocks_[i].subblock_duration; },
       [this](int i) { return this->param_definition_.GetSubblockDuration(i); });
 }
@@ -372,7 +372,7 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
   // `param_definition_mode_`.
   // Write fields that are conditional on `param_definition_mode_`.
   bool validate_total_subblock_durations = false;
-  if (param_definition_.param_definition_mode_ !=
+  if (param_definition_.GetParamDefinitionMode() !=
       ParamDefinition::kModeScheduleInParamDefinition) {
     RETURN_IF_NOT_OK(wb.WriteUleb128(duration_));
     RETURN_IF_NOT_OK(wb.WriteUleb128(constant_subblock_duration_));
@@ -420,7 +420,7 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
                      parameter_id_));
   }
 
-  if (param_definition_.param_definition_mode_) {
+  if (param_definition_.GetParamDefinitionMode()) {
     RETURN_IF_NOT_OK(rb.ReadULeb128(duration_));
     RETURN_IF_NOT_OK(rb.ReadULeb128(constant_subblock_duration_));
     if (constant_subblock_duration_ == 0) {
@@ -450,7 +450,7 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
   // `subblock_duration` is conditionally included based on
   // `param_definition_mode_` and `constant_subblock_duration_`.
   const bool include_subblock_duration =
-      param_definition_.param_definition_mode_ &&
+      param_definition_.GetParamDefinitionMode() &&
       constant_subblock_duration_ == 0;
   int64_t total_subblock_durations = 0;
   for (auto& subblock : subblocks_) {

@@ -63,10 +63,10 @@ absl::Status UpdateParameterState(
 
   // Using `.at()` here is safe because if the parameter state exists for the
   // `audio_element_id`, an entry in `parameter_blocks` with the key
-  // `parameter_state->param_definition->parameter_id_` has already been
+  // `parameter_state->param_definition->GetParameterId()` has already been
   // created during `Initialize()`.
-  auto& parameter_block =
-      parameter_blocks.at((*parameter_state)->param_definition->parameter_id_);
+  auto& parameter_block = parameter_blocks.at(
+      (*parameter_state)->param_definition->GetParameterId());
   if (parameter_block == nullptr) {
     // No parameter block found for this ID. Do not validate the timestamp
     // or update anything else. Setting `parameter_state` to `std::nullopt`
@@ -143,7 +143,7 @@ ParametersManager::Create(
       // this parameter ID, then it will remain null and default values will
       // be used.
       demixing_parameter_blocks.insert(
-          {demixing_param_definition->parameter_id_, nullptr});
+          {demixing_param_definition->GetParameterId(), nullptr});
       demixing_states[audio_element_id] = {
           .param_definition = demixing_param_definition,
           .previous_w_idx = 0,
@@ -156,7 +156,7 @@ ParametersManager::Create(
       // this parameter ID, then it will remain null and default values will
       // be used.
       recon_gain_parameter_blocks.insert(
-          {recon_gain_param_definition->parameter_id_, nullptr});
+          {recon_gain_param_definition->GetParameterId(), nullptr});
       recon_gain_states[audio_element_id] = {
           .param_definition = recon_gain_param_definition,
           .next_timestamp = 0,
@@ -200,7 +200,7 @@ absl::Status ParametersManager::GetDownMixingParameters(
   auto& demixing_state = demixing_states_iter->second;
   const auto* param_definition = demixing_state.param_definition;
   const auto* demixing_parameter_block =
-      demixing_parameter_blocks_.at(param_definition->parameter_id_);
+      demixing_parameter_blocks_.at(param_definition->GetParameterId());
   if (demixing_parameter_block == nullptr) {
     // Failed to find a parameter block that overlaps this frame. Use the
     // default value from the parameter definition. This is OK when there are
@@ -255,7 +255,7 @@ absl::Status ParametersManager::GetReconGainInfoParameterData(
   auto& recon_gain_state = recon_gain_states_iter->second;
   const auto* param_definition = recon_gain_state.param_definition;
   const auto* recon_gain_parameter_block =
-      recon_gain_parameter_blocks_.at(param_definition->parameter_id_);
+      recon_gain_parameter_blocks_.at(param_definition->GetParameterId());
   if (recon_gain_parameter_block == nullptr) {
     // Failed to find a parameter block that overlaps this frame. A default
     // recon gain value of 0 dB is implied when there are no Parameter Block

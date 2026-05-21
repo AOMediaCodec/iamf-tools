@@ -1260,10 +1260,11 @@ TEST(Generate, CopiesOutputMixGain) {
 
   const auto& first_output_mix_gain =
       generated_obus.front().sub_mixes_[0].output_mix_gain;
-  EXPECT_EQ(first_output_mix_gain.parameter_id_, kCommonParameterId);
-  EXPECT_EQ(first_output_mix_gain.parameter_rate_, kCommonParameterRate);
-  EXPECT_EQ(first_output_mix_gain.param_definition_mode_, kParamDefinitionMode);
-  EXPECT_EQ(first_output_mix_gain.reserved_, kParamDefinitionReserved);
+  EXPECT_EQ(first_output_mix_gain.GetParameterId(), kCommonParameterId);
+  EXPECT_EQ(first_output_mix_gain.GetParameterRate(), kCommonParameterRate);
+  EXPECT_EQ(first_output_mix_gain.GetParamDefinitionMode(),
+            kParamDefinitionMode);
+  EXPECT_EQ(first_output_mix_gain.GetReserved(), kParamDefinitionReserved);
   EXPECT_EQ(first_output_mix_gain.default_mix_gain_.GetQ7_8(), kNonZeroMixGain);
 }
 
@@ -1283,11 +1284,11 @@ TEST(Generate, CopiesElementMixGain) {
 
   const auto& first_element_mix_gain =
       generated_obus.front().sub_mixes_[0].audio_elements[0].element_mix_gain;
-  EXPECT_EQ(first_element_mix_gain.parameter_id_, kCommonParameterId);
-  EXPECT_EQ(first_element_mix_gain.parameter_rate_, kCommonParameterRate);
-  EXPECT_EQ(first_element_mix_gain.param_definition_mode_,
+  EXPECT_EQ(first_element_mix_gain.GetParameterId(), kCommonParameterId);
+  EXPECT_EQ(first_element_mix_gain.GetParameterRate(), kCommonParameterRate);
+  EXPECT_EQ(first_element_mix_gain.GetParamDefinitionMode(),
             kParamDefinitionMode);
-  EXPECT_EQ(first_element_mix_gain.reserved_, kParamDefinitionReserved);
+  EXPECT_EQ(first_element_mix_gain.GetReserved(), kParamDefinitionReserved);
   EXPECT_EQ(first_element_mix_gain.default_mix_gain_.GetQ7_8(),
             kNonZeroMixGain);
 }

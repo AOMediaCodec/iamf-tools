@@ -65,12 +65,12 @@ TEST(DualPolarParamDefinitionTest, ReadAndValidateSucceeds) {
 
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
   EXPECT_THAT(param_definition.ReadAndValidate(*rb), IsOk());
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_EQ(param_definition.param_definition_mode_,
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_EQ(param_definition.GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(param_definition.duration_, 10);
-  EXPECT_EQ(param_definition.constant_subblock_duration_, 10);
+  EXPECT_EQ(param_definition.GetDuration(), 10);
+  EXPECT_EQ(param_definition.GetConstantSubblockDuration(), 10);
   EXPECT_EQ(param_definition.default_first_azimuth_, 2);
   EXPECT_EQ(param_definition.default_first_elevation_, 3);
   EXPECT_EQ(param_definition.default_first_distance_, 4);
@@ -97,12 +97,12 @@ TEST(DualPolarParamDefinitionTest, ReadAndValidateClipsAzimuth) {
 
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
   EXPECT_THAT(param_definition.ReadAndValidate(*rb), IsOk());
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_EQ(param_definition.param_definition_mode_,
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_EQ(param_definition.GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(param_definition.duration_, 10);
-  EXPECT_EQ(param_definition.constant_subblock_duration_, 10);
+  EXPECT_EQ(param_definition.GetDuration(), 10);
+  EXPECT_EQ(param_definition.GetConstantSubblockDuration(), 10);
   EXPECT_EQ(param_definition.default_first_azimuth_, 180);
   EXPECT_EQ(param_definition.default_first_elevation_, 3);
   EXPECT_EQ(param_definition.default_first_distance_, 4);
@@ -129,12 +129,12 @@ TEST(DualPolarParamDefinitionTest, ReadAndValidateClipsElevation) {
 
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
   EXPECT_THAT(param_definition.ReadAndValidate(*rb), IsOk());
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_EQ(param_definition.param_definition_mode_,
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_EQ(param_definition.GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(param_definition.duration_, 10);
-  EXPECT_EQ(param_definition.constant_subblock_duration_, 10);
+  EXPECT_EQ(param_definition.GetDuration(), 10);
+  EXPECT_EQ(param_definition.GetConstantSubblockDuration(), 10);
   EXPECT_EQ(param_definition.default_first_azimuth_, 2);
   EXPECT_EQ(param_definition.default_first_elevation_, 90);
   EXPECT_EQ(param_definition.default_first_distance_, 4);

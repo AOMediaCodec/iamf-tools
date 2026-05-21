@@ -18,6 +18,7 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
@@ -40,19 +41,19 @@ absl::Status ValidateSpecificParamDefinition(
     case kParameterDefinitionDemixing:
     case kParameterDefinitionReconGain:
       RETURN_IF_NOT_OK(ValidateEqual(
-          param_definition.param_definition_mode_,
+          param_definition.GetParamDefinitionMode(),
           ParamDefinition::kModeScheduleInParamDefinition,
           absl::StrCat("`param_definition_mode` for parameter_id= ",
-                       param_definition.parameter_id_)));
+                       param_definition.GetParameterId())));
       RETURN_IF_NOT_OK(
-          ValidateNotEqual(param_definition.duration_, DecodedUleb128{0},
+          ValidateNotEqual(param_definition.GetDuration(), DecodedUleb128{0},
                            absl::StrCat("duration for parameter_id= ",
-                                        param_definition.parameter_id_)));
+                                        param_definition.GetParameterId())));
       RETURN_IF_NOT_OK(ValidateEqual(
-          param_definition.constant_subblock_duration_,
-          param_definition.duration_,
+          param_definition.GetConstantSubblockDuration(),
+          param_definition.GetDuration(),
           absl::StrCat("`constant_subblock_duration` for parameter_id= ",
-                       param_definition.parameter_id_)));
+                       param_definition.GetParameterId())));
       return absl::OkStatus();
     // Neither Mix gain nor Polar have any specific validation. For backwards
     // compatibility we must assume extension param definitions are valid as
@@ -66,8 +67,31 @@ absl::Status ValidateSpecificParamDefinition(
 
 }  // namespace
 
+DecodedUleb128 ParamDefinition::GetParameterId() const { return parameter_id_; }
+
+DecodedUleb128 ParamDefinition::GetParameterRate() const {
+  return parameter_rate_;
+}
+
+ParamDefinition::ParamDefinitionMode ParamDefinition::GetParamDefinitionMode()
+    const {
+  return param_definition_mode_;
+}
+
+uint8_t ParamDefinition::GetReserved() const { return reserved_; }
+
+DecodedUleb128 ParamDefinition::GetDuration() const { return duration_; }
+
+DecodedUleb128 ParamDefinition::GetConstantSubblockDuration() const {
+  return constant_subblock_duration_;
+}
+
 DecodedUleb128 ParamDefinition::GetNumSubblocks() const {
   return num_subblocks_;
+}
+
+absl::Span<const DecodedUleb128> ParamDefinition::GetSubblockDurations() const {
+  return absl::MakeConstSpan(subblock_durations_);
 }
 
 void ParamDefinition::InitializeSubblockDurations(

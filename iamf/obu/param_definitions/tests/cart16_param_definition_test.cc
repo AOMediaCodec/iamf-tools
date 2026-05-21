@@ -60,12 +60,12 @@ TEST(Cart16ParamDefinitionTest, ReadAndValidateSucceeds) {
 
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
   EXPECT_THAT(param_definition.ReadAndValidate(*rb), IsOk());
-  EXPECT_EQ(param_definition.parameter_id_, 1);
-  EXPECT_EQ(param_definition.parameter_rate_, 1);
-  EXPECT_EQ(param_definition.param_definition_mode_,
+  EXPECT_EQ(param_definition.GetParameterId(), 1);
+  EXPECT_EQ(param_definition.GetParameterRate(), 1);
+  EXPECT_EQ(param_definition.GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(param_definition.duration_, 10);
-  EXPECT_EQ(param_definition.constant_subblock_duration_, 10);
+  EXPECT_EQ(param_definition.GetDuration(), 10);
+  EXPECT_EQ(param_definition.GetConstantSubblockDuration(), 10);
   EXPECT_EQ(param_definition.default_x_, 1);
   EXPECT_EQ(param_definition.default_y_, 2);
   EXPECT_EQ(param_definition.default_z_, 3);

@@ -383,12 +383,12 @@ TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
   ASSERT_NE(recon_gain_param_definition, nullptr);
 
   // Fields in `ReconGainParamDefinition`.
-  EXPECT_EQ(recon_gain_param_definition->parameter_id_, kParameterId);
-  EXPECT_EQ(recon_gain_param_definition->parameter_rate_, kParameterRate);
-  EXPECT_EQ(recon_gain_param_definition->param_definition_mode_,
+  EXPECT_EQ(recon_gain_param_definition->GetParameterId(), kParameterId);
+  EXPECT_EQ(recon_gain_param_definition->GetParameterRate(), kParameterRate);
+  EXPECT_EQ(recon_gain_param_definition->GetParamDefinitionMode(),
             ParamDefinition::kModeScheduleInParamDefinition);
-  EXPECT_EQ(recon_gain_param_definition->duration_, 1);
-  EXPECT_EQ(recon_gain_param_definition->constant_subblock_duration_, 1);
+  EXPECT_EQ(recon_gain_param_definition->GetDuration(), 1);
+  EXPECT_EQ(recon_gain_param_definition->GetConstantSubblockDuration(), 1);
   EXPECT_EQ(recon_gain_param_definition->audio_element_id_, kAudioElementId);
 
   // Auxiliary data.

@@ -134,11 +134,11 @@ absl::Status GenerateParameterDefinitions(
             user_data_parameter.demixing_param().reserved(),
             demixing_param_definition.default_demixing_info_parameter_data_
                 .reserved_for_future_use));
-        if (demixing_param_definition.duration_ !=
+        if (demixing_param_definition.GetDuration() !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           return InvalidArgumentError(
               StrCat("Demixing parameter duration= ",
-                     demixing_param_definition.duration_,
+                     demixing_param_definition.GetDuration(),
                      " is inconsistent with num_samples_per_frame=",
                      codec_config_obu.GetCodecConfig().num_samples_per_frame));
         }
@@ -152,11 +152,11 @@ absl::Status GenerateParameterDefinitions(
         RETURN_IF_NOT_OK(CopyParamDefinition(
             user_data_parameter.recon_gain_param().param_definition(),
             recon_gain_param_definition));
-        if (recon_gain_param_definition.duration_ !=
+        if (recon_gain_param_definition.GetDuration() !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           return InvalidArgumentError(
               StrCat("Recon gain parameter duration= ",
-                     recon_gain_param_definition.duration_,
+                     recon_gain_param_definition.GetDuration(),
                      " is inconsistent with num_samples_per_frame=",
                      codec_config_obu.GetCodecConfig().num_samples_per_frame));
         }
