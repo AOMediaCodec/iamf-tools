@@ -75,7 +75,6 @@
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
-#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/tests/obu_test_utils.h"
@@ -91,32 +90,6 @@ using AudioElementsById = DescriptorObus::AudioElementsById;
 using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 namespace {
-
-void SetParamDefinitionCommonFields(DecodedUleb128 parameter_id,
-                                    DecodedUleb128 parameter_rate,
-                                    DecodedUleb128 duration,
-                                    ParamDefinition& param_definition) {
-  param_definition.parameter_id_ = parameter_id;
-  param_definition.parameter_rate_ = parameter_rate;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.reserved_ = 0;
-  param_definition.duration_ = duration;
-  param_definition.constant_subblock_duration_ = duration;
-}
-
-template <typename ParamDefinitionType>
-void AddParamDefinition(DecodedUleb128 parameter_id,
-                        DecodedUleb128 parameter_rate, DecodedUleb128 duration,
-                        AudioElementObu& audio_element_obu,
-                        ParamDefinitionType& param_definition) {
-  SetParamDefinitionCommonFields(parameter_id, parameter_rate, duration,
-                                 param_definition);
-
-  // Add to the Audio Element OBU.
-  audio_element_obu.audio_element_params_.emplace_back(
-      AudioElementParam{param_definition});
-}
 
 void GetAudioSubstreamIdsAndLabelsMap(
     const int max_channel_number,
@@ -374,11 +347,9 @@ void AddMixPresentationObuWithConfigurableLayouts(
     const std::vector<LoudspeakersSsConventionLayout::SoundSystem>&
         sound_system_layouts,
     MixPresentationObus& mix_presentations) {
-  MixGainParamDefinition common_mix_gain_param_definition;
-  common_mix_gain_param_definition.parameter_id_ = mix_gain_parameter_id;
-  common_mix_gain_param_definition.parameter_rate_ = parameter_rate;
-  common_mix_gain_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  MixGainParamDefinition common_mix_gain_param_definition(
+      MakeScheduleInParameterBlockBaseArgs(mix_gain_parameter_id,
+                                           parameter_rate));
   common_mix_gain_param_definition.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(0);
   std::vector<MixPresentationLayout> layouts;
@@ -420,9 +391,9 @@ void AddParamDefinitionWithMode0AndOneSubblock(
     DecodedUleb128 duration,
     absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition>&
         param_definitions) {
-  MixGainParamDefinition param_definition;
-  SetParamDefinitionCommonFields(parameter_id, parameter_rate, duration,
-                                 param_definition);
+  MixGainParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(parameter_id, parameter_rate,
+                                             duration));
   param_definitions.emplace(parameter_id, param_definition);
 }
 
@@ -430,7 +401,9 @@ void AddDemixingParamDefinition(DecodedUleb128 parameter_id,
                                 DecodedUleb128 parameter_rate,
                                 DecodedUleb128 duration,
                                 AudioElementObu& audio_element_obu) {
-  DemixingParamDefinition param_definition;
+  DemixingParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(parameter_id, parameter_rate,
+                                             duration));
 
   // Specific fields of demixing param definitions.
   param_definition.default_demixing_info_parameter_data_.dmixp_mode =
@@ -440,8 +413,8 @@ void AddDemixingParamDefinition(DecodedUleb128 parameter_id,
   param_definition.default_demixing_info_parameter_data_
       .reserved_for_future_use = 0;
 
-  AddParamDefinition(parameter_id, parameter_rate, duration, audio_element_obu,
-                     param_definition);
+  audio_element_obu.audio_element_params_.emplace_back(
+      AudioElementParam{param_definition});
 }
 
 void AddReconGainParamDefinition(DecodedUleb128 parameter_id,
@@ -449,10 +422,12 @@ void AddReconGainParamDefinition(DecodedUleb128 parameter_id,
                                  DecodedUleb128 duration,
                                  AudioElementObu& audio_element_obu) {
   ReconGainParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(parameter_id, parameter_rate,
+                                             duration),
       audio_element_obu.GetAudioElementId());
 
-  AddParamDefinition(parameter_id, parameter_rate, duration, audio_element_obu,
-                     param_definition);
+  audio_element_obu.audio_element_params_.emplace_back(
+      AudioElementParam{param_definition});
 }
 
 void GetFullOrderAmbisonicsMonoArguments(

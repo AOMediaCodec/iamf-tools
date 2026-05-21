@@ -45,6 +45,7 @@
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -180,8 +181,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
 
   void AddDemixingAudioParam(DemixingInfoParameterData::DMixPMode dmixp_mode,
                              DecodedUleb128 parameter_id) {
-    DemixingParamDefinition param_definition;
-    FillCommonParamDefinition(parameter_id, param_definition);
+    DemixingParamDefinition param_definition(GetCommonBaseArgs(parameter_id));
 
     param_definition.default_demixing_info_parameter_data_.dmixp_mode =
         dmixp_mode;
@@ -191,9 +191,8 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   }
 
   void AddReconGainAudioParam(DecodedUleb128 parameter_id) {
-    ReconGainParamDefinition param_definition =
-        ReconGainParamDefinition(kFirstAudioElementId);
-    FillCommonParamDefinition(parameter_id, param_definition);
+    ReconGainParamDefinition param_definition = ReconGainParamDefinition(
+        GetCommonBaseArgs(parameter_id), kFirstAudioElementId);
 
     AudioElementParam param = {.param_definition = param_definition};
     AddAudioParam(parameter_id, param_definition, std::move(param));
@@ -390,14 +389,9 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   std::unique_ptr<ParametersManager> parameters_manager_;
 
  private:
-  void FillCommonParamDefinition(DecodedUleb128 parameter_id,
-                                 ParamDefinition& param_definition) {
-    param_definition.parameter_id_ = parameter_id;
-    param_definition.param_definition_mode_ =
-        ParamDefinition::kModeScheduleInParamDefinition;
-    param_definition.duration_ = 8;
-    param_definition.parameter_rate_ = 1;
-    param_definition.InitializeSubblockDurations(1);
+  ParamDefinition::BaseArgs GetCommonBaseArgs(DecodedUleb128 parameter_id) {
+    return MakeVariableSubblocksParamDefinitionBaseArgs(
+        parameter_id, /*parameter_rate=*/1, /*subblock_durations=*/{8});
   }
 
   void AddAudioParam(DecodedUleb128 parameter_id,
@@ -755,12 +749,9 @@ TEST(GenerateParameterBlockWithData, ValidParameterBlock) {
 
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       param_definition_variants;
-  DemixingParamDefinition param_definition;
-  param_definition.parameter_id_ = kFirstParameterId;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.duration_ = static_cast<DecodedUleb128>(kDuration);
-  param_definition.parameter_rate_ = 1;
+  DemixingParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          kFirstParameterId, /*parameter_rate=*/1, /*duration=*/kDuration));
   param_definition_variants.emplace(kFirstParameterId, param_definition);
   auto global_timing_module = GlobalTimingModule::Create(
       audio_elements_with_data, param_definition_variants);

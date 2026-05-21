@@ -22,6 +22,8 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -30,24 +32,22 @@ using ::absl_testing::IsOk;
 
 constexpr int32_t kBufferSize = 256;
 
-void PopulateParamDefinition(ParamDefinition* param_definition) {
-  param_definition->parameter_id_ = 1;
-  param_definition->parameter_rate_ = 1;
-  param_definition->param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition->duration_ = 10;
-  param_definition->constant_subblock_duration_ = 10;
-  param_definition->reserved_ = 0;
+ParamDefinition::BaseArgs GetDualCart8ParamDefinitionArgs() {
+  constexpr DecodedUleb128 kParameterId = 1;
+  constexpr DecodedUleb128 kParameterRate = 1;
+  constexpr DecodedUleb128 kDuration = 10;
+  return MakeOneSubblockParamDefinitionBaseArgs(kParameterId, kParameterRate,
+                                                kDuration);
 }
 
 TEST(DualCart8ParamDefinitionTest, GetType) {
-  DualCart8ParamDefinition param_definition;
+  DualCart8ParamDefinition param_definition(ParamDefinition::BaseArgs{});
   EXPECT_EQ(param_definition.GetType(),
             ParamDefinition::kParameterDefinitionDualCart8);
 }
 
 TEST(DualCart8ParamDefinitionTest, ReadAndValidateSucceeds) {
-  DualCart8ParamDefinition param_definition;
+  DualCart8ParamDefinition param_definition(ParamDefinition::BaseArgs{});
   std::vector<uint8_t> data = {1,   // parameter_id
                                1,   // parameter_rate
                                0,   // mode
@@ -78,8 +78,7 @@ TEST(DualCart8ParamDefinitionTest, ReadAndValidateSucceeds) {
 }
 
 TEST(DualCart8ParamDefinitionTest, WriteAndValidateSucceeds) {
-  DualCart8ParamDefinition param_definition;
-  PopulateParamDefinition(&param_definition);
+  DualCart8ParamDefinition param_definition(GetDualCart8ParamDefinitionArgs());
   param_definition.default_first_x_ = 1;
   param_definition.default_first_y_ = 2;
   param_definition.default_first_z_ = 3;
@@ -99,7 +98,7 @@ TEST(DualCart8ParamDefinitionTest, WriteAndValidateSucceeds) {
 }
 
 TEST(DualCart8ParamDefinitionTest, CreateParameterDataReturnsNonNull) {
-  DualCart8ParamDefinition param_definition;
+  DualCart8ParamDefinition param_definition(ParamDefinition::BaseArgs{});
   EXPECT_NE(param_definition.CreateParameterData(), nullptr);
 }
 

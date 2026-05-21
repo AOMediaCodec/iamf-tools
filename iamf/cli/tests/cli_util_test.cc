@@ -42,6 +42,7 @@
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/rendering_config.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -239,11 +240,9 @@ TEST(CollectAndValidateParamDefinitions,
 RenderingConfigParamDefinition MakePolarRenderingConfigParamDefinition(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate, int azimuth,
     int elevation, int distance) {
-  PolarParamDefinition param_definition;
-  param_definition.parameter_id_ = parameter_id;
-  param_definition.parameter_rate_ = parameter_rate;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
+  constexpr DecodedUleb128 kDuration = 100;
+  PolarParamDefinition param_definition(MakeOneSubblockParamDefinitionBaseArgs(
+      parameter_id, parameter_rate, kDuration));
   param_definition.default_azimuth_ = azimuth;
   param_definition.default_elevation_ = elevation;
   param_definition.default_distance_ = distance;
@@ -321,7 +320,8 @@ TEST(CollectAndValidateParamDefinitions,
   audio_element.obu.InitializeParams(1);
   audio_element.obu.audio_element_params_.emplace_back(
       AudioElementParam{ExtendedParamDefinition(
-          ParamDefinition::kParameterDefinitionReservedStart)});
+          ParamDefinition::kParameterDefinitionReservedStart,
+          ParamDefinition::BaseArgs{})});
 
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> result;
   EXPECT_THAT(CollectAndValidateParamDefinitions(

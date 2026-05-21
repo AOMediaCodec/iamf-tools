@@ -46,7 +46,6 @@
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
-#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
@@ -82,20 +81,14 @@ absl::Status FillAnnotationsLanguageAndAnnotations(
                                     count_label);
 }
 
-PolarParamDefinition CreatePolarParamDefinition(
+absl::StatusOr<PolarParamDefinition> CreatePolarParamDefinition(
     const iamf_tools_cli_proto::PolarParamDefinition& input_param_definition) {
-  PolarParamDefinition param_definition;
-  param_definition.parameter_id_ =
-      input_param_definition.param_definition().parameter_id();
-  param_definition.parameter_rate_ =
-      input_param_definition.param_definition().parameter_rate();
-  param_definition.param_definition_mode_ =
-      static_cast<ParamDefinition::ParamDefinitionMode>(
-          input_param_definition.param_definition().param_definition_mode());
-  param_definition.duration_ =
-      input_param_definition.param_definition().duration();
-  param_definition.constant_subblock_duration_ =
-      input_param_definition.param_definition().constant_subblock_duration();
+  auto base_args =
+      GetParamDefinitionBaseArgs(input_param_definition.param_definition());
+  if (!base_args.ok()) {
+    return base_args.status();
+  }
+  PolarParamDefinition param_definition(*base_args);
   param_definition.default_azimuth_ = input_param_definition.default_azimuth();
   param_definition.default_elevation_ =
       input_param_definition.default_elevation();
@@ -104,61 +97,43 @@ PolarParamDefinition CreatePolarParamDefinition(
   return param_definition;
 }
 
-Cart8ParamDefinition CreateCart8ParamDefinition(
+absl::StatusOr<Cart8ParamDefinition> CreateCart8ParamDefinition(
     const iamf_tools_cli_proto::Cart8ParamDefinition& input_param_definition) {
-  Cart8ParamDefinition param_definition;
-  param_definition.parameter_id_ =
-      input_param_definition.param_definition().parameter_id();
-  param_definition.parameter_rate_ =
-      input_param_definition.param_definition().parameter_rate();
-  param_definition.param_definition_mode_ =
-      static_cast<ParamDefinition::ParamDefinitionMode>(
-          input_param_definition.param_definition().param_definition_mode());
-  param_definition.duration_ =
-      input_param_definition.param_definition().duration();
-  param_definition.constant_subblock_duration_ =
-      input_param_definition.param_definition().constant_subblock_duration();
+  auto base_args =
+      GetParamDefinitionBaseArgs(input_param_definition.param_definition());
+  if (!base_args.ok()) {
+    return base_args.status();
+  }
+  Cart8ParamDefinition param_definition(*base_args);
   param_definition.default_x_ = input_param_definition.default_x();
   param_definition.default_y_ = input_param_definition.default_y();
   param_definition.default_z_ = input_param_definition.default_z();
   return param_definition;
 }
 
-Cart16ParamDefinition CreateCart16ParamDefinition(
+absl::StatusOr<Cart16ParamDefinition> CreateCart16ParamDefinition(
     const iamf_tools_cli_proto::Cart16ParamDefinition& input_param_definition) {
-  Cart16ParamDefinition param_definition;
-  param_definition.parameter_id_ =
-      input_param_definition.param_definition().parameter_id();
-  param_definition.parameter_rate_ =
-      input_param_definition.param_definition().parameter_rate();
-  param_definition.param_definition_mode_ =
-      static_cast<ParamDefinition::ParamDefinitionMode>(
-          input_param_definition.param_definition().param_definition_mode());
-  param_definition.duration_ =
-      input_param_definition.param_definition().duration();
-  param_definition.constant_subblock_duration_ =
-      input_param_definition.param_definition().constant_subblock_duration();
+  auto base_args =
+      GetParamDefinitionBaseArgs(input_param_definition.param_definition());
+  if (!base_args.ok()) {
+    return base_args.status();
+  }
+  Cart16ParamDefinition param_definition(*base_args);
   param_definition.default_x_ = input_param_definition.default_x();
   param_definition.default_y_ = input_param_definition.default_y();
   param_definition.default_z_ = input_param_definition.default_z();
   return param_definition;
 }
 
-DualPolarParamDefinition CreateDualPolarParamDefinition(
+absl::StatusOr<DualPolarParamDefinition> CreateDualPolarParamDefinition(
     const iamf_tools_cli_proto::DualPolarParamDefinition&
         input_param_definition) {
-  DualPolarParamDefinition param_definition;
-  param_definition.parameter_id_ =
-      input_param_definition.param_definition().parameter_id();
-  param_definition.parameter_rate_ =
-      input_param_definition.param_definition().parameter_rate();
-  param_definition.param_definition_mode_ =
-      static_cast<ParamDefinition::ParamDefinitionMode>(
-          input_param_definition.param_definition().param_definition_mode());
-  param_definition.duration_ =
-      input_param_definition.param_definition().duration();
-  param_definition.constant_subblock_duration_ =
-      input_param_definition.param_definition().constant_subblock_duration();
+  auto base_args =
+      GetParamDefinitionBaseArgs(input_param_definition.param_definition());
+  if (!base_args.ok()) {
+    return base_args.status();
+  }
+  DualPolarParamDefinition param_definition(*base_args);
   param_definition.default_first_azimuth_ =
       input_param_definition.default_first_azimuth();
   param_definition.default_first_elevation_ =
@@ -174,21 +149,15 @@ DualPolarParamDefinition CreateDualPolarParamDefinition(
   return param_definition;
 }
 
-DualCart8ParamDefinition CreateDualCart8ParamDefinition(
+absl::StatusOr<DualCart8ParamDefinition> CreateDualCart8ParamDefinition(
     const iamf_tools_cli_proto::DualCart8ParamDefinition&
         input_param_definition) {
-  DualCart8ParamDefinition param_definition;
-  param_definition.parameter_id_ =
-      input_param_definition.param_definition().parameter_id();
-  param_definition.parameter_rate_ =
-      input_param_definition.param_definition().parameter_rate();
-  param_definition.param_definition_mode_ =
-      static_cast<ParamDefinition::ParamDefinitionMode>(
-          input_param_definition.param_definition().param_definition_mode());
-  param_definition.duration_ =
-      input_param_definition.param_definition().duration();
-  param_definition.constant_subblock_duration_ =
-      input_param_definition.param_definition().constant_subblock_duration();
+  auto base_args =
+      GetParamDefinitionBaseArgs(input_param_definition.param_definition());
+  if (!base_args.ok()) {
+    return base_args.status();
+  }
+  DualCart8ParamDefinition param_definition(*base_args);
   param_definition.default_first_x_ = input_param_definition.default_first_x();
   param_definition.default_first_y_ = input_param_definition.default_first_y();
   param_definition.default_first_z_ = input_param_definition.default_first_z();
@@ -201,21 +170,15 @@ DualCart8ParamDefinition CreateDualCart8ParamDefinition(
   return param_definition;
 }
 
-DualCart16ParamDefinition CreateDualCart16ParamDefinition(
+absl::StatusOr<DualCart16ParamDefinition> CreateDualCart16ParamDefinition(
     const iamf_tools_cli_proto::DualCart16ParamDefinition&
         input_param_definition) {
-  DualCart16ParamDefinition param_definition;
-  param_definition.parameter_id_ =
-      input_param_definition.param_definition().parameter_id();
-  param_definition.parameter_rate_ =
-      input_param_definition.param_definition().parameter_rate();
-  param_definition.param_definition_mode_ =
-      static_cast<ParamDefinition::ParamDefinitionMode>(
-          input_param_definition.param_definition().param_definition_mode());
-  param_definition.duration_ =
-      input_param_definition.param_definition().duration();
-  param_definition.constant_subblock_duration_ =
-      input_param_definition.param_definition().constant_subblock_duration();
+  auto base_args =
+      GetParamDefinitionBaseArgs(input_param_definition.param_definition());
+  if (!base_args.ok()) {
+    return base_args.status();
+  }
+  DualCart16ParamDefinition param_definition(*base_args);
   param_definition.default_first_x_ = input_param_definition.default_first_x();
   param_definition.default_first_y_ = input_param_definition.default_first_y();
   param_definition.default_first_z_ = input_param_definition.default_first_z();
@@ -234,37 +197,69 @@ CreateRenderingConfigParamDefinition(
         input_rendering_config_param_definition) {
   switch (input_rendering_config_param_definition.param_definition_type()) {
     using enum iamf_tools_cli_proto::ParamDefinitionType;
-    case PARAM_DEFINITION_TYPE_POLAR:
+    case PARAM_DEFINITION_TYPE_POLAR: {
+      auto polar_param = CreatePolarParamDefinition(
+          input_rendering_config_param_definition.polar_param_definition());
+      if (!polar_param.ok()) {
+        return polar_param.status();
+      }
       return RenderingConfigParamDefinition::Create(
-          CreatePolarParamDefinition(
-              input_rendering_config_param_definition.polar_param_definition()),
+          *polar_param,
           /*param_definition_bytes=*/{});
-    case PARAM_DEFINITION_TYPE_CART_8:
+    }
+    case PARAM_DEFINITION_TYPE_CART_8: {
+      auto cart8_param = CreateCart8ParamDefinition(
+          input_rendering_config_param_definition.cart8_param_definition());
+      if (!cart8_param.ok()) {
+        return cart8_param.status();
+      }
       return RenderingConfigParamDefinition::Create(
-          CreateCart8ParamDefinition(
-              input_rendering_config_param_definition.cart8_param_definition()),
+          *cart8_param,
           /*param_definition_bytes=*/{});
-    case PARAM_DEFINITION_TYPE_CART_16:
+    }
+    case PARAM_DEFINITION_TYPE_CART_16: {
+      auto cart16_param = CreateCart16ParamDefinition(
+          input_rendering_config_param_definition.cart16_param_definition());
+      if (!cart16_param.ok()) {
+        return cart16_param.status();
+      }
       return RenderingConfigParamDefinition::Create(
-          CreateCart16ParamDefinition(input_rendering_config_param_definition
-                                          .cart16_param_definition()),
+          *cart16_param,
           /*param_definition_bytes=*/{});
-    case PARAM_DEFINITION_TYPE_DUAL_POLAR:
-      return RenderingConfigParamDefinition::Create(
+    }
+    case PARAM_DEFINITION_TYPE_DUAL_POLAR: {
+      auto dual_polar_param =
           CreateDualPolarParamDefinition(input_rendering_config_param_definition
-                                             .dual_polar_param_definition()),
-          /*param_definition_bytes=*/{});
-    case PARAM_DEFINITION_TYPE_DUAL_CART_8:
+                                             .dual_polar_param_definition());
+      if (!dual_polar_param.ok()) {
+        return dual_polar_param.status();
+      }
       return RenderingConfigParamDefinition::Create(
+          *dual_polar_param,
+          /*param_definition_bytes=*/{});
+    }
+    case PARAM_DEFINITION_TYPE_DUAL_CART_8: {
+      auto dual_cart8_param =
           CreateDualCart8ParamDefinition(input_rendering_config_param_definition
-                                             .dual_cart8_param_definition()),
-          /*param_definition_bytes=*/{});
-    case PARAM_DEFINITION_TYPE_DUAL_CART_16:
+                                             .dual_cart8_param_definition());
+      if (!dual_cart8_param.ok()) {
+        return dual_cart8_param.status();
+      }
       return RenderingConfigParamDefinition::Create(
-          CreateDualCart16ParamDefinition(
-              input_rendering_config_param_definition
-                  .dual_cart16_param_definition()),
+          *dual_cart8_param,
           /*param_definition_bytes=*/{});
+    }
+    case PARAM_DEFINITION_TYPE_DUAL_CART_16: {
+      auto dual_cart16_param = CreateDualCart16ParamDefinition(
+          input_rendering_config_param_definition
+              .dual_cart16_param_definition());
+      if (!dual_cart16_param.ok()) {
+        return dual_cart16_param.status();
+      }
+      return RenderingConfigParamDefinition::Create(
+          *dual_cart16_param,
+          /*param_definition_bytes=*/{});
+    }
     default:
       return absl::InvalidArgumentError(absl::StrCat(
           "Unknown param_definition_type= ",
@@ -403,19 +398,22 @@ absl::Status FillRenderingConfig(
       absl::MakeSpan(rendering_config.rendering_config_extension_bytes));
 }
 
-absl::Status FillMixConfig(
-    const iamf_tools_cli_proto::MixGainParamDefinition& input_mix_gain,
-    MixGainParamDefinition& mix_gain) {
-  RETURN_IF_NOT_OK(
-      CopyParamDefinition(input_mix_gain.param_definition(), mix_gain));
+absl::StatusOr<MixGainParamDefinition> CreateMixGainParamDefinition(
+    const iamf_tools_cli_proto::MixGainParamDefinition& input_mix_gain) {
+  auto base_args =
+      GetParamDefinitionBaseArgs(input_mix_gain.param_definition());
+  if (!base_args.ok()) {
+    return base_args.status();
+  }
   int16_t default_mix_gain_q78;
   RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
       "MixGainParamDefinition.default_mix_gain",
       input_mix_gain.default_mix_gain(), default_mix_gain_q78));
+  MixGainParamDefinition mix_gain(*base_args);
   mix_gain.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(default_mix_gain_q78);
 
-  return absl::OkStatus();
+  return mix_gain;
 }
 
 absl::Status CopyReservedOrBinauralLayout(
@@ -746,14 +744,21 @@ absl::Status MixPresentationGenerator::Generate(
             FillRenderingConfig(input_sub_mix_audio_element.rendering_config(),
                                 sub_mix_audio_element.rendering_config));
 
-        RETURN_IF_NOT_OK(
-            FillMixConfig(input_sub_mix_audio_element.element_mix_gain(),
-                          sub_mix_audio_element.element_mix_gain));
+        auto element_mix_gain = CreateMixGainParamDefinition(
+            input_sub_mix_audio_element.element_mix_gain());
+        if (!element_mix_gain.ok()) {
+          return element_mix_gain.status();
+        }
+        sub_mix_audio_element.element_mix_gain = *element_mix_gain;
         sub_mix.audio_elements.push_back(sub_mix_audio_element);
       }
 
-      RETURN_IF_NOT_OK(FillMixConfig(input_sub_mix.output_mix_gain(),
-                                     sub_mix.output_mix_gain));
+      auto output_mix_gain =
+          CreateMixGainParamDefinition(input_sub_mix.output_mix_gain());
+      if (!output_mix_gain.ok()) {
+        return output_mix_gain.status();
+      }
+      sub_mix.output_mix_gain = *output_mix_gain;
 
       RETURN_IF_NOT_OK(FillLayouts(input_sub_mix, sub_mix));
       obu_args.sub_mixes.push_back(std::move(sub_mix));

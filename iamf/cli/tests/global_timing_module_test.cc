@@ -52,7 +52,7 @@ GetParamDefinitionVariantMap(
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       param_definition_variants;
   for (const auto& [parameter_id, param_definition] : param_definitions) {
-    param_definition_variants[parameter_id] = param_definition;
+    param_definition_variants.insert({parameter_id, param_definition});
   }
   return param_definition_variants;
 }

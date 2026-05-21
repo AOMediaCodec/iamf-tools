@@ -27,9 +27,12 @@ namespace iamf_tools {
 /* !\brief Parameter definition for polar info. */
 class PolarParamDefinition : public ParamDefinition {
  public:
-  /*!\brief Default constructor.
+  /*!\brief Constructor.
+   *
+   * \param base_args Arguments for `ParamDefinitionBase`.
    */
-  PolarParamDefinition() : ParamDefinition(kParameterDefinitionPolar) {}
+  explicit PolarParamDefinition(const ParamDefinition::BaseArgs& base_args)
+      : ParamDefinition(kParameterDefinitionPolar, base_args) {}
 
   /*!\brief Default destructor.
    */
@@ -64,9 +67,9 @@ class PolarParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
-  int16_t default_azimuth_;   // 9 bits.
-  int8_t default_elevation_;  // 8 bits.
-  uint8_t default_distance_;  // 7 bits.
+  int16_t default_azimuth_ = 0;   // 9 bits.
+  int8_t default_elevation_ = 0;  // 8 bits.
+  uint8_t default_distance_ = 0;  // 7 bits.
 };
 
 }  // namespace iamf_tools

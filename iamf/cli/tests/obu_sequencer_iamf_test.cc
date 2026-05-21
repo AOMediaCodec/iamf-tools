@@ -40,6 +40,7 @@
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -90,16 +91,10 @@ void AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
 
 DemixingParamDefinition CreateDemixingParamDefinition(
     const DecodedUleb128 parameter_id) {
-  DemixingParamDefinition demixing_param_definition;
-  demixing_param_definition.parameter_id_ = parameter_id;
-  demixing_param_definition.parameter_rate_ = 48000;
-  demixing_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  demixing_param_definition.duration_ = 8;
-  demixing_param_definition.constant_subblock_duration_ = 8;
-  demixing_param_definition.reserved_ = 10;
-
-  return demixing_param_definition;
+  auto base_args = MakeOneSubblockParamDefinitionBaseArgs(
+      parameter_id, /*parameter_rate=*/1, /*duration=*/8);
+  base_args.reserved = 10;
+  return DemixingParamDefinition(base_args);
 }
 
 void InitializeOneParameterBlockAndOneAudioFrame(
@@ -174,7 +169,8 @@ class ObuSequencerIamfTest : public ::testing::Test {
   AudioElementsById audio_elements_;
   MixPresentationObus mix_presentation_obus_;
 
-  DemixingParamDefinition param_definition_;
+  DemixingParamDefinition param_definition_ =
+      DemixingParamDefinition(ParamDefinition::BaseArgs{});
   std::list<ParameterBlockWithData> parameter_blocks_;
   std::list<AudioFrameWithData> audio_frames_;
 

@@ -188,43 +188,46 @@ absl::StatusOr<RenderingConfigParamDefinition>
 RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
   DecodedUleb128 param_definition_type;
   RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_type));
-  PositionParamVariant param_definition;
+  PositionParamVariant param_definition =
+      PolarParamDefinition(ParamDefinition::BaseArgs{});
   switch (static_cast<ParamDefinition::ParameterDefinitionType>(
       param_definition_type)) {
     using enum ParamDefinition::ParameterDefinitionType;
     case kParameterDefinitionPolar:
-      param_definition = PolarParamDefinition();
       RETURN_IF_NOT_OK(
-          param_definition.emplace<PolarParamDefinition>().ReadAndValidate(rb));
+          param_definition
+              .emplace<PolarParamDefinition>(ParamDefinition::BaseArgs{})
+              .ReadAndValidate(rb));
       break;
     case kParameterDefinitionCart8:
-      param_definition = Cart8ParamDefinition();
       RETURN_IF_NOT_OK(
-          param_definition.emplace<Cart8ParamDefinition>().ReadAndValidate(rb));
+          param_definition
+              .emplace<Cart8ParamDefinition>(ParamDefinition::BaseArgs{})
+              .ReadAndValidate(rb));
       break;
     case kParameterDefinitionCart16:
-      param_definition = Cart16ParamDefinition();
       RETURN_IF_NOT_OK(
-          param_definition.emplace<Cart16ParamDefinition>().ReadAndValidate(
-              rb));
+          param_definition
+              .emplace<Cart16ParamDefinition>(ParamDefinition::BaseArgs{})
+              .ReadAndValidate(rb));
       break;
     case kParameterDefinitionDualPolar:
-      param_definition = DualPolarParamDefinition();
       RETURN_IF_NOT_OK(
-          param_definition.emplace<DualPolarParamDefinition>().ReadAndValidate(
-              rb));
+          param_definition
+              .emplace<DualPolarParamDefinition>(ParamDefinition::BaseArgs{})
+              .ReadAndValidate(rb));
       break;
     case kParameterDefinitionDualCart8:
-      param_definition = DualCart8ParamDefinition();
       RETURN_IF_NOT_OK(
-          param_definition.emplace<DualCart8ParamDefinition>().ReadAndValidate(
-              rb));
+          param_definition
+              .emplace<DualCart8ParamDefinition>(ParamDefinition::BaseArgs{})
+              .ReadAndValidate(rb));
       break;
     case kParameterDefinitionDualCart16:
-      param_definition = DualCart16ParamDefinition();
       RETURN_IF_NOT_OK(
-          param_definition.emplace<DualCart16ParamDefinition>().ReadAndValidate(
-              rb));
+          param_definition
+              .emplace<DualCart16ParamDefinition>(ParamDefinition::BaseArgs{})
+              .ReadAndValidate(rb));
       break;
     default:
       // Only positional parameters are defined and directly supported. Others

@@ -107,8 +107,8 @@ struct DemixingInfoParameterData : public ParameterData {
    */
   void Print() const override;
 
-  DMixPMode dmixp_mode;  // 3 bits
-  uint8_t reserved;      // 5 bits
+  DMixPMode dmixp_mode = kDMixPMode1;  // 3 bits
+  uint8_t reserved = 0;                // 5 bits
 };
 
 struct DefaultDemixingInfoParameterData : public DemixingInfoParameterData {
@@ -153,8 +153,8 @@ struct DefaultDemixingInfoParameterData : public DemixingInfoParameterData {
   bool friend operator==(const DefaultDemixingInfoParameterData& lhs,
                          const DefaultDemixingInfoParameterData& rhs) = default;
 
-  uint8_t default_w;                // 4 bits.
-  uint8_t reserved_for_future_use;  // 4 bits.
+  uint8_t default_w = 0;                // 4 bits.
+  uint8_t reserved_for_future_use = 0;  // 4 bits.
 };
 
 }  // namespace iamf_tools

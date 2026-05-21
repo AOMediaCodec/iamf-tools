@@ -27,9 +27,12 @@ namespace iamf_tools {
 /* !\brief Parameter definition for polar info. */
 class Cart8ParamDefinition : public ParamDefinition {
  public:
-  /*!\brief Default constructor.
+  /*!\brief Constructor.
+   *
+   * \param base_args Arguments for `ParamDefinitionBase`.
    */
-  Cart8ParamDefinition() : ParamDefinition(kParameterDefinitionCart8) {}
+  explicit Cart8ParamDefinition(const ParamDefinition::BaseArgs& base_args)
+      : ParamDefinition(kParameterDefinitionCart8, base_args) {}
 
   /*!\brief Default destructor.
    */
@@ -64,9 +67,9 @@ class Cart8ParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
-  int8_t default_x_;
-  int8_t default_y_;
-  int8_t default_z_;
+  int8_t default_x_ = 0;
+  int8_t default_y_ = 0;
+  int8_t default_z_ = 0;
 };
 
 }  // namespace iamf_tools

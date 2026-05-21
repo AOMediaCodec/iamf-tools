@@ -34,6 +34,7 @@
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 
 namespace iamf_tools {
 namespace {
@@ -227,24 +228,17 @@ TEST(ValidateAndWrite, WritesRenderingConfigExtension) {
 }
 
 TEST(ValidateAndWrite, WritesRenderingConfigPolarParamDefinition) {
-  PolarParamDefinition polar_param_definition_1;
-  polar_param_definition_1.parameter_id_ = 1;
-  polar_param_definition_1.parameter_rate_ = 1;
-  polar_param_definition_1.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  polar_param_definition_1.duration_ = 10;
-  polar_param_definition_1.constant_subblock_duration_ = 10;
+  PolarParamDefinition polar_param_definition_1(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1, /*duration=*/10));
   polar_param_definition_1.default_azimuth_ = 2;
   polar_param_definition_1.default_elevation_ = 3;
   polar_param_definition_1.default_distance_ = 4;
 
-  PolarParamDefinition polar_param_definition_2;
-  polar_param_definition_2.parameter_id_ = 2;
-  polar_param_definition_2.parameter_rate_ = 1;
-  polar_param_definition_2.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  polar_param_definition_2.duration_ = 10;
-  polar_param_definition_2.constant_subblock_duration_ = 10;
+  PolarParamDefinition polar_param_definition_2(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/2, /*parameter_rate=*/1, /*duration=*/10));
+
   polar_param_definition_2.default_azimuth_ = 181;
   polar_param_definition_2.default_elevation_ = 3;
   polar_param_definition_2.default_distance_ = 4;
@@ -300,13 +294,9 @@ TEST(ValidateAndWrite, WritesRenderingConfigPolarParamDefinition) {
 }
 
 TEST(ValidateAndWrite, WritesRenderingConfigCart8ParamDefinition) {
-  Cart8ParamDefinition cart8_param_definition;
-  cart8_param_definition.parameter_id_ = 1;
-  cart8_param_definition.parameter_rate_ = 1;
-  cart8_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  cart8_param_definition.duration_ = 10;
-  cart8_param_definition.constant_subblock_duration_ = 10;
+  Cart8ParamDefinition cart8_param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1, /*duration=*/10));
   cart8_param_definition.default_x_ = 1;
   cart8_param_definition.default_y_ = 2;
   cart8_param_definition.default_z_ = 3;
@@ -345,13 +335,9 @@ TEST(ValidateAndWrite, WritesRenderingConfigCart8ParamDefinition) {
 }
 
 TEST(ValidateAndWrite, WritesRenderingConfigCart16ParamDefinition) {
-  Cart16ParamDefinition cart16_param_definition;
-  cart16_param_definition.parameter_id_ = 1;
-  cart16_param_definition.parameter_rate_ = 1;
-  cart16_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  cart16_param_definition.duration_ = 10;
-  cart16_param_definition.constant_subblock_duration_ = 10;
+  Cart16ParamDefinition cart16_param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1, /*duration=*/10));
   cart16_param_definition.default_x_ = 1;
   cart16_param_definition.default_y_ = 2;
   cart16_param_definition.default_z_ = 3;
@@ -393,13 +379,9 @@ TEST(ValidateAndWrite, WritesRenderingConfigCart16ParamDefinition) {
 }
 
 TEST(ValidateAndWrite, WritesRenderingConfigDualPolarParamDefinition) {
-  DualPolarParamDefinition dual_polar_param_definition;
-  dual_polar_param_definition.parameter_id_ = 1;
-  dual_polar_param_definition.parameter_rate_ = 1;
-  dual_polar_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  dual_polar_param_definition.duration_ = 10;
-  dual_polar_param_definition.constant_subblock_duration_ = 10;
+  DualPolarParamDefinition dual_polar_param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1, /*duration=*/10));
   dual_polar_param_definition.default_first_azimuth_ = 2;
   dual_polar_param_definition.default_first_elevation_ = 3;
   dual_polar_param_definition.default_first_distance_ = 4;
@@ -449,13 +431,9 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualPolarParamDefinition) {
 }
 
 TEST(ValidateAndWrite, WritesRenderingConfigDualCart8ParamDefinition) {
-  DualCart8ParamDefinition dual_cart8_param_definition;
-  dual_cart8_param_definition.parameter_id_ = 1;
-  dual_cart8_param_definition.parameter_rate_ = 1;
-  dual_cart8_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  dual_cart8_param_definition.duration_ = 10;
-  dual_cart8_param_definition.constant_subblock_duration_ = 10;
+  DualCart8ParamDefinition dual_cart8_param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1, /*duration=*/10));
   dual_cart8_param_definition.default_first_x_ = 1;
   dual_cart8_param_definition.default_first_y_ = 2;
   dual_cart8_param_definition.default_first_z_ = 3;
@@ -504,13 +482,9 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualCart8ParamDefinition) {
 }
 
 TEST(ValidateAndWrite, WritesRenderingConfigDualCart16ParamDefinition) {
-  DualCart16ParamDefinition dual_cart16_param_definition;
-  dual_cart16_param_definition.parameter_id_ = 1;
-  dual_cart16_param_definition.parameter_rate_ = 1;
-  dual_cart16_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  dual_cart16_param_definition.duration_ = 10;
-  dual_cart16_param_definition.constant_subblock_duration_ = 10;
+  DualCart16ParamDefinition dual_cart16_param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1, /*duration=*/10));
   dual_cart16_param_definition.default_first_x_ = 1;
   dual_cart16_param_definition.default_first_y_ = 2;
   dual_cart16_param_definition.default_first_z_ = 3;
@@ -966,8 +940,9 @@ TEST(RenderingConfigCreateFromBuffer, ExtensionBytesRenderingConfig) {
 TEST(RenderingConfigParamDefinitionCreate, SucceedsWithPolarParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(PolarParamDefinition(),
-                                             kParamDefinitionBytes);
+      RenderingConfigParamDefinition::Create(
+          PolarParamDefinition(ParamDefinition::BaseArgs{}),
+          kParamDefinitionBytes);
 
   EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionPolar);
@@ -980,8 +955,9 @@ TEST(RenderingConfigParamDefinitionCreate, SucceedsWithPolarParamDefinition) {
 TEST(RenderingConfigParamDefinitionCreate, SucceedsWithCart8ParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(Cart8ParamDefinition(),
-                                             kParamDefinitionBytes);
+      RenderingConfigParamDefinition::Create(
+          Cart8ParamDefinition(ParamDefinition::BaseArgs{}),
+          kParamDefinitionBytes);
 
   EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionCart8);
@@ -994,8 +970,9 @@ TEST(RenderingConfigParamDefinitionCreate, SucceedsWithCart8ParamDefinition) {
 TEST(RenderingConfigParamDefinitionCreate, SucceedsWithCart16ParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(Cart16ParamDefinition(),
-                                             kParamDefinitionBytes);
+      RenderingConfigParamDefinition::Create(
+          Cart16ParamDefinition(ParamDefinition::BaseArgs{}),
+          kParamDefinitionBytes);
 
   EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionCart16);
@@ -1009,8 +986,9 @@ TEST(RenderingConfigParamDefinitionCreate,
      SucceedsWithDualPolarParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(DualPolarParamDefinition(),
-                                             kParamDefinitionBytes);
+      RenderingConfigParamDefinition::Create(
+          DualPolarParamDefinition(ParamDefinition::BaseArgs{}),
+          kParamDefinitionBytes);
 
   EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionDualPolar);
@@ -1024,8 +1002,9 @@ TEST(RenderingConfigParamDefinitionCreate,
      SucceedsWithDualCart8ParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(DualCart8ParamDefinition(),
-                                             kParamDefinitionBytes);
+      RenderingConfigParamDefinition::Create(
+          DualCart8ParamDefinition(ParamDefinition::BaseArgs{}),
+          kParamDefinitionBytes);
 
   EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionDualCart8);
@@ -1039,8 +1018,9 @@ TEST(RenderingConfigParamDefinitionCreate,
      SucceedsWithDualCart16ParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(DualCart16ParamDefinition(),
-                                             kParamDefinitionBytes);
+      RenderingConfigParamDefinition::Create(
+          DualCart16ParamDefinition(ParamDefinition::BaseArgs{}),
+          kParamDefinitionBytes);
 
   EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionDualCart16);

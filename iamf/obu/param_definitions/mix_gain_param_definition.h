@@ -27,9 +27,12 @@ namespace iamf_tools {
  */
 class MixGainParamDefinition : public ParamDefinition {
  public:
-  /*!\brief Default constructor.
+  /*!\brief Constructor.
+   *
+   * \param base_args Arguments for `ParamDefinitionBase`.
    */
-  MixGainParamDefinition() : ParamDefinition(kParameterDefinitionMixGain) {}
+  explicit MixGainParamDefinition(const ParamDefinition::BaseArgs& base_args)
+      : ParamDefinition(kParameterDefinitionMixGain, base_args) {}
 
   /*!\brief Default destructor.
    */

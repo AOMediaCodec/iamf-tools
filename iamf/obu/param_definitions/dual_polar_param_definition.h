@@ -27,9 +27,12 @@ namespace iamf_tools {
 /* !\brief Parameter definition for polar info. */
 class DualPolarParamDefinition : public ParamDefinition {
  public:
-  /*!\brief Default constructor.
+  /*!\brief Constructor.
+   *
+   * \param base_args Arguments for `ParamDefinitionBase`.
    */
-  DualPolarParamDefinition() : ParamDefinition(kParameterDefinitionDualPolar) {}
+  explicit DualPolarParamDefinition(const ParamDefinition::BaseArgs& base_args)
+      : ParamDefinition(kParameterDefinitionDualPolar, base_args) {}
 
   /*!\brief Default destructor.
    */
@@ -64,12 +67,12 @@ class DualPolarParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
-  int16_t default_first_azimuth_;    // 9 bits.
-  int8_t default_first_elevation_;   // 8 bits.
-  uint8_t default_first_distance_;   // 7 bits.
-  int16_t default_second_azimuth_;   // 9 bits.
-  int8_t default_second_elevation_;  // 8 bits.
-  uint8_t default_second_distance_;  // 7 bits.
+  int16_t default_first_azimuth_ = 0;    // 9 bits.
+  int8_t default_first_elevation_ = 0;   // 8 bits.
+  uint8_t default_first_distance_ = 0;   // 7 bits.
+  int16_t default_second_azimuth_ = 0;   // 9 bits.
+  int8_t default_second_elevation_ = 0;  // 8 bits.
+  uint8_t default_second_distance_ = 0;  // 7 bits.
 };
 
 }  // namespace iamf_tools

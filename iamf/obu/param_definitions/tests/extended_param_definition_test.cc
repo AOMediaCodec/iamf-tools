@@ -24,45 +24,26 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::testing::Not;
 
 constexpr int32_t kDefaultBufferSize = 64;
 constexpr DecodedUleb128 kParameterId = 0;
 constexpr DecodedUleb128 kParameterRate = 48000;
-constexpr DecodedUleb128 kDuration = 64;
 
-void PopulateParameterDefinitionMode1(ParamDefinition& param_definition) {
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  param_definition.reserved_ = 0;
-}
-
-void InitSubblockDurations(
-    ParamDefinition& param_definition,
-    absl::Span<const DecodedUleb128> subblock_durations) {
-  param_definition.InitializeSubblockDurations(
-      static_cast<DecodedUleb128>(subblock_durations.size()));
-  for (int i = 0; i < subblock_durations.size(); ++i) {
-    EXPECT_THAT(param_definition.SetSubblockDuration(i, subblock_durations[i]),
-                IsOk());
-  }
+ParamDefinition::BaseArgs GetExtendedParamDefinitionMode1Args() {
+  return MakeScheduleInParameterBlockBaseArgs(kParameterId, kParameterRate);
 }
 
 TEST(ExtendedParamDefinition, CopyConstructible) {
   ExtendedParamDefinition extended_param_definition(
-      ParamDefinition::kParameterDefinitionReservedStart);
-  extended_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  extended_param_definition.parameter_id_ = kParameterId;
-  extended_param_definition.parameter_rate_ = kParameterRate;
+      ParamDefinition::kParameterDefinitionReservedStart,
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, kParameterRate));
   extended_param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   const auto other = extended_param_definition;
@@ -72,8 +53,8 @@ TEST(ExtendedParamDefinition, CopyConstructible) {
 
 TEST(ExtendedParamDefinition, GetTypeHasCorrectValue) {
   ExtendedParamDefinition extended_param_definition(
-      ParamDefinition::kParameterDefinitionReservedEnd);
-  PopulateParameterDefinitionMode1(extended_param_definition);
+      ParamDefinition::kParameterDefinitionReservedEnd,
+      GetExtendedParamDefinitionMode1Args());
 
   EXPECT_TRUE(extended_param_definition.GetType().has_value());
   EXPECT_EQ(*extended_param_definition.GetType(),
@@ -82,8 +63,8 @@ TEST(ExtendedParamDefinition, GetTypeHasCorrectValue) {
 
 TEST(ExtendedParamDefinitionValidateAndWrite, SizeMayBeZero) {
   ExtendedParamDefinition extended_param_definition(
-      ParamDefinition::kParameterDefinitionReservedEnd);
-  PopulateParameterDefinitionMode1(extended_param_definition);
+      ParamDefinition::kParameterDefinitionReservedEnd,
+      GetExtendedParamDefinitionMode1Args());
   extended_param_definition.param_definition_bytes_ = {};
   WriteBitBuffer wb(kDefaultBufferSize);
 
@@ -96,8 +77,8 @@ TEST(ExtendedParamDefinitionValidateAndWrite, SizeMayBeZero) {
 TEST(ExtendedParamDefinitionValidateAndWrite,
      WritesOnlySizeAndParamDefinitionBytes) {
   ExtendedParamDefinition extended_param_definition(
-      ParamDefinition::kParameterDefinitionReservedEnd);
-  PopulateParameterDefinitionMode1(extended_param_definition);
+      ParamDefinition::kParameterDefinitionReservedEnd,
+      GetExtendedParamDefinitionMode1Args());
   extended_param_definition.param_definition_bytes_ = {0x01, 0x02, 0x03, 0x04};
   WriteBitBuffer wb(kDefaultBufferSize);
 
@@ -118,7 +99,7 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithZeroSize) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   ExtendedParamDefinition param_definition =
-      ExtendedParamDefinition(kExtensiontype);
+      ExtendedParamDefinition(kExtensiontype, ParamDefinition::BaseArgs{});
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 
   EXPECT_EQ(*param_definition.GetType(), kExtensiontype);
@@ -136,7 +117,7 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   ExtendedParamDefinition param_definition =
-      ExtendedParamDefinition(kExtensiontype);
+      ExtendedParamDefinition(kExtensiontype, ParamDefinition::BaseArgs{});
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 
   EXPECT_EQ(*param_definition.GetType(), kExtensiontype);
@@ -146,10 +127,12 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
 
 TEST(ExtendedParamDefinitionEqualityOperator, Equals) {
   ExtendedParamDefinition lhs(
-      ParamDefinition::kParameterDefinitionReservedStart);
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
   lhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
   ExtendedParamDefinition rhs(
-      ParamDefinition::kParameterDefinitionReservedStart);
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
   rhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   EXPECT_EQ(lhs, rhs);
@@ -157,19 +140,23 @@ TEST(ExtendedParamDefinitionEqualityOperator, Equals) {
 
 TEST(ExtendedParamDefinitionEqualityOperator, NotEqualsWhenTypeIsDifferent) {
   const ExtendedParamDefinition lhs(
-      ParamDefinition::kParameterDefinitionReservedStart);
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
   const ExtendedParamDefinition rhs(
-      ParamDefinition::kParameterDefinitionReservedEnd);
+      ParamDefinition::kParameterDefinitionReservedEnd,
+      ParamDefinition::BaseArgs{});
 
   EXPECT_NE(lhs, rhs);
 }
 
 TEST(ExtendedParamDefinitionEqualityOperator, NotEqualsWhenPayloadIsDifferent) {
   ExtendedParamDefinition lhs(
-      ParamDefinition::kParameterDefinitionReservedStart);
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
   lhs.param_definition_bytes_ = {'e', 'x', 't'};
   ExtendedParamDefinition rhs(
-      ParamDefinition::kParameterDefinitionReservedStart);
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
   rhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   EXPECT_NE(lhs, rhs);

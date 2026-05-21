@@ -43,12 +43,10 @@ absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
 /*!\brief Copies param definitions from the corresponding protocol buffer.
  *
  * \param input_param_definition Input protocol buffer.
- * \param param_definition Destination param definition.
- * \return `absl::OkStatus()` on success. A specific status on failure.
+ * \return `ParamDefinition::BaseArgs` on success. A specific status on failure.
  */
-absl::Status CopyParamDefinition(
-    const iamf_tools_cli_proto::ParamDefinition& input_param_definition,
-    ParamDefinition& param_definition);
+absl::StatusOr<ParamDefinition::BaseArgs> GetParamDefinitionBaseArgs(
+    const iamf_tools_cli_proto::ParamDefinition& input_param_definition);
 
 /*!\brief Returns an `ObuHeader` based on the corresponding protocol buffer.
  *

@@ -489,7 +489,7 @@ absl::Status PopulateCommonFields(
   // Get the duration from the parameter definition or the OBU itself as
   // applicable.
   const DecodedUleb128 duration =
-      param_definition.param_definition_mode_ ==
+      param_definition.GetParamDefinitionMode() ==
               ParamDefinition::kModeScheduleInParameterBlock
           ? parameter_block_metadata.duration()
           : param_definition.GetDuration();
@@ -502,7 +502,7 @@ absl::Status PopulateCommonFields(
       parameter_block_with_data.end_timestamp));
 
   // Create the OBU.
-  if (param_definition.param_definition_mode_ ==
+  if (param_definition.GetParamDefinitionMode() ==
       ParamDefinition::kModeScheduleInParamDefinition) {
     // Timing shared in the parameter definition.
     parameter_block_with_data.obu = ParameterBlockObu::CreateMode0(

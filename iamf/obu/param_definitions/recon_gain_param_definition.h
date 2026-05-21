@@ -16,7 +16,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -48,7 +47,7 @@ class ReconGainParamDefinition : public ParamDefinition {
    * transcoder and are will not be read from/written to bitstreams.
    */
   struct ReconGainAuxiliaryData {
-    bool recon_gain_is_present_flag;
+    bool recon_gain_is_present_flag = false;
     ChannelNumbers channel_numbers_for_layer;
     friend bool operator==(const ReconGainAuxiliaryData& lhs,
                            const ReconGainAuxiliaryData& rhs) = default;
@@ -56,11 +55,13 @@ class ReconGainParamDefinition : public ParamDefinition {
 
   /*!\brief Constructor.
    *
+   * \param base_args Arguments for `ParamDefinitionBase`.
    * \param audio_element_id ID of the Audio Element OBU that uses this
-   *        recon gain parameter.
+   * parameter.
    */
-  ReconGainParamDefinition(uint32_t audio_element_id)
-      : ParamDefinition(kParameterDefinitionReconGain),
+  ReconGainParamDefinition(const ParamDefinition::BaseArgs& base_args,
+                           uint32_t audio_element_id)
+      : ParamDefinition(kParameterDefinitionReconGain, base_args),
         audio_element_id_(audio_element_id) {}
 
   /*!\brief Default destructor.

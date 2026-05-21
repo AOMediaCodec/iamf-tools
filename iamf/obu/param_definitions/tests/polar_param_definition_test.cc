@@ -22,6 +22,8 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -30,24 +32,28 @@ using ::absl_testing::IsOk;
 
 constexpr int32_t kBufferSize = 256;
 
-void PopulateParamDefinition(ParamDefinition* param_definition) {
-  param_definition->parameter_id_ = 1;
-  param_definition->parameter_rate_ = 1;
-  param_definition->param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition->duration_ = 10;
-  param_definition->constant_subblock_duration_ = 10;
-  param_definition->reserved_ = 0;
+ParamDefinition::BaseArgs GetPolarParamDefinitionArgs() {
+  constexpr DecodedUleb128 kParameterId = 1;
+  constexpr DecodedUleb128 kParameterRate = 1;
+  constexpr DecodedUleb128 kDuration = 10;
+  return MakeOneSubblockParamDefinitionBaseArgs(kParameterId, kParameterRate,
+                                                kDuration);
 }
 
 TEST(PolarParamDefinitionTest, GetType) {
-  PolarParamDefinition param_definition;
+  PolarParamDefinition param_definition(ParamDefinition::BaseArgs{});
   EXPECT_EQ(param_definition.GetType(),
             ParamDefinition::kParameterDefinitionPolar);
 }
 
+TEST(PolarParamDefinitionTest, CompareDefaultConstructed) {
+  PolarParamDefinition param_definition1(ParamDefinition::BaseArgs{});
+  PolarParamDefinition param_definition2(ParamDefinition::BaseArgs{});
+  EXPECT_EQ(param_definition1, param_definition2);
+}
+
 TEST(PolarParamDefinitionTest, ReadAndValidateSucceeds) {
-  PolarParamDefinition param_definition;
+  PolarParamDefinition param_definition(ParamDefinition::BaseArgs{});
   std::vector<uint8_t> data = {1,   // parameter_id
                                1,   // parameter_rate
                                0,   // mode
@@ -73,7 +79,7 @@ TEST(PolarParamDefinitionTest, ReadAndValidateSucceeds) {
 }
 
 TEST(PolarParamDefinitionTest, ReadAndValidateClipsAzimuth) {
-  PolarParamDefinition param_definition;
+  PolarParamDefinition param_definition(ParamDefinition::BaseArgs{});
   std::vector<uint8_t> data = {1,   // parameter_id
                                1,   // parameter_rate
                                0,   // mode
@@ -98,7 +104,7 @@ TEST(PolarParamDefinitionTest, ReadAndValidateClipsAzimuth) {
 }
 
 TEST(PolarParamDefinitionTest, ReadAndValidateClipsElevation) {
-  PolarParamDefinition param_definition;
+  PolarParamDefinition param_definition(ParamDefinition::BaseArgs{});
   std::vector<uint8_t> data = {1,   // parameter_id
                                1,   // parameter_rate
                                0,   // mode
@@ -123,8 +129,7 @@ TEST(PolarParamDefinitionTest, ReadAndValidateClipsElevation) {
 }
 
 TEST(PolarParamDefinitionTest, WriteAndValidateSucceeds) {
-  PolarParamDefinition param_definition;
-  PopulateParamDefinition(&param_definition);
+  PolarParamDefinition param_definition(GetPolarParamDefinitionArgs());
   param_definition.default_azimuth_ = 2;
   param_definition.default_elevation_ = 3;
   param_definition.default_distance_ = 4;
@@ -142,8 +147,7 @@ TEST(PolarParamDefinitionTest, WriteAndValidateSucceeds) {
 
 TEST(PolarParamDefinitionTest,
      WriteAndValidateSucceedsAzimuthAndElevationClipped) {
-  PolarParamDefinition param_definition;
-  PopulateParamDefinition(&param_definition);
+  PolarParamDefinition param_definition(GetPolarParamDefinitionArgs());
   param_definition.default_azimuth_ = 181;
   param_definition.default_elevation_ = 91;
   param_definition.default_distance_ = 4;
@@ -163,7 +167,7 @@ TEST(PolarParamDefinitionTest,
 }
 
 TEST(PolarParamDefinitionTest, CreateParameterDataReturnsNonNull) {
-  PolarParamDefinition param_definition;
+  PolarParamDefinition param_definition(ParamDefinition::BaseArgs{});
   EXPECT_NE(param_definition.CreateParameterData(), nullptr);
 }
 

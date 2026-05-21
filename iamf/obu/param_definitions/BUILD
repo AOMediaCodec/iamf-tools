@@ -198,7 +198,6 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/base:core_headers",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",

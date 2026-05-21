@@ -68,12 +68,17 @@ class ParamDefinition {
     kModeScheduleInParameterBlock = 1,
   };
 
-  /*!\brief Default constructor.
-   *
-   * After constructing `InitializeSubblockDurations()` MUST be called
-   * before using most functionality.
-   */
-  ParamDefinition() = default;
+  /*!\brief Arguments for the `ParamDefinitionBase` constructor. */
+  struct BaseArgs {
+    DecodedUleb128 parameter_id = 0;
+    DecodedUleb128 parameter_rate = 0;
+    ParamDefinitionMode param_definition_mode = kModeScheduleInParamDefinition;
+    uint8_t reserved = 0;
+    DecodedUleb128 duration = 0;
+    DecodedUleb128 constant_subblock_duration = 0;
+    DecodedUleb128 num_subblocks = 0;
+    std::vector<DecodedUleb128> subblock_durations = {};
+  };
 
   /*!\brief Default destructor.
    */
@@ -213,8 +218,18 @@ class ParamDefinition {
   /*!\brief Constructor with a passed-in type used by sub-classes.
    *
    * \param type Type of the specific parameter definition.
+   * \param base_args Arguments for `ParamDefinitionBase`.
    */
-  ParamDefinition(ParameterDefinitionType type) : type_(type) {}
+  ParamDefinition(ParameterDefinitionType type, const BaseArgs& base_args)
+      : type_(type),
+        parameter_id_(base_args.parameter_id),
+        parameter_rate_(base_args.parameter_rate),
+        param_definition_mode_(base_args.param_definition_mode),
+        reserved_(base_args.reserved),
+        duration_(base_args.duration),
+        constant_subblock_duration_(base_args.constant_subblock_duration),
+        num_subblocks_(base_args.num_subblocks),
+        subblock_durations_(base_args.subblock_durations) {}
 
  private:
   /*!\brief Whether the subblock durations are included in this object.

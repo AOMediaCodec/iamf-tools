@@ -35,6 +35,7 @@
 #include "iamf/obu/param_definitions/extended_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/tests/obu_test_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -56,21 +57,16 @@ constexpr uint8_t kParameterDefinitionDemixingAsUint8 =
 
 DemixingParamDefinition CreateDemixingInfoParamDefinition(
     DemixingInfoParameterData::DMixPMode dmixp_mode) {
-  DemixingParamDefinition param_definition;
-  param_definition.parameter_id_ = 4;
-  param_definition.parameter_rate_ = 5;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.reserved_ = 0;
-  param_definition.duration_ = 64;
-  param_definition.constant_subblock_duration_ = 64;
+  DemixingParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/4, /*parameter_rate=*/5,
+          /*duration=*/64));
   param_definition.default_demixing_info_parameter_data_.dmixp_mode =
       dmixp_mode;
   param_definition.default_demixing_info_parameter_data_.default_w = 0;
   param_definition.default_demixing_info_parameter_data_.reserved = 0;
   param_definition.default_demixing_info_parameter_data_
       .reserved_for_future_use = 0;
-  param_definition.InitializeSubblockDurations(1);
   return param_definition;
 }
 
@@ -242,7 +238,8 @@ TEST(ValidateAndWriteObu, WritesParamDefinitionExtensionZero) {
   common_args.audio_element_params.clear();
   common_args.audio_element_params.emplace_back(
       AudioElementParam{ExtendedParamDefinition{
-          ParamDefinition::kParameterDefinitionReservedStart}});
+          ParamDefinition::kParameterDefinitionReservedStart,
+          ParamDefinition::BaseArgs{}}});
   constexpr auto kExpectedHeader =
       std::to_array<uint8_t>({kObuIaAudioElement << 3, 15});
 
@@ -290,9 +287,9 @@ TEST(ValidateAndWriteObu, WritesParamDefinitionExtensionZero) {
 TEST(ValidateAndWriteObu, WritesMaxParamDefinitionType) {
   CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
   common_args.audio_element_params.clear();
-  common_args.audio_element_params.emplace_back(
-      AudioElementParam{ExtendedParamDefinition{
-          ParamDefinition::kParameterDefinitionReservedEnd}});
+  common_args.audio_element_params.emplace_back(AudioElementParam{
+      ExtendedParamDefinition{ParamDefinition::kParameterDefinitionReservedEnd,
+                              ParamDefinition::BaseArgs{}}});
   constexpr auto kExpectedHeader =
       std::to_array<uint8_t>({kObuIaAudioElement << 3, 19});
   const auto kExpectedPayload = std::to_array<uint8_t>(
@@ -339,7 +336,8 @@ TEST(ValidateAndWriteObu, WritesMaxParamDefinitionType) {
 TEST(ValidateAndWriteObu, WritesParamDefinitionExtensionNonZero) {
   CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
   ExtendedParamDefinition param_definition(
-      ParamDefinition::kParameterDefinitionReservedStart);
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
   param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
   common_args.audio_element_params.clear();
   common_args.audio_element_params.emplace_back(
@@ -1323,10 +1321,12 @@ TEST(ValidateAndWriteObu,
   const auto kDuplicateParameterDefinition =
       ParamDefinition::kParameterDefinitionReservedStart;
 
-  common_args.audio_element_params.emplace_back(AudioElementParam{
-      ExtendedParamDefinition(kDuplicateParameterDefinition)});
-  common_args.audio_element_params.emplace_back(AudioElementParam{
-      ExtendedParamDefinition(kDuplicateParameterDefinition)});
+  common_args.audio_element_params.emplace_back(
+      AudioElementParam{ExtendedParamDefinition(kDuplicateParameterDefinition,
+                                                ParamDefinition::BaseArgs{})});
+  common_args.audio_element_params.emplace_back(
+      AudioElementParam{ExtendedParamDefinition(kDuplicateParameterDefinition,
+                                                ParamDefinition::BaseArgs{})});
 
   auto obu = CreateScalableAudioElementObu(
       common_args, GetOneLayerStereoScalableChannelLayout());

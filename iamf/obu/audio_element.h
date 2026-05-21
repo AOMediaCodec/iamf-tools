@@ -49,7 +49,7 @@ struct AudioElementParam {
   // One of the parameter definition subclasses allowed in an Audio Element.
   std::variant<DemixingParamDefinition, ReconGainParamDefinition,
                ExtendedParamDefinition>
-      param_definition;
+      param_definition = DemixingParamDefinition(ParamDefinition::BaseArgs{});
 
   /*!\brief Gets the actual type of parameter definition.
    *

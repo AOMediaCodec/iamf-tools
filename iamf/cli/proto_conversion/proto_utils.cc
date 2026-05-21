@@ -57,37 +57,35 @@ absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
   }
 }
 
-absl::Status CopyParamDefinition(
-    const iamf_tools_cli_proto::ParamDefinition& input_param_definition,
-    ParamDefinition& param_definition) {
-  param_definition.parameter_id_ = input_param_definition.parameter_id();
-  param_definition.parameter_rate_ = input_param_definition.parameter_rate();
+absl::StatusOr<ParamDefinition::BaseArgs> GetParamDefinitionBaseArgs(
+    const iamf_tools_cli_proto::ParamDefinition& input_param_definition) {
+  ParamDefinition::BaseArgs args;
+  args.parameter_id = input_param_definition.parameter_id();
+  args.parameter_rate = input_param_definition.parameter_rate();
 
-  param_definition.param_definition_mode_ =
+  args.param_definition_mode =
       static_cast<ParamDefinition::ParamDefinitionMode>(
           input_param_definition.param_definition_mode());
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "ParamDefinition.reserved", input_param_definition.reserved(),
-      param_definition.reserved_));
-  param_definition.duration_ = input_param_definition.duration();
-  param_definition.constant_subblock_duration_ =
+      args.reserved));
+  args.duration = input_param_definition.duration();
+  args.constant_subblock_duration =
       input_param_definition.constant_subblock_duration();
 
   if (input_param_definition.constant_subblock_duration() != 0) {
-    // Nothing else to be done. Return.
-    return absl::OkStatus();
+    return args;
   }
 
   // Infer the number of subblocks.
   const auto num_subblocks = input_param_definition.subblock_durations_size();
-  param_definition.InitializeSubblockDurations(
-      static_cast<DecodedUleb128>(num_subblocks));
+  args.num_subblocks = static_cast<DecodedUleb128>(num_subblocks);
+  args.subblock_durations.resize(num_subblocks);
   for (int i = 0; i < num_subblocks; ++i) {
-    RETURN_IF_NOT_OK(param_definition.SetSubblockDuration(
-        i, input_param_definition.subblock_durations(i)));
+    args.subblock_durations[i] = input_param_definition.subblock_durations(i);
   }
 
-  return absl::OkStatus();
+  return args;
 }
 
 ObuHeader GetHeaderFromMetadata(

@@ -27,9 +27,12 @@ namespace iamf_tools {
 /* !\brief Parameter definition for polar info. */
 class DualCart8ParamDefinition : public ParamDefinition {
  public:
-  /*!\brief Default constructor.
+  /*!\brief Constructor.
+   *
+   * \param base_args Arguments for `ParamDefinitionBase`.
    */
-  DualCart8ParamDefinition() : ParamDefinition(kParameterDefinitionDualCart8) {}
+  explicit DualCart8ParamDefinition(const ParamDefinition::BaseArgs& base_args)
+      : ParamDefinition(kParameterDefinitionDualCart8, base_args) {}
 
   /*!\brief Default destructor.
    */
@@ -64,12 +67,12 @@ class DualCart8ParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
-  int8_t default_first_x_;
-  int8_t default_first_y_;
-  int8_t default_first_z_;
-  int8_t default_second_x_;
-  int8_t default_second_y_;
-  int8_t default_second_z_;
+  int8_t default_first_x_ = 0;
+  int8_t default_first_y_ = 0;
+  int8_t default_first_z_ = 0;
+  int8_t default_second_x_ = 0;
+  int8_t default_second_y_ = 0;
+  int8_t default_second_z_ = 0;
 };
 
 }  // namespace iamf_tools

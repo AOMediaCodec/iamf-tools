@@ -16,7 +16,6 @@
 #include <optional>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -26,7 +25,7 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
-#include "iamf/obu/parameter_data.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -40,54 +39,15 @@ constexpr DecodedUleb128 kParameterId = 0;
 constexpr DecodedUleb128 kParameterRate = 48000;
 constexpr DecodedUleb128 kDuration = 64;
 
-class MockParamDefinition : public ParamDefinition {
- public:
-  MOCK_METHOD(absl::Status, ValidateAndWrite, (WriteBitBuffer & wb),
-              (const, override));
-  MOCK_METHOD(absl::Status, ReadAndValidate, (ReadBitBuffer & rb), (override));
-
-  MOCK_METHOD(std::unique_ptr<ParameterData>, CreateParameterData, (),
-              (const, override));
-  MOCK_METHOD(void, Print, (), (const, override));
-};
-
-void PopulateParameterDefinitionMode1(ParamDefinition& param_definition) {
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  param_definition.reserved_ = 0;
+ParamDefinition::BaseArgs GetDefaultReconGainBaseArgs() {
+  return MakeOneSubblockParamDefinitionBaseArgs(
+      kParameterId, /*parameter_rate=*/1, kDuration);
 }
 
-void PopulateParameterDefinitionMode0(ParamDefinition& param_definition) {
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = kParameterRate;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.duration_ = kDuration;
-  param_definition.constant_subblock_duration_ = kDuration;
-  param_definition.reserved_ = 0;
-}
-
-void InitSubblockDurations(
-    ParamDefinition& param_definition,
-    absl::Span<const DecodedUleb128> subblock_durations) {
-  param_definition.InitializeSubblockDurations(
-      static_cast<DecodedUleb128>(subblock_durations.size()));
-  for (int i = 0; i < subblock_durations.size(); ++i) {
-    EXPECT_THAT(param_definition.SetSubblockDuration(i, subblock_durations[i]),
-                IsOk());
-  }
-}
-ReconGainParamDefinition CreateReconGainParamDefinition() {
-  ReconGainParamDefinition recon_gain_param_definition(0);
-  recon_gain_param_definition.parameter_id_ = 0;
-  recon_gain_param_definition.parameter_rate_ = 1;
-  recon_gain_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  recon_gain_param_definition.duration_ = 64;
-  recon_gain_param_definition.constant_subblock_duration_ = 64;
-  return recon_gain_param_definition;
+ReconGainParamDefinition CreateReconGainParamDefinition(
+    const ParamDefinition::BaseArgs& args = GetDefaultReconGainBaseArgs(),
+    uint32_t audio_element_id = 0) {
+  return ReconGainParamDefinition(args, audio_element_id);
 }
 
 TEST(ReconGainParamDefinition, CopyConstructible) {
@@ -125,8 +85,9 @@ TEST(ReconGainParamDefinitionValidateAndWrite,
 }
 
 TEST(ReconGainParamDefinitionValidateAndWrite, WritesParameterId) {
-  auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.parameter_id_ = 1;
+  auto args = GetDefaultReconGainBaseArgs();
+  args.parameter_id = 1;
+  auto recon_gain_param_definition = CreateReconGainParamDefinition(args);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(recon_gain_param_definition.ValidateAndWrite(wb), IsOk());
@@ -138,8 +99,9 @@ TEST(ReconGainParamDefinitionValidateAndWrite, WritesParameterId) {
 }
 
 TEST(ReconGainParamDefinitionValidateAndWrite, WritesParameterRate) {
-  auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.parameter_id_ = 1;
+  auto args = GetDefaultReconGainBaseArgs();
+  args.parameter_id = 1;
+  auto recon_gain_param_definition = CreateReconGainParamDefinition(args);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(recon_gain_param_definition.ValidateAndWrite(wb), IsOk());
@@ -152,9 +114,9 @@ TEST(ReconGainParamDefinitionValidateAndWrite, WritesParameterRate) {
 }
 
 TEST(ReconGainParamDefinitionValidateAndWrite, WritesDuration) {
-  auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.duration_ = 32;
-  recon_gain_param_definition.constant_subblock_duration_ = 32;
+  auto recon_gain_param_definition =
+      CreateReconGainParamDefinition(MakeOneSubblockParamDefinitionBaseArgs(
+          kParameterId, /*parameter_rate=*/1, /*duration=*/32));
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(recon_gain_param_definition.ValidateAndWrite(wb), IsOk());
@@ -204,10 +166,8 @@ TEST(ReconGainParamDefinitionValidateAndWrite,
   auto leb_generator =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
   ASSERT_NE(leb_generator, nullptr);
-  auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.parameter_id_ = 0;
-  recon_gain_param_definition.parameter_rate_ = 1;
-  recon_gain_param_definition.constant_subblock_duration_ = 64;
+  auto recon_gain_param_definition =
+      CreateReconGainParamDefinition(GetDefaultReconGainBaseArgs());
   WriteBitBuffer wb(kDefaultBufferSize, *leb_generator);
 
   EXPECT_THAT(recon_gain_param_definition.ValidateAndWrite(wb), IsOk());
@@ -225,36 +185,35 @@ TEST(ReconGainParamDefinitionValidateAndWrite,
 }
 
 TEST(ReconGainParamDefinitionValidate,
-     InvalidWhenConstantSubblockDurationIsZero) {
-  auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.duration_ = 64;
-  recon_gain_param_definition.constant_subblock_duration_ = 0;
-  InitSubblockDurations(recon_gain_param_definition, {32, 32});
+     InvalidWhenSubblockScheduleIsInParameterBlock) {
+  auto recon_gain_param_definition = CreateReconGainParamDefinition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, kParameterRate));
 
   EXPECT_THAT(recon_gain_param_definition.Validate(), Not(IsOk()));
 }
 
 TEST(ReconGainParamDefinitionValidate, InvalidWhenImpliedNumSubblocksIsNotOne) {
-  auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.duration_ = 64;
-  recon_gain_param_definition.constant_subblock_duration_ = 32;
+  auto base_args = MakeConstantSubblocksParamDefinitionBaseArgs(
+      kParameterId, kParameterRate, kDuration, kDuration / 2);
+  auto recon_gain_param_definition = CreateReconGainParamDefinition(base_args);
 
   EXPECT_THAT(recon_gain_param_definition.Validate(), Not(IsOk()));
 }
 
 TEST(ReconGainParamDefinitionValidate,
      InvalidWhenDurationDoesNotEqualConstantSubblockDuration) {
-  auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.duration_ = 64;
-  recon_gain_param_definition.constant_subblock_duration_ = 63;
+  const DecodedUleb128 kMismatchingSubblockDuration = kDuration - 1;
+  auto base_args = MakeConstantSubblocksParamDefinitionBaseArgs(
+      kParameterId, kParameterRate, kDuration, kMismatchingSubblockDuration);
+  auto recon_gain_param_definition = CreateReconGainParamDefinition(base_args);
 
   EXPECT_THAT(recon_gain_param_definition.Validate(), Not(IsOk()));
 }
 
 TEST(ReconGainParamDefinitionValidate, InvalidWhenParamDefinitionModeIsOne) {
-  auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  recon_gain_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  auto args =
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, kParameterRate);
+  auto recon_gain_param_definition = CreateReconGainParamDefinition(args);
 
   EXPECT_THAT(recon_gain_param_definition.Validate(), Not(IsOk()));
 }
@@ -272,7 +231,8 @@ TEST(ReadReconGainParamDefinitionTest, ReadsCorrectlyWithDefaultValues) {
                                     64};
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
+  ReconGainParamDefinition param_definition =
+      ReconGainParamDefinition(ParamDefinition::BaseArgs{}, 0);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionReconGain);
@@ -288,7 +248,8 @@ TEST(ReadReconGainParamDefinitionTest, ReadsMode1) {
       0x80};
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
+  ReconGainParamDefinition param_definition =
+      ReconGainParamDefinition(ParamDefinition::BaseArgs{}, 0);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 }
 
@@ -306,7 +267,8 @@ TEST(ReadReconGainParamDefinitionTest, Mode0NonZeroSubblockDuration) {
       0xc0, 0x00};
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
+  ReconGainParamDefinition param_definition =
+      ReconGainParamDefinition(ParamDefinition::BaseArgs{}, 0);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 }
 
@@ -329,7 +291,8 @@ TEST(ReadReconGainParamDefinitionTest, Mode0SubblockArray) {
       64};
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
+  ReconGainParamDefinition param_definition =
+      ReconGainParamDefinition(ParamDefinition::BaseArgs{}, 0);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 }
 

@@ -242,7 +242,7 @@ absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
 }
 
 DecodedUleb128 ParameterBlockObu::GetDuration() const {
-  if (param_definition_.param_definition_mode_ ==
+  if (param_definition_.GetParamDefinitionMode() ==
       ParamDefinition::kModeScheduleInParameterBlock) {
     return duration_;
   } else {
@@ -251,7 +251,7 @@ DecodedUleb128 ParameterBlockObu::GetDuration() const {
 }
 
 DecodedUleb128 ParameterBlockObu::GetConstantSubblockDuration() const {
-  if (param_definition_.param_definition_mode_ ==
+  if (param_definition_.GetParamDefinitionMode() ==
       ParamDefinition::kModeScheduleInParameterBlock) {
     return constant_subblock_duration_;
   } else {
@@ -276,7 +276,7 @@ DecodedUleb128 ParameterBlockObu::GetNumSubblocks() const {
   }
 
   // The subblocks is explicitly in the OBU or `param_definition_`.
-  if (param_definition_.param_definition_mode_ ==
+  if (param_definition_.GetParamDefinitionMode() ==
       ParamDefinition::kModeScheduleInParameterBlock) {
     num_subblocks = num_subblocks_;
   } else {
@@ -347,7 +347,7 @@ void ParameterBlockObu::PrintObu() const {
   param_definition_.Print();
 
   ABSL_LOG(INFO) << "  parameter_id= " << parameter_id_;
-  if (param_definition_.param_definition_mode_ ==
+  if (param_definition_.GetParamDefinitionMode() ==
       ParamDefinition::kModeScheduleInParameterBlock) {
     ABSL_LOG(INFO) << "  duration= " << duration_;
     ABSL_LOG(INFO) << "  constant_subblock_duration= "

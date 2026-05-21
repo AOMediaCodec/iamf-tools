@@ -258,20 +258,22 @@ absl::Status AudioElementParam::ReadAndValidate(uint32_t audio_element_id,
     }
     case ParamDefinition::kParameterDefinitionReconGain: {
       auto& recon_gain_param_definition =
-          param_definition.emplace<ReconGainParamDefinition>(audio_element_id);
+          param_definition.emplace<ReconGainParamDefinition>(
+              ParamDefinition::BaseArgs{}, audio_element_id);
       RETURN_IF_NOT_OK(recon_gain_param_definition.ReadAndValidate(rb));
       return absl::OkStatus();
     }
     case ParamDefinition::kParameterDefinitionDemixing: {
       auto& demixing_param_definition =
-          param_definition.emplace<DemixingParamDefinition>();
+          param_definition.emplace<DemixingParamDefinition>(
+              ParamDefinition::BaseArgs{});
       RETURN_IF_NOT_OK(demixing_param_definition.ReadAndValidate(rb));
       return absl::OkStatus();
     }
     default:
       auto& extended_param_definition =
           param_definition.emplace<ExtendedParamDefinition>(
-              param_definition_type);
+              param_definition_type, ParamDefinition::BaseArgs{});
       RETURN_IF_NOT_OK(extended_param_definition.ReadAndValidate(rb));
       return absl::OkStatus();
   }

@@ -38,6 +38,7 @@
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/tests/obu_test_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -73,23 +74,13 @@ constexpr std::array<DecodedUleb128, 3> kThreeSubblockDurations = {1, 2, 3};
 //                    test cases to existing tests.
 
 MixGainParamDefinition CreateParamDefinitionMode0() {
-  MixGainParamDefinition param_definition;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = kParameterRate;
-  param_definition.duration_ = kDuration;
-  param_definition.constant_subblock_duration_ = kConstantSubblockDuration;
-  return param_definition;
+  return MixGainParamDefinition(MakeOneSubblockParamDefinitionBaseArgs(
+      kParameterId, kParameterRate, kDuration));
 }
 
 MixGainParamDefinition CreateParamDefinitionMode1() {
-  MixGainParamDefinition param_definition;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = kParameterRate;
-  return param_definition;
+  return MixGainParamDefinition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, kParameterRate));
 }
 
 TEST(PeekParameterId, ReturnsExpectedParameterId) {
@@ -263,7 +254,6 @@ TEST(CreateFromBuffer, InvalidWhenDurationIsZero) {
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(kParameterBlockWithZeroDuration));
   MixGainParamDefinition param_definition = CreateParamDefinitionMode1();
-  param_definition.parameter_id_ = kParameterId;
 
   EXPECT_THAT(
       ParameterBlockObu::CreateFromBuffer(
@@ -294,11 +284,8 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
 
-  MixGainParamDefinition param_definition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, /*parameter_rate=*/1));
 
   // Sanity check that the OBU is valid.
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
@@ -349,11 +336,8 @@ TEST(CreateFromBuffer, ParamDefinitionMode1) {
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  MixGainParamDefinition param_definition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, /*parameter_rate=*/1));
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
       param_definition, *buffer);
@@ -403,11 +387,8 @@ TEST(CreateFromBuffer, ReturnsErrorWhenNumSubblocksIsGreaterThanTotalDuration) {
       kParameterBlockWithImplausibleNumSubblocks.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(kParameterBlockWithImplausibleNumSubblocks));
-  MixGainParamDefinition param_definition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, /*parameter_rate=*/1));
 
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
@@ -429,11 +410,8 @@ TEST(CreateFromBuffer, FailsWhenNumSubblocksIsGreaterThan192000) {
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  MixGainParamDefinition param_definition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, /*parameter_rate=*/1));
 
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
@@ -465,17 +443,9 @@ TEST(CreateFromBuffer, ParamDefinitionMode0) {
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  MixGainParamDefinition param_definition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.duration_ = 10;
-  param_definition.constant_subblock_duration_ = 0;
-  param_definition.InitializeSubblockDurations(3);
-  ASSERT_THAT(param_definition.SetSubblockDuration(0, 1), IsOk());
-  ASSERT_THAT(param_definition.SetSubblockDuration(1, 3), IsOk());
-  ASSERT_THAT(param_definition.SetSubblockDuration(2, 6), IsOk());
+  MixGainParamDefinition param_definition(
+      MakeVariableSubblocksParamDefinitionBaseArgs(
+          kParameterId, /*parameter_rate=*/1, {1, 3, 6}));
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
       param_definition, *buffer);
@@ -529,11 +499,8 @@ TEST(CreateFromBuffer, FailsWhenSubblockDurationsAreInconsistent) {
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  MixGainParamDefinition param_definition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, /*parameter_rate=*/1));
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
                   param_definition, *buffer),
@@ -558,24 +525,24 @@ TEST(CreateFromBuffer, InvalidWhenParamDefinitionIdDoesNotMatchBitstream) {
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  MixGainParamDefinition param_definition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, /*parameter_rate=*/1));
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
                   param_definition, *buffer),
               IsOk());
 
   // When the ID mismatches, the parameter block cannot be created.
-  param_definition.parameter_id_ = 0x08;
+  const DecodedUleb128 kMismatchedParameterId = 0x08;
+  MixGainParamDefinition mismatched_param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kMismatchedParameterId,
+                                           /*parameter_rate=*/1));
   auto buffer_to_use_without_metadata =
       MemoryBasedReadBitBuffer::CreateFromSpan(
           absl::MakeConstSpan(source_data));
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                  param_definition, *buffer_to_use_without_metadata),
+                  mismatched_param_definition, *buffer_to_use_without_metadata),
               Not(IsOk()));
 }
 
@@ -588,14 +555,9 @@ TEST(CreateFromBuffer, DemixingParamDefinitionMode0) {
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
-  DemixingParamDefinition param_definition;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.duration_ = 10;
-  param_definition.constant_subblock_duration_ = 10;
-  param_definition.InitializeSubblockDurations(1);
+  DemixingParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(kParameterId, /*parameter_rate=*/1,
+                                             /*duration=*/10));
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
       param_definition, *buffer);
@@ -642,7 +604,7 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     InitParameterBlockTypeSpecificFields();
   }
 
-  virtual void CreateParamDefinition() = 0;
+  virtual void CreateParamDefinition(const ParamDefinition::BaseArgs& args) = 0;
   virtual void InitParameterBlockTypeSpecificFields() = 0;
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
@@ -677,33 +639,24 @@ class ParameterBlockObuTestBase : public ObuTestBase {
 
  private:
   void InitParamDefinition() {
-    CreateParamDefinition();
+    ParamDefinition::BaseArgs args{
+        .parameter_id = parameter_id_,
+        .parameter_rate = metadata_args_.parameter_rate,
+        .param_definition_mode = metadata_args_.param_definition_mode,
+        .reserved = metadata_args_.reserved,
+    };
+    if (metadata_args_.param_definition_mode ==
+        ParamDefinition::kModeScheduleInParamDefinition) {
+      args.duration = duration_args_.duration;
+      args.constant_subblock_duration =
+          duration_args_.constant_subblock_duration;
+      args.num_subblocks = duration_args_.num_subblocks;
+      args.subblock_durations = duration_args_.subblock_durations;
+    }
+
+    CreateParamDefinition(args);
     ASSERT_NE(param_definition_, nullptr);
     ASSERT_TRUE(param_definition_->GetType().has_value());
-    param_definition_->parameter_id_ = parameter_id_;
-    param_definition_->parameter_rate_ = metadata_args_.parameter_rate;
-    param_definition_->param_definition_mode_ =
-        metadata_args_.param_definition_mode;
-    param_definition_->reserved_ = metadata_args_.reserved;
-
-    if (param_definition_->param_definition_mode_ ==
-        ParamDefinition::kModeScheduleInParamDefinition) {
-      // Values will be referenced from `metadata_.param_definition`;
-      // overwrite them with those from `duration_args_`.
-      param_definition_->duration_ = duration_args_.duration;
-      param_definition_->constant_subblock_duration_ =
-          duration_args_.constant_subblock_duration;
-
-      // Initialize memory for the metadata. This would typically be the
-      // responsibility of the OBU that this Parameter Block references.
-      param_definition_->InitializeSubblockDurations(
-          duration_args_.num_subblocks);
-      for (int i = 0; i < duration_args_.subblock_durations.size(); i++) {
-        EXPECT_THAT(param_definition_->SetSubblockDuration(
-                        i, duration_args_.subblock_durations[i]),
-                    IsOk());
-      }
-    }
   }
 
   void InitMainParameterBlockObu() {
@@ -712,7 +665,7 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     // Code within `iamf_tools` will find the associated Audio Element or Mix
     // Presentation OBU and use that metadata. For testing here the metadata is
     // initialized based on `metadata_args_`.
-    if (param_definition_->param_definition_mode_ ==
+    if (param_definition_->GetParamDefinitionMode() ==
         ParamDefinition::kModeScheduleInParamDefinition) {
       obu_ = ParameterBlockObu::CreateMode0(header_, *param_definition_);
     } else if (duration_args_.subblock_durations.empty()) {
@@ -736,8 +689,8 @@ class MixGainParameterBlockTest : public ParameterBlockObuTestBase,
         mix_gain_parameter_data_({{kAnimateStep, AnimationStepInt16{1}}}) {}
 
  protected:
-  void CreateParamDefinition() override {
-    param_definition_ = std::make_unique<MixGainParamDefinition>();
+  void CreateParamDefinition(const ParamDefinition::BaseArgs& args) override {
+    param_definition_ = std::make_unique<MixGainParamDefinition>(args);
   }
 
   void InitParameterBlockTypeSpecificFields() override {
@@ -945,8 +898,8 @@ class DemixingParameterBlockTest : public ParameterBlockObuTestBase,
   }
 
  protected:
-  void CreateParamDefinition() override {
-    param_definition_ = std::make_unique<DemixingParamDefinition>();
+  void CreateParamDefinition(const ParamDefinition::BaseArgs& args) override {
+    param_definition_ = std::make_unique<DemixingParamDefinition>(args);
   }
 
   void InitParameterBlockTypeSpecificFields() override {
@@ -1019,9 +972,9 @@ class ReconGainBlockTest : public ParameterBlockObuTestBase,
   ReconGainBlockTest() : ParameterBlockObuTestBase() {}
 
  protected:
-  void CreateParamDefinition() override {
+  void CreateParamDefinition(const ParamDefinition::BaseArgs& args) override {
     auto recon_gain_param_definition =
-        std::make_unique<ReconGainParamDefinition>(kAudioElementId);
+        std::make_unique<ReconGainParamDefinition>(args, kAudioElementId);
 
     // Copy additional recon gain-related data over.
     recon_gain_param_definition->aux_data_.reserve(metadata_args_.num_layers);
@@ -1274,9 +1227,9 @@ class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,
         parameter_block_extensions_({ExtensionParameterData()}) {}
 
  protected:
-  void CreateParamDefinition() override {
+  void CreateParamDefinition(const ParamDefinition::BaseArgs& args) override {
     param_definition_ = std::make_unique<ExtendedParamDefinition>(
-        ParamDefinition::kParameterDefinitionReservedStart);
+        ParamDefinition::kParameterDefinitionReservedStart, args);
   }
 
   void InitParameterBlockTypeSpecificFields() override {
@@ -1299,7 +1252,8 @@ TEST_F(ExtensionParameterBlockTest, DefaultOneSubblockParamDefinitionMode0) {
 
 TEST_F(ExtensionParameterBlockTest, MaxParamDefinitionType) {
   param_definition_ = std::make_unique<ExtendedParamDefinition>(
-      ParamDefinition::kParameterDefinitionReservedEnd);
+      ParamDefinition::kParameterDefinitionReservedEnd,
+      ParamDefinition::BaseArgs{});
 
   expected_header_ = {kObuIaParameterBlock << 3, 2};
   expected_payload_ = {3, 0};

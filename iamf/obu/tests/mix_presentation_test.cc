@@ -32,9 +32,9 @@
 #include "iamf/obu/element_gain_offset_config.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
-#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/tests/obu_test_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -118,22 +118,15 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
         dynamic_sub_mix_args_({{.element_mix_gain_subblocks = {{}},
                                 .output_mix_gain_subblocks = {}}}),
         mix_presentation_tags_(std::nullopt) {
-    MixGainParamDefinition element_mix_gain;
-    element_mix_gain.parameter_id_ = 12;
-    element_mix_gain.parameter_rate_ = 13;
-    element_mix_gain.param_definition_mode_ =
-        ParamDefinition::kModeScheduleInParameterBlock;
-    element_mix_gain.reserved_ = 0;
+    MixGainParamDefinition element_mix_gain(
+        MakeScheduleInParameterBlockBaseArgs(/*parameter_id=*/12,
+                                             /*parameter_rate=*/13));
     element_mix_gain.default_mix_gain_ =
         QFormatOrFloatingPoint::MakeFromQ7_8(14);
     sub_mixes_[0].audio_elements[0].element_mix_gain = element_mix_gain;
 
-    MixGainParamDefinition output_mix_gain;
-    output_mix_gain.parameter_id_ = 15;
-    output_mix_gain.parameter_rate_ = 16;
-    output_mix_gain.param_definition_mode_ =
-        ParamDefinition::kModeScheduleInParameterBlock;
-    output_mix_gain.reserved_ = 0;
+    MixGainParamDefinition output_mix_gain(MakeScheduleInParameterBlockBaseArgs(
+        /*parameter_id=*/15, /*parameter_rate=*/16));
     output_mix_gain.default_mix_gain_ =
         QFormatOrFloatingPoint::MakeFromQ7_8(17);
     sub_mixes_[0].output_mix_gain = output_mix_gain;
@@ -700,21 +693,13 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                          .digital_peak = 35,
                          .true_peak = 36}},
        }});
-  MixGainParamDefinition element_mix_gain;
-  element_mix_gain.parameter_id_ = 22;
-  element_mix_gain.parameter_rate_ = 23;
-  element_mix_gain.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  element_mix_gain.reserved_ = 0;
+  MixGainParamDefinition element_mix_gain(MakeScheduleInParameterBlockBaseArgs(
+      /*parameter_id=*/22, /*parameter_rate=*/23));
   element_mix_gain.default_mix_gain_ = QFormatOrFloatingPoint::MakeFromQ7_8(24);
   sub_mixes_.back().audio_elements[0].element_mix_gain = element_mix_gain;
 
-  MixGainParamDefinition output_mix_gain;
-  output_mix_gain.parameter_id_ = 25;
-  output_mix_gain.parameter_rate_ = 26;
-  output_mix_gain.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  output_mix_gain.reserved_ = 0;
+  MixGainParamDefinition output_mix_gain(MakeScheduleInParameterBlockBaseArgs(
+      /*parameter_id=*/25, /*parameter_rate=*/26));
   output_mix_gain.default_mix_gain_ = QFormatOrFloatingPoint::MakeFromQ7_8(27);
   sub_mixes_.back().output_mix_gain = output_mix_gain;
 
@@ -1544,20 +1529,9 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
            .element_gain_offset_config = ElementGainOffsetConfig::MakeValueType(
                QFormatOrFloatingPoint::MakeFromQ7_8(
                    std::numeric_limits<int16_t>::max()))},
-      .element_mix_gain = MixGainParamDefinition()};
-  expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
-  expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
-  expected_submix_audio_element.element_mix_gain.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  expected_submix_audio_element.element_mix_gain.reserved_ = 0;
-  expected_submix_audio_element.element_mix_gain.default_mix_gain_ =
-      QFormatOrFloatingPoint::MakeFromQ7_8(4);
-  EXPECT_EQ(audio_element, expected_submix_audio_element);
-  expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
-  expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
-  expected_submix_audio_element.element_mix_gain.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  expected_submix_audio_element.element_mix_gain.reserved_ = 0;
+      .element_mix_gain =
+          MixGainParamDefinition(MakeScheduleInParameterBlockBaseArgs(
+              /*parameter_id=*/0, /*parameter_rate=*/1))};
   expected_submix_audio_element.element_mix_gain.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(4);
   EXPECT_EQ(audio_element, expected_submix_audio_element);

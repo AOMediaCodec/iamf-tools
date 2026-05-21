@@ -25,6 +25,7 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -38,44 +39,20 @@ constexpr DecodedUleb128 kParameterId = 0;
 constexpr DecodedUleb128 kParameterRate = 48000;
 constexpr DecodedUleb128 kDuration = 64;
 
-void PopulateParameterDefinitionMode1(ParamDefinition& param_definition) {
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 1;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  param_definition.reserved_ = 0;
-}
-
-void PopulateParameterDefinitionMode0(ParamDefinition& param_definition) {
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = kParameterRate;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.duration_ = kDuration;
-  param_definition.constant_subblock_duration_ = kDuration;
-  param_definition.reserved_ = 0;
-}
-
-void InitSubblockDurations(
-    ParamDefinition& param_definition,
-    absl::Span<const DecodedUleb128> subblock_durations) {
-  param_definition.InitializeSubblockDurations(
-      static_cast<DecodedUleb128>(subblock_durations.size()));
-  for (int i = 0; i < subblock_durations.size(); ++i) {
-    EXPECT_THAT(param_definition.SetSubblockDuration(i, subblock_durations[i]),
-                IsOk());
-  }
+ParamDefinition::BaseArgs GetParamDefinitionMode1Args() {
+  return MakeScheduleInParameterBlockBaseArgs(kParameterId,
+                                              /*parameter_rate=*/1);
 }
 
 TEST(MixGainParamDefinition, ConstructorSetsDefaultMixGainToZero) {
-  MixGainParamDefinition mix_gain_param_definition;
+  MixGainParamDefinition mix_gain_param_definition(ParamDefinition::BaseArgs{});
 
   EXPECT_EQ(mix_gain_param_definition.default_mix_gain_.GetQ7_8(), 0);
 }
 
 TEST(MixGainParamDefinition, CopyConstructible) {
-  MixGainParamDefinition mix_gain_param_definition;
-  PopulateParameterDefinitionMode1(mix_gain_param_definition);
+  MixGainParamDefinition mix_gain_param_definition(
+      GetParamDefinitionMode1Args());
   mix_gain_param_definition.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(-16);
 
@@ -85,15 +62,15 @@ TEST(MixGainParamDefinition, CopyConstructible) {
 }
 
 TEST(MixGainParamDefinition, GetTypeHasCorrectValue) {
-  MixGainParamDefinition mix_gain_param_definition;
+  MixGainParamDefinition mix_gain_param_definition(ParamDefinition::BaseArgs{});
 
   EXPECT_EQ(mix_gain_param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
 }
 
 TEST(MixGainParamDefinitionValidateAndWrite, DefaultParamDefinitionMode1) {
-  MixGainParamDefinition mix_gain_param_definition;
-  PopulateParameterDefinitionMode1(mix_gain_param_definition);
+  MixGainParamDefinition mix_gain_param_definition(
+      GetParamDefinitionMode1Args());
   mix_gain_param_definition.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(0);
   WriteBitBuffer wb(kDefaultBufferSize);
@@ -111,9 +88,9 @@ TEST(MixGainParamDefinitionValidateAndWrite, DefaultParamDefinitionMode1) {
 }
 
 TEST(MixGainParamDefinitionValidateAndWrite, WritesParameterId) {
-  MixGainParamDefinition mix_gain_param_definition;
-  PopulateParameterDefinitionMode1(mix_gain_param_definition);
-  mix_gain_param_definition.parameter_id_ = 1;
+  auto args = GetParamDefinitionMode1Args();
+  args.parameter_id = 1;
+  MixGainParamDefinition mix_gain_param_definition(args);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(mix_gain_param_definition.ValidateAndWrite(wb), IsOk());
@@ -125,10 +102,10 @@ TEST(MixGainParamDefinitionValidateAndWrite, WritesParameterId) {
 }
 
 TEST(MixGainParamDefinitionValidateAndWrite, NonMinimalLeb) {
-  MixGainParamDefinition mix_gain_param_definition;
-  PopulateParameterDefinitionMode1(mix_gain_param_definition);
-  mix_gain_param_definition.parameter_id_ = 1;
-  mix_gain_param_definition.parameter_rate_ = 5;
+  auto args = GetParamDefinitionMode1Args();
+  args.parameter_id = 1;
+  args.parameter_rate = 5;
+  MixGainParamDefinition mix_gain_param_definition(args);
   auto leb_generator =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
   ASSERT_NE(leb_generator, nullptr);
@@ -145,9 +122,9 @@ TEST(MixGainParamDefinitionValidateAndWrite, NonMinimalLeb) {
 }
 
 TEST(MixGainParamDefinitionValidateAndWrite, WritesParameterRate) {
-  MixGainParamDefinition param_definition;
-  PopulateParameterDefinitionMode1(param_definition);
-  param_definition.parameter_rate_ = 64;
+  auto args = GetParamDefinitionMode1Args();
+  args.parameter_rate = 64;
+  MixGainParamDefinition param_definition(args);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(param_definition.ValidateAndWrite(wb), IsOk());
@@ -160,9 +137,8 @@ TEST(MixGainParamDefinitionValidateAndWrite, WritesParameterRate) {
 }
 
 TEST(MixGainParamDefinitionValidateAndWrite, WritesDefaultMixGain) {
-  MixGainParamDefinition param_definition;
+  MixGainParamDefinition param_definition(GetParamDefinitionMode1Args());
   param_definition.default_mix_gain_ = QFormatOrFloatingPoint::MakeFromQ7_8(3);
-  PopulateParameterDefinitionMode1(param_definition);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(param_definition.ValidateAndWrite(wb), IsOk());
@@ -173,21 +149,18 @@ TEST(MixGainParamDefinitionValidateAndWrite, WritesDefaultMixGain) {
 }
 
 TEST(MixGainParamDefinitionValidate, ParameterRateMustNotBeZero) {
-  MixGainParamDefinition param_definition;
-  PopulateParameterDefinitionMode1(param_definition);
-  param_definition.parameter_rate_ = 0;
+  auto args = GetParamDefinitionMode1Args();
+  args.parameter_rate = 0;
+  MixGainParamDefinition param_definition(args);
 
   EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
 }
 
 TEST(MixGainParamDefinitionValidateAndWrite,
      ParamDefinitionMode0WithConstantSubblockDurationNonZero) {
-  MixGainParamDefinition param_definition;
-  PopulateParameterDefinitionMode1(param_definition);
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.duration_ = 3;
-  param_definition.constant_subblock_duration_ = 3;
+  MixGainParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(kParameterId, /*parameter_rate=*/1,
+                                             /*duration=*/3));
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(param_definition.ValidateAndWrite(wb), IsOk());
@@ -207,14 +180,11 @@ TEST(MixGainParamDefinitionValidateAndWrite,
 }
 
 TEST(MixGainParamDefinitionValidateAndWrite,
-     ParamDefinitionMode0WithConstantSubblockDurationZeroIncludesDurations) {
-  MixGainParamDefinition param_definition;
-  PopulateParameterDefinitionMode1(param_definition);
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.duration_ = 10;
-  param_definition.constant_subblock_duration_ = 0;
-  InitSubblockDurations(param_definition, {1, 2, 3, 4});
+     ParamDefinitionModeWithVariableSubblockDurations) {
+  MixGainParamDefinition param_definition(
+      MakeVariableSubblocksParamDefinitionBaseArgs(
+          kParameterId, /*parameter_rate=*/1, {1, 2, 3, 4}));
+
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(param_definition.ValidateAndWrite(wb), IsOk());
@@ -244,7 +214,7 @@ TEST(MixGainParamDefinitionValidateAndWrite,
 }
 
 TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
-  MixGainParamDefinition param_definition;
+  MixGainParamDefinition param_definition(ParamDefinition::BaseArgs{});
   std::vector<uint8_t> source = {
       // Parameter ID.
       0x00,
@@ -263,7 +233,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
 }
 
 TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
-  MixGainParamDefinition param_definition;
+  MixGainParamDefinition param_definition(ParamDefinition::BaseArgs{});
   std::vector<uint8_t> source = {
       // Parameter ID.
       0x00,

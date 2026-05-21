@@ -26,6 +26,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -39,30 +40,27 @@ constexpr DecodedUleb128 kParameterId = 0;
 constexpr DecodedUleb128 kParameterRate = 48000;
 constexpr DecodedUleb128 kDuration = 64;
 
-void PopulateParameterDefinitionMode0(ParamDefinition& param_definition) {
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = kParameterRate;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition.duration_ = kDuration;
-  param_definition.constant_subblock_duration_ = kDuration;
-  param_definition.reserved_ = 0;
+ParamDefinition::BaseArgs GetDefaultDemixingBaseArgs() {
+  return MakeOneSubblockParamDefinitionBaseArgs(
+      kParameterId, /*parameter_rate=*/1, kDuration);
 }
 
-void InitSubblockDurations(
-    ParamDefinition& param_definition,
-    absl::Span<const DecodedUleb128> subblock_durations) {
-  param_definition.InitializeSubblockDurations(
-      static_cast<DecodedUleb128>(subblock_durations.size()));
-  for (int i = 0; i < subblock_durations.size(); ++i) {
-    EXPECT_THAT(param_definition.SetSubblockDuration(i, subblock_durations[i]),
-                IsOk());
-  }
+DemixingParamDefinition CreateDemixingParamDefinition(
+    const ParamDefinition::BaseArgs& args = GetDefaultDemixingBaseArgs()) {
+  DemixingParamDefinition demixing_param_definition(args);
+  demixing_param_definition.default_demixing_info_parameter_data_.dmixp_mode =
+      DemixingInfoParameterData::kDMixPMode1;
+  demixing_param_definition.default_demixing_info_parameter_data_.reserved = 0;
+  demixing_param_definition.default_demixing_info_parameter_data_.default_w = 0;
+  demixing_param_definition.default_demixing_info_parameter_data_
+      .reserved_for_future_use = 0;
+  return demixing_param_definition;
 }
 
 TEST(DemixingParamDefinition, CopyConstructible) {
-  DemixingParamDefinition demixing_param_definition;
-  PopulateParameterDefinitionMode0(demixing_param_definition);
+  DemixingParamDefinition demixing_param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(kParameterId, kParameterRate,
+                                             kDuration));
   demixing_param_definition.default_demixing_info_parameter_data_.dmixp_mode =
       DemixingInfoParameterData::kDMixPMode1;
   demixing_param_definition.default_demixing_info_parameter_data_.reserved = 0;
@@ -73,20 +71,6 @@ TEST(DemixingParamDefinition, CopyConstructible) {
   const auto other = demixing_param_definition;
 
   EXPECT_EQ(demixing_param_definition, other);
-}
-
-DemixingParamDefinition CreateDemixingParamDefinition() {
-  DemixingParamDefinition demixing_param_definition;
-  PopulateParameterDefinitionMode0(demixing_param_definition);
-  demixing_param_definition.parameter_id_ = 0;
-  demixing_param_definition.parameter_rate_ = 1;
-  demixing_param_definition.default_demixing_info_parameter_data_.dmixp_mode =
-      DemixingInfoParameterData::kDMixPMode1;
-  demixing_param_definition.default_demixing_info_parameter_data_.reserved = 0;
-  demixing_param_definition.default_demixing_info_parameter_data_.default_w = 0;
-  demixing_param_definition.default_demixing_info_parameter_data_
-      .reserved_for_future_use = 0;
-  return demixing_param_definition;
 }
 
 TEST(DemixingParamDefinition, GetTypeHasCorrectValue) {
@@ -118,8 +102,9 @@ TEST(DemixingParamDefinitionValidateAndWrite, DefaultParamDefinitionMode0) {
 }
 
 TEST(DemixingParamDefinitionValidateAndWrite, WritesParameterId) {
-  auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.parameter_id_ = 1;
+  auto args = GetDefaultDemixingBaseArgs();
+  args.parameter_id = 1;
+  auto demixing_param_definition = CreateDemixingParamDefinition(args);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(demixing_param_definition.ValidateAndWrite(wb), IsOk());
@@ -132,8 +117,9 @@ TEST(DemixingParamDefinitionValidateAndWrite, WritesParameterId) {
 }
 
 TEST(DemixingParamDefinitionValidateAndWrite, WritesParameterRate) {
-  auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.parameter_rate_ = 2;
+  auto args = GetDefaultDemixingBaseArgs();
+  args.parameter_rate = 2;
+  auto demixing_param_definition = CreateDemixingParamDefinition(args);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(demixing_param_definition.ValidateAndWrite(wb), IsOk());
@@ -148,9 +134,9 @@ TEST(DemixingParamDefinitionValidateAndWrite, WritesParameterRate) {
 
 TEST(DemixingParamDefinitionValidateAndWrite,
      EqualDurationAndConstantSubblockDuration) {
-  auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.duration_ = 32;
-  demixing_param_definition.constant_subblock_duration_ = 32;
+  auto args = MakeOneSubblockParamDefinitionBaseArgs(
+      kParameterId, /*parameter_rate=*/1, /*duration=*/32);
+  auto demixing_param_definition = CreateDemixingParamDefinition(args);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(demixing_param_definition.ValidateAndWrite(wb), IsOk());
@@ -164,9 +150,10 @@ TEST(DemixingParamDefinitionValidateAndWrite,
 
 TEST(DemixingParamDefinitionValidate,
      InvalidWhenDurationDoesNotEqualConstantSubblockDuration) {
-  auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.duration_ = 64;
-  demixing_param_definition.constant_subblock_duration_ = 63;
+  const DecodedUleb128 kMisMatchingSubblockDuration = kDuration / 2;
+  auto args = MakeConstantSubblocksParamDefinitionBaseArgs(
+      kParameterId, kParameterRate, kDuration, kMisMatchingSubblockDuration);
+  auto demixing_param_definition = CreateDemixingParamDefinition(args);
 
   EXPECT_THAT(demixing_param_definition.Validate(), Not(IsOk()));
 }
@@ -204,11 +191,8 @@ TEST(DemixingParamDefinitionValidateAndWrite,
   auto leb_generator =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
   ASSERT_NE(leb_generator, nullptr);
-  auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.parameter_id_ = 0;
-  demixing_param_definition.parameter_rate_ = 1;
-  demixing_param_definition.duration_ = 64;
-  demixing_param_definition.constant_subblock_duration_ = 64;
+  auto demixing_param_definition =
+      CreateDemixingParamDefinition(GetDefaultDemixingBaseArgs());
   WriteBitBuffer wb(kDefaultBufferSize, *leb_generator);
 
   EXPECT_THAT(demixing_param_definition.ValidateAndWrite(wb), IsOk());
@@ -226,28 +210,27 @@ TEST(DemixingParamDefinitionValidateAndWrite,
            0xc0, 0x00, DemixingInfoParameterData::kDMixPMode1 << 5, 0});
 }
 
-TEST(DemixingParamDefinitionValidate,
-     InvalidWhenConstantSubblockDurationIsZero) {
-  auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.duration_ = 64;
-  demixing_param_definition.constant_subblock_duration_ = 0;
-  InitSubblockDurations(demixing_param_definition, {32, 32});
+TEST(DemixingParamDefinitionValidate, InvalidWithVariableSubblockDurations) {
+  auto args = MakeVariableSubblocksParamDefinitionBaseArgs(
+      kParameterId, kParameterRate, {kDuration / 2, kDuration / 2});
+  auto demixing_param_definition = CreateDemixingParamDefinition(args);
 
   EXPECT_THAT(demixing_param_definition.Validate(), Not(IsOk()));
 }
 
 TEST(DemixingParamDefinitionValidate, InvalidWhenImpliedNumSubblocksIsNotOne) {
-  auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.duration_ = 64;
-  demixing_param_definition.constant_subblock_duration_ = 32;
+  // Two subblocks are implied
+  const DecodedUleb128 kConstantSubblockDuration = kDuration / 2;
+  auto args = MakeConstantSubblocksParamDefinitionBaseArgs(
+      kParameterId, kParameterRate, kDuration, kConstantSubblockDuration);
+  auto demixing_param_definition = CreateDemixingParamDefinition(args);
 
   EXPECT_THAT(demixing_param_definition.Validate(), Not(IsOk()));
 }
 
 TEST(DemixingParamDefinitionValidate, InvalidWhenParamDefinitionModeIsOne) {
-  auto demixing_param_definition = CreateDemixingParamDefinition();
-  demixing_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
+  auto demixing_param_definition = CreateDemixingParamDefinition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, kParameterRate));
 
   EXPECT_THAT(demixing_param_definition.Validate(), Not(IsOk()));
 }
@@ -270,7 +253,8 @@ TEST(ReadDemixingParamDefinitionTest, ReadsDefaultDmixPMode) {
 
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  DemixingParamDefinition param_definition = DemixingParamDefinition();
+  DemixingParamDefinition param_definition =
+      DemixingParamDefinition(ParamDefinition::BaseArgs{});
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionDemixing);
@@ -296,7 +280,8 @@ TEST(ReadDemixingParamDefinitionTest, ReadsDefaultW) {
 
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  DemixingParamDefinition param_definition = DemixingParamDefinition();
+  DemixingParamDefinition param_definition =
+      DemixingParamDefinition(ParamDefinition::BaseArgs{});
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionDemixing);

@@ -28,11 +28,14 @@ namespace iamf_tools {
  */
 class ExtendedParamDefinition : public ParamDefinition {
  public:
-  /*!\brief Default constructor.
+  /*!\brief Constructor.
+   *
+   * \param type Type of the parameter definition.
+   * \param base_args Arguments for `ParamDefinitionBase`.
    */
-  explicit ExtendedParamDefinition(
-      ParamDefinition::ParameterDefinitionType type)
-      : ParamDefinition(type) {}
+  explicit ExtendedParamDefinition(ParameterDefinitionType type,
+                                   const ParamDefinition::BaseArgs& base_args)
+      : ParamDefinition(type, base_args) {}
 
   /*!\brief Default destructor.
    */

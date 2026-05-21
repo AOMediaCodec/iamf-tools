@@ -27,11 +27,16 @@ cc_library(
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:obu_base",
         "//iamf/obu:obu_header",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/types:span",
         "@googletest//:gtest",
     ],
 )
@@ -70,6 +75,7 @@ cc_test(
     srcs = ["audio_element_test.cc"],
     deps = [
         ":obu_test_base",
+        ":obu_test_utils",
         "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
@@ -185,6 +191,7 @@ cc_test(
     srcs = ["mix_presentation_test.cc"],
     deps = [
         ":obu_test_base",
+        ":obu_test_utils",
         "//iamf/common:leb_generator",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/common:read_bit_buffer",
@@ -196,7 +203,6 @@ cc_test(
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
-        "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
@@ -244,6 +250,7 @@ cc_test(
     srcs = ["parameter_block_test.cc"],
     deps = [
         ":obu_test_base",
+        ":obu_test_utils",
         "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
@@ -288,6 +295,7 @@ cc_test(
     name = "rendering_config_test",
     srcs = ["rendering_config_test.cc"],
     deps = [
+        ":obu_test_utils",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",

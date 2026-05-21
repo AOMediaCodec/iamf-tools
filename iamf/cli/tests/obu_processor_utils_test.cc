@@ -16,6 +16,7 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
@@ -131,9 +132,10 @@ MixPresentationObu CreateMixPresentationObu(
     for (const auto& layout : layouts_for_one_submix) {
       mix_presentation_layouts.push_back({.loudness_layout = layout});
     }
-    sub_mixes.push_back({.audio_elements = {},
-                         .output_mix_gain = MixGainParamDefinition(),
-                         .layouts = mix_presentation_layouts});
+    sub_mixes.push_back(
+        {.audio_elements = {},
+         .output_mix_gain = MixGainParamDefinition(ParamDefinition::BaseArgs{}),
+         .layouts = mix_presentation_layouts});
   }
 
   return MixPresentationObu(ObuHeader(), mix_presentation_id,
@@ -442,7 +444,7 @@ SubMixAudioElement CreateSubMixAudioElement(
       .rendering_config = {.headphones_rendering_mode = rendering_mode,
                            .reserved = 0,
                            .rendering_config_extension_bytes = {}},
-      .element_mix_gain = MixGainParamDefinition(),
+      .element_mix_gain = MixGainParamDefinition(ParamDefinition::BaseArgs{}),
   };
 }
 
@@ -663,7 +665,7 @@ TEST(FindMixPresentationAndLayoutTest,
       MixPresentationSubMix{
           {CreateSubMixAudioElement(kStereoAudioElementId,
                                     kHeadphonesRenderingModeStereo)},
-          MixGainParamDefinition(),
+          MixGainParamDefinition(ParamDefinition::BaseArgs{}),
           {{kLayoutStereo}}});
   descriptor_obus.mix_presentation_obus.push_back(
       mix_presentation_with_two_sub_mixes);

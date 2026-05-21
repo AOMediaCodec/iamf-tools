@@ -43,8 +43,6 @@ cc_library(
     deps = [
         ":precomputed_compressed_gains",
         ":precomputed_compressed_gains_decoder",
-        "//iamf/common/utils:map_utils",
-        "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
@@ -56,7 +54,6 @@ cc_test(
     srcs = ["get_gains_test.cc"],
     deps = [
         ":get_gains",
-        ":precomputed_compressed_gains",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings",
         "@googletest//:gtest_main",

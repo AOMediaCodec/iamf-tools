@@ -34,6 +34,7 @@
 #include "iamf/obu/param_definitions/extended_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
@@ -815,14 +816,11 @@ TEST(Generate, GeneratesDemixingParameterDefinition) {
       )pb",
       audio_element_metadata.add_audio_element_params()));
   // Configure matching expected values.
-  DemixingParamDefinition expected_demixing_param_definition;
-  expected_demixing_param_definition.parameter_id_ = 998;
-  expected_demixing_param_definition.parameter_rate_ = 48000;
-  expected_demixing_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  expected_demixing_param_definition.duration_ = 8;
-  expected_demixing_param_definition.constant_subblock_duration_ = 8;
-  expected_demixing_param_definition.reserved_ = 10;
+  auto param_definition_base_args = MakeOneSubblockParamDefinitionBaseArgs(
+      /*parameter_id=*/998, /*parameter_rate=*/48000, /*duration=*/8);
+  param_definition_base_args.reserved = 10;
+  DemixingParamDefinition expected_demixing_param_definition(
+      param_definition_base_args);
   auto& expected_default_demixing_info_parameter_data =
       expected_demixing_param_definition.default_demixing_info_parameter_data_;
   // `DemixingInfoParameterData` in the IAMF spec.
@@ -909,15 +907,11 @@ TEST(Generate, GeneratesReconGainParameterDefinition) {
       )pb",
       audio_element_metadata.add_audio_element_params()));
   // Configure matching expected values.
+  auto param_definition_base_args = MakeOneSubblockParamDefinitionBaseArgs(
+      /*parameter_id=*/998, /*parameter_rate=*/48000, /*duration=*/8);
+  param_definition_base_args.reserved = 10;
   ReconGainParamDefinition expected_recon_gain_param_definition(
-      kAudioElementId);
-  expected_recon_gain_param_definition.parameter_id_ = 998;
-  expected_recon_gain_param_definition.parameter_rate_ = 48000;
-  expected_recon_gain_param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  expected_recon_gain_param_definition.duration_ = 8;
-  expected_recon_gain_param_definition.constant_subblock_duration_ = 8;
-  expected_recon_gain_param_definition.reserved_ = 10;
+      param_definition_base_args, kAudioElementId);
 
   CodecConfigsById codec_config_obus;
   // Recon gain requires an associated lossy codec (e.g. Opus or AAC).
@@ -961,7 +955,8 @@ TEST(Generate, IgnoresDeprecatedParamDefinitionSizeField) {
   // The field is deprecated and ignored, the actual number of parameters are
   // set based on the `param_definition_bytes` field.
   ExtendedParamDefinition expected_extended_param_definition(
-      ParamDefinition::kParameterDefinitionReservedEnd);
+      ParamDefinition::kParameterDefinitionReservedEnd,
+      ParamDefinition::BaseArgs{});
   expected_extended_param_definition.param_definition_bytes_ = {
       kParamDefinitionBytes.begin(), kParamDefinitionBytes.end()};
   EXPECT_THAT(

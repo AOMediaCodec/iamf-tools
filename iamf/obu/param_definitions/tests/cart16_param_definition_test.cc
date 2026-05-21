@@ -22,6 +22,8 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/tests/obu_test_utils.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -30,24 +32,22 @@ using ::absl_testing::IsOk;
 
 constexpr int32_t kBufferSize = 256;
 
-void PopulateParamDefinition(ParamDefinition* param_definition) {
-  param_definition->parameter_id_ = 1;
-  param_definition->parameter_rate_ = 1;
-  param_definition->param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParamDefinition;
-  param_definition->duration_ = 10;
-  param_definition->constant_subblock_duration_ = 10;
-  param_definition->reserved_ = 0;
+ParamDefinition::BaseArgs GetCart16ParamDefinitionArgs() {
+  constexpr DecodedUleb128 kParameterId = 1;
+  constexpr DecodedUleb128 kParameterRate = 1;
+  constexpr DecodedUleb128 kDuration = 10;
+  return MakeOneSubblockParamDefinitionBaseArgs(kParameterId, kParameterRate,
+                                                kDuration);
 }
 
 TEST(Cart16ParamDefinitionTest, GetType) {
-  Cart16ParamDefinition param_definition;
+  Cart16ParamDefinition param_definition(ParamDefinition::BaseArgs{});
   EXPECT_EQ(param_definition.GetType(),
             ParamDefinition::kParameterDefinitionCart16);
 }
 
 TEST(Cart16ParamDefinitionTest, ReadAndValidateSucceeds) {
-  Cart16ParamDefinition param_definition;
+  Cart16ParamDefinition param_definition(ParamDefinition::BaseArgs{});
   std::vector<uint8_t> data = {1,   // parameter_id
                                1,   // parameter_rate
                                0,   // mode
@@ -72,8 +72,7 @@ TEST(Cart16ParamDefinitionTest, ReadAndValidateSucceeds) {
 }
 
 TEST(Cart16ParamDefinitionTest, WriteAndValidateSucceeds) {
-  Cart16ParamDefinition param_definition;
-  PopulateParamDefinition(&param_definition);
+  Cart16ParamDefinition param_definition(GetCart16ParamDefinitionArgs());
   param_definition.default_x_ = 1;
   param_definition.default_y_ = 2;
   param_definition.default_z_ = 3;
@@ -93,7 +92,7 @@ TEST(Cart16ParamDefinitionTest, WriteAndValidateSucceeds) {
 }
 
 TEST(Cart16ParamDefinitionTest, CreateParameterDataReturnsNonNull) {
-  Cart16ParamDefinition param_definition;
+  Cart16ParamDefinition param_definition(ParamDefinition::BaseArgs{});
   EXPECT_NE(param_definition.CreateParameterData(), nullptr);
 }
 

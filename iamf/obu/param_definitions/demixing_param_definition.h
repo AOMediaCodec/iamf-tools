@@ -27,9 +27,12 @@ namespace iamf_tools {
  */
 class DemixingParamDefinition : public ParamDefinition {
  public:
-  /*!\brief Default constructor.
+  /*!\brief Constructor.
+   *
+   * \param base_args Arguments for `ParamDefinitionBase`.
    */
-  DemixingParamDefinition() : ParamDefinition(kParameterDefinitionDemixing) {}
+  explicit DemixingParamDefinition(const ParamDefinition::BaseArgs& base_args)
+      : ParamDefinition(kParameterDefinitionDemixing, base_args) {}
 
   /*!\brief Default destructor.
    */

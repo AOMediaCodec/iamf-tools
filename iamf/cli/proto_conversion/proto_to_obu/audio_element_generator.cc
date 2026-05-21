@@ -113,10 +113,12 @@ absl::Status GenerateParameterDefinitions(
     switch (copied_param_definition_type) {
       using enum ParamDefinition::ParameterDefinitionType;
       case kParameterDefinitionDemixing: {
-        DemixingParamDefinition demixing_param_definition;
-        RETURN_IF_NOT_OK(CopyParamDefinition(
-            user_data_parameter.demixing_param().param_definition(),
-            demixing_param_definition));
+        auto base_args = GetParamDefinitionBaseArgs(
+            user_data_parameter.demixing_param().param_definition());
+        if (!base_args.ok()) {
+          return base_args.status();
+        }
+        DemixingParamDefinition demixing_param_definition(*base_args);
         // Copy the `DemixingInfoParameterData` in the IAMF spec.
         RETURN_IF_NOT_OK(CopyDemixingInfoParameterData(
             user_data_parameter.demixing_param()
@@ -147,11 +149,13 @@ absl::Status GenerateParameterDefinitions(
         break;
       }
       case kParameterDefinitionReconGain: {
+        auto base_args = GetParamDefinitionBaseArgs(
+            user_data_parameter.recon_gain_param().param_definition());
+        if (!base_args.ok()) {
+          return base_args.status();
+        }
         ReconGainParamDefinition recon_gain_param_definition(
-            audio_element_obu.GetAudioElementId());
-        RETURN_IF_NOT_OK(CopyParamDefinition(
-            user_data_parameter.recon_gain_param().param_definition(),
-            recon_gain_param_definition));
+            *base_args, audio_element_obu.GetAudioElementId());
         if (recon_gain_param_definition.GetDuration() !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           return InvalidArgumentError(
@@ -174,7 +178,7 @@ absl::Status GenerateParameterDefinitions(
         const auto& user_param_definition =
             user_data_parameter.param_definition_extension();
         ExtendedParamDefinition extended_param_definition(
-            copied_param_definition_type);
+            copied_param_definition_type, ParamDefinition::BaseArgs{});
         // Copy the extension bytes.
         if (user_param_definition.has_param_definition_size()) {
           ABSL_LOG(WARNING)

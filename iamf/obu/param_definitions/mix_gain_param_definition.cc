@@ -58,4 +58,5 @@ void MixGainParamDefinition::Print() const {
   ParamDefinition::Print();
   ABSL_LOG(INFO) << "  default_mix_gain= " << default_mix_gain_;
 }
+
 }  // namespace iamf_tools

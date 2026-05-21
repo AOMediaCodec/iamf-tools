@@ -27,6 +27,7 @@
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
@@ -51,7 +52,8 @@ struct SubMixAudioElement {
   std::vector<std::string> localized_element_annotations;
   RenderingConfig rendering_config;
   // The gain value to be applied to the rendered audio element signal.
-  MixGainParamDefinition element_mix_gain;
+  MixGainParamDefinition element_mix_gain =
+      MixGainParamDefinition(ParamDefinition::BaseArgs{});
 };
 
 struct AnchoredLoudnessElement {
@@ -288,7 +290,8 @@ struct MixPresentationSubMix {
 
   // The gain value to be applied in post-processing the mixed audio signal to
   // generate the audio signal for playback.
-  MixGainParamDefinition output_mix_gain;
+  MixGainParamDefinition output_mix_gain =
+      MixGainParamDefinition(ParamDefinition::BaseArgs{});
 
   // `num_layouts` is implicit based on the size of `layouts`.
   std::vector<MixPresentationLayout> layouts;

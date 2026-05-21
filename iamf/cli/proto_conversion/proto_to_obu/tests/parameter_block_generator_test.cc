@@ -41,10 +41,10 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
-#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
@@ -262,16 +262,13 @@ void ConfigureMixGainParameterBlocks(
 }
 
 void AddMixGainParamDefinition(
-    const int16_t default_mix_gain, MixGainParamDefinition& param_definition,
+    const int16_t default_mix_gain,
     absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
         param_definition_variants) {
+  MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, kParameterRate));
   param_definition.default_mix_gain_ =
       QFormatOrFloatingPoint::MakeFromQ7_8(default_mix_gain);
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = 48000;
-  param_definition.param_definition_mode_ =
-      ParamDefinition::kModeScheduleInParameterBlock;
-  param_definition.reserved_ = 0;
   param_definition_variants.emplace(kParameterId, param_definition);
 }
 
@@ -286,12 +283,10 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
                              codec_config_obus, audio_elements);
 
   // Add param definition. It would normally be owned by a Mix Presentation OBU.
-  MixGainParamDefinition param_definition;
   const int16_t kDefaultMixGain = -123;
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       param_definition_variants;
-  AddMixGainParamDefinition(kDefaultMixGain, param_definition,
-                            param_definition_variants);
+  AddMixGainParamDefinition(kDefaultMixGain, param_definition_variants);
 
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
@@ -554,12 +549,10 @@ TEST(ParameterBlockGeneratorTest,
   InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
                              codec_config_obus, audio_elements);
   // Add param definition. It would normally be owned by a Mix Presentation OBU.
-  MixGainParamDefinition param_definition;
   const int16_t kDefaultMixGain = -123;
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       param_definition_variants;
-  AddMixGainParamDefinition(kDefaultMixGain, param_definition,
-                            param_definition_variants);
+  AddMixGainParamDefinition(kDefaultMixGain, param_definition_variants);
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     param_definition_variants);
