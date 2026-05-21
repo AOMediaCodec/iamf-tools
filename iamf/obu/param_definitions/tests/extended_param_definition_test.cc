@@ -56,8 +56,7 @@ TEST(ExtendedParamDefinition, GetTypeHasCorrectValue) {
       ParamDefinition::kParameterDefinitionReservedEnd,
       GetExtendedParamDefinitionMode1Args());
 
-  EXPECT_TRUE(extended_param_definition.GetType().has_value());
-  EXPECT_EQ(*extended_param_definition.GetType(),
+  EXPECT_EQ(extended_param_definition.GetType(),
             ParamDefinition::kParameterDefinitionReservedEnd);
 }
 
@@ -102,7 +101,7 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithZeroSize) {
       ExtendedParamDefinition(kExtensiontype, ParamDefinition::BaseArgs{});
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 
-  EXPECT_EQ(*param_definition.GetType(), kExtensiontype);
+  EXPECT_EQ(param_definition.GetType(), kExtensiontype);
   EXPECT_TRUE(param_definition.param_definition_bytes_.empty());
 }
 
@@ -120,7 +119,7 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
       ExtendedParamDefinition(kExtensiontype, ParamDefinition::BaseArgs{});
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 
-  EXPECT_EQ(*param_definition.GetType(), kExtensiontype);
+  EXPECT_EQ(param_definition.GetType(), kExtensiontype);
   EXPECT_EQ(param_definition.param_definition_bytes_,
             kExpectedParamDefinitionBytes);
 }

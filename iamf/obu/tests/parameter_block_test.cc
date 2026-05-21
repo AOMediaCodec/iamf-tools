@@ -656,7 +656,6 @@ class ParameterBlockObuTestBase : public ObuTestBase {
 
     CreateParamDefinition(args);
     ASSERT_NE(param_definition_, nullptr);
-    ASSERT_TRUE(param_definition_->GetType().has_value());
   }
 
   void InitMainParameterBlockObu() {

@@ -32,11 +32,7 @@ namespace {
 absl::Status ValidateSpecificParamDefinition(
     const ParamDefinition& param_definition) {
   using enum ParamDefinition::ParameterDefinitionType;
-  const auto& type = param_definition.GetType();
-  if (!type.has_value()) {
-    return absl::OkStatus();
-  }
-  switch (*type) {
+  switch (param_definition.GetType()) {
     case kParameterDefinitionDemixing:
     case kParameterDefinitionReconGain:
       RETURN_IF_NOT_OK(ValidateEqual(
@@ -159,8 +155,7 @@ absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 }
 
 void ParamDefinition::Print() const {
-  ABSL_LOG(INFO) << "  parameter_type= "
-                 << (type_.has_value() ? absl::StrCat(*type_) : "NONE");
+  ABSL_LOG(INFO) << "  parameter_type= " << absl::StrCat(type_);
   ABSL_LOG(INFO) << "  parameter_id= " << parameter_id_;
   ABSL_LOG(INFO) << "  parameter_rate= " << parameter_rate_;
   ABSL_LOG(INFO) << "  param_definition_mode= "

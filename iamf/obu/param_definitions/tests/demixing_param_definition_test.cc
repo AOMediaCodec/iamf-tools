@@ -76,8 +76,7 @@ TEST(DemixingParamDefinition, CopyConstructible) {
 TEST(DemixingParamDefinition, GetTypeHasCorrectValue) {
   auto demixing_param_definition = CreateDemixingParamDefinition();
 
-  EXPECT_TRUE(demixing_param_definition.GetType().has_value());
-  EXPECT_EQ(*demixing_param_definition.GetType(),
+  EXPECT_EQ(demixing_param_definition.GetType(),
             ParamDefinition::kParameterDefinitionDemixing);
 }
 
@@ -256,7 +255,8 @@ TEST(ReadDemixingParamDefinitionTest, ReadsDefaultDmixPMode) {
   DemixingParamDefinition param_definition =
       DemixingParamDefinition(ParamDefinition::BaseArgs{});
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(*param_definition.GetType(),
+
+  EXPECT_EQ(param_definition.GetType(),
             ParamDefinition::kParameterDefinitionDemixing);
   EXPECT_EQ(param_definition.default_demixing_info_parameter_data_.dmixp_mode,
             DemixingInfoParameterData::kDMixPMode2);
@@ -283,7 +283,7 @@ TEST(ReadDemixingParamDefinitionTest, ReadsDefaultW) {
   DemixingParamDefinition param_definition =
       DemixingParamDefinition(ParamDefinition::BaseArgs{});
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(*param_definition.GetType(),
+  EXPECT_EQ(param_definition.GetType(),
             ParamDefinition::kParameterDefinitionDemixing);
   EXPECT_EQ(param_definition.default_demixing_info_parameter_data_.dmixp_mode,
             DemixingInfoParameterData::kDMixPMode1);

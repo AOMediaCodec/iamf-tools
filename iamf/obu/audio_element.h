@@ -58,12 +58,7 @@ struct AudioElementParam {
   ParamDefinition::ParameterDefinitionType GetType() const {
     return std::visit(
         [](const auto& concrete_param_definition) {
-          const auto param_definition_type =
-              concrete_param_definition.GetType();
-
-          // All alternatives have well-defined types.
-          ABSL_CHECK(param_definition_type.has_value());
-          return *param_definition_type;
+          return concrete_param_definition.GetType();
         },
         param_definition);
   }

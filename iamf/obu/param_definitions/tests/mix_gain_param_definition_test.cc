@@ -227,7 +227,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(*param_definition.GetType(),
+  EXPECT_EQ(param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
   EXPECT_EQ(param_definition.default_mix_gain_.GetQ7_8(), 4);
 }
@@ -257,7 +257,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(*param_definition.GetType(),
+  EXPECT_EQ(param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
   EXPECT_EQ(param_definition.default_mix_gain_.GetQ7_8(), 3);
 }

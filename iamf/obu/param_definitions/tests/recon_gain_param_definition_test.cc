@@ -60,8 +60,8 @@ TEST(ReconGainParamDefinition, CopyConstructible) {
 
 TEST(ReconGainParamDefinition, GetTypeHasCorrectValue) {
   auto recon_gain_param_definition = CreateReconGainParamDefinition();
-  EXPECT_TRUE(recon_gain_param_definition.GetType().has_value());
-  EXPECT_EQ(*recon_gain_param_definition.GetType(),
+
+  EXPECT_EQ(recon_gain_param_definition.GetType(),
             ParamDefinition::kParameterDefinitionReconGain);
 }
 
@@ -234,7 +234,7 @@ TEST(ReadReconGainParamDefinitionTest, ReadsCorrectlyWithDefaultValues) {
   ReconGainParamDefinition param_definition =
       ReconGainParamDefinition(ParamDefinition::BaseArgs{}, 0);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(*param_definition.GetType(),
+  EXPECT_EQ(param_definition.GetType(),
             ParamDefinition::kParameterDefinitionReconGain);
 }
 

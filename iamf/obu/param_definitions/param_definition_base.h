@@ -120,7 +120,7 @@ class ParamDefinition {
    *
    * \return Type of this parameter definition.
    */
-  std::optional<ParameterDefinitionType> GetType() const { return type_; }
+  ParameterDefinitionType GetType() const { return type_; }
 
   /*!\brief Gets the parameter ID.
    *
@@ -205,7 +205,7 @@ class ParamDefinition {
   bool IncludeSubblockDurationArray() const;
 
   // Type of this parameter definition.
-  std::optional<ParameterDefinitionType> type_ = std::nullopt;
+  ParameterDefinitionType type_;
 
   DecodedUleb128 parameter_id_ = 0;
   DecodedUleb128 parameter_rate_ = 0;

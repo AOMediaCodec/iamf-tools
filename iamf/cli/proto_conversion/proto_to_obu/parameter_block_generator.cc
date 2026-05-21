@@ -620,9 +620,7 @@ absl::Status ParameterBlockGenerator::AddMetadata(
   const auto& param_definition_type = std::visit(
       [](const auto& param_definition) { return param_definition.GetType(); },
       param_definition_iter->second);
-  RETURN_IF_NOT_OK(
-      ValidateHasValue(param_definition_type, "`param_definition_type`."));
-  typed_proto_metadata_[*param_definition_type].push_back(
+  typed_proto_metadata_[param_definition_type].push_back(
       parameter_block_metadata);
 
   return absl::OkStatus();
