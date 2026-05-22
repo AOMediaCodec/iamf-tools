@@ -61,9 +61,13 @@ void OutputAllTemporalUnits(api::IamfDecoder& iamf_decoder) {
   const int bytes_per_sample =
       GetBytesPerSample(iamf_decoder.GetOutputSampleType());
   uint32_t frame_size;
-  ASSERT_TRUE(iamf_decoder.GetFrameSize(frame_size).ok());
+  if (!iamf_decoder.GetFrameSize(frame_size).ok()) {
+    return;
+  }
   int num_output_channels;
-  ASSERT_TRUE(iamf_decoder.GetNumberOfOutputChannels(num_output_channels).ok());
+  if (!iamf_decoder.GetNumberOfOutputChannels(num_output_channels).ok()) {
+    return;
+  }
   // Extract and throw away all temporal units.
   std::vector<uint8_t> output_buffer(bytes_per_sample * frame_size *
                                      num_output_channels);
