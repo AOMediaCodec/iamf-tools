@@ -21,7 +21,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
-#include "iamf/obu/audio_element.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -77,12 +77,10 @@ class AudioElementRendererAmbisonicsToChannel
    */
   AudioElementRendererAmbisonicsToChannel(
       size_t num_output_channels, size_t num_samples_per_frame,
-      const AmbisonicsConfig& ambisonics_config,
       const std::vector<ChannelLabel::Label>& ordered_labels,
       const std::vector<std::vector<double>>& gains)
       : AudioElementRendererBase(ordered_labels, num_samples_per_frame,
                                  num_output_channels),
-        ambisonics_config_(ambisonics_config),
         gains_(gains) {}
 
   /*!\brief Renders samples.
@@ -95,9 +93,7 @@ class AudioElementRendererAmbisonicsToChannel
       absl::Span<const absl::Span<const InternalSampleType>> samples_to_render)
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) override;
 
-  const AmbisonicsConfig ambisonics_config_;
-
-  std::vector<std::vector<double>> gains_;
+  const std::vector<std::vector<double>> gains_;
 };
 
 }  // namespace iamf_tools

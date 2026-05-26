@@ -12,21 +12,15 @@
 #include "iamf/cli/renderer/loudspeakers_renderer.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <vector>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/cli/renderer/gains/get_gains.h"
-#include "iamf/cli/renderer/renderer_utils.h"
-#include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/validation_utils.h"
-#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
@@ -120,26 +114,7 @@ bool LayoutStringHasHeightChannels(absl::string_view layout_string) {
 absl::Status RenderSamplesUsingGains(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const std::vector<std::vector<double>>& gains,
-    std::optional<absl::Span<const int16_t>> demixing_matrix,
     std::vector<std::vector<InternalSampleType>>& rendered_samples) {
-  // Project with `demixing_matrix` when in projection mode.
-  absl::Span<const absl::Span<const InternalSampleType>> samples_to_render;
-
-  // TODO(b/382197581): Avoid re-allocating vectors in each function call.
-  std::vector<std::vector<InternalSampleType>> projected_samples;
-  std::vector<absl::Span<const InternalSampleType>> projected_spans;
-  if (demixing_matrix.has_value()) {
-    RETURN_IF_NOT_OK(ProjectSamplesToRender(input_samples, *demixing_matrix,
-                                            projected_samples));
-    projected_spans.resize(projected_samples.size());
-    for (size_t c = 0; c < projected_samples.size(); c++) {
-      projected_spans[c] = absl::MakeConstSpan(projected_samples[c]);
-    }
-    samples_to_render = absl::MakeConstSpan(projected_spans);
-  } else {
-    samples_to_render = input_samples;
-  }
-
   const auto num_ticks = input_samples.empty() ? 0 : input_samples[0].size();
   const auto num_in_channels = input_samples.size();
   const auto num_out_channels = gains[0].size();
@@ -148,7 +123,7 @@ absl::Status RenderSamplesUsingGains(
     auto& rendered_samples_for_channel = rendered_samples[out_channel];
     rendered_samples_for_channel.assign(num_ticks, 0.0);
     for (size_t in_channel = 0; in_channel < num_in_channels; in_channel++) {
-      const auto& samples_to_render_for_channel = samples_to_render[in_channel];
+      const auto& samples_to_render_for_channel = input_samples[in_channel];
       const auto gain_value = gains[in_channel][out_channel];
       for (size_t t = 0; t < num_ticks; t++) {
         rendered_samples_for_channel[t] +=
@@ -200,40 +175,7 @@ absl::Status RenderChannelLayoutToLoudspeakers(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const std::vector<std::vector<double>>& gains,
     std::vector<std::vector<InternalSampleType>>& rendered_samples) {
-  return RenderSamplesUsingGains(input_samples, gains,
-                                 /*demixing_matrix=*/std::nullopt,
-                                 rendered_samples);
-}
-
-absl::Status RenderAmbisonicsToLoudspeakers(
-    absl::Span<const absl::Span<const InternalSampleType>> input_samples,
-    const AmbisonicsConfig& ambisonics_config,
-    const std::vector<std::vector<double>>& gains,
-    std::vector<std::vector<InternalSampleType>>& rendered_samples) {
-  // Exclude unsupported mode first, and deal with only mono or projection
-  // in the rest of the code.
-  const auto mode = ambisonics_config.GetAmbisonicsMode();
-  if (mode != AmbisonicsConfig::kAmbisonicsModeMono &&
-      mode != AmbisonicsConfig::kAmbisonicsModeProjection) {
-    return absl::UnimplementedError(
-        absl::StrCat("Unsupported ambisonics mode. mode= ", mode));
-  }
-  const bool is_mono = mode == AmbisonicsConfig::kAmbisonicsModeMono;
-
-  // Input key for ambisonics is "A{ambisonics_order}".
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "gains", gains, ambisonics_config.GetOutputChannelCount()));
-
-  const std::optional<absl::Span<const int16_t>> demixing_matrix =
-      is_mono ? std::nullopt
-              : std::make_optional(std::get<AmbisonicsProjectionConfig>(
-                                       ambisonics_config.ambisonics_config)
-                                       .GetDemixingMatrixView());
-
-  RETURN_IF_NOT_OK(RenderSamplesUsingGains(input_samples, gains,
-                                           demixing_matrix, rendered_samples));
-
-  return absl::OkStatus();
+  return RenderSamplesUsingGains(input_samples, gains, rendered_samples);
 }
 
 }  // namespace iamf_tools

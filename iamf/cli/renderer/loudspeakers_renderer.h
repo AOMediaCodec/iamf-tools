@@ -19,7 +19,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
@@ -61,20 +60,6 @@ std::optional<std::vector<std::vector<double>>> MaybeComputeDynamicGains(
  */
 absl::Status RenderChannelLayoutToLoudspeakers(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
-    const std::vector<std::vector<double>>& gains,
-    std::vector<std::vector<InternalSampleType>>& rendered_samples);
-
-/*!\brief Renders ambisonics samples to loudspeaker channels.
- *
- * \param input_samples Input samples to render arranged in (channel, time).
- * \param ambisonics_config Config for the ambisonics layout.
- * \param gains Gains matrix to apply to the output.
- * \param rendered_samples Output rendered samples.
- * \return `absl::OkStatus()` on success. A specific status on failure.
- */
-absl::Status RenderAmbisonicsToLoudspeakers(
-    absl::Span<const absl::Span<const InternalSampleType>> input_samples,
-    const AmbisonicsConfig& ambisonics_config,
     const std::vector<std::vector<double>>& gains,
     std::vector<std::vector<InternalSampleType>>& rendered_samples);
 
