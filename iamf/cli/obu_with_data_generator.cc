@@ -510,8 +510,8 @@ absl::Status FinalizeAmbisonicsMonoConfig(
         mono_config.GetChannelMappingView()[ambisonics_channel_number];
     if (obu_substream_index ==
         AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber) {
-      ABSL_LOG(INFO) << "Detected mixed-order ambisonics with  A"
-                     << ambisonics_channel_number << " dropped.";
+      ABSL_VLOG(1) << "Detected mixed-order ambisonics with  A"
+                   << ambisonics_channel_number << " dropped.";
       continue;
     }
     const DecodedUleb128 substream_id =

@@ -4,6 +4,27 @@ package(default_visibility = ["//iamf/cli/renderer/tests:__subpackages__"])
 
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
+    name = "audio_element_renderer_ambisonics_to_channel_benchmark",
+    srcs = ["audio_element_renderer_ambisonics_to_channel_benchmark.cc"],
+    deps = [
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixing_module",
+        "//iamf/cli:obu_with_data_generator",
+        "//iamf/cli/renderer:audio_element_renderer_ambisonics_to_channel",
+        "//iamf/common/utils:numeric_utils",
+        "//iamf/obu:ambisonics_config",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/log:absl_check",
+        "@abseil-cpp//absl/status:statusor",
+        "@google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_test(
     name = "audio_element_renderer_ambisonics_to_channel_test",
     srcs = ["audio_element_renderer_ambisonics_to_channel_test.cc"],
     deps = [
