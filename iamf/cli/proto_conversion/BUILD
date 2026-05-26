@@ -141,6 +141,7 @@ cc_library(
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:param_definition_base",
+        "//iamf/obu/param_definitions:subblock_schedule",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",

@@ -149,6 +149,7 @@ cc_test(
         "//iamf/common:read_bit_buffer",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:param_definition_base",
+        "//iamf/obu/param_definitions:subblock_schedule",
         "//iamf/obu/tests:obu_test_utils",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
@@ -186,6 +187,19 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:recon_gain_param_definition",
         "//iamf/obu/tests:obu_test_utils",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "subblock_schedule_test",
+    srcs = ["subblock_schedule_test.cc"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/obu/param_definitions:subblock_schedule",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",

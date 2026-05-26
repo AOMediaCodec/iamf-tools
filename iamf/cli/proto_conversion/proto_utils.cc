@@ -35,6 +35,7 @@
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -59,32 +60,40 @@ absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
 
 absl::StatusOr<ParamDefinition::BaseArgs> GetParamDefinitionBaseArgs(
     const iamf_tools_cli_proto::ParamDefinition& input_param_definition) {
-  ParamDefinition::BaseArgs args;
-  args.parameter_id = input_param_definition.parameter_id();
-  args.parameter_rate = input_param_definition.parameter_rate();
+  ParamDefinition::BaseArgs args{
+      .parameter_id = input_param_definition.parameter_id(),
+      .parameter_rate = input_param_definition.parameter_rate(),
+  };
 
-  args.param_definition_mode =
-      static_cast<ParamDefinition::ParamDefinitionMode>(
-          input_param_definition.param_definition_mode());
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "ParamDefinition.reserved", input_param_definition.reserved(),
       args.reserved));
-  args.duration = input_param_definition.duration();
-  args.constant_subblock_duration =
-      input_param_definition.constant_subblock_duration();
 
-  if (input_param_definition.constant_subblock_duration() != 0) {
+  const auto mode = static_cast<ParamDefinition::ParamDefinitionMode>(
+      input_param_definition.param_definition_mode());
+
+  if (mode == ParamDefinition::kModeScheduleInParameterBlock) {
+    args.schedule = std::nullopt;
     return args;
   }
 
-  // Infer the number of subblocks.
-  const auto num_subblocks = input_param_definition.subblock_durations_size();
-  args.num_subblocks = static_cast<DecodedUleb128>(num_subblocks);
-  args.subblock_durations.resize(num_subblocks);
-  for (int i = 0; i < num_subblocks; ++i) {
-    args.subblock_durations[i] = input_param_definition.subblock_durations(i);
+  absl::StatusOr<SubblockSchedule> schedule;
+  if (input_param_definition.constant_subblock_duration() != 0) {
+    schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+        input_param_definition.duration(),
+        input_param_definition.constant_subblock_duration());
+  } else {
+    std::vector<DecodedUleb128> subblock_durations(
+        input_param_definition.subblock_durations().begin(),
+        input_param_definition.subblock_durations().end());
+    schedule = SubblockSchedule::CreateWithVariableSubblockDuration(
+        subblock_durations);
   }
 
+  if (!schedule.ok()) {
+    return schedule.status();
+  }
+  args.schedule = *schedule;
   return args;
 }
 

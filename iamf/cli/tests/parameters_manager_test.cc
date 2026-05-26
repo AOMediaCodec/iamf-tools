@@ -76,13 +76,8 @@ ParamDefinition::BaseArgs GetParamDefinitionBaseArgs(
   return ParamDefinition::BaseArgs{
       .parameter_id = param.GetParameterId(),
       .parameter_rate = param.GetParameterRate(),
-      .param_definition_mode = param.GetParamDefinitionMode(),
       .reserved = param.GetReserved(),
-      .duration = param.GetDuration(),
-      .constant_subblock_duration = param.GetConstantSubblockDuration(),
-      .num_subblocks = param.GetNumSubblocks(),
-      .subblock_durations = {param.GetSubblockDurations().begin(),
-                             param.GetSubblockDurations().end()},
+      .schedule = param.GetSchedule(),
   };
 }
 

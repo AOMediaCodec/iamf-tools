@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -36,6 +37,7 @@
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/tests/obu_test_base.h"
 #include "iamf/obu/tests/obu_test_utils.h"
@@ -590,10 +592,8 @@ class ParameterBlockObuTestBase : public ObuTestBase {
                 ParamDefinition::kModeScheduleInParamDefinition,
             .reserved = 0,
         }),
-        duration_args_({
-            .duration = 64,
-            .constant_subblock_duration = 64,
-        }) {}
+        schedule_(
+            *SubblockSchedule::CreateWithConstantSubblockDuration(64, 64)) {}
 
   ~ParameterBlockObuTestBase() = default;
 
@@ -629,29 +629,18 @@ class ParameterBlockObuTestBase : public ObuTestBase {
 
   // Values to track subblock durations. These are stored in different
   // locations depending on `param_definition_mode`.
-  struct {
-    DecodedUleb128 duration;
-    DecodedUleb128 constant_subblock_duration;
-    DecodedUleb128 num_subblocks;
-    // Length `num_subblocks`.
-    std::vector<DecodedUleb128> subblock_durations;
-  } duration_args_;
+  SubblockSchedule schedule_;
 
  private:
   void InitParamDefinition() {
     ParamDefinition::BaseArgs args{
         .parameter_id = parameter_id_,
         .parameter_rate = metadata_args_.parameter_rate,
-        .param_definition_mode = metadata_args_.param_definition_mode,
         .reserved = metadata_args_.reserved,
     };
     if (metadata_args_.param_definition_mode ==
         ParamDefinition::kModeScheduleInParamDefinition) {
-      args.duration = duration_args_.duration;
-      args.constant_subblock_duration =
-          duration_args_.constant_subblock_duration;
-      args.num_subblocks = duration_args_.num_subblocks;
-      args.subblock_durations = duration_args_.subblock_durations;
+      args.schedule = schedule_;
     }
 
     CreateParamDefinition(args);
@@ -667,13 +656,13 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     if (param_definition_->GetParamDefinitionMode() ==
         ParamDefinition::kModeScheduleInParamDefinition) {
       obu_ = ParameterBlockObu::CreateMode0(header_, *param_definition_);
-    } else if (duration_args_.subblock_durations.empty()) {
+    } else if (schedule_.GetSubblockDurations().empty()) {
       obu_ = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
-          header_, *param_definition_, duration_args_.duration,
-          duration_args_.constant_subblock_duration);
+          header_, *param_definition_, schedule_.GetDuration(),
+          schedule_.GetConstantSubblockDuration());
     } else {
       obu_ = ParameterBlockObu::CreateMode1VariableSubblockDuration(
-          header_, *param_definition_, duration_args_.subblock_durations);
+          header_, *param_definition_, schedule_.GetSubblockDurations());
     }
 
     EXPECT_THAT(obu_, (NotNull()));
@@ -775,12 +764,10 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
   metadata_args_.param_definition_mode =
       ParamDefinition::kModeScheduleInParameterBlock;
 
-  duration_args_ = {
-      .duration = 21,
-      .constant_subblock_duration = 0,
-      .num_subblocks = 3,
-      .subblock_durations = {6, 7, 8},
-  };
+  auto temp_schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration({6, 7, 8});
+  ASSERT_THAT(temp_schedule, IsOk());
+  schedule_ = *temp_schedule;
 
   mix_gain_parameter_data_ = {
       {kAnimateStep, AnimationStepInt16{9}},
@@ -815,12 +802,10 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
 }
 
 TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode0) {
-  duration_args_ = {
-      .duration = 21,
-      .constant_subblock_duration = 0,
-      .num_subblocks = 3,
-      .subblock_durations = {6, 7, 8},
-  };
+  auto temp_schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration({6, 7, 8});
+  ASSERT_THAT(temp_schedule, IsOk());
+  schedule_ = *temp_schedule;
 
   mix_gain_parameter_data_ = {
       {kAnimateStep, AnimationStepInt16{9}},
@@ -845,12 +830,10 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode0) {
 
 TEST_F(MixGainParameterBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   // Initialize a test has several `DecodedUleb128` explicitly in the bitstream.
-  duration_args_ = {
-      .duration = 13,
-      .constant_subblock_duration = 0,
-      .num_subblocks = 2,
-      .subblock_durations = {6, 7},
-  };
+  auto temp_schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration({6, 7});
+  ASSERT_THAT(temp_schedule, IsOk());
+  schedule_ = *temp_schedule;
   metadata_args_.param_definition_mode =
       ParamDefinition::kModeScheduleInParameterBlock;
 
@@ -937,12 +920,10 @@ TEST_F(DemixingParameterBlockTest,
   metadata_args_.param_definition_mode =
       ParamDefinition::kModeScheduleInParameterBlock;
 
-  duration_args_ = {
-      .duration = 4,
-      .constant_subblock_duration = 0,
-      .num_subblocks = 5,
-      .subblock_durations = {6, 7, 8, 9, 10},
-  };
+  auto temp_schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration({6, 7, 8, 9, 10});
+  ASSERT_THAT(temp_schedule, IsOk());
+  schedule_ = *temp_schedule;
 
   demixing_info_parameter_data_ = {{kDMixPMode1, 0},
                                    {kDMixPMode2, 0},
@@ -1175,8 +1156,9 @@ TEST_F(ReconGainBlockTest, ValidateAndWriteObuFailsWithMoreThanOneSubblock) {
   // In Spec, for recon gain param definition: `num_subblocks` SHALL be set
   // to 1, and `constant_subblock_duration` SHALL be same as `duration`.
   // The following violates these rules.
-  duration_args_ = {
-      .duration = 64, .constant_subblock_duration = 32, .num_subblocks = 2};
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 32);
+  ASSERT_THAT(schedule, IsOk());
+  schedule_ = *schedule;
   recon_gain_parameter_data_.resize(2);
   auto& recon_gain_elements_0 =
       recon_gain_parameter_data_[0].recon_gain_elements;
@@ -1276,7 +1258,9 @@ TEST_F(ExtensionParameterBlockTest,
 }
 
 TEST_F(ExtensionParameterBlockTest, TwoSubblocksParamDefinitionMode0) {
-  duration_args_ = {.duration = 64, .constant_subblock_duration = 32};
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 32);
+  ASSERT_THAT(schedule, IsOk());
+  schedule_ = *schedule;
 
   parameter_block_extensions_ = {
       ExtensionParameterData(kFirstParameterDataBytes),
@@ -1300,7 +1284,9 @@ TEST_F(ExtensionParameterBlockTest, TwoSubblocksParamDefinitionMode1) {
   metadata_args_.param_definition_mode =
       ParamDefinition::kModeScheduleInParameterBlock;
 
-  duration_args_ = {.duration = 64, .constant_subblock_duration = 32};
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 32);
+  ASSERT_THAT(schedule, IsOk());
+  schedule_ = *schedule;
 
   parameter_block_extensions_ = {
       ExtensionParameterData(kFirstParameterDataBytes),

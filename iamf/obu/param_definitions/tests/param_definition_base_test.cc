@@ -14,13 +14,13 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
@@ -54,7 +54,6 @@ TEST(GetNumSubblocks, ReturnsZeroWhenSubblockDurationsAreImplicitMode1) {
 
 TEST(GetNumSubblocks, ReturnsZeroWhenSubblockDurationsAreImplicitMode0) {
   auto args = GetParamDefinitionMode0Args();
-  args.constant_subblock_duration = kDuration;
   MockParamDefinition param_definition(args);
 
   // TODO(b/345799072): Reporting zero is strange here, the parameter definition
@@ -67,12 +66,13 @@ TEST(GetNumSubblocks, ReturnsZeroWhenSubblockDurationsAreImplicitMode0) {
 TEST(GetNumSubblocks,
      ReturnsNumSubblocksWhenSubblockDurationsAreExplicitMode0) {
   auto args = GetParamDefinitionMode0Args();
-  args.constant_subblock_duration = 0;
-  constexpr DecodedUleb128 kNumSubblocks = 2;
-  args.num_subblocks = kNumSubblocks;
+  auto schedule = SubblockSchedule::CreateWithVariableSubblockDuration(
+      {kDuration / 2, kDuration / 2});
+  ASSERT_THAT(schedule, IsOk());
+  args.schedule = *schedule;
   MockParamDefinition param_definition(args);
 
-  EXPECT_EQ(param_definition.GetNumSubblocks(), kNumSubblocks);
+  EXPECT_EQ(param_definition.GetNumSubblocks(), 2);
 }
 
 TEST(Validate, ValidatesParamDefinitionMode1) {
@@ -95,29 +95,11 @@ TEST(Validate, ValidatesParamDefinitionMode0) {
   EXPECT_THAT(param_definition.Validate(), IsOk());
 }
 
-TEST(Validate, InvalidWhenParameterDefinitionMode0DurationIsZero) {
-  auto args = GetParamDefinitionMode0Args();
-  args.duration = 0;
-  MockParamDefinition param_definition(args);
-
-  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
-}
-
-TEST(Validate, InvalidWhenConstantSubblockDurationIsGreaterThanDuration) {
-  auto args = GetParamDefinitionMode0Args();
-  args.duration = 64;
-  args.constant_subblock_duration = 65;
-  MockParamDefinition param_definition(args);
-
-  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
-}
-
 TEST(Validate, ValidWhenConstantSubblockDurationIsLessThanDuration) {
   auto args = GetParamDefinitionMode0Args();
-  args.duration = 64;
-  // It is OK for `constant_subblock_duration` to be less than `duration`. The
-  // spec has rounding rules for the final subblock duration.
-  args.constant_subblock_duration = 63;
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 63);
+  ASSERT_THAT(schedule, IsOk());
+  args.schedule = *schedule;
   MockParamDefinition param_definition(args);
 
   EXPECT_THAT(param_definition.Validate(), IsOk());
@@ -125,56 +107,22 @@ TEST(Validate, ValidWhenConstantSubblockDurationIsLessThanDuration) {
 
 TEST(Validate, ValidForExplicitSubblockDurations) {
   auto args = GetParamDefinitionMode0Args();
-  args.duration = 64;
-  args.constant_subblock_duration = 0;
-  args.num_subblocks = 2;
-  args.subblock_durations = {60, 4};
+  auto schedule = SubblockSchedule::CreateWithVariableSubblockDuration({60, 4});
+  ASSERT_THAT(schedule, IsOk());
+  args.schedule = *schedule;
   MockParamDefinition param_definition(args);
 
   EXPECT_THAT(param_definition.Validate(), IsOk());
 }
 
-TEST(Validate, InvalidWhenSubblockDurationsSumIsLessThanDuration) {
-  auto args = GetParamDefinitionMode0Args();
-  args.duration = 64;
-  args.constant_subblock_duration = 0;
-  args.num_subblocks = 2;
-  args.subblock_durations = {60, 3};
-  MockParamDefinition param_definition(args);
-
-  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
-}
-
-TEST(Validate, InvalidWhenSubblockDurationsSumIsGreaterThanDuration) {
-  auto args = GetParamDefinitionMode0Args();
-  args.duration = 64;
-  args.constant_subblock_duration = 0;
-  args.num_subblocks = 2;
-  args.subblock_durations = {60, 5};
-  MockParamDefinition param_definition(args);
-
-  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
-}
-
-TEST(Validate, InvalidWhenAnySubblockDurationIsZero) {
-  auto args = GetParamDefinitionMode0Args();
-  args.duration = 64;
-  args.constant_subblock_duration = 0;
-  args.num_subblocks = 2;
-  args.subblock_durations = {64, 0};
-  MockParamDefinition param_definition(args);
-
-  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
-}
-
 TEST(GetSubblockDuration, MatchesExplicitSetSubblockDurations) {
   auto args = GetParamDefinitionMode0Args();
-  args.duration = 64;
-  args.constant_subblock_duration = 0;
-  args.num_subblocks = 2;
   constexpr DecodedUleb128 kSubblockDuration0 = 60;
   constexpr DecodedUleb128 kSubblockDuration1 = 4;
-  args.subblock_durations = {kSubblockDuration0, kSubblockDuration1};
+  auto schedule = SubblockSchedule::CreateWithVariableSubblockDuration(
+      {kSubblockDuration0, kSubblockDuration1});
+  ASSERT_THAT(schedule, IsOk());
+  args.schedule = *schedule;
   MockParamDefinition param_definition(args);
 
   EXPECT_THAT(param_definition.GetSubblockDurations(),

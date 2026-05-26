@@ -16,12 +16,12 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
 
@@ -72,12 +72,8 @@ class ParamDefinition {
   struct BaseArgs {
     DecodedUleb128 parameter_id = 0;
     DecodedUleb128 parameter_rate = 0;
-    ParamDefinitionMode param_definition_mode = kModeScheduleInParamDefinition;
     uint8_t reserved = 0;
-    DecodedUleb128 duration = 0;
-    DecodedUleb128 constant_subblock_duration = 0;
-    DecodedUleb128 num_subblocks = 0;
-    std::vector<DecodedUleb128> subblock_durations = {};
+    std::optional<SubblockSchedule> schedule = std::nullopt;
   };
 
   /*!\brief Default destructor.
@@ -164,6 +160,12 @@ class ParamDefinition {
    */
   absl::Span<const DecodedUleb128> GetSubblockDurations() const;
 
+  /*!\brief Gets the schedule.
+   *
+   * \return Schedule.
+   */
+  const std::optional<SubblockSchedule>& GetSchedule() const;
+
   /*!\brief Creates a parameter data.
    *
    * The created instance will one of the subclassees of `ParameterData`,
@@ -190,40 +192,19 @@ class ParamDefinition {
       : type_(type),
         parameter_id_(base_args.parameter_id),
         parameter_rate_(base_args.parameter_rate),
-        param_definition_mode_(base_args.param_definition_mode),
         reserved_(base_args.reserved),
-        duration_(base_args.duration),
-        constant_subblock_duration_(base_args.constant_subblock_duration),
-        num_subblocks_(base_args.num_subblocks),
-        subblock_durations_(base_args.subblock_durations) {}
+        schedule_(base_args.schedule) {}
 
  private:
-  /*!\brief Whether the subblock durations are included in this object.
-   *
-   * \return True if the subblock durations are included.
-   */
-  bool IncludeSubblockDurationArray() const;
-
   // Type of this parameter definition.
   ParameterDefinitionType type_;
 
   DecodedUleb128 parameter_id_ = 0;
   DecodedUleb128 parameter_rate_ = 0;
-  ParamDefinitionMode param_definition_mode_ = kModeScheduleInParamDefinition;
+  // `param_definition_mode_` is implied by the presence of `schedule_`.
   uint8_t reserved_ = 0;  // 7 bits.
 
-  // All fields below are only included if `param_definition_mode_ ==
-  // kModeScheduleInParamDefinition`.
-  DecodedUleb128 duration_ = 0;
-  DecodedUleb128 constant_subblock_duration_ = 0;
-
-  // `num_subblocks` is only included if `param_definition_mode_ ==
-  // ParamDefinition::kModeScheduleInParamDefinition` and
-  // `constant_subblock_duration == 0`.
-  DecodedUleb128 num_subblocks_ = 0;
-
-  // Vector of length `num_subblocks`.
-  std::vector<DecodedUleb128> subblock_durations_ = {};
+  std::optional<SubblockSchedule> schedule_ = std::nullopt;
 };
 
 }  // namespace iamf_tools

@@ -141,10 +141,10 @@ cc_library(
         "param_definition_base.h",
     ],
     deps = [
+        ":subblock_schedule",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
-        "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
@@ -201,6 +201,25 @@ cc_library(
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "subblock_schedule",
+    srcs = ["subblock_schedule.cc"],
+    hdrs = ["subblock_schedule.h"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:numeric_utils",
+        "//iamf/common/utils:validation_utils",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
