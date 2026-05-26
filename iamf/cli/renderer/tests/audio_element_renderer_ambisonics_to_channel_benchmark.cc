@@ -202,35 +202,40 @@ static void BM_RenderHorizontalToaToStereo(benchmark::State& state) {
 }
 
 // Test orders (1, 3, 4) x (mono, projection) x (1024, 2048 ticks).
-BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/1, kAmbisonicsModeMono)
+BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/1,
+                   AmbisonicsConfig::kAmbisonicsModeMono)
     ->Arg(1024)
     ->Arg(2048);
 BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/1,
-                   kAmbisonicsModeProjection)
+                   AmbisonicsConfig::kAmbisonicsModeProjection)
     ->Arg(1024)
     ->Arg(2048);
 
-BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/3, kAmbisonicsModeMono)
+BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/3,
+                   AmbisonicsConfig::kAmbisonicsModeMono)
     ->Arg(1024)
     ->Arg(2048);
 BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/3,
-                   kAmbisonicsModeProjection)
+                   AmbisonicsConfig::kAmbisonicsModeProjection)
     ->Arg(1024)
     ->Arg(2048);
 
-BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/4, kAmbisonicsModeMono)
+BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/4,
+                   AmbisonicsConfig::kAmbisonicsModeMono)
     ->Arg(1024)
     ->Arg(2048);
 BENCHMARK_TEMPLATE(BM_RenderFullOrderToStereo, /*Order=*/4,
-                   kAmbisonicsModeProjection)
+                   AmbisonicsConfig::kAmbisonicsModeProjection)
     ->Arg(1024)
     ->Arg(2048);
 
 // Test horizontal-only TOA x (mono, projection) x (1024, 2048 ticks).
-BENCHMARK_TEMPLATE(BM_RenderHorizontalToaToStereo, kAmbisonicsModeMono)
+BENCHMARK_TEMPLATE(BM_RenderHorizontalToaToStereo,
+                   AmbisonicsConfig::kAmbisonicsModeMono)
     ->Arg(1024)
     ->Arg(2048);
-BENCHMARK_TEMPLATE(BM_RenderHorizontalToaToStereo, kAmbisonicsModeProjection)
+BENCHMARK_TEMPLATE(BM_RenderHorizontalToaToStereo,
+                   AmbisonicsConfig::kAmbisonicsModeProjection)
     ->Arg(1024)
     ->Arg(2048);
 
