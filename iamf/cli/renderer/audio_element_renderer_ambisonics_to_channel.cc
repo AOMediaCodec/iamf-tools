@@ -182,9 +182,28 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
   }
 
   if (mode == AmbisonicsConfig::kAmbisonicsModeMono) {
+    std::vector<ChannelLabel::Label> active_channel_labels;
+    std::vector<std::vector<double>> combined_gains;
+    active_channel_labels.reserve(channel_labels.size());
+    combined_gains.reserve(channel_labels.size());
+    if (gains->size() != channel_labels.size()) {
+      ABSL_LOG(ERROR) << "Gains size does not match channel labels size.";
+      return nullptr;
+    }
+
+    for (size_t i = 0; i < channel_labels.size(); ++i) {
+      if (channel_labels[i] != ChannelLabel::kOmitted) {
+        active_channel_labels.push_back(channel_labels[i]);
+        combined_gains.push_back((*gains)[i]);
+      }
+    }
+    // `AmbisonicsMonoConfig` guarantees there are active channels, but for
+    // safety we check.
+    ABSL_CHECK(!active_channel_labels.empty());
+
     return absl::WrapUnique(new AudioElementRendererAmbisonicsToChannel(
         static_cast<size_t>(num_output_channels), num_samples_per_frame,
-        channel_labels, *gains));
+        active_channel_labels, combined_gains));
   }
 
   // The top of the function guarantees this is now projection mode.
