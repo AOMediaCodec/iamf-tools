@@ -111,12 +111,9 @@ absl::StatusOr<AmbisonicsMonoConfig> AmbisonicsMonoConfig::Create(
   MAYBE_RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "channel_mapping", channel_mapping, output_channel_count));
-  if (substream_count > output_channel_count) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Expected substream_count=", substream_count,
-                     " to be less than or equal to `output_channel_count`=",
-                     output_channel_count, "."));
-  }
+  RETURN_IF_NOT_OK(ValidateInRange(size_t{substream_count},
+                                   {size_t{1}, output_channel_count},
+                                   "substream_count"));
 
   // Track the number of unique substream indices in the mapping.
   absl::flat_hash_set<uint8_t> unique_substream_indices;
@@ -173,18 +170,16 @@ absl::StatusOr<AmbisonicsProjectionConfig> AmbisonicsProjectionConfig::Create(
         " to be less than or equal to substream_count= ", substream_count));
   }
 
-  if ((static_cast<int>(substream_count) +
-       static_cast<int>(coupled_substream_count)) > output_channel_count) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Expected coupled_substream_count= ", coupled_substream_count,
-        " + substream_count= ", substream_count,
-        " to be less than or equal to `output_channel_count`= ",
-        output_channel_count, "."));
-  }
+  // Add these as `size_t` to a avoid potential overflow.
+  const size_t total_input_channels =
+      static_cast<size_t>(substream_count) +
+      static_cast<size_t>(coupled_substream_count);
+  RETURN_IF_NOT_OK(ValidateInRange(total_input_channels,
+                                   {size_t{1}, size_t{output_channel_count}},
+                                   "substream_count"));
 
   const size_t expected_num_elements =
-      (static_cast<size_t>(substream_count) + coupled_substream_count) *
-      output_channel_count;
+      total_input_channels * output_channel_count;
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "demixing_matrix", demixing_matrix, expected_num_elements));
 

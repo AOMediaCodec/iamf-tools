@@ -80,6 +80,14 @@ TEST(AmbisonicsMonoConfigCreate,
       Not(IsOk()));
 }
 
+TEST(AmbisonicsMonoConfigCreate, InvalidWhenSubstreamCountIsZero) {
+  EXPECT_THAT(AmbisonicsMonoConfig::Create(
+                  /*substream_count=*/0,
+                  /*channel_mapping=*/{AmbisonicsMonoConfig::
+                                           kInactiveAmbisonicsChannelNumber}),
+              Not(IsOk()));
+}
+
 TEST(AmbisonicsMonoConfigCreate, InvalidWhenOutputChannelCount) {
   // output channel count 5 is not valid (must be (1+n)^2).
   EXPECT_THAT(AmbisonicsMonoConfig::Create(
@@ -213,6 +221,15 @@ TEST(AmbisonicsProjectionConfigCreate, InvalidOutputChannelCount) {
                   /*substream_count=*/3,
                   /*coupled_substream_count=*/0,
                   /*demixing_matrix=*/std::vector<int16_t>(3 * 3, 1)),
+              Not(IsOk()));
+}
+
+TEST(AmbisonicsProjectionConfigCreate, InvalidWhenSubstreamCountIsZero) {
+  EXPECT_THAT(AmbisonicsProjectionConfig::Create(
+                  /*output_channel_count=*/4,
+                  /*substream_count=*/0,
+                  /*coupled_substream_count=*/0,
+                  /*demixing_matrix=*/{}),
               Not(IsOk()));
 }
 
