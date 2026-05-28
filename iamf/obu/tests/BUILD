@@ -23,7 +23,10 @@ cc_library(
     testonly = True,
     srcs = ["obu_test_utils.cc"],
     hdrs = ["obu_test_utils.h"],
-    visibility = ["//iamf:__subpackages__"],
+    visibility = [
+        "//iamf:__subpackages__",
+        "//validation/iamf_loudness_comparator/tests:__pkg__",
+    ],
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
@@ -88,7 +91,6 @@ cc_test(
         "//iamf/obu/param_definitions:demixing_param_definition",
         "//iamf/obu/param_definitions:extended_param_definition",
         "//iamf/obu/param_definitions:param_definition_base",
-        "//iamf/obu/param_definitions:subblock_schedule",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/types:span",
@@ -120,7 +122,6 @@ cc_test(
     srcs = ["codec_config_test.cc"],
     deps = [
         ":obu_test_base",
-        ":obu_test_utils",
         "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
@@ -284,7 +285,6 @@ cc_test(
         "recon_gain_info_parameter_data_test.cc",
     ],
     deps = [
-        ":obu_test_utils",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
@@ -336,7 +336,6 @@ cc_test(
     srcs = ["temporal_delimiter_test.cc"],
     deps = [
         ":obu_test_base",
-        ":obu_test_utils",
         "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",

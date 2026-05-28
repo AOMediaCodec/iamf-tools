@@ -120,6 +120,10 @@ cc_library(
     name = "mix_gain_param_definition",
     srcs = ["mix_gain_param_definition.cc"],
     hdrs = ["mix_gain_param_definition.h"],
+    visibility = [
+        "//iamf:__subpackages__",
+        "//validation/iamf_loudness_comparator/tests:__pkg__",
+    ],
     deps = [
         ":param_definition_base",
         "//iamf/common:q_format_or_floating_point",

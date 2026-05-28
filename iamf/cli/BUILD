@@ -8,6 +8,7 @@ package(default_visibility = [
     "//iamf/api:__subpackages__",
     "//iamf/include/iamf_tools:__subpackages__",
     "//iamf/cli:__subpackages__",
+    "//validation:__subpackages__",
 ])
 
 exports_files(

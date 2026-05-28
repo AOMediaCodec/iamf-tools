@@ -15,6 +15,7 @@ cc_library(
     ],
     visibility = [
         "//iamf:__subpackages__",
+        "//validation/iamf_loudness_comparator/tests:__pkg__",
     ],
     deps = [
         ":iamf_status_adl",
