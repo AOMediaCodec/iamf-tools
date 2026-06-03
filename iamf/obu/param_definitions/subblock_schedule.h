@@ -102,9 +102,15 @@ class SubblockSchedule {
     return constant_subblock_duration_;
   }
 
-  /*!\brief Returns the number of subblocks in the schedule.
+  /*!\brief Returns the number of subblocks represented by the schedule.
    *
-   * \return Number of subblocks in the schedule.
+   * When the number of subblocks is explicitly encoded, the returned value is
+   * the encoded value.
+   *
+   * When the number of subblocks is not explicitly encoded, the returned value
+   * is computed based on the implied number of subblocks in the schedule.
+   *
+   * \return Number of subblocks represented by the schedule.
    */
   DecodedUleb128 GetNumSubblocks() const { return num_subblocks_; }
 

@@ -78,8 +78,8 @@ ParamDefinition::ParamDefinitionMode ParamDefinition::GetParamDefinitionMode()
 uint8_t ParamDefinition::GetReserved() const { return reserved_; }
 
 // TODO(b/345799072): Determine how `GetDuration`,
-//     `GetConstantSubblockDuration`, `GetNumSubblocks`, and
-//     `GetSubblockDurations` should behave when the schedule is not set.
+//     `GetConstantSubblockDuration`, and `GetSubblockDurations` should behave
+//     when the schedule is not set.
 
 DecodedUleb128 ParamDefinition::GetDuration() const {
   return schedule_.has_value() ? schedule_->GetDuration() : 0;

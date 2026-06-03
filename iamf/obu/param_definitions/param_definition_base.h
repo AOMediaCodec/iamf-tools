@@ -80,9 +80,18 @@ class ParamDefinition {
    */
   virtual ~ParamDefinition() = default;
 
-  /*!\brief Gets the number of subblocks.
+  /*!\brief Gets the number of represented subblocks.
    *
-   * \return Number of subblocks.
+   * When a schedule is absent, the number of subblocks is 0.
+   *
+   * When a schedule is present and the number of subblocks is explicitly
+   * encoded, the returned value is the encoded value.
+   *
+   * When a schedule is present and the number of subblocks is not explicitly
+   * encoded, the returned value is computed based on the implied number of
+   * subblocks in the schedule.
+   *
+   * \return Number of subblocks represented by this parameter definition.
    */
   DecodedUleb128 GetNumSubblocks() const;
 

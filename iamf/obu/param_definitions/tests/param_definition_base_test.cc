@@ -52,15 +52,11 @@ TEST(GetNumSubblocks, ReturnsZeroWhenSubblockDurationsAreImplicitMode1) {
   EXPECT_EQ(param_definition.GetNumSubblocks(), 0);
 }
 
-TEST(GetNumSubblocks, ReturnsZeroWhenSubblockDurationsAreImplicitMode0) {
+TEST(GetNumSubblocks, ReturnsImplicitNumSubblocksMode0) {
   auto args = GetParamDefinitionMode0Args();
   MockParamDefinition param_definition(args);
 
-  // TODO(b/345799072): Reporting zero is strange here, the parameter definition
-  //                    represents one subblock, because the duration is implied
-  //                    by "constant_subblock_duration". Also,
-  //                    `GetSubblockDuration` calls would index out of bounds.
-  EXPECT_EQ(param_definition.GetNumSubblocks(), 0);
+  EXPECT_EQ(param_definition.GetNumSubblocks(), 1);
 }
 
 TEST(GetNumSubblocks,

@@ -123,8 +123,16 @@ TEST(SubblockSchedule, GettersWorkForConstantSubblockDuration) {
 
   EXPECT_EQ(schedule->GetDuration(), 64);
   EXPECT_EQ(schedule->GetConstantSubblockDuration(), 16);
-  EXPECT_EQ(schedule->GetNumSubblocks(),
-            0);  // TODO(b/345799072): Should this be 4?
+  EXPECT_EQ(schedule->GetNumSubblocks(), 4);
+}
+
+TEST(SubblockSchedule, GettersWorkForConstantSubblockDurationWithRemainder) {
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 15);
+  ASSERT_THAT(schedule, IsOk());
+
+  EXPECT_EQ(schedule->GetDuration(), 64);
+  EXPECT_EQ(schedule->GetConstantSubblockDuration(), 15);
+  EXPECT_EQ(schedule->GetNumSubblocks(), 5);
 }
 
 TEST(SubblockSchedule, GettersWorkForVariableSubblockDuration) {

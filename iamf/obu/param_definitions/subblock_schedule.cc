@@ -30,9 +30,9 @@
 namespace iamf_tools {
 
 // TODO(b/345799072): Determine how `GetDuration`,
-//     `GetConstantSubblockDuration`, `GetNumSubblocks`, and
-//     `GetSubblockDurations` should behave when the schedule represents unset
-//     states, or when special/optional fields are not present.
+//     `GetConstantSubblockDuration`, and `GetSubblockDurations` should behave
+//     when the schedule represents unset states, or when special/optional
+//     fields are not present.
 
 SubblockSchedule::SubblockSchedule(
     DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration,
@@ -101,7 +101,16 @@ SubblockSchedule::CreateWithConstantSubblockDuration(
         "Constant subblock duration should not be greater than duration.");
   }
 
-  return SubblockSchedule(duration, constant_subblock_duration, 0, {});
+  // Get the implicit value of `num_subblocks` using `ceil(duration /
+  // constant_subblock_duration)`. Intentionally use integer division and ceil
+  // based on the remainder to avoid floating point math.
+  DecodedUleb128 num_subblocks = duration / constant_subblock_duration;
+  if (duration % constant_subblock_duration != 0) {
+    num_subblocks += 1;
+  }
+
+  return SubblockSchedule(duration, constant_subblock_duration, num_subblocks,
+                          {});
 }
 
 absl::StatusOr<SubblockSchedule>
