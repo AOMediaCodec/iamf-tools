@@ -1,6 +1,6 @@
 # IAMF tools.
 
-licenses(["by_exception_only"])
+licenses(["notice"])
 
 exports_files(["LICENSE"])
 
