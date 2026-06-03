@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -30,9 +31,8 @@
 namespace iamf_tools {
 
 // TODO(b/345799072): Determine how `GetDuration`,
-//     `GetConstantSubblockDuration`, and `GetSubblockDurations` should behave
-//     when the schedule represents unset states, or when special/optional
-//     fields are not present.
+//     `GetConstantSubblockDuration`, and should behave when the schedule
+//     represents unset states, or when special/optional fields are not present.
 
 SubblockSchedule::SubblockSchedule(
     DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration,
@@ -136,6 +136,30 @@ SubblockSchedule::CreateWithVariableSubblockDuration(
 
   return SubblockSchedule(total_subblock_durations, 0, num_subblocks,
                           subblock_durations);
+}
+
+absl::StatusOr<DecodedUleb128> SubblockSchedule::GetSubblockDuration(
+    int index) const {
+  if (index < 0 || static_cast<DecodedUleb128>(index) >= num_subblocks_) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Index ", index, " out of range [0, ", num_subblocks_ - 1, "]."));
+  }
+  if (constant_subblock_duration_ == 0) {
+    // The duration is explicitly set, the factory function should have ensured
+    // the `subblock_durations_` has a size of `num_subblocks_`.
+    ABSL_CHECK(static_cast<DecodedUleb128>(index) < subblock_durations_.size());
+    return subblock_durations_[index];
+  } else if (static_cast<DecodedUleb128>(index) == num_subblocks_ - 1) {
+    // Special case of the last subblock duration under
+    // `constant_subblock_duration_` mode.
+    // The IAMF spec states: "If NS x CSD > D, the actual duration of the last
+    // subblock SHALL be D - (NS - 1) x CSD."
+    return duration_ - (num_subblocks_ - 1) * constant_subblock_duration_;
+  } else {
+    // The first `num_subblocks_ - 1` subblocks have the constant subblock
+    // duration.
+    return constant_subblock_duration_;
+  }
 }
 
 void SubblockSchedule::Print() const {

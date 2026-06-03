@@ -28,7 +28,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::testing::ElementsAre;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::Not;
 
 using absl::MakeConstSpan;
@@ -121,8 +121,10 @@ TEST(GetSubblockDuration, MatchesExplicitSetSubblockDurations) {
   args.schedule = *schedule;
   MockParamDefinition param_definition(args);
 
-  EXPECT_THAT(param_definition.GetSubblockDurations(),
-              ElementsAre(kSubblockDuration0, kSubblockDuration1));
+  EXPECT_THAT(param_definition.GetSchedule()->GetSubblockDuration(0),
+              IsOkAndHolds(kSubblockDuration0));
+  EXPECT_THAT(param_definition.GetSchedule()->GetSubblockDuration(1),
+              IsOkAndHolds(kSubblockDuration1));
 }
 
 TEST(ReadAndValidate, InvalidWhenNumSubblocksExceedsMaximum) {

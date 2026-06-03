@@ -292,15 +292,13 @@ absl::StatusOr<DecodedUleb128> ParameterBlockObu::GetSubblockDuration(
       GetDuration(), param_definition_.GetParamDefinitionMode(),
       [this](int i) { return *this->subblocks_[i].subblock_duration; },
       [this](int i) -> absl::StatusOr<DecodedUleb128> {
-        absl::Span<const DecodedUleb128> subblock_durations =
-            param_definition_.GetSubblockDurations();
-        if (i >= subblock_durations.size()) {
+        if (auto& schedule = param_definition_.GetSchedule();
+            schedule.has_value()) {
+          return schedule->GetSubblockDuration(i);
+        } else {
           return absl::InvalidArgumentError(
-              absl::StrCat("Subblock index ", i,
-                           " is out of range for subblock durations. Size = ",
-                           subblock_durations.size()));
+              "Subblock schedule is not set in the parameter definition.");
         }
-        return subblock_durations[i];
       });
 }
 

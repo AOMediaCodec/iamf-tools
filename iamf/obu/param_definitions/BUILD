@@ -155,7 +155,6 @@ cc_library(
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
-        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -219,6 +218,7 @@ cc_library(
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:types",
+        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",

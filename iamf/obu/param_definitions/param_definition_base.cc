@@ -18,7 +18,6 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
@@ -78,7 +77,7 @@ ParamDefinition::ParamDefinitionMode ParamDefinition::GetParamDefinitionMode()
 uint8_t ParamDefinition::GetReserved() const { return reserved_; }
 
 // TODO(b/345799072): Determine how `GetDuration`,
-//     `GetConstantSubblockDuration`, and `GetSubblockDurations` should behave
+//     `GetConstantSubblockDuration`, and  should behave
 //     when the schedule is not set.
 
 DecodedUleb128 ParamDefinition::GetDuration() const {
@@ -91,12 +90,6 @@ DecodedUleb128 ParamDefinition::GetConstantSubblockDuration() const {
 
 DecodedUleb128 ParamDefinition::GetNumSubblocks() const {
   return schedule_.has_value() ? schedule_->GetNumSubblocks() : 0;
-}
-
-absl::Span<const DecodedUleb128> ParamDefinition::GetSubblockDurations() const {
-  static const absl::Span<DecodedUleb128> kEmptyDurations = {};
-  return schedule_.has_value() ? schedule_->GetSubblockDurations()
-                               : kEmptyDurations;
 }
 
 const std::optional<SubblockSchedule>& ParamDefinition::GetSchedule() const {

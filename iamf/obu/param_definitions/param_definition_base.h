@@ -18,7 +18,6 @@
 #include <optional>
 
 #include "absl/status/status.h"
-#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/subblock_schedule.h"
@@ -162,12 +161,6 @@ class ParamDefinition {
    * \return Constant subblock duration.
    */
   DecodedUleb128 GetConstantSubblockDuration() const;
-
-  /*!\brief Gets the subblock durations.
-   *
-   * \return Subblock durations.
-   */
-  absl::Span<const DecodedUleb128> GetSubblockDurations() const;
 
   /*!\brief Gets the schedule.
    *

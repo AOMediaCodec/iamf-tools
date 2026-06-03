@@ -114,13 +114,16 @@ class SubblockSchedule {
    */
   DecodedUleb128 GetNumSubblocks() const { return num_subblocks_; }
 
-  /*!\brief Returns the vector of subblock durations.
+  /*!\brief Returns the duration represented by a specific subblock.
    *
-   * \return Vector of subblock durations.
+   * When the duration is not explicitly encoded, the duration is calculated
+   * based on the implied duration in the spec.
+   *
+   * \param index Index of the subblock.
+   * \return Duration of the subblock represented by the schedule, or error
+   *         status if index is out of range.
    */
-  absl::Span<const DecodedUleb128> GetSubblockDurations() const {
-    return absl::MakeConstSpan(subblock_durations_);
-  }
+  absl::StatusOr<DecodedUleb128> GetSubblockDuration(int index) const;
 
   /*!\brief Prints the subblock schedule information. */
   void Print() const;

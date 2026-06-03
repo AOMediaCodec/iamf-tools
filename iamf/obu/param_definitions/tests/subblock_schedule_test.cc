@@ -25,7 +25,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::testing::ElementsAre;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::Not;
 
 using absl::MakeConstSpan;
@@ -103,7 +103,8 @@ TEST(CreateFromBuffer, VariableSubblockDuration) {
   EXPECT_EQ(schedule->GetDuration(), 64);
   EXPECT_EQ(schedule->GetConstantSubblockDuration(), 0);
   EXPECT_EQ(schedule->GetNumSubblocks(), 2);
-  EXPECT_THAT(schedule->GetSubblockDurations(), ElementsAre(30, 34));
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(30));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(34));
 }
 
 TEST(CreateFromBuffer, InvalidWhenNumSubblocksExceedsMaximum) {
@@ -124,6 +125,10 @@ TEST(SubblockSchedule, GettersWorkForConstantSubblockDuration) {
   EXPECT_EQ(schedule->GetDuration(), 64);
   EXPECT_EQ(schedule->GetConstantSubblockDuration(), 16);
   EXPECT_EQ(schedule->GetNumSubblocks(), 4);
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(16));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(16));
+  EXPECT_THAT(schedule->GetSubblockDuration(2), IsOkAndHolds(16));
+  EXPECT_THAT(schedule->GetSubblockDuration(3), IsOkAndHolds(16));
 }
 
 TEST(SubblockSchedule, GettersWorkForConstantSubblockDurationWithRemainder) {
@@ -133,6 +138,11 @@ TEST(SubblockSchedule, GettersWorkForConstantSubblockDurationWithRemainder) {
   EXPECT_EQ(schedule->GetDuration(), 64);
   EXPECT_EQ(schedule->GetConstantSubblockDuration(), 15);
   EXPECT_EQ(schedule->GetNumSubblocks(), 5);
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(15));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(15));
+  EXPECT_THAT(schedule->GetSubblockDuration(2), IsOkAndHolds(15));
+  EXPECT_THAT(schedule->GetSubblockDuration(3), IsOkAndHolds(15));
+  EXPECT_THAT(schedule->GetSubblockDuration(4), IsOkAndHolds(4));
 }
 
 TEST(SubblockSchedule, GettersWorkForVariableSubblockDuration) {
@@ -142,7 +152,8 @@ TEST(SubblockSchedule, GettersWorkForVariableSubblockDuration) {
   EXPECT_EQ(schedule->GetDuration(), 64);
   EXPECT_EQ(schedule->GetConstantSubblockDuration(), 0);
   EXPECT_EQ(schedule->GetNumSubblocks(), 2);
-  EXPECT_THAT(schedule->GetSubblockDurations(), ElementsAre(60, 4));
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(60));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(4));
 }
 
 TEST(Write, ConstantSubblockDuration) {
@@ -180,7 +191,53 @@ TEST(Write, VariableSubblockDuration) {
   EXPECT_EQ(read_schedule->GetDuration(), 64);
   EXPECT_EQ(read_schedule->GetConstantSubblockDuration(), 0);
   EXPECT_EQ(read_schedule->GetNumSubblocks(), 2);
-  EXPECT_THAT(read_schedule->GetSubblockDurations(), ElementsAre(30, 34));
+  EXPECT_THAT(read_schedule->GetSubblockDuration(0), IsOkAndHolds(30));
+  EXPECT_THAT(read_schedule->GetSubblockDuration(1), IsOkAndHolds(34));
+}
+
+TEST(GetSubblockDuration, InvalidNegativeIndex) {
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 16);
+  ASSERT_THAT(schedule, IsOk());
+
+  EXPECT_THAT(schedule->GetSubblockDuration(-1), Not(IsOk()));
+}
+
+TEST(GetSubblockDuration, InvalidIndexAboveGetNumSubblocks) {
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 16);
+  ASSERT_THAT(schedule, IsOk());
+
+  EXPECT_THAT(schedule->GetSubblockDuration(4), Not(IsOk()));
+}
+
+TEST(GetSubblockDuration, ConstantDuration) {
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 16);
+  ASSERT_THAT(schedule, IsOk());
+
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(16));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(16));
+  EXPECT_THAT(schedule->GetSubblockDuration(2), IsOkAndHolds(16));
+  EXPECT_THAT(schedule->GetSubblockDuration(3), IsOkAndHolds(16));
+  EXPECT_THAT(schedule->GetSubblockDuration(4), Not(IsOk()));
+}
+
+TEST(GetSubblockDuration, ConstantDurationWithRemainder) {
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(32, 15);
+  ASSERT_THAT(schedule, IsOk());
+
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(15));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(15));
+  EXPECT_THAT(schedule->GetSubblockDuration(2), IsOkAndHolds(2));
+  EXPECT_THAT(schedule->GetSubblockDuration(3), Not(IsOk()));
+}
+
+TEST(GetSubblockDuration, VariableDuration) {
+  auto schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration({30, 34});
+  ASSERT_THAT(schedule, IsOk());
+
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(30));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(34));
+  EXPECT_THAT(schedule->GetSubblockDuration(2), Not(IsOk()));
 }
 
 }  // namespace

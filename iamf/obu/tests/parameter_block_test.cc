@@ -656,13 +656,19 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     if (param_definition_->GetParamDefinitionMode() ==
         ParamDefinition::kModeScheduleInParamDefinition) {
       obu_ = ParameterBlockObu::CreateMode0(header_, *param_definition_);
-    } else if (schedule_.GetSubblockDurations().empty()) {
+    } else if (schedule_.GetConstantSubblockDuration() != 0) {
       obu_ = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
           header_, *param_definition_, schedule_.GetDuration(),
           schedule_.GetConstantSubblockDuration());
     } else {
+      std::vector<DecodedUleb128> subblock_durations;
+      for (int i = 0; i < schedule_.GetNumSubblocks(); ++i) {
+        auto duration = schedule_.GetSubblockDuration(i);
+        ASSERT_THAT(duration, IsOk());
+        subblock_durations.push_back(*duration);
+      }
       obu_ = ParameterBlockObu::CreateMode1VariableSubblockDuration(
-          header_, *param_definition_, schedule_.GetSubblockDurations());
+          header_, *param_definition_, subblock_durations);
     }
 
     EXPECT_THAT(obu_, (NotNull()));
