@@ -86,7 +86,6 @@ void FillFirstOrderAmbisonicsMetadata(
         reserved: 0
         audio_substream_ids: [ 0, 1, 2, 3 ]
         ambisonics_config {
-          ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
             output_channel_count: 4
             substream_count: 4
@@ -487,7 +486,6 @@ TEST(Generate, FirstOrderMonoAmbisonicsLargeSubstreamIds) {
         codec_config_id: 200
         audio_substream_ids: [ 1000, 2000, 3000, 4000 ]
         ambisonics_config {
-          ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
             output_channel_count: 4
             substream_count: 4
@@ -522,7 +520,6 @@ TEST(Generate, FirstOrderMonoAmbisonicsArbitraryOrder) {
         codec_config_id: 200
         audio_substream_ids: [ 100, 101, 102, 103 ]
         ambisonics_config {
-          ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
             output_channel_count: 4
             substream_count: 4
@@ -557,7 +554,6 @@ TEST(Generate, SubstreamWithMultipleAmbisonicsChannelNumbers) {
         codec_config_id: 200
         audio_substream_ids: [ 100, 101, 102 ]
         ambisonics_config {
-          ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
             output_channel_count: 4
             substream_count: 3
@@ -590,7 +586,6 @@ TEST(Generate, MixedFirstOrderMonoAmbisonics) {
         codec_config_id: 200
         audio_substream_ids: [ 1000, 2000, 3000 ]
         ambisonics_config {
-          ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
             output_channel_count: 4
             substream_count: 3
@@ -627,7 +622,6 @@ TEST(Generate, ThirdOrderMonoAmbisonics) {
         reserved: 0
         codec_config_id: 200
         ambisonics_config {
-          ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
             output_channel_count: 16
             substream_count: 16
@@ -962,6 +956,29 @@ TEST(Generate, IgnoresDeprecatedParamDefinitionSizeField) {
   EXPECT_THAT(
       output_obus.at(kAudioElementId).obu.audio_element_params_,
       ElementsAre(AudioElementParam{expected_extended_param_definition}));
+}
+TEST(Generate, IgnoresIgnoredMismatchedAmbisonicsMode) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  auto& inconsistent_audio_element_metadata = *audio_element_metadatas.Add();
+  FillFirstOrderAmbisonicsMetadata(inconsistent_audio_element_metadata);
+  inconsistent_audio_element_metadata.mutable_ambisonics_config()
+      ->set_ambisonics_mode(iamf_tools_cli_proto::AMBISONICS_MODE_PROJECTION);
+  inconsistent_audio_element_metadata.set_audio_element_id(kAudioElementId);
+  inconsistent_audio_element_metadata.set_codec_config_id(kCodecConfigId);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  AudioElementsById output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
+  const auto& ambisonics_config =
+      GetConfigForAudioElementIdExpectOk<AmbisonicsConfig>(kAudioElementId,
+                                                           output_obus);
+  EXPECT_EQ(ambisonics_config.GetAmbisonicsMode(),
+            AmbisonicsConfig::kAmbisonicsModeMono);
 }
 
 }  // namespace

@@ -637,17 +637,18 @@ absl::StatusOr<AudioElementWithData> CreateAudioElementWithData(
             StrCat(error_prefix, "has missing `ambisonics_config` field."));
       }
       // Dispatch between the different sub-types of Ambisonics.
-      switch (audio_element_metadata.ambisonics_config().ambisonics_mode()) {
-        using enum iamf_tools_cli_proto::AmbisonicsMode;
-        case AMBISONICS_MODE_MONO:
+      switch (
+          audio_element_metadata.ambisonics_config().ambisonics_config_case()) {
+        using enum iamf_tools_cli_proto::AmbisonicsConfig::AmbisonicsConfigCase;
+        case kAmbisonicsMonoConfig:
           return CreateAmbisonicsMonoAudioElementWithData(
               audio_element_metadata, codec_config_obu);
-        case AMBISONICS_MODE_PROJECTION:
+        case kAmbisonicsProjectionConfig:
           return CreateAmbisonicsProjectionAudioElementWithData(
               audio_element_metadata, codec_config_obu);
         default:
           return InvalidArgumentError(
-              StrCat(error_prefix, "has unknown `ambisonics_mode`"));
+              StrCat(error_prefix, "has unknown `ambisonics_config`"));
       }
     }
     case AUDIO_ELEMENT_OBJECT_BASED:

@@ -26,6 +26,7 @@ namespace adm_to_user_metadata {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::ElementsAre;
 
 constexpr uint32_t kLargeAudioElementId = std::numeric_limits<uint32_t>::max();
 constexpr uint32_t kAudioElementId = 999;
@@ -156,18 +157,14 @@ TEST(PopulateAudioElementMetadata, ConfiguresFirstOrderAmbisonics) {
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().at(3), 3);
   ASSERT_TRUE(audio_element_metadata.has_ambisonics_config());
 
-  EXPECT_EQ(audio_element_metadata.ambisonics_config().ambisonics_mode(),
-            iamf_tools_cli_proto::AMBISONICS_MODE_MONO);
   ASSERT_TRUE(
       audio_element_metadata.ambisonics_config().has_ambisonics_mono_config());
   const auto& ambisonics_mono_config =
       audio_element_metadata.ambisonics_config().ambisonics_mono_config();
   EXPECT_EQ(ambisonics_mono_config.output_channel_count(), 4);
   EXPECT_EQ(ambisonics_mono_config.substream_count(), 4);
-  EXPECT_EQ(ambisonics_mono_config.channel_mapping(0), 0);
-  EXPECT_EQ(ambisonics_mono_config.channel_mapping(1), 1);
-  EXPECT_EQ(ambisonics_mono_config.channel_mapping(2), 2);
-  EXPECT_EQ(ambisonics_mono_config.channel_mapping(3), 3);
+  EXPECT_THAT(ambisonics_mono_config.channel_mapping(),
+              ElementsAre(0, 1, 2, 3));
 }
 
 TEST(PopulateAudioElementMetadata, GeneratesUniqueSubstreamIds) {

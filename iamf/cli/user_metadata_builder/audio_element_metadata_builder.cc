@@ -202,11 +202,9 @@ void PopulateSceneBasedAudioElementMetadata(
 
   auto* ambisonics_config =
       audio_element_obu_metadata.mutable_ambisonics_config();
-  // For typeDefinition = HOA and since input contains LPCM audio samples, set
-  // ambisonics_mode to AMBISONICS_MODE_MONO.
-  ambisonics_config->set_ambisonics_mode(
-      iamf_tools_cli_proto::AMBISONICS_MODE_MONO);
 
+  // For typeDefinition = HOA and since input contains LPCM audio samples,
+  // configure an `AmbisonicsMonoConfig`.
   auto* ambisonics_mono_config =
       ambisonics_config->mutable_ambisonics_mono_config();
 

@@ -113,6 +113,8 @@ message ScalableChannelLayoutConfig {
 }
 
 enum AmbisonicsMode {
+  option deprecated = true;
+
   AMBISONICS_MODE_INVALID = 0;
   AMBISONICS_MODE_MONO = 1;
   AMBISONICS_MODE_PROJECTION = 2;
@@ -132,7 +134,9 @@ message AmbisonicsProjectionConfig {
 }
 
 message AmbisonicsConfig {
-  AmbisonicsMode ambisonics_mode = 1;
+  // `ambisonics_mode` is deprecated. The mode is inferred from the
+  // presence of `ambisonics_mono_config` or `ambisonics_projection_config`.
+  AmbisonicsMode ambisonics_mode = 1 [deprecated = true];
 
   oneof ambisonics_config {
     AmbisonicsMonoConfig ambisonics_mono_config = 2;
