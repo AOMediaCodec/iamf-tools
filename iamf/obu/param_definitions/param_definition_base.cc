@@ -108,7 +108,10 @@ absl::Status ParamDefinition::ValidateAndWrite(WriteBitBuffer& wb) const {
     return absl::OkStatus();
   }
 
-  return schedule_->Write(wb);
+  // When the schedule is held within a parameter definition, the associated
+  // data is not present.
+  constexpr std::nullopt_t kDoNotWriteParameterData = std::nullopt;
+  return schedule_->Write(kDoNotWriteParameterData, wb);
 }
 
 absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {

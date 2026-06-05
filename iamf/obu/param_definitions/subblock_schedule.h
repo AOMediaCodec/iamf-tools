@@ -13,7 +13,7 @@
 #define OBU_PARAM_DEFINITIONS_SUBBLOCK_SCHEDULE_H_
 
 #include <memory>
-#include <utility>
+#include <optional>
 #include <vector>
 
 #include "absl/base/nullability.h"
@@ -107,10 +107,16 @@ class SubblockSchedule {
 
   /*!\brief Writes the SubblockSchedule to a buffer.
    *
+   * \param parameter_data Optional parameter data for each subblock. If not
+   *        provided, only the subblock schedule will be written.
    * \param wb Buffer to write to.
    * \return Status of the write operation.
    */
-  absl::Status Write(WriteBitBuffer& wb) const;
+  absl::Status Write(
+      std::optional<
+          absl::Span<const std::unique_ptr<ParameterData> absl_nonnull>>
+          parameter_data,
+      WriteBitBuffer& wb) const;
 
   /*!\brief Returns the total duration of the schedule.
    *

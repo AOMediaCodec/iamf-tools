@@ -14,6 +14,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
@@ -33,6 +34,9 @@ using ::testing::Not;
 using ::testing::NotNull;
 
 using absl::MakeConstSpan;
+
+constexpr std::nullopt_t kDoNotWriteParameterData = std::nullopt;
+constexpr int kInitialBufferSize = 64;
 
 TEST(CreateWithConstantSubblockDuration, FailsWhenDurationIsZero) {
   EXPECT_THAT(SubblockSchedule::CreateWithConstantSubblockDuration(
@@ -161,13 +165,11 @@ TEST(SubblockSchedule, GettersWorkForVariableSubblockDuration) {
 }
 
 TEST(Write, ConstantSubblockDuration) {
-  auto schedule_or =
-      SubblockSchedule::CreateWithConstantSubblockDuration(64, 16);
-  ASSERT_THAT(schedule_or, IsOk());
-  const auto& schedule = *schedule_or;
-  WriteBitBuffer buffer(64);
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(64, 16);
+  ASSERT_THAT(schedule, IsOk());
+  WriteBitBuffer buffer(kInitialBufferSize);
 
-  ASSERT_THAT(schedule.Write(buffer), IsOk());
+  ASSERT_THAT(schedule->Write(kDoNotWriteParameterData, buffer), IsOk());
 
   // Verify by reading back.
   auto read_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
@@ -179,13 +181,12 @@ TEST(Write, ConstantSubblockDuration) {
 }
 
 TEST(Write, VariableSubblockDuration) {
-  auto schedule_or =
+  auto schedule =
       SubblockSchedule::CreateWithVariableSubblockDuration({30, 34});
-  ASSERT_THAT(schedule_or, IsOk());
-  const auto& schedule = *schedule_or;
-  WriteBitBuffer buffer(64);
+  ASSERT_THAT(schedule, IsOk());
+  WriteBitBuffer buffer(kInitialBufferSize);
 
-  ASSERT_THAT(schedule.Write(buffer), IsOk());
+  ASSERT_THAT(schedule->Write(kDoNotWriteParameterData, buffer), IsOk());
 
   // Verify by reading back.
   auto read_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
@@ -197,6 +198,89 @@ TEST(Write, VariableSubblockDuration) {
   EXPECT_EQ(read_schedule->GetNumSubblocks(), 2);
   EXPECT_THAT(read_schedule->GetSubblockDuration(0), IsOkAndHolds(30));
   EXPECT_THAT(read_schedule->GetSubblockDuration(1), IsOkAndHolds(34));
+}
+
+class DummyParameterData : public ParameterData {
+ public:
+  static std::unique_ptr<ParameterData> Create() {
+    return std::make_unique<DummyParameterData>();
+  }
+
+  absl::Status ReadAndValidate(ReadBitBuffer& rb) override {
+    // Read one byte as dummy data.
+    uint8_t val;
+    return rb.ReadUnsignedLiteral(8, val);
+  }
+  absl::Status Write(WriteBitBuffer& wb) const override {
+    return wb.WriteUnsignedLiteral(0, 8);
+  }
+  void Print() const override {}
+};
+
+TEST(Write, ConstantSubblockDurationWithParameterData) {
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+      /*duration=*/64, /*constant_subblock_duration=*/32);
+  ASSERT_THAT(schedule, IsOk());
+  WriteBitBuffer buffer(kInitialBufferSize);
+  // For duration 64 and constant subblock duration 32, there are 2 subblocks.
+  const std::array<std::unique_ptr<ParameterData>, 2> parameter_data = {
+      std::make_unique<DummyParameterData>(),
+      std::make_unique<DummyParameterData>()};
+
+  ASSERT_THAT(schedule->Write(MakeConstSpan(parameter_data), buffer), IsOk());
+
+  // Verify by reading back.
+  auto read_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(buffer.bit_buffer()));
+  auto result = SubblockSchedule::CreateFromBufferWithParameterData(
+      DummyParameterData::Create, *read_buffer);
+
+  ASSERT_THAT(result, IsOk());
+  EXPECT_EQ(result->schedule.GetDuration(), 64);
+  EXPECT_EQ(result->schedule.GetConstantSubblockDuration(), 32);
+  EXPECT_EQ(result->schedule.GetNumSubblocks(), 2);
+  EXPECT_THAT(result->parameter_data, ElementsAre(NotNull(), NotNull()));
+}
+
+TEST(Write, VariableSubblockDurationWithParameterData) {
+  auto schedule = SubblockSchedule::CreateWithVariableSubblockDuration(
+      /*subblock_durations=*/{30, 34});
+  ASSERT_THAT(schedule, IsOk());
+  WriteBitBuffer buffer(kInitialBufferSize);
+  // 2 subblocks.
+  const std::array<std::unique_ptr<ParameterData>, 2> parameter_data = {
+      std::make_unique<DummyParameterData>(),
+      std::make_unique<DummyParameterData>()};
+
+  ASSERT_THAT(schedule->Write(MakeConstSpan(parameter_data), buffer), IsOk());
+
+  // Verify by reading back.
+  auto read_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(buffer.bit_buffer()));
+  auto result = SubblockSchedule::CreateFromBufferWithParameterData(
+      DummyParameterData::Create, *read_buffer);
+
+  ASSERT_THAT(result, IsOk());
+  EXPECT_EQ(result->schedule.GetDuration(), 64);
+  EXPECT_EQ(result->schedule.GetConstantSubblockDuration(), 0);
+  EXPECT_EQ(result->schedule.GetNumSubblocks(), 2);
+  EXPECT_THAT(result->schedule.GetSubblockDuration(0), IsOkAndHolds(30));
+  EXPECT_THAT(result->schedule.GetSubblockDuration(1), IsOkAndHolds(34));
+  EXPECT_THAT(result->parameter_data, ElementsAre(NotNull(), NotNull()));
+}
+
+TEST(Write, FailsWithMismatchedParameterDataSize) {
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+      /*duration=*/64, /*constant_subblock_duration=*/32);
+  ASSERT_THAT(schedule, IsOk());
+  WriteBitBuffer buffer(kInitialBufferSize);
+  // For duration 64 and constant subblock duration 32, there are 2 subblocks.
+  // We erroneously provide 1 parameter data.
+  const std::array<std::unique_ptr<ParameterData>, 1> too_few_parameter_data = {
+      std::make_unique<DummyParameterData>()};
+
+  EXPECT_THAT(schedule->Write(MakeConstSpan(too_few_parameter_data), buffer),
+              Not(IsOk()));
 }
 
 TEST(GetSubblockDuration, InvalidNegativeIndex) {
@@ -243,19 +327,6 @@ TEST(GetSubblockDuration, VariableDuration) {
   EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(34));
   EXPECT_THAT(schedule->GetSubblockDuration(2), Not(IsOk()));
 }
-
-class DummyParameterData : public ParameterData {
- public:
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override {
-    // Read one byte as dummy data.
-    uint8_t val;
-    return rb.ReadUnsignedLiteral(8, val);
-  }
-  absl::Status Write(WriteBitBuffer& wb) const override {
-    return wb.WriteUnsignedLiteral(0, 8);
-  }
-  void Print() const override {}
-};
 
 TEST(CreateFromBufferWithParameterData, ConstantSubblockDuration) {
   constexpr auto source = std::to_array<uint8_t>({

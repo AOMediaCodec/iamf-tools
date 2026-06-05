@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -140,16 +141,34 @@ SubblockSchedule::CreateFromBufferWithParameterData(
                                   .parameter_data = std::move(parameter_data)};
 }
 
-absl::Status SubblockSchedule::Write(WriteBitBuffer& wb) const {
+absl::Status SubblockSchedule::Write(
+    std::optional<absl::Span<const std::unique_ptr<ParameterData> absl_nonnull>>
+        parameter_data,
+    WriteBitBuffer& wb) const {
+  if (parameter_data.has_value()) {
+    RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+        "write_parameter_data", *parameter_data, num_subblocks_));
+    for (const auto& data : *parameter_data) {
+      ABSL_CHECK_NE(data, nullptr);
+    }
+  }
   RETURN_IF_NOT_OK(wb.WriteUleb128(duration_));
   RETURN_IF_NOT_OK(wb.WriteUleb128(constant_subblock_duration_));
   if (constant_subblock_duration_ != 0) {
+    if (parameter_data.has_value()) {
+      for (int i = 0; i < num_subblocks_; ++i) {
+        RETURN_IF_NOT_OK((*parameter_data)[i]->Write(wb));
+      }
+    }
     return absl::OkStatus();
   }
 
   RETURN_IF_NOT_OK(wb.WriteUleb128(num_subblocks_));
   for (int i = 0; i < num_subblocks_; ++i) {
     RETURN_IF_NOT_OK(wb.WriteUleb128(subblock_durations_[i]));
+    if (parameter_data.has_value()) {
+      RETURN_IF_NOT_OK((*parameter_data)[i]->Write(wb));
+    }
   }
   return absl::OkStatus();
 }
