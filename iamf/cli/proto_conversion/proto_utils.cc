@@ -24,6 +24,7 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/types.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"
@@ -173,6 +174,41 @@ std::unique_ptr<LebGenerator> CreateLebGenerator(
       ABSL_LOG(ERROR) << "Invalid generation mode: " << user_config.mode();
       return nullptr;
   }
+}
+
+absl::StatusOr<SubblockSchedule> CreateSubblockScheduleFromMetadata(
+    const iamf_tools_cli_proto::ParameterBlockObuMetadata&
+        parameter_block_metadata) {
+  if (parameter_block_metadata.constant_subblock_duration() != 0) {
+    auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+        parameter_block_metadata.duration(),
+        parameter_block_metadata.constant_subblock_duration());
+    if (!schedule.ok()) {
+      return schedule.status();
+    }
+    if (schedule->GetNumSubblocks() !=
+        parameter_block_metadata.subblocks_size()) {
+      return absl::InvalidArgumentError(
+          "Number of subblocks in metadata does not match constant subblock "
+          "duration and total duration");
+    }
+    return *schedule;
+  }
+
+  std::vector<DecodedUleb128> subblock_durations;
+  subblock_durations.reserve(parameter_block_metadata.subblocks_size());
+  for (int i = 0; i < parameter_block_metadata.subblocks_size(); ++i) {
+    subblock_durations.push_back(
+        parameter_block_metadata.subblocks(i).subblock_duration());
+  }
+  auto schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration(subblock_durations);
+  if (schedule.ok() &&
+      schedule->GetDuration() != parameter_block_metadata.duration()) {
+    return absl::InvalidArgumentError(
+        "Sum of subblock durations does not match parameter block duration");
+  }
+  return schedule;
 }
 
 }  // namespace iamf_tools

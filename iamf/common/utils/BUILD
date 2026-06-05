@@ -47,7 +47,6 @@ cc_library(
         "//iamf/obu:types",
         "@abseil-cpp//absl/functional:any_invocable",
         "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
     ],
 )

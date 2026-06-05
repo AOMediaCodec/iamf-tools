@@ -17,69 +17,11 @@
 
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-
-/*!\brief Gets the duration of a parameter subblock.
- *
- * The Spec defines a complex logic of getting the final subblock duration from
- * multiple potential sources, including:
- *   - The constant subblock duration recorded in the parameter block.
- *   - The duration recorded in the parameter block's subblock at index i.
- *   - The constant subblock duration recorded in the parameter definition.
- *   - The subblock duration at index i recorded in the parameter definition.
- *
- * \param subblock_index Index of the subblock to get the duration of.
- * \param num_subblocks Number of subblocks.
- * \param constant_subblock_duration Constant subblock duration.
- * \param subblock_duration_getter_from_parameter_block Getter function
- *        that returns the subblock duration recorded inside a parameter block,
- *        indexed at `subblock_index`.
- * \param subblock_duration_getter_from_parameter_definition Getter function
- *        that returns the subblock duration recorded inside a parameter
- *        definition, indexed at `subblock_index`.
- * \return Duration of the subblock or `absl::InvalidArgumentError()` on
- *         failure.
- */
-template <typename T>
-absl::StatusOr<T> GetParameterSubblockDuration(
-    int subblock_index, T num_subblocks, T constant_subblock_duration,
-    T total_duration, uint8_t param_definition_mode,
-    absl::AnyInvocable<absl::StatusOr<T>(int)>
-        subblock_duration_getter_from_parameter_block,
-    absl::AnyInvocable<absl::StatusOr<T>(int)>
-        subblock_duration_getter_from_parameter_definition) {
-  if (static_cast<T>(subblock_index) > num_subblocks) {
-    return absl::InvalidArgumentError("subblock_index > num_subblocks");
-  }
-
-  if (constant_subblock_duration == 0) {
-    if (param_definition_mode == 1) {
-      // The durations are explicitly specified in the parameter block.
-      return subblock_duration_getter_from_parameter_block(subblock_index);
-    } else {
-      // The durations are explicitly specified in the parameter definition.
-      return subblock_duration_getter_from_parameter_definition(subblock_index);
-    }
-  }
-
-  // Otherwise the duration is implicit.
-  if (static_cast<T>(subblock_index) == num_subblocks - 1 &&
-      num_subblocks * constant_subblock_duration > total_duration) {
-    // Sometimes the last subblock duration is shorter. The spec describes how
-    // to calculate the special case: "If NS x CSD > D, the actual duration of
-    // the last subblock SHALL be D - (NS - 1) x CSD."
-    return (total_duration - (num_subblocks - 1) * constant_subblock_duration);
-  } else {
-    // Otherwise the duration is based on `constant_subblock_duration`.
-    return constant_subblock_duration;
-  }
-}
 
 /*!\brief Interpolates a mix gain value in dB.
  *

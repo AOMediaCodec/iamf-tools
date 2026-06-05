@@ -19,6 +19,7 @@
 #include "absl/status/statusor.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/types.pb.h"
@@ -27,6 +28,7 @@
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 
 namespace iamf_tools {
 
@@ -84,6 +86,18 @@ absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
  */
 std::unique_ptr<LebGenerator> CreateLebGenerator(
     const iamf_tools_cli_proto::Leb128Generator& user_config);
+
+/*!\brief Creates a `SubblockSchedule` from `ParameterBlockObuMetadata`.
+ *
+ * Note that some parameter blocks may not hold a subblock schedule (i.e. they
+ * are mode 0). This function will return an error in that case.
+ *
+ * \param parameter_block_metadata Input metadata.
+ * \return `SubblockSchedule` or a specific status on failure.
+ */
+absl::StatusOr<SubblockSchedule> CreateSubblockScheduleFromMetadata(
+    const iamf_tools_cli_proto::ParameterBlockObuMetadata&
+        parameter_block_metadata);
 
 }  // namespace iamf_tools
 

@@ -71,11 +71,13 @@ cc_test(
     deps = [
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
+        "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto_conversion:proto_utils",
         "//iamf/common:leb_generator",
         "//iamf/obu:obu_header",
         "//iamf/obu:parameter_data",
+        "//iamf/obu/param_definitions:subblock_schedule",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
         "@protobuf",

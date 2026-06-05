@@ -129,6 +129,7 @@ cc_library(
         ":lookup_tables",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
+        "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:types_cc_proto",

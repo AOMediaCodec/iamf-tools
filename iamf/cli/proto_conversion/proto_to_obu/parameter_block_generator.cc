@@ -513,23 +513,8 @@ absl::Status PopulateCommonFields(
   }
 
   // Create the OBU with timing information in the parameter block OBU itself.
-  absl::StatusOr<SubblockSchedule> schedule;
-  if (parameter_block_metadata.constant_subblock_duration() > 0) {
-    // Timing inferred per parameter block, by the constant subblock duration.
-    schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
-        parameter_block_metadata.duration(),
-        parameter_block_metadata.constant_subblock_duration());
-
-  } else {
-    // Timing is explicitly specified per subblock in the OBU.
-    std::vector<DecodedUleb128> subblock_durations;
-    subblock_durations.reserve(parameter_block_metadata.subblocks_size());
-    for (const auto& subblock : parameter_block_metadata.subblocks()) {
-      subblock_durations.push_back(subblock.subblock_duration());
-    }
-    schedule = SubblockSchedule::CreateWithVariableSubblockDuration(
-        subblock_durations);
-  }
+  absl::StatusOr<SubblockSchedule> schedule =
+      CreateSubblockScheduleFromMetadata(parameter_block_metadata);
   if (!schedule.ok()) {
     return schedule.status();
   }

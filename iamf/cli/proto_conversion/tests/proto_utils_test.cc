@@ -20,16 +20,19 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::FloatNear;
 using ::testing::Not;
 
@@ -227,6 +230,101 @@ TEST(CreateLebGenerator, ValidatesUserMetadataWhenModeIsInvalid) {
                 &proto_user_config),
             true);
   EXPECT_EQ(CreateLebGenerator(proto_user_config), nullptr);
+}
+
+TEST(CreateSubblockScheduleFromMetadata, ConstantSubblockDurationSuccess) {
+  iamf_tools_cli_proto::ParameterBlockObuMetadata metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        duration: 32
+        constant_subblock_duration: 16
+        subblocks:
+        [ {}
+          , {}]
+      )pb",
+      &metadata));
+
+  auto schedule = CreateSubblockScheduleFromMetadata(metadata);
+  ASSERT_THAT(schedule, IsOk());
+  EXPECT_EQ(schedule->GetDuration(), 32);
+  EXPECT_EQ(schedule->GetConstantSubblockDuration(), 16);
+  EXPECT_EQ(schedule->GetNumSubblocks(), 2);
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(16));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(16));
+}
+
+TEST(CreateSubblockScheduleFromMetadata,
+     ConstantSubblockDurationMismatchedSubblocksSize) {
+  iamf_tools_cli_proto::ParameterBlockObuMetadata metadata;
+  // duration 32 / constant_subblock_duration 16 = 2 subblocks expected.
+  // We provide 3 subblocks here.
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        duration: 32
+        constant_subblock_duration: 16
+        subblocks:
+        [ {}
+          , {}
+          , {}]
+      )pb",
+      &metadata));
+
+  EXPECT_THAT(CreateSubblockScheduleFromMetadata(metadata), Not(IsOk()));
+}
+
+TEST(CreateSubblockScheduleFromMetadata, SuccessWithVariableSubblockDuration) {
+  iamf_tools_cli_proto::ParameterBlockObuMetadata metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        duration: 32
+        constant_subblock_duration: 0
+        subblocks:
+        [ { subblock_duration: 10 }
+          , { subblock_duration: 22 }]
+      )pb",
+      &metadata));
+
+  auto schedule = CreateSubblockScheduleFromMetadata(metadata);
+  ASSERT_THAT(schedule, IsOk());
+  EXPECT_EQ(schedule->GetDuration(), 32);
+  EXPECT_EQ(schedule->GetConstantSubblockDuration(), 0);
+  EXPECT_EQ(schedule->GetNumSubblocks(), 2);
+  EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(10));
+  EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(22));
+}
+
+TEST(CreateSubblockScheduleFromMetadata, InvalidWithZeroSubblockDuration) {
+  iamf_tools_cli_proto::ParameterBlockObuMetadata metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        duration: 32
+        constant_subblock_duration: 0
+        subblocks:
+        [ { subblock_duration: 10 }
+          , { subblock_duration: 0 }
+          , { subblock_duration: 22 }]
+      )pb",
+      &metadata));
+
+  EXPECT_THAT(CreateSubblockScheduleFromMetadata(metadata), Not(IsOk()));
+}
+
+TEST(CreateSubblockScheduleFromMetadata,
+     VariableSubblockDurationMismatchedTotalDuration) {
+  iamf_tools_cli_proto::ParameterBlockObuMetadata metadata;
+  // Sum of subblock durations is 10 + 20 = 30, which does not match
+  // duration 32.
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        duration: 32
+        constant_subblock_duration: 0
+        subblocks:
+        [ { subblock_duration: 10 }
+          , { subblock_duration: 20 }]
+      )pb",
+      &metadata));
+
+  EXPECT_THAT(CreateSubblockScheduleFromMetadata(metadata), Not(IsOk()));
 }
 
 }  // namespace
