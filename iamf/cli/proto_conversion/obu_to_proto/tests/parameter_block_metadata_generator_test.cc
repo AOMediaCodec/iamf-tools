@@ -57,8 +57,6 @@ TEST(GenerateParameterSubblockMetadata,
   EXPECT_EQ(subblock_metadata->subblock_duration(), kSubblockDuration);
 
   ASSERT_TRUE(subblock_metadata->has_mix_gain_parameter_data());
-  EXPECT_EQ(subblock_metadata->mix_gain_parameter_data().animation_type(),
-            ANIMATE_STEP);
   ASSERT_TRUE(
       subblock_metadata->mix_gain_parameter_data().param_data().has_step());
   EXPECT_EQ(subblock_metadata->mix_gain_parameter_data()
@@ -79,8 +77,6 @@ TEST(GenerateParameterSubblockMetadata,
   ASSERT_THAT(subblock_metadata, IsOk());
 
   ASSERT_TRUE(subblock_metadata->has_mix_gain_parameter_data());
-  EXPECT_EQ(subblock_metadata->mix_gain_parameter_data().animation_type(),
-            ANIMATE_LINEAR);
   ASSERT_TRUE(
       subblock_metadata->mix_gain_parameter_data().param_data().has_linear());
   const auto& linear_param_data =
@@ -101,8 +97,6 @@ TEST(GenerateParameterSubblockMetadata,
   ASSERT_THAT(subblock_metadata, IsOk());
 
   ASSERT_TRUE(subblock_metadata->has_mix_gain_parameter_data());
-  EXPECT_EQ(subblock_metadata->mix_gain_parameter_data().animation_type(),
-            ANIMATE_BEZIER);
   ASSERT_TRUE(
       subblock_metadata->mix_gain_parameter_data().param_data().has_bezier());
   const auto& bezier_param_data =

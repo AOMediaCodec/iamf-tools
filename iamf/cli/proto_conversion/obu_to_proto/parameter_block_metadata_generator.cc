@@ -38,7 +38,6 @@ using ParameterSubblockMetadata = iamf_tools_cli_proto::ParameterSubblock;
 absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
 AnimatedParameterDataInt16ToMetadata(const AnimationStepInt16& step) {
   iamf_tools_cli_proto::MixGainParameterData result;
-  result.set_animation_type(iamf_tools_cli_proto::ANIMATE_STEP);
 
   result.mutable_param_data()->mutable_step()->set_start_point_value(
       step.start_point_value);
@@ -49,7 +48,6 @@ AnimatedParameterDataInt16ToMetadata(const AnimationStepInt16& step) {
 absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
 AnimatedParameterDataInt16ToMetadata(const AnimationLinearInt16& linear) {
   iamf_tools_cli_proto::MixGainParameterData result;
-  result.set_animation_type(iamf_tools_cli_proto::ANIMATE_LINEAR);
 
   result.mutable_param_data()->mutable_linear()->set_start_point_value(
       linear.start_point_value);
@@ -62,7 +60,6 @@ AnimatedParameterDataInt16ToMetadata(const AnimationLinearInt16& linear) {
 absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
 AnimatedParameterDataInt16ToMetadata(const AnimationBezierInt16& bezier) {
   iamf_tools_cli_proto::MixGainParameterData result;
-  result.set_animation_type(iamf_tools_cli_proto::ANIMATE_BEZIER);
 
   result.mutable_param_data()->mutable_bezier()->set_start_point_value(
       bezier.start_point_value);

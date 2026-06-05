@@ -44,10 +44,11 @@ absl::Status InterpolateMixGainParameterData(
     InternalTimestamp target_time, int16_t& target_mix_gain) {
   const auto& param_data = mix_gain_parameter_data.param_data();
   float target_mix_gain_db = 0;
+  using enum iamf_tools_cli_proto::AnimatedParameterDataInt16::
+      ParameterDataCase;
   RETURN_IF_NOT_OK(InterpolateMixGainValue(
-      mix_gain_parameter_data.animation_type(),
-      iamf_tools_cli_proto::ANIMATE_STEP, iamf_tools_cli_proto::ANIMATE_LINEAR,
-      iamf_tools_cli_proto::ANIMATE_BEZIER,
+      mix_gain_parameter_data.param_data().parameter_data_case(), kStep,
+      kLinear, kBezier,
       [&param_data]() {
         return static_cast<int16_t>(param_data.step().start_point_value());
       },
@@ -99,15 +100,14 @@ absl::Status PartitionMixGain(
     InternalTimestamp partitioned_start_time,
     InternalTimestamp partitioned_end_time,
     iamf_tools_cli_proto::ParameterSubblock& partitioned_subblock) {
-  // Copy over the animation type.
   auto* mix_gain_param_data =
       partitioned_subblock.mutable_mix_gain_parameter_data();
-  mix_gain_param_data->set_animation_type(subblock_mix_gain.animation_type());
 
   // Partition the animated parameter.
-  switch (subblock_mix_gain.animation_type()) {
-    using enum iamf_tools_cli_proto::AnimationType;
-    case ANIMATE_STEP: {
+  switch (subblock_mix_gain.param_data().parameter_data_case()) {
+    using enum iamf_tools_cli_proto::AnimatedParameterDataInt16::
+        ParameterDataCase;
+    case kStep: {
       int16_t start_point_value;
       RETURN_IF_NOT_OK(InterpolateMixGainParameterData(
           subblock_mix_gain, subblock_start_time, subblock_end_time,
@@ -117,7 +117,7 @@ absl::Status PartitionMixGain(
           ->set_start_point_value(static_cast<int32_t>(start_point_value));
       return absl::OkStatus();
     }
-    case ANIMATE_LINEAR: {
+    case kLinear: {
       // Set partitioned start time to the value of the parameter at that time.
       ABSL_LOG_FIRST_N(INFO, 3)
           << subblock_start_time << " " << subblock_end_time << " "
@@ -147,7 +147,7 @@ absl::Status PartitionMixGain(
       linear->set_end_point_value(static_cast<int32_t>(end_point_value));
       return absl::OkStatus();
     }
-    case ANIMATE_BEZIER: {
+    case kBezier: {
       if (subblock_start_time == partitioned_start_time &&
           subblock_end_time == partitioned_end_time) {
         // Handle the simplest case where the subblock is aligned and does not
@@ -164,8 +164,8 @@ absl::Status PartitionMixGain(
     }
     default:
       return absl::InvalidArgumentError(
-          absl::StrCat("Unrecognized animation type = ",
-                       subblock_mix_gain.animation_type()));
+          absl::StrCat("Unrecognized parameter data case = ",
+                       subblock_mix_gain.param_data().parameter_data_case()));
   }
 }
 

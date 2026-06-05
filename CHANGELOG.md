@@ -50,6 +50,8 @@ and this project adheres to
     `sampling_frequency`, these are usually forbidden by the IAMF spec.
 -   Deprecate `AmbisonicsMode` enum and `AmbisonicsConfig::ambisonics_mode`
     field. Infer the type based on which `ambisonics_config` is present.
+-   Deprecate `AnimationType` enum and `MixGainParameterData::animation_type`
+    field. Infer the type based on which `param_data` is present.
 -   Deprecate the spelling of `HEADPHONES_RENDERING_MODE_BINAURAL` in favor of
     `HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED`.
 -   Deprecate the spelling of `HEADPHONES_RENDERING_MODE_RESERVED_2` in favor of

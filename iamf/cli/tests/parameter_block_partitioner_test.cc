@@ -36,8 +36,6 @@ using iamf_tools_cli_proto::ParameterBlockObuMetadata;
 MixGainParameterData CreateStepMixGainParameterData(
     const int32_t start_point_value) {
   MixGainParameterData mix_gain_parameter_data;
-  mix_gain_parameter_data.set_animation_type(
-      iamf_tools_cli_proto::ANIMATE_STEP);
   mix_gain_parameter_data.mutable_param_data()
       ->mutable_step()
       ->set_start_point_value(start_point_value);
@@ -47,8 +45,6 @@ MixGainParameterData CreateStepMixGainParameterData(
 MixGainParameterData CreateLinearMixGainParameterData(
     const int32_t start_point_value, const int32_t end_point_value) {
   MixGainParameterData mix_gain_parameter_data;
-  mix_gain_parameter_data.set_animation_type(
-      iamf_tools_cli_proto::ANIMATE_LINEAR);
   auto* linear = mix_gain_parameter_data.mutable_param_data()->mutable_linear();
   linear->set_start_point_value(start_point_value);
   linear->set_end_point_value(end_point_value);
@@ -60,8 +56,6 @@ MixGainParameterData CreateBezierMixGainParameterData(
     const int32_t control_point_value,
     const uint32_t control_point_relative_time) {
   MixGainParameterData mix_gain_parameter_data;
-  mix_gain_parameter_data.set_animation_type(
-      iamf_tools_cli_proto::ANIMATE_BEZIER);
   auto* bezier = mix_gain_parameter_data.mutable_param_data()->mutable_bezier();
   bezier->set_start_point_value(start_point_value);
   bezier->set_end_point_value(end_point_value);
@@ -178,21 +172,22 @@ TEST_P(PartitionParameterBlocks, PartitionParameterBlock) {
       const auto& expected_mix_gain = test_case.expected_output_mix_gains[i];
       const auto& actual_param_data = actual_mix_gain.param_data();
       const auto& expected_param_data = expected_mix_gain.param_data();
-      EXPECT_EQ(actual_mix_gain.animation_type(),
-                expected_mix_gain.animation_type());
-      switch (actual_mix_gain.animation_type()) {
-        using enum iamf_tools_cli_proto::AnimationType;
-        case ANIMATE_STEP:
+      EXPECT_EQ(actual_mix_gain.param_data().parameter_data_case(),
+                expected_mix_gain.param_data().parameter_data_case());
+      switch (actual_mix_gain.param_data().parameter_data_case()) {
+        using enum iamf_tools_cli_proto::AnimatedParameterDataInt16::
+            ParameterDataCase;
+        case kStep:
           EXPECT_EQ(actual_param_data.step().start_point_value(),
                     expected_param_data.step().start_point_value());
           break;
-        case ANIMATE_LINEAR:
+        case kLinear:
           EXPECT_EQ(actual_param_data.linear().start_point_value(),
                     expected_param_data.linear().start_point_value());
           EXPECT_EQ(actual_param_data.linear().end_point_value(),
                     expected_param_data.linear().end_point_value());
           break;
-        case ANIMATE_BEZIER:
+        case kBezier:
           EXPECT_EQ(actual_param_data.bezier().start_point_value(),
                     expected_param_data.bezier().start_point_value());
           EXPECT_EQ(actual_param_data.bezier().end_point_value(),
@@ -203,7 +198,7 @@ TEST_P(PartitionParameterBlocks, PartitionParameterBlock) {
                     expected_param_data.bezier().control_point_relative_time());
           break;
         default:
-          FAIL() << "Invalid animation type";
+          FAIL() << "Invalid parameter data case";
       }
     }
   }

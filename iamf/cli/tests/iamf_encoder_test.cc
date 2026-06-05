@@ -246,7 +246,6 @@ void AddParameterBlockAtTimestamp(InternalTimestamp start_timestamp,
         subblocks:
         [ {
           mix_gain_parameter_data {
-            animation_type: ANIMATE_STEP
             param_data { step { start_point_value: 0 } }
           }
         }]

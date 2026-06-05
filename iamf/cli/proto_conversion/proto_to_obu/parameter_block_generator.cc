@@ -81,9 +81,10 @@ absl::Status GenerateMixGainSubblock(
   parameter_data = param_definition->CreateParameterData();
   auto* mix_gain_parameter_data =
       static_cast<MixGainParameterData*>(parameter_data.get());
-  switch (metadata_mix_gain_parameter_data.animation_type()) {
-    using enum iamf_tools_cli_proto::AnimationType;
-    case ANIMATE_STEP: {
+  switch (metadata_mix_gain_parameter_data.param_data().parameter_data_case()) {
+    using enum iamf_tools_cli_proto::AnimatedParameterDataInt16::
+        ParameterDataCase;
+    case kStep: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().step();
       AnimationStepInt16 obu_animation;
@@ -94,7 +95,7 @@ absl::Status GenerateMixGainSubblock(
       mix_gain_parameter_data->param_data = obu_animation;
       break;
     }
-    case ANIMATE_LINEAR: {
+    case kLinear: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().linear();
 
@@ -109,7 +110,7 @@ absl::Status GenerateMixGainSubblock(
       mix_gain_parameter_data->param_data = obu_animation;
       break;
     }
-    case ANIMATE_BEZIER: {
+    case kBezier: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().bezier();
       AnimationBezierInt16 obu_animation;
@@ -132,9 +133,9 @@ absl::Status GenerateMixGainSubblock(
       break;
     }
     default:
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unrecognized animation type= ",
-                       metadata_mix_gain_parameter_data.animation_type()));
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Unrecognized parameter data case= ",
+          metadata_mix_gain_parameter_data.param_data().parameter_data_case()));
   }
 
   return absl::OkStatus();

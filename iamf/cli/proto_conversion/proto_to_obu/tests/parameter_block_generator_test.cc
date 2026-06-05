@@ -238,7 +238,6 @@ void ConfigureMixGainParameterBlocks(
         subblocks:
         [ {
           mix_gain_parameter_data {
-            animation_type: ANIMATE_STEP
             param_data { step { start_point_value: 0 } }
           }
         }],
@@ -253,7 +252,6 @@ void ConfigureMixGainParameterBlocks(
         subblocks:
         [ {
           mix_gain_parameter_data {
-            animation_type: ANIMATE_STEP
             param_data { step { start_point_value: 0 } }
           }
         }],
@@ -530,14 +528,12 @@ TEST(ParameterBlockGeneratorTest,
         [ {
           subblock_duration: 5
           mix_gain_parameter_data {
-            animation_type: ANIMATE_STEP
             param_data { step { start_point_value: 0 } }
           }
         }
           , {
             subblock_duration: 11
             mix_gain_parameter_data {
-              animation_type: ANIMATE_STEP
               param_data { step { start_point_value: 0 } }
             }
           }],
@@ -608,6 +604,61 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     EXPECT_THAT(generator.AddMetadata(metadata), Not(IsOk()));
   }
+}
+
+TEST(GenerateMixGainParameterBlocks, IgnoresMismatchedAnimationType) {
+  iamf_tools_cli_proto::ParameterBlockObuMetadata metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        parameter_id: 100
+        duration: 8
+        constant_subblock_duration: 8
+        subblocks:
+        [ {
+          mix_gain_parameter_data {
+            animation_type: ANIMATE_LINEAR
+            param_data { step { start_point_value: 0 } }
+          }
+        }],
+        start_timestamp: 0
+      )pb",
+      &metadata));
+  // Initialize pre-requisite OBUs.
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
+                             codec_config_obus, audio_elements);
+  // Add param definition.
+  const int16_t kDefaultMixGain = -123;
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants;
+  AddMixGainParamDefinition(kDefaultMixGain, param_definition_variants);
+  // Construct and initialize.
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
+                                    param_definition_variants);
+  ASSERT_THAT(generator.Initialize(audio_elements), IsOk());
+  // Add metadata.
+  EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
+  const auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definition_variants);
+  ASSERT_THAT(global_timing_module, NotNull());
+
+  // Generate.
+  std::list<ParameterBlockWithData> output_parameter_blocks;
+  EXPECT_THAT(
+      generator.GenerateMixGain(*global_timing_module, output_parameter_blocks),
+      IsOk());
+
+  // Verify that it was parsed as step (from param_data) despite the claimed
+  // animation_type being linear.
+  ASSERT_EQ(output_parameter_blocks.size(), 1);
+  const auto& parameter_block = output_parameter_blocks.front();
+  ASSERT_EQ(parameter_block.obu->subblocks_.size(), 1);
+  const auto* mix_gain_parameter_data =
+      static_cast<const MixGainParameterData*>(
+          parameter_block.obu->subblocks_[0].get());
+  EXPECT_EQ(mix_gain_parameter_data->GetAnimationType(),
+            MixGainParameterData::AnimationType::kAnimateStep);
 }
 
 }  // namespace
