@@ -24,7 +24,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/obu_util.h"
@@ -65,49 +64,17 @@ std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode0(
                                                 /*schedule=*/std::nullopt));
 }
 
-std::unique_ptr<ParameterBlockObu>
-ParameterBlockObu::CreateMode1ConstantSubblockDuration(
+std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode1(
     const ObuHeader& header, const ParamDefinition& param_definition,
-    DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration) {
+    const SubblockSchedule& schedule) {
   if (param_definition.GetParamDefinitionMode() !=
       ParamDefinition::kModeScheduleInParameterBlock) {
-    ABSL_LOG(WARNING)
-        << "CreateMode1ConstantSubblockDuration() should only be called when "
-           "param_definition_mode == 1.";
+    ABSL_LOG(WARNING) << "CreateMode1() should only be called when "
+                         "param_definition_mode == 1.";
     return nullptr;
   }
-  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
-      duration, constant_subblock_duration);
-  if (!schedule.ok()) {
-    ABSL_LOG(WARNING) << "Failed to create SubblockSchedule: "
-                      << schedule.status().message();
-    return nullptr;
-  }
-
   return absl::WrapUnique(
-      new ParameterBlockObu(header, param_definition, *schedule));
-}
-
-std::unique_ptr<ParameterBlockObu>
-ParameterBlockObu::CreateMode1VariableSubblockDuration(
-    const ObuHeader& header, const ParamDefinition& param_definition,
-    absl::Span<const DecodedUleb128> subblock_durations) {
-  if (param_definition.GetParamDefinitionMode() !=
-      ParamDefinition::kModeScheduleInParameterBlock) {
-    ABSL_LOG(WARNING) << "CreateMode1VariableSubblockDuration() should only be "
-                         "called when `param_definition_mode` is 1.";
-    return nullptr;
-  }
-  auto schedule =
-      SubblockSchedule::CreateWithVariableSubblockDuration(subblock_durations);
-  if (!schedule.ok()) {
-    ABSL_LOG(WARNING) << "Failed to create SubblockSchedule: "
-                      << schedule.status().message();
-    return nullptr;
-  }
-
-  return absl::WrapUnique(
-      new ParameterBlockObu(header, param_definition, *schedule));
+      new ParameterBlockObu(header, param_definition, schedule));
 }
 
 absl::StatusOr<std::unique_ptr<ParameterBlockObu>>

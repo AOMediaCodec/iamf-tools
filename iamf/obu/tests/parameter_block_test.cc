@@ -13,7 +13,6 @@
 
 #include <array>
 #include <cstdint>
-#include <limits>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -134,11 +133,14 @@ TEST(CreateMode0, ReturnsNullptrWhenParamDefinitionIsMode1) {
             nullptr);
 }
 
-TEST(CreateMode1ConstantSubblockDuration, GettersReturnExpectedValues) {
+TEST(CreateMode1,
+     GettersReturnExpectedValuesForConstantSubblockDurationSchedule) {
   auto param_definition = CreateParamDefinitionMode1();
-
-  auto obu = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
-      ObuHeader(), param_definition, kDuration, kConstantSubblockDuration);
+  auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+      kDuration, kConstantSubblockDuration);
+  ASSERT_THAT(schedule, IsOk());
+  auto obu =
+      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, *schedule);
 
   // Under mode 1, the getters return data directly in the OBU.
   EXPECT_THAT(obu, NotNull());
@@ -150,12 +152,15 @@ TEST(CreateMode1ConstantSubblockDuration, GettersReturnExpectedValues) {
               IsOkAndHolds(kConstantSubblockDuration));
 }
 
-TEST(CreateMode1VariableSubblockDuration,
-     SetsNumSubblocksWhenConstantSubblockDurationIsZero) {
+TEST(CreateMode1, SetsNumSubblocksForVariableSubblockDurationSchedule) {
   auto param_definition = CreateParamDefinitionMode1();
+  auto schedule_with_three_subblocks =
+      SubblockSchedule::CreateWithVariableSubblockDuration(
+          kThreeSubblockDurations);
+  ASSERT_THAT(schedule_with_three_subblocks, IsOk());
 
-  auto obu = ParameterBlockObu::CreateMode1VariableSubblockDuration(
-      ObuHeader(), param_definition, kThreeSubblockDurations);
+  auto obu = ParameterBlockObu::CreateMode1(ObuHeader(), param_definition,
+                                            *schedule_with_three_subblocks);
 
   // Under mode 1, the getters return data directly in the OBU.
   EXPECT_THAT(obu, NotNull());
@@ -168,76 +173,16 @@ TEST(CreateMode1VariableSubblockDuration,
               IsOkAndHolds(kThreeSubblockDurations[2]));
 }
 
-TEST(CreateMode1ConstantSubblockDuration,
-     ReturnsNullptrWhenParamDefinitionIsMode0) {
-  auto param_definition = CreateParamDefinitionMode0();
-
-  EXPECT_EQ(
-      ParameterBlockObu::CreateMode1ConstantSubblockDuration(
-          ObuHeader(), param_definition, kDuration, kConstantSubblockDuration),
-      nullptr);
-}
-
-TEST(CreateMode1ConstantSubblockDuration, ReturnsNullptrWhenDurationIsZero) {
-  auto param_definition = CreateParamDefinitionMode1();
-
-  EXPECT_EQ(ParameterBlockObu::CreateMode1ConstantSubblockDuration(
-                ObuHeader(), param_definition, /*duration=*/0,
-                kConstantSubblockDuration),
-            nullptr);
-}
-
-TEST(CreateMode1ConstantSubblockDuration,
-     ReturnsNullptrWhenConstantSubblockDurationIsZero) {
-  auto param_definition = CreateParamDefinitionMode1();
-
-  EXPECT_EQ(ParameterBlockObu::CreateMode1ConstantSubblockDuration(
-                ObuHeader(), param_definition, kDuration,
-                /*constant_subblock_duration=*/0),
-            nullptr);
-}
-
-TEST(CreateMode1VariableSubblockDuration,
-     ReturnsNullptrWhenParamDefinitionIsMode0) {
+TEST(CreateMode1, ReturnsNullptrWhenParamDefinitionIsMode0) {
   auto param_definition = CreateParamDefinitionMode0();
   const std::vector<DecodedUleb128> subblock_durations = {1, 2};
 
-  EXPECT_EQ(
-      ParameterBlockObu::CreateMode1VariableSubblockDuration(
-          ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
-      nullptr);
-}
-
-TEST(CreateMode1VariableSubblockDuration,
-     ReturnsNullptrWhenSubblockDurationsIsEmpty) {
-  auto param_definition = CreateParamDefinitionMode1();
-  const std::vector<DecodedUleb128> subblock_durations = {};
+  auto schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration(subblock_durations);
+  ASSERT_THAT(schedule, IsOk());
 
   EXPECT_EQ(
-      ParameterBlockObu::CreateMode1VariableSubblockDuration(
-          ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
-      nullptr);
-}
-
-TEST(CreateMode1VariableSubblockDuration,
-     ReturnsNullptrWhenSubblockDurationsOverflow) {
-  auto param_definition = CreateParamDefinitionMode1();
-  const std::vector<DecodedUleb128> subblock_durations = {
-      std::numeric_limits<DecodedUleb128>::max(), 1};
-
-  EXPECT_EQ(
-      ParameterBlockObu::CreateMode1VariableSubblockDuration(
-          ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
-      nullptr);
-}
-
-TEST(CreateMode1VariableSubblockDuration, ReturnsNullptrWhenDurationIsZero) {
-  auto param_definition = CreateParamDefinitionMode1();
-  const std::vector<DecodedUleb128> subblock_durations = {0, 0};
-
-  EXPECT_EQ(
-      ParameterBlockObu::CreateMode1VariableSubblockDuration(
-          ObuHeader(), param_definition, MakeConstSpan(subblock_durations)),
+      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, *schedule),
       nullptr);
 }
 
@@ -656,19 +601,9 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     if (param_definition_->GetParamDefinitionMode() ==
         ParamDefinition::kModeScheduleInParamDefinition) {
       obu_ = ParameterBlockObu::CreateMode0(header_, *param_definition_);
-    } else if (schedule_.GetConstantSubblockDuration() != 0) {
-      obu_ = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
-          header_, *param_definition_, schedule_.GetDuration(),
-          schedule_.GetConstantSubblockDuration());
     } else {
-      std::vector<DecodedUleb128> subblock_durations;
-      for (int i = 0; i < schedule_.GetNumSubblocks(); ++i) {
-        auto duration = schedule_.GetSubblockDuration(i);
-        ASSERT_THAT(duration, IsOk());
-        subblock_durations.push_back(*duration);
-      }
-      obu_ = ParameterBlockObu::CreateMode1VariableSubblockDuration(
-          header_, *param_definition_, subblock_durations);
+      obu_ = ParameterBlockObu::CreateMode1(header_, *param_definition_,
+                                            schedule_);
     }
 
     EXPECT_THAT(obu_, (NotNull()));

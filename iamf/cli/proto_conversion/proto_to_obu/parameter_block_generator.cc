@@ -24,6 +24,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
@@ -45,6 +46,7 @@
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/parameter_data.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
@@ -501,20 +503,23 @@ absl::Status PopulateCommonFields(
       parameter_block_with_data.start_timestamp,
       parameter_block_with_data.end_timestamp));
 
-  // Create the OBU.
+  // Create the OBU with timing information in the parameter definition.
   if (param_definition.GetParamDefinitionMode() ==
       ParamDefinition::kModeScheduleInParamDefinition) {
-    // Timing shared in the parameter definition.
     parameter_block_with_data.obu = ParameterBlockObu::CreateMode0(
         GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
         param_definition);
-  } else if (parameter_block_metadata.constant_subblock_duration() > 0) {
+    return ValidateNotNull(parameter_block_with_data.obu, "ParameterBlockObu");
+  }
+
+  // Create the OBU with timing information in the parameter block OBU itself.
+  absl::StatusOr<SubblockSchedule> schedule;
+  if (parameter_block_metadata.constant_subblock_duration() > 0) {
     // Timing inferred per parameter block, by the constant subblock duration.
-    parameter_block_with_data.obu =
-        ParameterBlockObu::CreateMode1ConstantSubblockDuration(
-            GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
-            param_definition, parameter_block_metadata.duration(),
-            parameter_block_metadata.constant_subblock_duration());
+    schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+        parameter_block_metadata.duration(),
+        parameter_block_metadata.constant_subblock_duration());
+
   } else {
     // Timing is explicitly specified per subblock in the OBU.
     std::vector<DecodedUleb128> subblock_durations;
@@ -522,11 +527,15 @@ absl::Status PopulateCommonFields(
     for (const auto& subblock : parameter_block_metadata.subblocks()) {
       subblock_durations.push_back(subblock.subblock_duration());
     }
-    parameter_block_with_data.obu =
-        ParameterBlockObu::CreateMode1VariableSubblockDuration(
-            GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
-            param_definition, subblock_durations);
+    schedule = SubblockSchedule::CreateWithVariableSubblockDuration(
+        subblock_durations);
   }
+  if (!schedule.ok()) {
+    return schedule.status();
+  }
+  parameter_block_with_data.obu = ParameterBlockObu::CreateMode1(
+      GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
+      param_definition, *schedule);
   return ValidateNotNull(parameter_block_with_data.obu, "ParameterBlockObu");
 }
 

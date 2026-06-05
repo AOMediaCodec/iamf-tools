@@ -46,6 +46,7 @@
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/temporal_delimiter.h"
 #include "iamf/obu/tests/obu_test_utils.h"
@@ -1550,9 +1551,12 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   std::list<ParameterBlockWithData> parameter_blocks_with_data = {};
   constexpr DecodedUleb128 kDuration = 1;
   constexpr DecodedUleb128 kConstantSubblockDuration = 1;
-  auto parameter_block = ParameterBlockObu::CreateMode1ConstantSubblockDuration(
-      ObuHeader(), mix_presentation_obus.front().sub_mixes_[0].output_mix_gain,
+  const auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
       kDuration, kConstantSubblockDuration);
+  ASSERT_THAT(schedule, IsOk());
+  auto parameter_block = ParameterBlockObu::CreateMode1(
+      ObuHeader(), mix_presentation_obus.front().sub_mixes_[0].output_mix_gain,
+      *schedule);
   EXPECT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0] = std::make_unique<MixGainParameterData>(
       MixGainParameterData::kAnimateStep,
