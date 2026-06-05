@@ -676,7 +676,6 @@ TEST(ProcessTemporalUnit, SkipsStrayParameterBlocks) {
       ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
   ASSERT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0] = std::make_unique<MixGainParameterData>(
-      MixGainParameterData::kAnimateStep,
       AnimationStepInt16{.start_point_value = 99});
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 kArbitraryAudioFrame);
@@ -1559,7 +1558,6 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
       *schedule);
   EXPECT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0] = std::make_unique<MixGainParameterData>(
-      MixGainParameterData::kAnimateStep,
       AnimationStepInt16{.start_point_value = 99});
   parameter_blocks_with_data.push_back(ParameterBlockWithData{
       .obu = std::move(parameter_block),

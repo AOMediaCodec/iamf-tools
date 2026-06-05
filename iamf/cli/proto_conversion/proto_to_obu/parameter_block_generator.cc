@@ -86,8 +86,6 @@ absl::Status GenerateMixGainSubblock(
     case ANIMATE_STEP: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().step();
-      mix_gain_parameter_data->animation_type =
-          MixGainParameterData::kAnimateStep;
       AnimationStepInt16 obu_animation;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationStepInt16.start_point_value",
@@ -99,8 +97,6 @@ absl::Status GenerateMixGainSubblock(
     case ANIMATE_LINEAR: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().linear();
-      mix_gain_parameter_data->animation_type =
-          MixGainParameterData::kAnimateLinear;
 
       AnimationLinearInt16 obu_animation;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
@@ -116,8 +112,6 @@ absl::Status GenerateMixGainSubblock(
     case ANIMATE_BEZIER: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().bezier();
-      mix_gain_parameter_data->animation_type =
-          MixGainParameterData::kAnimateBezier;
       AnimationBezierInt16 obu_animation;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationBezierInt16.start_point_value",

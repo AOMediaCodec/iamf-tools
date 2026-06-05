@@ -105,7 +105,7 @@ absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
     InternalTimestamp start_time, InternalTimestamp end_time,
     InternalTimestamp target_time, float& target_mix_gain_db) {
   return InterpolateMixGainValue(
-      mix_gain_parameter_data->animation_type,
+      mix_gain_parameter_data->GetAnimationType(),
       MixGainParameterData::kAnimateStep, MixGainParameterData::kAnimateLinear,
       MixGainParameterData::kAnimateBezier,
       [&mix_gain_parameter_data]() {

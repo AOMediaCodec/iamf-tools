@@ -98,7 +98,7 @@ TEST(MixGainParameterData, ReadAndValidateStep) {
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(mix_gain_parameter_data.animation_type, kAnimateStep);
+  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kAnimateStep);
   EXPECT_TRUE(std::holds_alternative<AnimationStepInt16>(
       mix_gain_parameter_data.param_data));
 }
@@ -119,7 +119,7 @@ TEST(MixGainParameterData, ReadAndValidateLinear) {
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(mix_gain_parameter_data.animation_type, kAnimateLinear);
+  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kAnimateLinear);
   EXPECT_TRUE(std::holds_alternative<AnimationLinearInt16>(
       mix_gain_parameter_data.param_data));
 }
@@ -145,7 +145,7 @@ TEST(MixGainParameterData, ReadAndValidateBezier) {
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(mix_gain_parameter_data.animation_type, kAnimateBezier);
+  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kAnimateBezier);
   EXPECT_TRUE(std::holds_alternative<AnimationBezierInt16>(
       mix_gain_parameter_data.param_data));
 }

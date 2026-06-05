@@ -615,7 +615,8 @@ class MixGainParameterBlockTest : public ParameterBlockObuTestBase,
  public:
   MixGainParameterBlockTest()
       : ParameterBlockObuTestBase(),
-        mix_gain_parameter_data_({{kAnimateStep, AnimationStepInt16{1}}}) {}
+        mix_gain_parameter_data_(
+            {MixGainParameterData(AnimationStepInt16{1})}) {}
 
  protected:
   void CreateParamDefinition(const ParamDefinition::BaseArgs& args) override {
@@ -711,9 +712,9 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
   schedule_ = *temp_schedule;
 
   mix_gain_parameter_data_ = {
-      {kAnimateStep, AnimationStepInt16{9}},
-      {kAnimateLinear, AnimationLinearInt16{10, 11}},
-      {kAnimateBezier, AnimationBezierInt16{12, 13, 14, 15}}};
+      MixGainParameterData(AnimationStepInt16{9}),
+      MixGainParameterData(AnimationLinearInt16{10, 11}),
+      MixGainParameterData(AnimationBezierInt16{12, 13, 14, 15})};
 
   expected_header_ = {kObuIaParameterBlock << 3, 23};
   expected_payload_ = {// `parameter_id`.
@@ -749,9 +750,9 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode0) {
   schedule_ = *temp_schedule;
 
   mix_gain_parameter_data_ = {
-      {kAnimateStep, AnimationStepInt16{9}},
-      {kAnimateLinear, AnimationLinearInt16{10, 11}},
-      {kAnimateBezier, AnimationBezierInt16{12, 13, 14, 15}}};
+      MixGainParameterData(AnimationStepInt16{9}),
+      MixGainParameterData(AnimationLinearInt16{10, 11}),
+      MixGainParameterData(AnimationBezierInt16{12, 13, 14, 15})};
 
   expected_header_ = {kObuIaParameterBlock << 3, 17};
   expected_payload_ = {// `parameter_id`.
@@ -778,8 +779,8 @@ TEST_F(MixGainParameterBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   metadata_args_.param_definition_mode =
       ParamDefinition::kModeScheduleInParameterBlock;
 
-  mix_gain_parameter_data_ = {{kAnimateStep, AnimationStepInt16{9}},
-                              {kAnimateStep, AnimationStepInt16{10}}};
+  mix_gain_parameter_data_ = {MixGainParameterData(AnimationStepInt16{9}),
+                              MixGainParameterData(AnimationStepInt16{10})};
 
   // Configure the `LebGenerator`.
   leb_generator_ =
@@ -1276,22 +1277,22 @@ TEST_P(InterpolateMixGainParameter, InterpolateMixGainParameter) {
 INSTANTIATE_TEST_SUITE_P(
     Step, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
-        {.mix_gain_parameter_data =
-             {kAnimateStep, AnimationStepInt16{.start_point_value = 0}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationStepInt16{
+             .start_point_value = 0}),
          .start_time = 0,
          .end_time = 100,
          .target_time = 0,
          .expected_target_mix_gain = 0,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data =
-             {kAnimateStep, AnimationStepInt16{.start_point_value = 55}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationStepInt16{
+             .start_point_value = 55}),
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
          .expected_target_mix_gain = 55,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data =
-             {kAnimateStep, AnimationStepInt16{.start_point_value = 55}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationStepInt16{
+             .start_point_value = 55}),
          .start_time = 0,
          .end_time = 100,
          .target_time = 100,
@@ -1302,41 +1303,36 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     Linear, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
-        {.mix_gain_parameter_data =
-             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
-                                                   .end_point_value = 1000}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
+             .start_point_value = 0, .end_point_value = 1000}),
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
          .expected_target_mix_gain = 500,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data =
-             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
-                                                   .end_point_value = 768}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
+             .start_point_value = 0, .end_point_value = 768}),
          .start_time = 0,
          .end_time = 240640,
          .target_time = 0,
          .expected_target_mix_gain = 0,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data =
-             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
-                                                   .end_point_value = 768}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
+             .start_point_value = 0, .end_point_value = 768}),
          .start_time = 0,
          .end_time = 240640,
          .target_time = 1024,
          .expected_target_mix_gain = 3,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data =
-             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
-                                                   .end_point_value = 768}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
+             .start_point_value = 0, .end_point_value = 768}),
          .start_time = 0,
          .end_time = 240640,
          .target_time = 3076,
          .expected_target_mix_gain = 9,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data =
-             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
-                                                   .end_point_value = 768}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
+             .start_point_value = 0, .end_point_value = 768}),
          .start_time = 0,
          .end_time = 240640,
          .target_time = 4096,
@@ -1347,12 +1343,11 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     Bezier, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
-        {.mix_gain_parameter_data = {kAnimateBezier,
-                                     AnimationBezierInt16{
-                                         .start_point_value = 0,
-                                         .end_point_value = 768,
-                                         .control_point_value = 384,
-                                         .control_point_relative_time = 192}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationBezierInt16{
+             .start_point_value = 0,
+             .end_point_value = 768,
+             .control_point_value = 384,
+             .control_point_relative_time = 192}),
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
@@ -1365,24 +1360,21 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     BezierAsLinear, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
-        {.mix_gain_parameter_data = {kAnimateBezier,
-
-                                     AnimationBezierInt16{
-                                         .start_point_value = 200,
-                                         .end_point_value = 768,
-                                         .control_point_value = 484,
-                                         .control_point_relative_time = 128}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationBezierInt16{
+             .start_point_value = 200,
+             .end_point_value = 768,
+             .control_point_value = 484,
+             .control_point_relative_time = 128}),
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
          .expected_target_mix_gain = 484,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data = {kAnimateBezier,
-                                     AnimationBezierInt16{
-                                         .start_point_value = 200,
-                                         .end_point_value = 768,
-                                         .control_point_value = 484,
-                                         .control_point_relative_time = 128}},
+        {.mix_gain_parameter_data = MixGainParameterData(AnimationBezierInt16{
+             .start_point_value = 200,
+             .end_point_value = 768,
+             .control_point_value = 484,
+             .control_point_relative_time = 128}),
          .start_time = 0,
          .end_time = 100,
          .target_time = 0,

@@ -11,6 +11,9 @@
  */
 #include "iamf/obu/mix_gain_parameter_data.h"
 
+#include <variant>
+
+#include "absl/functional/overload.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -83,25 +86,28 @@ absl::Status AnimationBezierInt16::ReadAndValidate(ReadBitBuffer& rb) {
 absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
   DecodedUleb128 animation_type_uleb;
   RETURN_IF_NOT_OK(rb.ReadULeb128(animation_type_uleb));
-  animation_type =
+  const auto animation_type =
       static_cast<MixGainParameterData::AnimationType>(animation_type_uleb);
   switch (animation_type) {
     using enum MixGainParameterData::AnimationType;
-    case kAnimateStep:
+    case kAnimateStep: {
       AnimationStepInt16 step_param_data;
       RETURN_IF_NOT_OK(step_param_data.ReadAndValidate(rb));
       param_data = step_param_data;
       return absl::OkStatus();
-    case kAnimateLinear:
+    }
+    case kAnimateLinear: {
       AnimationLinearInt16 linear_param_data;
       RETURN_IF_NOT_OK(linear_param_data.ReadAndValidate(rb));
       param_data = linear_param_data;
       return absl::OkStatus();
-    case kAnimateBezier:
+    }
+    case kAnimateBezier: {
       AnimationBezierInt16 bezier_param_data;
       RETURN_IF_NOT_OK(bezier_param_data.ReadAndValidate(rb));
       param_data = bezier_param_data;
       return absl::OkStatus();
+    }
     default:
       return absl::UnimplementedError(
           absl::StrCat("Unknown animation type= ", animation_type_uleb));
@@ -111,44 +117,26 @@ absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
 absl::Status MixGainParameterData::Write(WriteBitBuffer& wb) const {
   // Write the `animation_type` field.
   RETURN_IF_NOT_OK(
-      wb.WriteUleb128(static_cast<DecodedUleb128>(animation_type)));
+      wb.WriteUleb128(static_cast<DecodedUleb128>(GetAnimationType())));
 
   // Write the fields dependent on the `animation_type` field.
-  switch (animation_type) {
-    using enum MixGainParameterData::AnimationType;
-    case kAnimateStep:
-      RETURN_IF_NOT_OK(
-          std::get<AnimationStepInt16>(param_data).ValidateAndWrite(wb));
-      break;
-    case kAnimateLinear:
-      RETURN_IF_NOT_OK(
-          std::get<AnimationLinearInt16>(param_data).ValidateAndWrite(wb));
-      break;
-    case kAnimateBezier:
-      RETURN_IF_NOT_OK(
-          std::get<AnimationBezierInt16>(param_data).ValidateAndWrite(wb));
-      break;
-  }
-  return absl::OkStatus();
+  return std::visit([&wb](const auto& arg) { return arg.ValidateAndWrite(wb); },
+                    param_data);
+}
+
+MixGainParameterData::AnimationType MixGainParameterData::GetAnimationType()
+    const {
+  return std::visit(
+      absl::Overload{
+          [](const AnimationStepInt16&) { return kAnimateStep; },
+          [](const AnimationLinearInt16&) { return kAnimateLinear; },
+          [](const AnimationBezierInt16&) { return kAnimateBezier; }},
+      param_data);
 }
 
 void MixGainParameterData::Print() const {
-  ABSL_LOG(INFO) << "    animation_type= " << absl::StrCat(animation_type);
-  switch (animation_type) {
-    using enum MixGainParameterData::AnimationType;
-    case kAnimateStep:
-      std::get<AnimationStepInt16>(param_data).Print();
-      break;
-    case kAnimateLinear:
-      std::get<AnimationLinearInt16>(param_data).Print();
-      break;
-    case kAnimateBezier:
-      std::get<AnimationBezierInt16>(param_data).Print();
-      break;
-    default:
-      ABSL_LOG(ERROR) << "Unknown animation type: "
-                      << absl::StrCat(animation_type);
-  }
+  ABSL_LOG(INFO) << "    animation_type= " << absl::StrCat(GetAnimationType());
+  std::visit([](const auto& arg) { arg.Print(); }, param_data);
 }
 
 }  // namespace iamf_tools

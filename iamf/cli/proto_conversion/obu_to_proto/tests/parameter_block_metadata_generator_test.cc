@@ -49,7 +49,7 @@ using enum ParamDefinition::ParameterDefinitionType;
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForStepMixGainParameterSubblock) {
   const MixGainParameterData kStepMixGainSubblock(
-      kAnimateStep, AnimationStepInt16{kStartPointValue});
+      AnimationStepInt16{kStartPointValue});
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
           kParameterDefinitionMixGain, kSubblockDuration, kStepMixGainSubblock);
@@ -71,7 +71,7 @@ TEST(GenerateParameterSubblockMetadata,
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForLinearMixGainParameterSubblock) {
   const MixGainParameterData kLinearMixGainSubblock(
-      kAnimateLinear, AnimationLinearInt16{kStartPointValue, kEndPointValue});
+      AnimationLinearInt16{kStartPointValue, kEndPointValue});
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
           kParameterDefinitionMixGain, kSubblockDuration,
@@ -92,7 +92,6 @@ TEST(GenerateParameterSubblockMetadata,
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForBezierMixGainParameterSubblock) {
   const MixGainParameterData kBezierMixGainParameterData(
-      kAnimateBezier,
       AnimationBezierInt16{kStartPointValue, kEndPointValue, kControlPointValue,
                            kControlPointRelativeTime});
   const auto subblock_metadata =
@@ -113,32 +112,6 @@ TEST(GenerateParameterSubblockMetadata,
   EXPECT_EQ(bezier_param_data.control_point_value(), kControlPointValue);
   EXPECT_EQ(bezier_param_data.control_point_relative_time(),
             kControlPointRelativeTime);
-}
-
-TEST(GenerateParameterSubblockMetadata,
-     ReturnsErrorForInconsistentAnimationType) {
-  const MixGainParameterData kInconsistentStepSubblock(kAnimateLinear,
-                                                       AnimationStepInt16{});
-  const MixGainParameterData kInconsistentLinearSubblock(
-      kAnimateStep, AnimationLinearInt16{});
-  const MixGainParameterData kInconsistentBezierSubblock(
-      kAnimateStep, AnimationBezierInt16{});
-
-  EXPECT_THAT(
-      ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kSubblockDuration,
-          kInconsistentStepSubblock),
-      Not(IsOk()));
-  EXPECT_THAT(
-      ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kSubblockDuration,
-          kInconsistentLinearSubblock),
-      Not(IsOk()));
-  EXPECT_THAT(
-      ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kSubblockDuration,
-          kInconsistentBezierSubblock),
-      Not(IsOk()));
 }
 
 TEST(GenerateParameterSubblockMetadata,

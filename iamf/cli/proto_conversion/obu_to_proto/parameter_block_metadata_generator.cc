@@ -20,7 +20,6 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
@@ -37,12 +36,7 @@ using ParameterSubblockMetadata = iamf_tools_cli_proto::ParameterSubblock;
 
 // Returns a proto representation of the input `AnimationStepInt16`.
 absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
-AnimatedParameterDataInt16ToMetadata(
-    MixGainParameterData::AnimationType animation_type,
-    const AnimationStepInt16& step) {
-  RETURN_IF_NOT_OK(ValidateEqual(
-      animation_type, MixGainParameterData::AnimationType::kAnimateStep,
-      "Expected a step. Got animation_type= "));
+AnimatedParameterDataInt16ToMetadata(const AnimationStepInt16& step) {
   iamf_tools_cli_proto::MixGainParameterData result;
   result.set_animation_type(iamf_tools_cli_proto::ANIMATE_STEP);
 
@@ -53,12 +47,7 @@ AnimatedParameterDataInt16ToMetadata(
 
 // Returns a proto representation of the input `AnimationLinearInt16`.
 absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
-AnimatedParameterDataInt16ToMetadata(
-    MixGainParameterData::AnimationType animation_type,
-    const AnimationLinearInt16& linear) {
-  RETURN_IF_NOT_OK(ValidateEqual(
-      animation_type, MixGainParameterData::AnimationType::kAnimateLinear,
-      "Expected a linear. Got animation_type= "));
+AnimatedParameterDataInt16ToMetadata(const AnimationLinearInt16& linear) {
   iamf_tools_cli_proto::MixGainParameterData result;
   result.set_animation_type(iamf_tools_cli_proto::ANIMATE_LINEAR);
 
@@ -71,12 +60,7 @@ AnimatedParameterDataInt16ToMetadata(
 
 // Returns a proto representation of the input `AnimationBezierInt16`.
 absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
-AnimatedParameterDataInt16ToMetadata(
-    MixGainParameterData::AnimationType animation_type,
-    const AnimationBezierInt16& bezier) {
-  RETURN_IF_NOT_OK(ValidateEqual(
-      animation_type, MixGainParameterData::AnimationType::kAnimateBezier,
-      "Expected a bezier. Got animation_type= "));
+AnimatedParameterDataInt16ToMetadata(const AnimationBezierInt16& bezier) {
   iamf_tools_cli_proto::MixGainParameterData result;
   result.set_animation_type(iamf_tools_cli_proto::ANIMATE_BEZIER);
 
@@ -98,9 +82,8 @@ absl::StatusOr<ParameterSubblockMetadata> ParamDataToMetadata(
   ParameterSubblockMetadata result;
 
   auto mix_gain_parameter_data_metadata = std::visit(
-      [=](const auto& param_data) {
-        return AnimatedParameterDataInt16ToMetadata(
-            mix_gain_parameter_data.animation_type, param_data);
+      [](const auto& param_data) {
+        return AnimatedParameterDataInt16ToMetadata(param_data);
       },
       mix_gain_parameter_data.param_data);
   if (!mix_gain_parameter_data_metadata.ok()) {

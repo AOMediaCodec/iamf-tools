@@ -109,7 +109,6 @@ void AddMixGainParameterBlock(
     InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
     std::list<ParameterBlockWithData>& parameter_blocks) {
   auto data = std::make_unique<MixGainParameterData>();
-  data->animation_type = MixGainParameterData::kAnimateStep;
   data->param_data = AnimationStepInt16{.start_point_value = 1};
   auto parameter_block =
       ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);

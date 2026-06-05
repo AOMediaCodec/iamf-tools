@@ -114,16 +114,12 @@ struct MixGainParameterData : public ParameterData {
 
   /*!\brief Constructor.
    *
-   * \param input_animation_type Input animation type.
    * \param input_param_data Input metadata describing the animation type.
    */
-  MixGainParameterData(
-      AnimationType input_animation_type,
+  explicit MixGainParameterData(
       const std::variant<AnimationStepInt16, AnimationLinearInt16,
                          AnimationBezierInt16>& input_param_data)
-      : ParameterData(),
-        animation_type(input_animation_type),
-        param_data(input_param_data) {}
+      : ParameterData(), param_data(input_param_data) {}
   MixGainParameterData() = default;
 
   /*!\brief Overridden destructor.*/
@@ -136,6 +132,12 @@ struct MixGainParameterData : public ParameterData {
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
+  /*!\brief Gets the animation type of the parameter data.
+   *
+   * \return Animation type.
+   */
+  AnimationType GetAnimationType() const;
+
   /*!\brief Validates and writes to a buffer.
    *
    * \param wb Buffer to write to.
@@ -147,9 +149,7 @@ struct MixGainParameterData : public ParameterData {
    */
   void Print() const override;
 
-  AnimationType animation_type;  // Serialized to a ULEB128.
-
-  // The active field depends on `animation_type`.
+  // The animation type is serialized base on the active field of the variant.
   std::variant<AnimationStepInt16, AnimationLinearInt16, AnimationBezierInt16>
       param_data;
 };
