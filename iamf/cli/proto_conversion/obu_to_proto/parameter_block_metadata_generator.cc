@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/proto_conversion/obu_to_proto/parameter_block_metadata_generator.h"
 
+#include <optional>
 #include <utility>
 #include <variant>
 
@@ -24,7 +25,7 @@
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
-#include "iamf/obu/parameter_block.h"
+#include "iamf/obu/parameter_data.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
@@ -170,37 +171,33 @@ absl::StatusOr<ParameterSubblockMetadata> ParamDataToMetadata(
 absl::StatusOr<ParameterSubblockMetadata>
 ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
     ParamDefinition::ParameterDefinitionType param_definition_type,
-    const ParameterSubblock& parameter_subblock) {
+    std::optional<DecodedUleb128> subblock_duration,
+    const ParameterData& parameter_data) {
   absl::StatusOr<ParameterSubblockMetadata> metadata_subblock;
   switch (param_definition_type) {
     using enum ParamDefinition::ParameterDefinitionType;
     case kParameterDefinitionMixGain:
-      metadata_subblock =
-          ParamDataToMetadata(*static_cast<MixGainParameterData*>(
-              parameter_subblock.param_data.get()));
+      metadata_subblock = ParamDataToMetadata(
+          *static_cast<const MixGainParameterData*>(&parameter_data));
       break;
     case kParameterDefinitionDemixing:
-      metadata_subblock =
-          ParamDataToMetadata(*static_cast<DemixingInfoParameterData*>(
-              parameter_subblock.param_data.get()));
+      metadata_subblock = ParamDataToMetadata(
+          *static_cast<const DemixingInfoParameterData*>(&parameter_data));
       break;
     case kParameterDefinitionReconGain:
-      metadata_subblock =
-          ParamDataToMetadata(*static_cast<ReconGainInfoParameterData*>(
-              parameter_subblock.param_data.get()));
+      metadata_subblock = ParamDataToMetadata(
+          *static_cast<const ReconGainInfoParameterData*>(&parameter_data));
       break;
     default:
-      metadata_subblock =
-          ParamDataToMetadata(*static_cast<ExtensionParameterData*>(
-              parameter_subblock.param_data.get()));
+      metadata_subblock = ParamDataToMetadata(
+          *static_cast<const ExtensionParameterData*>(&parameter_data));
       break;
   }
   if (!metadata_subblock.ok()) {
     return metadata_subblock.status();
   }
-  if (parameter_subblock.subblock_duration.has_value()) {
-    metadata_subblock->set_subblock_duration(
-        *parameter_subblock.subblock_duration);
+  if (subblock_duration.has_value()) {
+    metadata_subblock->set_subblock_duration(*subblock_duration);
   }
   return metadata_subblock;
 }

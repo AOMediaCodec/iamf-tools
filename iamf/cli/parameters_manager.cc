@@ -223,7 +223,7 @@ absl::Status ParametersManager::GetDownMixingParameters(
 
   RETURN_IF_NOT_OK(DemixingInfoParameterData::DMixPModeToDownMixingParams(
       static_cast<DemixingInfoParameterData*>(
-          demixing_parameter_block->obu->subblocks_[0].param_data.get())
+          demixing_parameter_block->obu->subblocks_[0].get())
           ->dmixp_mode,
       demixing_state.previous_w_idx, demixing_state.update_rule,
       down_mixing_params));
@@ -287,7 +287,7 @@ absl::Status ParametersManager::GetReconGainInfoParameterData(
 
   auto recon_gain_info_parameter_data_in_obu =
       static_cast<ReconGainInfoParameterData*>(
-          recon_gain_parameter_block->obu->subblocks_[0].param_data.get());
+          recon_gain_parameter_block->obu->subblocks_[0].get());
   recon_gain_info_parameter_data.recon_gain_elements =
       recon_gain_info_parameter_data_in_obu->recon_gain_elements;
   return absl::OkStatus();

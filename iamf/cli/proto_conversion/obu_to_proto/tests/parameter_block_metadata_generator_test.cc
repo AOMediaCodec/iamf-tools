@@ -13,7 +13,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <vector>
 
@@ -27,7 +26,6 @@
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
-#include "iamf/obu/parameter_block.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
@@ -50,13 +48,11 @@ using enum ParamDefinition::ParameterDefinitionType;
 
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForStepMixGainParameterSubblock) {
-  const ParameterSubblock kStepMixGainSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<MixGainParameterData>(
-          kAnimateStep, AnimationStepInt16{kStartPointValue})};
+  const MixGainParameterData kStepMixGainSubblock(
+      kAnimateStep, AnimationStepInt16{kStartPointValue});
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kStepMixGainSubblock);
+          kParameterDefinitionMixGain, kSubblockDuration, kStepMixGainSubblock);
   ASSERT_THAT(subblock_metadata, IsOk());
   EXPECT_EQ(subblock_metadata->subblock_duration(), kSubblockDuration);
 
@@ -74,14 +70,12 @@ TEST(GenerateParameterSubblockMetadata,
 
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForLinearMixGainParameterSubblock) {
-  const ParameterSubblock kLinearMixGainSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<MixGainParameterData>(
-          kAnimateLinear,
-          AnimationLinearInt16{kStartPointValue, kEndPointValue})};
+  const MixGainParameterData kLinearMixGainSubblock(
+      kAnimateLinear, AnimationLinearInt16{kStartPointValue, kEndPointValue});
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kLinearMixGainSubblock);
+          kParameterDefinitionMixGain, kSubblockDuration,
+          kLinearMixGainSubblock);
   ASSERT_THAT(subblock_metadata, IsOk());
 
   ASSERT_TRUE(subblock_metadata->has_mix_gain_parameter_data());
@@ -97,15 +91,14 @@ TEST(GenerateParameterSubblockMetadata,
 
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForBezierMixGainParameterSubblock) {
-  const ParameterSubblock kBezierMixGainParameterData{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<MixGainParameterData>(
-          kAnimateBezier,
-          AnimationBezierInt16{kStartPointValue, kEndPointValue,
-                               kControlPointValue, kControlPointRelativeTime})};
+  const MixGainParameterData kBezierMixGainParameterData(
+      kAnimateBezier,
+      AnimationBezierInt16{kStartPointValue, kEndPointValue, kControlPointValue,
+                           kControlPointRelativeTime});
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kBezierMixGainParameterData);
+          kParameterDefinitionMixGain, kSubblockDuration,
+          kBezierMixGainParameterData);
   ASSERT_THAT(subblock_metadata, IsOk());
 
   ASSERT_TRUE(subblock_metadata->has_mix_gain_parameter_data());
@@ -124,30 +117,27 @@ TEST(GenerateParameterSubblockMetadata,
 
 TEST(GenerateParameterSubblockMetadata,
      ReturnsErrorForInconsistentAnimationType) {
-  const ParameterSubblock kInconsistentStepSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<MixGainParameterData>(
-          kAnimateLinear, AnimationStepInt16{})};
-  const ParameterSubblock kInconsistentLinearSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<MixGainParameterData>(
-          kAnimateStep, AnimationLinearInt16{})};
-  const ParameterSubblock kInconsistentBezierSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<MixGainParameterData>(
-          kAnimateStep, AnimationBezierInt16{})};
+  const MixGainParameterData kInconsistentStepSubblock(kAnimateLinear,
+                                                       AnimationStepInt16{});
+  const MixGainParameterData kInconsistentLinearSubblock(
+      kAnimateStep, AnimationLinearInt16{});
+  const MixGainParameterData kInconsistentBezierSubblock(
+      kAnimateStep, AnimationBezierInt16{});
 
   EXPECT_THAT(
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kInconsistentStepSubblock),
+          kParameterDefinitionMixGain, kSubblockDuration,
+          kInconsistentStepSubblock),
       Not(IsOk()));
   EXPECT_THAT(
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kInconsistentLinearSubblock),
+          kParameterDefinitionMixGain, kSubblockDuration,
+          kInconsistentLinearSubblock),
       Not(IsOk()));
   EXPECT_THAT(
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kInconsistentBezierSubblock),
+          kParameterDefinitionMixGain, kSubblockDuration,
+          kInconsistentBezierSubblock),
       Not(IsOk()));
 }
 
@@ -160,14 +150,10 @@ TEST(GenerateParameterSubblockMetadata,
       DemixingInfoParameterData::kDMixPMode1;
   demixing_info_parameter_data.reserved = kReserved;
 
-  const ParameterSubblock subblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<DemixingInfoParameterData>(
-          demixing_info_parameter_data)};
-
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionDemixing, subblock);
+          kParameterDefinitionDemixing, kSubblockDuration,
+          demixing_info_parameter_data);
   ASSERT_THAT(subblock_metadata, IsOk());
 
   ASSERT_TRUE(subblock_metadata->has_demixing_info_parameter_data());
@@ -181,14 +167,12 @@ TEST(GenerateParameterSubblockMetadata, GeneratesExtensionParameterSubblocks) {
   const std::vector<uint8_t> kParameterDataBytes = {0x01, 0x02, 0x03, 0x04,
                                                     0x05};
 
-  const ParameterSubblock kExtensionSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data =
-          std::make_unique<ExtensionParameterData>(kParameterDataBytes)};
+  const ExtensionParameterData kExtensionSubblock(kParameterDataBytes);
 
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionReservedStart, kExtensionSubblock);
+          kParameterDefinitionReservedStart, kSubblockDuration,
+          kExtensionSubblock);
   ASSERT_THAT(subblock_metadata, IsOk());
 
   ASSERT_TRUE(subblock_metadata->has_parameter_data_extension());
@@ -214,13 +198,10 @@ TEST(GenerateParameterSubblockMetadata, GenerateReconGainParameterSubblocks) {
   param_data.recon_gain_elements.emplace_back(
       ReconGainElement{ReconGainElement::kReconGainFlagR,
                        {0, 0, kRightReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
-  const ParameterSubblock kReconGainSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<ReconGainInfoParameterData>(param_data)};
 
   auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionReconGain, kReconGainSubblock);
+          kParameterDefinitionReconGain, kSubblockDuration, param_data);
   ASSERT_THAT(subblock_metadata, IsOk());
   ASSERT_TRUE(subblock_metadata->has_recon_gain_info_parameter_data());
 
@@ -255,13 +236,9 @@ TEST(GenerateParameterSubblockMetadata,
       ReconGainElement{ReconGainElement::kReconGainFlagR,
                        {0, 0, kRightReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
 
-  const ParameterSubblock kReconGainSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<ReconGainInfoParameterData>(param_data)};
-
   auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionReconGain, kReconGainSubblock);
+          kParameterDefinitionReconGain, kSubblockDuration, param_data);
   ASSERT_THAT(subblock_metadata, IsOk());
   ASSERT_TRUE(subblock_metadata->has_recon_gain_info_parameter_data());
 
@@ -286,13 +263,11 @@ TEST(GenerateParameterSubblockMetadata,
 }
 
 TEST(GenerateParameterSubblockMetadata, SetsDuration) {
-  const ParameterSubblock kSubblock{
-      .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<MixGainParameterData>()};
+  const MixGainParameterData kSubblock{};
 
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
-          kParameterDefinitionMixGain, kSubblock);
+          kParameterDefinitionMixGain, kSubblockDuration, kSubblock);
   ASSERT_THAT(subblock_metadata, IsOk());
 
   EXPECT_EQ(subblock_metadata->subblock_duration(), kSubblockDuration);

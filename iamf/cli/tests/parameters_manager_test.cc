@@ -101,8 +101,7 @@ void AddOneDemixingParameterBlock(
   auto demixing_info_param_data = std::make_unique<DemixingInfoParameterData>();
   demixing_info_param_data->dmixp_mode = kDMixPMode;
   ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
-  parameter_block_obu.subblocks_[0].param_data =
-      std::move(demixing_info_param_data);
+  parameter_block_obu.subblocks_[0] = std::move(demixing_info_param_data);
 }
 
 void AddOneReconGainParameterBlock(
@@ -119,8 +118,7 @@ void AddOneReconGainParameterBlock(
           .recon_gain = {0},
       });
   ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
-  parameter_block_obu.subblocks_[0].param_data =
-      std::move(recon_gain_info_parameter_data);
+  parameter_block_obu.subblocks_[0] = std::move(recon_gain_info_parameter_data);
 }
 
 class ParametersManagerTest : public testing::Test {

@@ -13,10 +13,13 @@
 #ifndef CLI_PROTO_CONVERSION_OBU_TO_PROTO_PARAMETER_BLOCK_METADATA_GENERATOR_H_
 #define CLI_PROTO_CONVERSION_OBU_TO_PROTO_PARAMETER_BLOCK_METADATA_GENERATOR_H_
 
+#include <optional>
+
 #include "absl/status/statusor.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
-#include "iamf/obu/parameter_block.h"
+#include "iamf/obu/parameter_data.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -26,6 +29,7 @@ class ParameterBlockMetadataGenerator {
   /*!\brief Generates a proto representation of a `ParameterSubblock`
    *
    * \param param_definition_type Type of the parameter subblock.
+   * \param subblock_duration Duration of the subblock if variable.
    * \param parameter_subblock Input parameter subblock to convert to a proto.
    * \return Proto representation of the parameter subblock or a specific
    *         error on failure.
@@ -33,7 +37,8 @@ class ParameterBlockMetadataGenerator {
   static absl::StatusOr<iamf_tools_cli_proto::ParameterSubblock>
   GenerateParameterSubblockMetadata(
       ParamDefinition::ParameterDefinitionType param_definition_type,
-      const ParameterSubblock& parameter_subblock);
+      std::optional<DecodedUleb128> subblock_duration,
+      const ParameterData& parameter_data);
 };
 
 }  // namespace iamf_tools

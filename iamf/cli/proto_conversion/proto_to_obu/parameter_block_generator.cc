@@ -421,7 +421,7 @@ absl::Status GenerateParameterBlockSubblock(
     const int subblock_index,
     const iamf_tools_cli_proto::ParameterSubblock& metadata_subblock,
     ParameterBlockObu& obu) {
-  auto& obu_subblock_param_data = obu.subblocks_[subblock_index].param_data;
+  auto& obu_subblock_param_data = obu.subblocks_[subblock_index];
   const auto param_definition_type =
       GetParameterDefinitionType(param_definition_variant);
   std::unique_ptr<ParameterData> parameter_data;

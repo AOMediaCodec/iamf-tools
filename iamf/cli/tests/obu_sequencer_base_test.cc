@@ -154,7 +154,7 @@ void InitializeOneParameterBlockAndOneAudioFrame(
   auto parameter_block =
       ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
   ASSERT_THAT(parameter_block, NotNull());
-  parameter_block->subblocks_[0].param_data = std::move(data);
+  parameter_block->subblocks_[0] = std::move(data);
   parameter_blocks.emplace_back(ParameterBlockWithData{
       .obu = std::move(parameter_block),
       .start_timestamp = kFirstTimestamp,

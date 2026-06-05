@@ -238,7 +238,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
         recon_gain_info_parameter_data->recon_gain_elements.push_back(
             ReconGainElement{.recon_gain_flag = 1,
                              .recon_gain = recon_gain_values_vector[i]});
-        parameter_block_obus.back()->subblocks_[0].param_data =
+        parameter_block_obus.back()->subblocks_[0] =
             std::move(recon_gain_info_parameter_data);
       }
       if (demixing_parameter_id.has_value()) {
@@ -253,7 +253,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
             std::make_unique<DemixingInfoParameterData>();
         demixing_parameter_data->dmixp_mode = dmixp_mode_vector[i];
         demixing_parameter_data->reserved = 0;
-        parameter_block_obus.back()->subblocks_[0].param_data =
+        parameter_block_obus.back()->subblocks_[0] =
             std::move(demixing_parameter_data);
       }
     }

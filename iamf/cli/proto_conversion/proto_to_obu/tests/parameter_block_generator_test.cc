@@ -52,6 +52,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::Not;
 using ::testing::NotNull;
 using CodecConfigsById = DescriptorObus::CodecConfigsById;
@@ -218,7 +219,7 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   int block_index = 0;
   for (const auto& parameter_block : output_parameter_blocks) {
     auto demixing_info_parameter_data = static_cast<DemixingInfoParameterData*>(
-        parameter_block.obu->subblocks_[0].param_data.get());
+        parameter_block.obu->subblocks_[0].get());
     EXPECT_EQ(demixing_info_parameter_data->dmixp_mode,
               expected_dmixp_mode[block_index]);
     EXPECT_EQ(demixing_info_parameter_data->reserved, 0);
@@ -322,7 +323,7 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   // Validate `MixGainParameterData` parts.
   for (const auto& parameter_block : output_parameter_blocks) {
     auto mix_gain_parameter_data = static_cast<MixGainParameterData*>(
-        parameter_block.obu->subblocks_[0].param_data.get());
+        parameter_block.obu->subblocks_[0].get());
     EXPECT_EQ(mix_gain_parameter_data->animation_type,
               MixGainParameterData::kAnimateStep);
     EXPECT_EQ(std::get<AnimationStepInt16>(mix_gain_parameter_data->param_data)
@@ -494,7 +495,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   for (const auto& parameter_block : output_parameter_blocks) {
     auto recon_gain_info_parameter_data =
         static_cast<ReconGainInfoParameterData*>(
-            parameter_block.obu->subblocks_[0].param_data.get());
+            parameter_block.obu->subblocks_[0].get());
 
     // Expect the first recon gain element to hold no value.
     EXPECT_FALSE(
@@ -581,8 +582,8 @@ TEST(ParameterBlockGeneratorTest,
   EXPECT_EQ(obu->GetDuration(), 16);
   EXPECT_EQ(obu->GetNumSubblocks(), 2);
   EXPECT_EQ(obu->GetConstantSubblockDuration(), 0);
-  EXPECT_EQ(obu->subblocks_[0].subblock_duration, 5);
-  EXPECT_EQ(obu->subblocks_[1].subblock_duration, 11);
+  EXPECT_THAT(obu->GetSubblockDuration(0), IsOkAndHolds(5));
+  EXPECT_THAT(obu->GetSubblockDuration(1), IsOkAndHolds(11));
 }
 
 TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {

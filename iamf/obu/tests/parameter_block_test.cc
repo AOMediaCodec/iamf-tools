@@ -573,7 +573,7 @@ TEST(CreateFromBuffer, DemixingParamDefinitionMode0) {
   EXPECT_EQ((*parameter_block)->GetNumSubblocks(), 1);
 
   auto demixing_info = static_cast<DemixingInfoParameterData*>(
-      (*parameter_block)->subblocks_[0].param_data.get());
+      (*parameter_block)->subblocks_[0].get());
 
   EXPECT_EQ(demixing_info->dmixp_mode, kDMixPMode2);
 }
@@ -690,7 +690,7 @@ class MixGainParameterBlockTest : public ParameterBlockObuTestBase,
   void InitParameterBlockTypeSpecificFields() override {
     ASSERT_EQ(obu_->subblocks_.size(), mix_gain_parameter_data_.size());
     for (int i = 0; i < obu_->subblocks_.size(); i++) {
-      obu_->subblocks_[i].param_data =
+      obu_->subblocks_[i] =
           std::make_unique<MixGainParameterData>(mix_gain_parameter_data_[i]);
     }
   }
@@ -893,9 +893,8 @@ class DemixingParameterBlockTest : public ParameterBlockObuTestBase,
   void InitParameterBlockTypeSpecificFields() override {
     ASSERT_EQ(demixing_info_parameter_data_.size(), obu_->subblocks_.size());
     for (int i = 0; i < demixing_info_parameter_data_.size(); i++) {
-      obu_->subblocks_[i].param_data =
-          std::make_unique<DemixingInfoParameterData>(
-              demixing_info_parameter_data_[i]);
+      obu_->subblocks_[i] = std::make_unique<DemixingInfoParameterData>(
+          demixing_info_parameter_data_[i]);
     }
   }
 
@@ -992,9 +991,8 @@ class ReconGainBlockTest : public ParameterBlockObuTestBase,
       ASSERT_EQ(
           recon_gain_parameter_data_[i].recon_gain_is_present_flags.size(),
           metadata_args_.num_layers);
-      obu_->subblocks_[i].param_data =
-          std::make_unique<ReconGainInfoParameterData>(
-              recon_gain_parameter_data_[i]);
+      obu_->subblocks_[i] = std::make_unique<ReconGainInfoParameterData>(
+          recon_gain_parameter_data_[i]);
     }
   }
 
@@ -1222,7 +1220,7 @@ class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,
   void InitParameterBlockTypeSpecificFields() override {
     ASSERT_EQ(parameter_block_extensions_.size(), obu_->subblocks_.size());
     for (int i = 0; i < parameter_block_extensions_.size(); i++) {
-      obu_->subblocks_[i].param_data = std::make_unique<ExtensionParameterData>(
+      obu_->subblocks_[i] = std::make_unique<ExtensionParameterData>(
           parameter_block_extensions_[i]);
     }
   }

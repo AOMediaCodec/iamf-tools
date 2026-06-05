@@ -38,7 +38,6 @@ cc_test(
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion/obu_to_proto:parameter_block_metadata_generator",
-        "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:param_definition_base",
