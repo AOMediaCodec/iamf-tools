@@ -12,13 +12,18 @@
 #ifndef OBU_PARAM_DEFINITIONS_SUBBLOCK_SCHEDULE_H_
 #define OBU_PARAM_DEFINITIONS_SUBBLOCK_SCHEDULE_H_
 
+#include <memory>
+#include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
+#include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -42,6 +47,9 @@ namespace iamf_tools {
  */
 class SubblockSchedule {
  public:
+  // Forward declaration to avoid self-referential dependency.
+  struct ScheduleAndParameterData;
+
   /*!\brief Static limit on num_subblocks prevents OOMs from implausible values.
    *
    * The maximum sample rate is 192000 Hz and maximum duration is 1 second.
@@ -79,6 +87,23 @@ class SubblockSchedule {
    * \return Validated SubblockSchedule or error status.
    */
   static absl::StatusOr<SubblockSchedule> CreateFromBuffer(ReadBitBuffer& rb);
+
+  /*!\brief Factory function to a `ScheduleAndParameterData` from a buffer.
+   *
+   * In some cases, the subblock schedule is interleaved with parameter data.
+   *
+   * This function creates a validated `SubblockSchedule` and associated
+   * `ParameterData`s from the buffer.
+   *
+   * \param create_parameter_data Function to create a new `ParameterData`
+   *        object.
+   * \param rb Buffer to read from.
+   * \return Validated SubblockSchedule or error status.
+   */
+  static absl::StatusOr<ScheduleAndParameterData>
+  CreateFromBufferWithParameterData(
+      absl::FunctionRef<std::unique_ptr<ParameterData>()> create_parameter_data,
+      ReadBitBuffer& rb);
 
   /*!\brief Writes the SubblockSchedule to a buffer.
    *
@@ -148,6 +173,11 @@ class SubblockSchedule {
   DecodedUleb128 constant_subblock_duration_;
   DecodedUleb128 num_subblocks_;
   std::vector<DecodedUleb128> subblock_durations_;
+};
+
+struct SubblockSchedule::ScheduleAndParameterData {
+  SubblockSchedule schedule;
+  std::vector<std::unique_ptr<ParameterData> absl_nonnull> parameter_data;
 };
 
 }  // namespace iamf_tools

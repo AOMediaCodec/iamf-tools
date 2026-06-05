@@ -13,8 +13,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <memory>
+#include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
+#include "absl/functional/function_ref.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -26,9 +31,70 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+namespace {
+
+/*!\brief Helper function to parse a subblock schedule from a buffer.
+ *
+ * \param rb Buffer to read from.
+ * \param on_subblock Callback function to be called for each subblock.
+ * \return Validated SubblockSchedule or error status.
+ */
+absl::StatusOr<SubblockSchedule> ParseScheduleHelper(
+    ReadBitBuffer& rb, std::function<absl::Status()> on_subblock) {
+  DecodedUleb128 duration;
+  DecodedUleb128 constant_subblock_duration;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(duration));
+  RETURN_IF_NOT_OK(rb.ReadULeb128(constant_subblock_duration));
+
+  if (constant_subblock_duration != 0) {
+    auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+        duration, constant_subblock_duration);
+    if (!schedule.ok()) {
+      return schedule.status();
+    }
+    // Ok. Subblocks are entirely after the schedule in the buffer.
+    for (int i = 0; i < schedule->GetNumSubblocks(); ++i) {
+      RETURN_IF_NOT_OK(on_subblock());
+    }
+    return schedule;
+  }
+
+  // Variable subblock duration.
+  DecodedUleb128 num_subblocks;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks));
+
+  // Perform some early validation, to prevent excessive memory allocation.
+  RETURN_IF_NOT_OK(ValidateNotEqual(duration, DecodedUleb128{0}, "duration"));
+  RETURN_IF_NOT_OK(ValidateInRange(
+      num_subblocks, {DecodedUleb128{1}, SubblockSchedule::kMaxNumSubblocks},
+      "num_subblocks"));
+  RETURN_IF_NOT_OK(Validate(num_subblocks, std::less_equal<DecodedUleb128>(),
+                            duration, "num_subblocks < = duration"));
+
+  // Read the subblock durations, which are interlaced with parameter data.
+  std::vector<DecodedUleb128> subblock_durations(num_subblocks, 0);
+  for (auto& subblock_duration : subblock_durations) {
+    RETURN_IF_NOT_OK(rb.ReadULeb128(subblock_duration));
+    RETURN_IF_NOT_OK(on_subblock());
+  }
+
+  auto schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration(subblock_durations);
+  if (!schedule.ok()) {
+    return schedule.status();
+  }
+  RETURN_IF_NOT_OK(ValidateEqual(schedule->GetDuration(), duration,
+                                 "Subblock durations must match the total "
+                                 "duration."));
+  return schedule;
+}
+
+}  // namespace
 
 // TODO(b/345799072): Determine how `GetDuration`,
 //     `GetConstantSubblockDuration`, and should behave when the schedule
@@ -46,30 +112,32 @@ SubblockSchedule::SubblockSchedule(
 
 absl::StatusOr<SubblockSchedule> SubblockSchedule::CreateFromBuffer(
     ReadBitBuffer& rb) {
-  DecodedUleb128 duration;
-  DecodedUleb128 constant_subblock_duration;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(duration));
-  RETURN_IF_NOT_OK(rb.ReadULeb128(constant_subblock_duration));
+  const auto kDoNothingOnSubblock = []() { return absl::OkStatus(); };
+  return ParseScheduleHelper(rb, kDoNothingOnSubblock);
+}
 
-  if (constant_subblock_duration != 0) {
-    return CreateWithConstantSubblockDuration(duration,
-                                              constant_subblock_duration);
+absl::StatusOr<SubblockSchedule::ScheduleAndParameterData>
+SubblockSchedule::CreateFromBufferWithParameterData(
+    absl::FunctionRef<std::unique_ptr<ParameterData>()> create_parameter_data,
+    ReadBitBuffer& rb) {
+  std::vector<std::unique_ptr<ParameterData> absl_nonnull> parameter_data;
+
+  const auto create_parameter_data_on_subblock = [&]() {
+    auto param_data = create_parameter_data();
+    RETURN_IF_NOT_OK(
+        ValidateNotNull(param_data, "Failed to create parameter data."));
+    RETURN_IF_NOT_OK(param_data->ReadAndValidate(rb));
+    parameter_data.push_back(std::move(param_data));
+    return absl::OkStatus();
+  };
+
+  auto schedule = ParseScheduleHelper(rb, create_parameter_data_on_subblock);
+  if (!schedule.ok()) {
+    return schedule.status();
   }
 
-  DecodedUleb128 num_subblocks;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks));
-  if (num_subblocks > SubblockSchedule::kMaxNumSubblocks) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("num_subblocks= ", num_subblocks, " exceeds maximum."));
-  }
-  std::vector<DecodedUleb128> subblock_durations;
-  subblock_durations.reserve(num_subblocks);
-  for (int i = 0; i < num_subblocks; ++i) {
-    DecodedUleb128 subblock_duration;
-    RETURN_IF_NOT_OK(rb.ReadULeb128(subblock_duration));
-    subblock_durations.push_back(subblock_duration);
-  }
-  return CreateWithVariableSubblockDuration(subblock_durations);
+  return ScheduleAndParameterData{.schedule = *schedule,
+                                  .parameter_data = std::move(parameter_data)};
 }
 
 absl::Status SubblockSchedule::Write(WriteBitBuffer& wb) const {

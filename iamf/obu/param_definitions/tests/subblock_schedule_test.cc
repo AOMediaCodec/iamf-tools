@@ -13,13 +13,16 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/parameter_data.h"
 
 namespace iamf_tools {
 namespace {
@@ -27,6 +30,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::Not;
+using ::testing::NotNull;
 
 using absl::MakeConstSpan;
 
@@ -238,6 +242,72 @@ TEST(GetSubblockDuration, VariableDuration) {
   EXPECT_THAT(schedule->GetSubblockDuration(0), IsOkAndHolds(30));
   EXPECT_THAT(schedule->GetSubblockDuration(1), IsOkAndHolds(34));
   EXPECT_THAT(schedule->GetSubblockDuration(2), Not(IsOk()));
+}
+
+class DummyParameterData : public ParameterData {
+ public:
+  absl::Status ReadAndValidate(ReadBitBuffer& rb) override {
+    // Read one byte as dummy data.
+    uint8_t val;
+    return rb.ReadUnsignedLiteral(8, val);
+  }
+  absl::Status Write(WriteBitBuffer& wb) const override {
+    return wb.WriteUnsignedLiteral(0, 8);
+  }
+  void Print() const override {}
+};
+
+TEST(CreateFromBufferWithParameterData, ConstantSubblockDuration) {
+  constexpr auto source = std::to_array<uint8_t>({
+      0x40,  // duration (64)
+      0x20,  // constant_subblock_duration (32)
+      // 64 / 32 = 2 subblocks.
+      // Each subblock will read 1 byte of dummy data.
+      0xaa,  // dummy data for subblock 0
+      0xbb   // dummy data for subblock 1
+  });
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
+
+  auto dummy_data_factory = []() {
+    return std::make_unique<DummyParameterData>();
+  };
+  auto result = SubblockSchedule::CreateFromBufferWithParameterData(
+      dummy_data_factory, *buffer);
+
+  ASSERT_THAT(result, IsOk());
+  EXPECT_EQ(result->schedule.GetDuration(), 64);
+  EXPECT_EQ(result->schedule.GetConstantSubblockDuration(), 32);
+  EXPECT_EQ(result->schedule.GetNumSubblocks(), 2);
+  EXPECT_THAT(result->schedule.GetSubblockDuration(0), IsOkAndHolds(32));
+  EXPECT_THAT(result->schedule.GetSubblockDuration(1), IsOkAndHolds(32));
+  EXPECT_THAT(result->parameter_data, ElementsAre(NotNull(), NotNull()));
+}
+
+TEST(CreateFromBufferWithParameterData, VariableSubblockDuration) {
+  constexpr auto source = std::to_array<uint8_t>({
+      0x40,  // duration (64)
+      0x00,  // constant_subblock_duration (0)
+      0x02,  // num_subblocks (2)
+      30,    // subblock_duration (30)
+      0xaa,  // dummy data for subblock 0 (1 byte)
+      34,    // subblock_duration (34)
+      0xbb   // dummy data for subblock 1 (1 byte)
+  });
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
+
+  auto dummy_data_factory = []() {
+    return std::make_unique<DummyParameterData>();
+  };
+  auto result = SubblockSchedule::CreateFromBufferWithParameterData(
+      dummy_data_factory, *buffer);
+
+  ASSERT_THAT(result, IsOk());
+  EXPECT_EQ(result->schedule.GetDuration(), 64);
+  EXPECT_EQ(result->schedule.GetConstantSubblockDuration(), 0);
+  EXPECT_EQ(result->schedule.GetNumSubblocks(), 2);
+  EXPECT_THAT(result->schedule.GetSubblockDuration(0), IsOkAndHolds(30));
+  EXPECT_THAT(result->schedule.GetSubblockDuration(1), IsOkAndHolds(34));
+  EXPECT_THAT(result->parameter_data, ElementsAre(NotNull(), NotNull()));
 }
 
 }  // namespace
