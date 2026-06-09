@@ -59,7 +59,7 @@ absl::StatusOr<SubblockSchedule> ParseScheduleHelper(
       return schedule.status();
     }
     // Ok. Subblocks are entirely after the schedule in the buffer.
-    for (int i = 0; i < schedule->GetNumSubblocks(); ++i) {
+    for (DecodedUleb128 i = 0; i < schedule->GetNumSubblocks(); ++i) {
       RETURN_IF_NOT_OK(on_subblock());
     }
     return schedule;
