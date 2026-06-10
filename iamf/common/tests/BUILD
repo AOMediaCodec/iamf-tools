@@ -51,6 +51,7 @@ cc_test(
     name = "write_bit_buffer_fuzz_test",
     size = "small",
     srcs = ["write_bit_buffer_fuzz_test.cc"],
+    shard_count = 4,
     target_compatible_with = [
         "@platforms//os:linux",
     ],
