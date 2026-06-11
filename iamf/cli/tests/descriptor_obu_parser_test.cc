@@ -262,6 +262,39 @@ TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
   EXPECT_FALSE(insufficient_data);
 }
 
+TEST(ProcessDescriptorObus, RedundantSequenceHeaderBeforeCanonicalIsReplaced) {
+  // An out-of-spec ordering observed in the test corpus: a redundant-copy
+  // IA Sequence Header is inserted *before* the canonical one. The parser
+  // must accept the canonical header (replacing the stored redundant copy)
+  // and continue collecting the descriptor OBUs that follow it.
+  const IASequenceHeaderObu input_redundant_ia_sequence_header(
+      ObuHeader{.obu_redundant_copy = true}, ProfileVersion::kIamfBaseProfile,
+      ProfileVersion::kIamfBaseProfile);
+  const IASequenceHeaderObu input_canonical_ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  CodecConfigsById input_codec_configs;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
+  const auto bitstream = SerializeObusExpectOk(
+      {&input_redundant_ia_sequence_header, &input_canonical_ia_sequence_header,
+       &input_codec_configs.at(kFirstCodecConfigId)});
+
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
+  ASSERT_THAT(parsed_obus, IsOk());
+  EXPECT_FALSE(insufficient_data);
+
+  // Stored header is the canonical one — the redundant copy was overridden.
+  EXPECT_EQ(parsed_obus->ia_sequence_header.GetPrimaryProfile(),
+            ProfileVersion::kIamfSimpleProfile);
+  // And the codec config that came after the canonical header was collected.
+  EXPECT_THAT(parsed_obus->codec_config_obus,
+              UnorderedElementsAre(Key(kFirstCodecConfigId)));
+}
+
 TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
   const IASequenceHeaderObu input_non_redundant_ia_sequence_header(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
