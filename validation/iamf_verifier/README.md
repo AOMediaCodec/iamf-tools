@@ -1,16 +1,19 @@
 # IAMF Verifier (`iamf_verifier`)
 
-The `iamf_verifier` tool checks the syntax of an encoded `.iamf` bitstream.
+The `iamf_verifier` tool compares an encoded Test bitstream (either standalone `.iamf` or inside an `.mp4` container) against a Reference `.iamf` bitstream.
 
 ## Verification Pipeline
 
-1. **Bitstream Syntax Compliance**:
+1. **MP4 Parsing**:
+   * If the test input is an `.mp4` container, extracts the standalone `.iamf` bitstream using GPAC.
+
+2. **Bitstream Syntax Compliance**:
    * Invokes [Compliance Warden](https://github.com/felicialim/ComplianceWarden/tree/iamf) on the test file to verify bitstream syntax compliance.
 
-2. **Loudness Verification**:
+3. **Loudness Verification**:
    * Invokes `iamf_loudness_comparator_main` to verify integrated loudness and digital peak metadata align with the reference within a `+/- 0.1 LUFS` tolerance.
 
-3. **Decoding & MLSD Evaluation**:
+4. **Decoding & MLSD Evaluation**:
    * Decodes both reference and test bitstreams across matching mix presentation IDs to `7.1.4`, `2.0` (Stereo), and `Binaural` layouts via `decoder_main`.
    * Asserts exact decoded sample count matching across each layout pair.
    * Evaluates objective audio quality via `mlsd_comparator.evaluate_audio_quality()`.
@@ -23,6 +26,7 @@ Ensure the following external executables are available on your system `PATH` or
 
 * **[Compliance Warden](https://github.com/felicialim/ComplianceWarden/tree/iamf)** (`cw.exe`): Required for bitstream syntax verification (`--cw_cmd`). *(Note: Please use the `iamf` branch from [this fork](https://github.com/felicialim/ComplianceWarden/tree/iamf) while these IAMF compliance rules are being actively upstreamed to the main Compliance Warden repository).*
 * **Internal Validation Tools**: You must compile internal executables like `iamf_loudness_comparator_main` and `decoder_main` via Bazelisk (e.g., `bazelisk build //validation/iamf_loudness_comparator:iamf_loudness_comparator_main //iamf/cli:decoder_main`) or provide their paths via explicit command-line flags (such as `--loudness_cmd` and `--decoder_cmd`).
+* **[GPAC](https://github.com/gpac/gpac)** (`gpac`): Required if the Test IAMF file is an `.mp4`.
 
 ---
 
@@ -51,6 +55,7 @@ Execute the following instructions from the repository root:
        --cw_cmd=/path/to/ComplianceWarden/bin/cw.exe \
        --decoder_cmd=bazel-bin/iamf/cli/decoder_main \
        --loudness_cmd=bazel-bin/validation/iamf_loudness_comparator/iamf_loudness_comparator_main \
+       --gpac_cmd=gpac \
        --report_file=iamf_verification_report.txt
    ```
 
@@ -58,9 +63,10 @@ Execute the following instructions from the repository root:
 
 * `--ref_file`: Path to the reference `.iamf` bitstream.
 * `--test_file`: Path to the test `.iamf` bitstream.
-* `--cw_cmd`: Path or invocation command for Compliance Warden.
+* `--cw_cmd`: Path to, or invocation command for Compliance Warden.
 * `--decoder_cmd`: Path to the `iamf_tools` standalone decoder binary. *(Note: When compiling standalone via Bazel, the binary is located at `bazel-bin/iamf/cli/decoder_main`).*
 * `--loudness_cmd`: Path to the internal loudness comparator binary. *(Note: When compiling standalone via Bazel, the binary is located at `bazel-bin/validation/iamf_loudness_comparator/iamf_loudness_comparator_main`).*
+* `--gpac_cmd`: Path to, or invocation command for the `gpac` binary.
 * `--report_file`: (Optional) Output text file for saving the final verification ledger (Default: `iamf_verification_report.txt`).
 
 ---
@@ -75,7 +81,7 @@ The report lists each verification stage and ends with an `OVERALL RESULT: PASS`
 IAMF VERIFIER REPORT
 ====================
 Reference File: reference.iamf
-Test File: test_content.iamf
+Test File: test_content.mp4
 
 [PASS] Compliance Warden bitstream syntax verification
 

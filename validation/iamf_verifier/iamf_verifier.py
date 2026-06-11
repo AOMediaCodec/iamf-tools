@@ -39,7 +39,7 @@ _REF_FILE = flags.DEFINE_string(
 _TEST_FILE = flags.DEFINE_string(
     "test_file",
     None,
-    "Path to test .iamf file.",
+    "Path to test file (.iamf or .mp4 containing IAMF).",
 )
 _CW_CMD = flags.DEFINE_string(
     "cw_cmd",
@@ -56,6 +56,9 @@ _LOUDNESS_CMD = flags.DEFINE_string(
     None,
     "Path to loudness comparator binary.",
 )
+_GPAC_CMD = flags.DEFINE_string(
+    "gpac_cmd", None, "Command name or path for the `gpac` binary."
+)
 _REPORT_FILE = flags.DEFINE_string(
     "report_file",
     "iamf_verification_report.txt",
@@ -67,6 +70,7 @@ flags.mark_flag_as_required("test_file")
 flags.mark_flag_as_required("cw_cmd")
 flags.mark_flag_as_required("decoder_cmd")
 flags.mark_flag_as_required("loudness_cmd")
+flags.mark_flag_as_required("gpac_cmd")
 
 
 def _run_cmd(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -105,20 +109,21 @@ def run_compliance_warden(test_file: str, cw_cmd: str) -> CheckResult:
   """Verifies bitstream syntax compliance via Compliance Warden.
 
   Args:
-    test_file: Absolute path to the test .iamf file.
+    test_file: Absolute path to the test .iamf or .mp4 file.
     cw_cmd: Command name or absolute path for the Compliance Warden binary.
 
   Returns:
     Structured CheckResult indicating syntax compliance.
   """
-  res = _run_cmd([cw_cmd, "-s", "iamf", test_file])
+  spec = "iamf_isobmff" if test_file.endswith(".mp4") else "iamf"
+  res = _run_cmd([cw_cmd, "-s", spec, test_file])
   if res.returncode == 0:
     return CheckResult(
-        True, "[PASS] Compliance Warden bitstream syntax verification"
+        True, f"[PASS] Compliance Warden verification (-s {spec})"
     )
   return CheckResult(
       False,
-      "[FAIL] Compliance Warden detected syntax violations in"
+      f"[FAIL] Compliance Warden (-s {spec}) detected violations in"
       f" {test_file}:\n{res.stdout}",
   )
 
@@ -185,19 +190,17 @@ def run_loudness_comparison(
     )
 
 
-def get_audio_duration_ms_and_frames(wav_path: str) -> tuple[float, int]:
-  """Returns duration in milliseconds and frame count of an uncompressed WAV.
+def get_audio_frame_count(wav_path: str) -> int:
+  """Returns the total frame count of an uncompressed WAV.
 
   Args:
     wav_path: Absolute path to the input WAV file.
 
   Returns:
-    A tuple (duration_ms, total_frames).
+    The total frame count.
   """
   with wave.open(wav_path, "rb") as wf:
-    frames = wf.getnframes()
-    rate = wf.getframerate()
-    return (frames / rate) * 1000.0, frames
+    return wf.getnframes()
 
 
 def _decode_and_evaluate_layout(
@@ -246,8 +249,8 @@ def _decode_and_evaluate_layout(
           f" ID={mix_id}):\n{res.stdout}",
       )
 
-  _, ref_frames = get_audio_duration_ms_and_frames(ref_wav)
-  _, test_frames = get_audio_duration_ms_and_frames(test_wav)
+  ref_frames = get_audio_frame_count(ref_wav)
+  test_frames = get_audio_frame_count(test_wav)
 
   mix_label = f" (Mix ID={mix_id})"
 
@@ -293,12 +296,47 @@ def _generate_report_header(ref_file: str, test_file: str) -> list[str]:
   ]
 
 
+def _mp4_to_iamf(
+    mp4_path: str,
+    temp_dir: str,
+    gpac_cmd: str = "gpac",
+) -> str:
+  """Extracts the underlying IAMF bitstream from an MP4.
+
+  Args:
+    mp4_path: Absolute path to the input MP4 file.
+    temp_dir: Path to the temporary workspace directory for extracted .iamf
+      files.
+    gpac_cmd: Command name or absolute file path for the `gpac` binary.
+
+  Returns:
+    The absolute path to the extracted standalone IAMF bitstream.
+
+  Raises:
+    RuntimeError: If no IAMF bitstream track can be detected or extracted.
+  """
+  extracted_iamf = os.path.join(temp_dir, "extracted.iamf")
+  res = _run_cmd([
+      gpac_cmd,
+      "-i",
+      mp4_path,
+      "-o",
+      extracted_iamf,
+  ])
+  if res.returncode != 0 or not os.path.exists(extracted_iamf):
+    raise RuntimeError(
+        f"Failed to transmux IAMF bitstream from {mp4_path}:\n{res.stderr}"
+    )
+  return extracted_iamf
+
+
 def _run_verifier(
     ref_file: str,
     test_file: str,
     cw_cmd: str,
     decoder_cmd: str,
     loudness_cmd: str,
+    gpac_cmd: str = "gpac",
     layouts: tuple[str, ...] = ("7.1.4", "2.0", "Binaural"),
     loudness_tolerance_lufs: float = 0.1,
 ) -> tuple[bool, str]:
@@ -310,10 +348,11 @@ def _run_verifier(
 
   Args:
     ref_file: Absolute path to the reference .iamf file.
-    test_file: Absolute path to the test .iamf file.
+    test_file: Absolute path to the test .iamf or .mp4 file.
     cw_cmd: Command name or path for Compliance Warden.
     decoder_cmd: Command name or path for the `iamf_tools` decoder.
     loudness_cmd: Command name or path for the loudness comparator.
+    gpac_cmd: Command name or path for the `gpac` binary.
     layouts: Tuple of immersive loudspeaker layout strings matching standard
       `iamf_tools` standalone decoder layout specifications (e.g., '7.1.4',
       '2.0').
@@ -325,19 +364,31 @@ def _run_verifier(
 
   Raises:
     FileNotFoundError: If any required executable is missing.
+    RuntimeError: If MP4 container probing or extraction fails.
   """
-  for cmd in (cw_cmd, decoder_cmd, loudness_cmd):
+  is_mp4 = test_file.endswith(".mp4")
+
+  dep_cmds = [cw_cmd, decoder_cmd, loudness_cmd]
+  if is_mp4:
+    dep_cmds.append(gpac_cmd)
+
+  for cmd in dep_cmds:
     check_dependency(cmd)
 
   report = _generate_report_header(ref_file, test_file)
-
-  cw_res = run_compliance_warden(test_file, cw_cmd)
-  loudness_res, mix_ids = run_loudness_comparison(
-      ref_file, test_file, loudness_cmd, loudness_tolerance_lufs
-  )
-  results = [cw_res, loudness_res]
+  results: list[CheckResult] = []
 
   with tempfile.TemporaryDirectory() as temp_dir:
+    test_iamf_file = test_file
+    if is_mp4:
+      test_iamf_file = _mp4_to_iamf(test_file, temp_dir, gpac_cmd)
+
+    results.append(run_compliance_warden(test_file, cw_cmd))
+    loudness_res, mix_ids = run_loudness_comparison(
+        ref_file, test_iamf_file, loudness_cmd, loudness_tolerance_lufs
+    )
+    results.append(loudness_res)
+
     if not mix_ids:
       results.append(
           CheckResult(
@@ -352,7 +403,12 @@ def _run_verifier(
         for layout in layouts:
           results.append(
               _decode_and_evaluate_layout(
-                  ref_file, test_file, layout, mix_id, decoder_cmd, temp_dir
+                  ref_file,
+                  test_iamf_file,
+                  layout,
+                  mix_id,
+                  decoder_cmd,
+                  temp_dir,
               )
           )
 
@@ -374,6 +430,7 @@ def main(argv: list[str]) -> None:
       cw_cmd=_CW_CMD.value,
       decoder_cmd=_DECODER_CMD.value,
       loudness_cmd=_LOUDNESS_CMD.value,
+      gpac_cmd=_GPAC_CMD.value,
   )
 
   print(report)
