@@ -10,6 +10,11 @@ The `iamf_verifier` tool checks the syntax of an encoded `.iamf` bitstream.
 2. **Loudness Verification**:
    * Invokes `iamf_loudness_comparator_main` to verify integrated loudness and digital peak metadata align with the reference within a `+/- 0.1 LUFS` tolerance.
 
+3. **Decoding & MLSD Evaluation**:
+   * Decodes both reference and test bitstreams across matching mix presentation IDs to `7.1.4`, `2.0` (Stereo), and `Binaural` layouts via `decoder_main`.
+   * Asserts exact decoded sample count matching across each layout pair.
+   * Evaluates objective audio quality via `mlsd_comparator.evaluate_audio_quality()`.
+
 ---
 
 ## Prerequisites
@@ -17,7 +22,7 @@ The `iamf_verifier` tool checks the syntax of an encoded `.iamf` bitstream.
 Ensure the following external executables are available on your system `PATH` or provided via explicit command-line flags:
 
 * **[Compliance Warden](https://github.com/felicialim/ComplianceWarden/tree/iamf)** (`cw.exe`): Required for bitstream syntax verification (`--cw_cmd`). *(Note: Please use the `iamf` branch from [this fork](https://github.com/felicialim/ComplianceWarden/tree/iamf) while these IAMF compliance rules are being actively upstreamed to the main Compliance Warden repository).*
-* **Internal Validation Comparators**: You must compile internal comparators like `iamf_loudness_comparator_main` via Bazelisk (e.g., `bazelisk build //validation/iamf_loudness_comparator:iamf_loudness_comparator_main`) or provide their paths via explicit command-line flags (such as `--loudness_cmd`).
+* **Internal Validation Tools**: You must compile internal executables like `iamf_loudness_comparator_main` and `decoder_main` via Bazelisk (e.g., `bazelisk build //validation/iamf_loudness_comparator:iamf_loudness_comparator_main //iamf/cli:decoder_main`) or provide their paths via explicit command-line flags (such as `--loudness_cmd` and `--decoder_cmd`).
 
 ---
 
@@ -31,10 +36,10 @@ Execute the following instructions from the repository root:
    pip install -r validation/iamf_verifier/requirements.txt
    ```
 
-2. Build the internal C++ comparators (using `bazelisk`):
+2. Build the internal C++ comparators and decoders (using `bazelisk`):
 
    ```bash
-   bazelisk build //validation/iamf_loudness_comparator:iamf_loudness_comparator_main
+   bazelisk build //validation/iamf_loudness_comparator:iamf_loudness_comparator_main //iamf/cli:decoder_main
    ```
 
 3. Run the verifier script:
@@ -44,6 +49,7 @@ Execute the following instructions from the repository root:
        --ref_file=/path/to/reference.iamf \
        --test_file=/path/to/test_content.iamf \
        --cw_cmd=/path/to/ComplianceWarden/bin/cw.exe \
+       --decoder_cmd=bazel-bin/iamf/cli/decoder_main \
        --loudness_cmd=bazel-bin/validation/iamf_loudness_comparator/iamf_loudness_comparator_main \
        --report_file=iamf_verification_report.txt
    ```
@@ -53,6 +59,7 @@ Execute the following instructions from the repository root:
 * `--ref_file`: Path to the reference `.iamf` bitstream.
 * `--test_file`: Path to the test `.iamf` bitstream.
 * `--cw_cmd`: Path or invocation command for Compliance Warden.
+* `--decoder_cmd`: Path to the `iamf_tools` standalone decoder binary. *(Note: When compiling standalone via Bazel, the binary is located at `bazel-bin/iamf/cli/decoder_main`).*
 * `--loudness_cmd`: Path to the internal loudness comparator binary. *(Note: When compiling standalone via Bazel, the binary is located at `bazel-bin/validation/iamf_loudness_comparator/iamf_loudness_comparator_main`).*
 * `--report_file`: (Optional) Output text file for saving the final verification ledger (Default: `iamf_verification_report.txt`).
 
@@ -83,6 +90,10 @@ Comparing Mix Presentation ID: 42
     Peak: -13.1562 vs -13.1562 (diff: 0)
 
 Overall Result: Within Tolerance
+
+[PASS] Layout 7.1.4    (Mix ID=42) | Sample Count=48000 exactly | MLSD (Peak=0.00, Sustained=0.00)
+[PASS] Layout 2.0      (Mix ID=42) | Sample Count=48000 exactly | MLSD (Peak=0.00, Sustained=0.00)
+[PASS] Layout Binaural (Mix ID=42) | Sample Count=48000 exactly | MLSD (Peak=0.00, Sustained=0.00)
 
 OVERALL RESULT: PASS
 ```

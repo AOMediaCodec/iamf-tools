@@ -11,14 +11,18 @@
 
 import dataclasses
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import wave
 
 from absl import app
 from absl import flags
 from absl import logging
+
+from validation.mlsd_comparator import mlsd_comparator
 
 
 @dataclasses.dataclass(frozen=True)
@@ -42,6 +46,11 @@ _CW_CMD = flags.DEFINE_string(
     None,
     "Command name or path for Compliance Warden.",
 )
+_DECODER_CMD = flags.DEFINE_string(
+    "decoder_cmd",
+    None,
+    "Path to `iamf_tools` decoder binary.",
+)
 _LOUDNESS_CMD = flags.DEFINE_string(
     "loudness_cmd",
     None,
@@ -56,6 +65,7 @@ _REPORT_FILE = flags.DEFINE_string(
 flags.mark_flag_as_required("ref_file")
 flags.mark_flag_as_required("test_file")
 flags.mark_flag_as_required("cw_cmd")
+flags.mark_flag_as_required("decoder_cmd")
 flags.mark_flag_as_required("loudness_cmd")
 
 
@@ -118,7 +128,7 @@ def run_loudness_comparison(
     test_iamf: str,
     loudness_cmd: str,
     tolerance_lufs: float = 0.1,
-) -> CheckResult:
+) -> tuple[CheckResult, list[int]]:
   """Verifies integrated loudness and digital peak metadata align within tolerance.
 
   Args:
@@ -128,7 +138,7 @@ def run_loudness_comparison(
     tolerance_lufs: Maximum allowed deviation threshold in LUFS.
 
   Returns:
-    Structured CheckResult indicating loudness alignment.
+    A tuple (loudness_result, discovered_mix_ids).
   """
   with tempfile.TemporaryDirectory() as temp_dir:
     report_path = os.path.join(temp_dir, "loudness_report.txt")
@@ -144,22 +154,124 @@ def run_loudness_comparison(
         report_path,
     ])
     details = ""
+    discovered_mix_ids: list[int] = []
     if os.path.exists(report_path):
       with open(report_path) as rf:
         if content := rf.read().strip():
           details = f"\n{content}"
+          discovered_mix_ids = [
+              int(m)
+              for m in re.findall(
+                  r"Comparing Mix Presentation ID:\s*(\d+)", content
+              )
+          ]
 
     if res.returncode == 0:
-      return CheckResult(
-          True,
-          "[PASS] Loudness Metadata Alignment (Tolerance +/-"
-          f" {tolerance_lufs} LUFS){details}",
+      return (
+          CheckResult(
+              True,
+              "[PASS] Loudness Metadata Alignment (Tolerance +/-"
+              f" {tolerance_lufs} LUFS){details}",
+          ),
+          discovered_mix_ids,
       )
+    return (
+        CheckResult(
+            False,
+            f"[FAIL] Loudness metadata exceeds +/- {tolerance_lufs} LUFS"
+            f" tolerance:\n{res.stdout}{details}",
+        ),
+        discovered_mix_ids,
+    )
+
+
+def get_audio_duration_ms_and_frames(wav_path: str) -> tuple[float, int]:
+  """Returns duration in milliseconds and frame count of an uncompressed WAV.
+
+  Args:
+    wav_path: Absolute path to the input WAV file.
+
+  Returns:
+    A tuple (duration_ms, total_frames).
+  """
+  with wave.open(wav_path, "rb") as wf:
+    frames = wf.getnframes()
+    rate = wf.getframerate()
+    return (frames / rate) * 1000.0, frames
+
+
+def _decode_and_evaluate_layout(
+    ref_file: str,
+    test_file: str,
+    layout: str,
+    mix_id: int,
+    decoder_cmd: str,
+    temp_dir: str,
+) -> CheckResult:
+  """Decodes reference and test bitstreams to WAV and verifies MLSD audio quality.
+
+  Decodes both bitstreams for a given layout and mix ID, asserts exact sample
+  count equality, and evaluates objective MLSD peak and sustained anomalies.
+
+  Args:
+    ref_file: Absolute path to the reference .iamf bitstream.
+    test_file: Absolute path to the test .iamf bitstream.
+    layout: Immersive layout string matching standard `iamf_tools` standalone
+      decoder layout specifications (e.g., '7.1.4', '2.0').
+    mix_id: Target integer Mix Presentation ID to decode.
+    decoder_cmd: Command name or absolute path for the iamf_tools decoder.
+    temp_dir: Temporary workspace directory path for decoded WAV files.
+
+  Returns:
+    Structured CheckResult indicating sample match and MLSD evaluation.
+  """
+  ref_wav = os.path.join(temp_dir, f"ref_mix{mix_id}_{layout}.wav")
+  test_wav = os.path.join(temp_dir, f"test_mix{mix_id}_{layout}.wav")
+
+  for infile, outfile, label in (
+      (ref_file, ref_wav, "reference"),
+      (test_file, test_wav, "test"),
+  ):
+    res = _run_cmd([
+        decoder_cmd,
+        f"--input_filename={infile}",
+        f"--output_filename={outfile}",
+        f"--output_layout={layout}",
+        f"--mix_id={mix_id}",
+    ])
+    if res.returncode != 0:
+      return CheckResult(
+          False,
+          f"[FAIL] Failed to decode {label} layout {layout} (Mix"
+          f" ID={mix_id}):\n{res.stdout}",
+      )
+
+  _, ref_frames = get_audio_duration_ms_and_frames(ref_wav)
+  _, test_frames = get_audio_duration_ms_and_frames(test_wav)
+
+  mix_label = f" (Mix ID={mix_id})"
+
+  if ref_frames != test_frames:
     return CheckResult(
         False,
-        f"[FAIL] Loudness metadata exceeds +/- {tolerance_lufs} LUFS"
-        f" tolerance:\n{res.stdout}{details}",
+        f"[FAIL] Sample count mismatch for layout {layout}{mix_label}:"
+        f" Reference={ref_frames} vs Test={test_frames}",
     )
+
+  is_pass, anomalies, m_peak, m_sustained = (
+      mlsd_comparator.evaluate_audio_quality(ref_wav, test_wav)
+  )
+  if not is_pass:
+    msg = f"[FAIL] MLSD verification failed for layout {layout}{mix_label}."
+    if anomalies:
+      msg += f" Anomalies detected: {len(anomalies)}"
+    return CheckResult(False, msg)
+
+  return CheckResult(
+      True,
+      f"[PASS] Layout {layout:8s}{mix_label} | Sample Count={ref_frames}"
+      f" exactly | MLSD (Peak={m_peak:.2f}, Sustained={m_sustained:.2f})",
+  )
 
 
 def _generate_report_header(ref_file: str, test_file: str) -> list[str]:
@@ -185,20 +297,26 @@ def _run_verifier(
     ref_file: str,
     test_file: str,
     cw_cmd: str,
+    decoder_cmd: str,
     loudness_cmd: str,
+    layouts: tuple[str, ...] = ("7.1.4", "2.0", "Binaural"),
     loudness_tolerance_lufs: float = 0.1,
 ) -> tuple[bool, str]:
   """Executes the core IAMF verification pipeline.
 
-  Validates bitstream syntax via Compliance Warden and verifies integrated
-  loudness alignment against a reference bitstream within the specified
-  tolerance.
+  Validates bitstream syntax via Compliance Warden, verifies integrated
+  loudness alignment against a reference bitstream within tolerance, and
+  evaluates rendering quality using MLSD across immersive layouts.
 
   Args:
     ref_file: Absolute path to the reference .iamf file.
     test_file: Absolute path to the test .iamf file.
     cw_cmd: Command name or path for Compliance Warden.
+    decoder_cmd: Command name or path for the `iamf_tools` decoder.
     loudness_cmd: Command name or path for the loudness comparator.
+    layouts: Tuple of immersive loudspeaker layout strings matching standard
+      `iamf_tools` standalone decoder layout specifications (e.g., '7.1.4',
+      '2.0').
     loudness_tolerance_lufs: Maximum allowed deviation in LUFS.
 
   Returns:
@@ -208,17 +326,35 @@ def _run_verifier(
   Raises:
     FileNotFoundError: If any required executable is missing.
   """
-  for cmd in (cw_cmd, loudness_cmd):
+  for cmd in (cw_cmd, decoder_cmd, loudness_cmd):
     check_dependency(cmd)
 
   report = _generate_report_header(ref_file, test_file)
 
-  results = [
-      run_compliance_warden(test_file, cw_cmd),
-      run_loudness_comparison(
-          ref_file, test_file, loudness_cmd, loudness_tolerance_lufs
-      ),
-  ]
+  cw_res = run_compliance_warden(test_file, cw_cmd)
+  loudness_res, mix_ids = run_loudness_comparison(
+      ref_file, test_file, loudness_cmd, loudness_tolerance_lufs
+  )
+  results = [cw_res, loudness_res]
+
+  with tempfile.TemporaryDirectory() as temp_dir:
+    if not mix_ids:
+      results.append(
+          CheckResult(
+              False,
+              "[FAIL] No matching Mix Presentation IDs discovered between"
+              " Reference and Test bitstreams for layout decoding and MLSD"
+              " evaluation.",
+          )
+      )
+    else:
+      for mix_id in mix_ids:
+        for layout in layouts:
+          results.append(
+              _decode_and_evaluate_layout(
+                  ref_file, test_file, layout, mix_id, decoder_cmd, temp_dir
+              )
+          )
 
   report.extend(r.ledger_entry for r in results)
 
@@ -236,6 +372,7 @@ def main(argv: list[str]) -> None:
       ref_file=_REF_FILE.value,
       test_file=_TEST_FILE.value,
       cw_cmd=_CW_CMD.value,
+      decoder_cmd=_DECODER_CMD.value,
       loudness_cmd=_LOUDNESS_CMD.value,
   )
 
