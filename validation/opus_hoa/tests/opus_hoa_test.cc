@@ -310,7 +310,7 @@ TEST(VerificationTestSuite, SkipNonAmbisonicsAudioElements) {
   EXPECT_TRUE(results.empty());
 }
 
-TEST(VerificationTestSuite, ReportNonOpusCodecConfig) {
+TEST(VerificationTestSuite, SkipNonOpusCodecConfig) {
   IASequenceHeaderObu seq_header(ObuHeader{.obu_type = kObuIaSequenceHeader},
                                  ProfileVersion::kIamfBaseProfile,
                                  ProfileVersion::kIamfBaseProfile);
@@ -344,10 +344,7 @@ TEST(VerificationTestSuite, ReportNonOpusCodecConfig) {
 
   auto results = VerifyOpusAmbisonics(file_path);
   ASSERT_TRUE(results.ok()) << results.status();
-  ASSERT_EQ(results->size(), 1);
-  EXPECT_EQ((*results)[0].status, VerificationStatus::kInvalidOrNonOpus);
-  EXPECT_TRUE(absl::StrContains((*results)[0].custom_rationale,
-                                "Not an Opus Codec Config"));
+  EXPECT_TRUE(results->empty());
 }
 
 TEST(VerificationReportTestSuite, IngestFileWithNoAudioElements) {

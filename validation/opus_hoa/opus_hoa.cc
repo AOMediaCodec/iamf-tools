@@ -75,6 +75,14 @@ absl::StatusOr<std::vector<AudioElementVerificationResult>> VerifyAudioElements(
       continue;  // Skip non-Ambisonics elements.
     }
 
+    uint32_t codec_config_id = obu.GetCodecConfigId();
+    auto it = obus.codec_config_obus.find(codec_config_id);
+
+    if (it == obus.codec_config_obus.end() ||
+        it->second.GetCodecConfig().codec_id != CodecConfig::kCodecIdOpus) {
+      continue;  // Skip non-Opus Ambisonics.
+    }
+
     const auto& ambisonics_config = std::get<AmbisonicsConfig>(obu.config_);
     AudioElementVerificationResult result = {
         .audio_element_id = obu.GetAudioElementId(),
@@ -82,20 +90,6 @@ absl::StatusOr<std::vector<AudioElementVerificationResult>> VerifyAudioElements(
         .order = -1,
         .ambisonics_mode = ambisonics_config.GetAmbisonicsMode(),
     };
-
-    uint32_t codec_config_id = obu.GetCodecConfigId();
-    auto it = obus.codec_config_obus.find(codec_config_id);
-
-    if (it == obus.codec_config_obus.end() ||
-        it->second.GetCodecConfig().codec_id != CodecConfig::kCodecIdOpus) {
-      result.status = VerificationStatus::kInvalidOrNonOpus;
-      result.custom_rationale = (it == obus.codec_config_obus.end())
-                                    ? "Missing Codec Config OBU for ID: " +
-                                          std::to_string(codec_config_id)
-                                    : "Not an Opus Codec Config";
-      results.push_back(result);
-      continue;
-    }
 
     uint8_t channel_count = ambisonics_config.GetOutputChannelCount();
     for (int n = 0; n <= kMaxAmbisonicsOrder; ++n) {
@@ -199,10 +193,6 @@ VerificationReport GenerateVerificationReport(
       case VerificationStatus::kCustom:
         ss << "CUSTOM (" << result.order << "OA)\n"
            << "  Rationale: " << result.custom_rationale << "\n";
-        break;
-      case VerificationStatus::kInvalidOrNonOpus:
-        ss << "INVALID OR NON-OPUS (skipping)\n"
-           << "  Details: " << result.custom_rationale << "\n";
         break;
     }
   }

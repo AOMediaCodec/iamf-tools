@@ -6,7 +6,8 @@ Audio Elements are classified as:
 
 * **CANONICAL**: Matches recommended mode and matrix.
 * **CUSTOM**: Valid, but uses non-standard mode or matrix.
-* **INVALID OR NON-OPUS**: Corrupt, missing descriptors, or not Opus Ambisonics.
+
+*(Note: Non-Opus Ambisonics Audio Elements or those with missing codec configurations are skipped).*
 
 ## Recommended Practices
 
@@ -56,8 +57,6 @@ Written to `--report_file`:
   Rationale: Demixing matrix coefficients diverge from Opus Channel Mapping Family 3 reference.
 [Audio Element ID: 303] Status: CUSTOM (3OA)
   Rationale: coupled_substream_count should be the floor of half the total input channel count.
-[Audio Element ID: 304] Status: INVALID OR NON-OPUS (skipping)
-  Details: Not an Opus Codec Config
 
 Result: Non-Canonical Elements Detected
 ```

@@ -24,9 +24,8 @@ namespace opus_hoa {
 
 /*!\brief Status of verifying an Audio Element against recommended practices. */
 enum class VerificationStatus {
-  kCanonical,         // Follows recommended order/mode/matrix.
-  kCustom,            // Diverges from standard mode or matrix recommendations.
-  kInvalidOrNonOpus,  // Corrupt or not an Opus Ambisonics element.
+  kCanonical,  // Follows recommended order/mode/matrix.
+  kCustom,     // Diverges from standard mode or matrix recommendations.
 };
 
 /*!\brief Detailed verification result for an Audio Element. */
