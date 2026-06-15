@@ -56,6 +56,12 @@ _LOUDNESS_CMD = flags.DEFINE_string(
     None,
     "Path to loudness comparator binary.",
 )
+_OPUS_HOA_CMD = flags.DEFINE_string(
+    "opus_hoa_cmd",
+    None,
+    "Path to Opus Ambisonics verifier binary (if None, verification is"
+    " bypassed).",
+)
 _GPAC_CMD = flags.DEFINE_string(
     "gpac_cmd", None, "Command name or path for the `gpac` binary."
 )
@@ -126,6 +132,44 @@ def run_compliance_warden(test_file: str, cw_cmd: str) -> CheckResult:
       f"[FAIL] Compliance Warden (-s {spec}) detected violations in"
       f" {test_file}:\n{res.stdout}",
   )
+
+
+def run_opus_hoa_verification(test_iamf: str, opus_hoa_cmd: str) -> CheckResult:
+  """Verifies Opus Ambisonics recommended practices via `opus_hoa_main`.
+
+  Args:
+    test_iamf: Absolute path to the test .iamf file.
+    opus_hoa_cmd: Command name or absolute path for the opus_hoa_main binary.
+
+  Returns:
+    Structured CheckResult indicating if elements follow recommended practices.
+  """
+  with tempfile.TemporaryDirectory() as temp_dir:
+    report_path = os.path.join(temp_dir, "opus_hoa_report.txt")
+    res = _run_cmd([
+        opus_hoa_cmd,
+        f"--input={test_iamf}",
+        f"--report_file={report_path}",
+    ])
+    details = ""
+    if os.path.exists(report_path):
+      with open(report_path) as rf:
+        if content := rf.read().strip():
+          details = f"\n{content}"
+
+    if (
+        res.returncode != 0
+        or "Result: Non-Canonical Elements Detected" in details
+    ):
+      return CheckResult(
+          False,
+          "[FAIL] Opus Ambisonics deviates from recommended practices in"
+          f" {test_iamf}:{details}\n{res.stdout}",
+      )
+    return CheckResult(
+        True,
+        f"[PASS] Opus Ambisonics follows recommended practices{details}",
+    )
 
 
 def run_loudness_comparison(
@@ -336,6 +380,7 @@ def _run_verifier(
     cw_cmd: str,
     decoder_cmd: str,
     loudness_cmd: str,
+    opus_hoa_cmd: str | None = None,
     gpac_cmd: str = "gpac",
     layouts: tuple[str, ...] = ("7.1.4", "2.0", "Binaural"),
     loudness_tolerance_lufs: float = 0.1,
@@ -352,6 +397,8 @@ def _run_verifier(
     cw_cmd: Command name or path for Compliance Warden.
     decoder_cmd: Command name or path for the `iamf_tools` decoder.
     loudness_cmd: Command name or path for the loudness comparator.
+    opus_hoa_cmd: Command name or path for the Opus Ambisonics verifier (if
+      None, verification is bypassed).
     gpac_cmd: Command name or path for the `gpac` binary.
     layouts: Tuple of immersive loudspeaker layout strings matching standard
       `iamf_tools` standalone decoder layout specifications (e.g., '7.1.4',
@@ -369,6 +416,8 @@ def _run_verifier(
   is_mp4 = test_file.endswith(".mp4")
 
   dep_cmds = [cw_cmd, decoder_cmd, loudness_cmd]
+  if opus_hoa_cmd:
+    dep_cmds.append(opus_hoa_cmd)
   if is_mp4:
     dep_cmds.append(gpac_cmd)
 
@@ -388,6 +437,8 @@ def _run_verifier(
         ref_file, test_iamf_file, loudness_cmd, loudness_tolerance_lufs
     )
     results.append(loudness_res)
+    if opus_hoa_cmd:
+      results.append(run_opus_hoa_verification(test_iamf_file, opus_hoa_cmd))
 
     if not mix_ids:
       results.append(
@@ -430,6 +481,7 @@ def main(argv: list[str]) -> None:
       cw_cmd=_CW_CMD.value,
       decoder_cmd=_DECODER_CMD.value,
       loudness_cmd=_LOUDNESS_CMD.value,
+      opus_hoa_cmd=_OPUS_HOA_CMD.value,
       gpac_cmd=_GPAC_CMD.value,
   )
 

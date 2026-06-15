@@ -8,6 +8,7 @@ py_binary(
     data = [
         "//iamf/cli:decoder_main",
         "//validation/iamf_loudness_comparator:iamf_loudness_comparator_main",
+        "//validation/opus_hoa:opus_hoa_main",
     ],
     main = "iamf_verifier.py",
     deps = [
