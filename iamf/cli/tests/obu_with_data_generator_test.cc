@@ -17,6 +17,7 @@
 #include <limits>
 #include <list>
 #include <memory>
+#include <numeric>
 #include <optional>
 #include <utility>
 #include <variant>
@@ -53,6 +54,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::Contains;
 using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 using ::testing::Not;
@@ -121,6 +123,37 @@ TEST(GenerateAudioElementWithData, ValidAudioElementWithCodecConfig) {
   EXPECT_THAT(audio_element_with_data->channel_numbers_for_layers,
               ElementsAre(ChannelNumbers{
                   .surround = 2, .lfe = 0, .height = 0, .bottom = 0}));
+}
+
+TEST(GenerateAudioElementWithData,
+     ValidEvenOrderAmbisonicsProjectionAudioElementWithCoupledSubstreams) {
+  int channel_count = 25;  // 4th order Ambisonics
+  int coupled_substream_count = 12;
+  int substream_count = 13;
+
+  std::vector<DecodedUleb128> substreams(substream_count, 0);
+  std::iota(substreams.begin(), substreams.end(), kFirstSubstreamId);
+
+  std::vector<int16_t> matrix(channel_count * channel_count, 0);
+
+  auto obu = AudioElementObu::CreateForProjectionAmbisonics(
+      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
+      substreams, channel_count, coupled_substream_count, matrix);
+  ASSERT_THAT(obu, IsOk());
+
+  CodecConfigsById codec_config_obus;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
+
+  auto audio_element_with_data =
+      ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
+                                                         *obu);
+  EXPECT_THAT(audio_element_with_data, IsOk());
+
+  // Verify that the 13th substream (index 12, non-coupled) gets the correct
+  // ACN label (A24).
+  DecodedUleb128 non_coupled_substream_id = substreams[12];
+  EXPECT_THAT(audio_element_with_data->substream_id_to_labels,
+              Contains(Pair(non_coupled_substream_id, ElementsAre(kA24))));
 }
 
 TEST(GenerateAudioElementWithData, InvalidCodecConfigId) {

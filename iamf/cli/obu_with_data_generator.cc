@@ -547,8 +547,7 @@ absl::Status FinalizeAmbisonicsProjectionConfig(
     const std::list<int> ambisonic_channel_numbers =
         i < projection_config.GetCoupledSubstreamCount()
             ? std::list<int>{2 * i, 2 * i + 1}
-            : std::list<int>{2 * projection_config.GetCoupledSubstreamCount() +
-                             i};
+            : std::list<int>{projection_config.GetCoupledSubstreamCount() + i};
     for (const auto ambisonic_channel_number : ambisonic_channel_numbers) {
       const auto ambisonics_label =
           ChannelLabel::AmbisonicsChannelNumberToLabel(
