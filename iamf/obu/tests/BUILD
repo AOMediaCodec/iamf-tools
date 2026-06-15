@@ -25,7 +25,7 @@ cc_library(
     hdrs = ["obu_test_utils.h"],
     visibility = [
         "//iamf:__subpackages__",
-        "//validation/iamf_loudness_comparator/tests:__pkg__",
+        "//validation:__subpackages__",
     ],
     deps = [
         "//iamf/common:read_bit_buffer",
