@@ -6,7 +6,10 @@ package(default_visibility = ["//validation:__subpackages__"])
 cc_library(
     name = "opus_hoa",
     srcs = ["opus_hoa.cc"],
-    hdrs = ["opus_hoa.h"],
+    hdrs = [
+        "mapping_matrix.h",
+        "opus_hoa.h",
+    ],
     deps = [
         "//iamf/cli:descriptor_obu_parser",
         "//iamf/cli:descriptor_obus",
@@ -16,6 +19,8 @@ cc_library(
         "//iamf/obu:codec_config",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/types:span",
+        "@libopus",
     ],
 )
 

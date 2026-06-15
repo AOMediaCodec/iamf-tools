@@ -20,6 +20,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
+#include "absl/types/span.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/ambisonics_config.h"
@@ -31,6 +32,7 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/types.h"
+#include "validation/opus_hoa/mapping_matrix.h"
 
 namespace iamf_tools {
 namespace opus_hoa {
@@ -83,6 +85,26 @@ AudioElementObu MakeAmbisonicsProjectionObu(uint32_t audio_element_id,
   std::vector<DecodedUleb128> substreams(channel_count);
   std::iota(substreams.begin(), substreams.end(), 0);
   std::vector<int16_t> matrix(channel_count * channel_count, 0);
+
+  return AudioElementObu::CreateForProjectionAmbisonics(
+             ObuHeader{.obu_type = kObuIaAudioElement}, audio_element_id,
+             /*reserved=*/0, codec_config_id, substreams,
+             /*output_channel_count=*/channel_count,
+             /*coupled_substream_count=*/0, matrix)
+      .value();
+}
+
+AudioElementObu MakeCanonicalAmbisonicsProjectionObu(uint32_t audio_element_id,
+                                                     uint32_t codec_config_id,
+                                                     int order) {
+  int channel_count = (order + 1) * (order + 1);
+  std::vector<DecodedUleb128> substreams(channel_count, 0);
+
+  absl::Span<const int16_t> matrix_span =
+      (order == 3) ? absl::MakeConstSpan(kIamfDemixingMatrix3OA)
+                   : absl::MakeConstSpan(kIamfDemixingMatrix4OA);
+
+  std::vector<int16_t> matrix(matrix_span.begin(), matrix_span.end());
 
   return AudioElementObu::CreateForProjectionAmbisonics(
              ObuHeader{.obu_type = kObuIaAudioElement}, audio_element_id,
@@ -161,8 +183,8 @@ TEST_P(CanonicalProjectionModeTest, Verify3OA_4OA) {
   int order = GetParam();
 
   CodecConfigObu codec_config = MakeOpusCodecConfigObu(kCodecConfigId);
-  AudioElementObu audio_element =
-      MakeAmbisonicsProjectionObu(kAudioElementId, kCodecConfigId, order);
+  AudioElementObu audio_element = MakeCanonicalAmbisonicsProjectionObu(
+      kAudioElementId, kCodecConfigId, order);
 
   auto results = RunVerificationOnElement(codec_config, audio_element);
   ASSERT_EQ(results.size(), 1);
@@ -173,6 +195,29 @@ TEST_P(CanonicalProjectionModeTest, Verify3OA_4OA) {
 }
 
 INSTANTIATE_TEST_SUITE_P(Orders3_4, CanonicalProjectionModeTest,
+                         testing::Values(3, 4));
+
+class CustomProjectionMatrixTest : public testing::TestWithParam<int> {};
+
+TEST_P(CustomProjectionMatrixTest, Verify3OA_4OA) {
+  int order = GetParam();
+  uint32_t codec_config_id = 101;
+  uint32_t audio_element_id = 201;
+
+  CodecConfigObu codec_config = MakeOpusCodecConfigObu(codec_config_id);
+  AudioElementObu audio_element =
+      MakeAmbisonicsProjectionObu(audio_element_id, codec_config_id, order);
+
+  auto results = RunVerificationOnElement(codec_config, audio_element);
+  ASSERT_EQ(results.size(), 1);
+  EXPECT_EQ(results[0].status, VerificationStatus::kCustom);
+  EXPECT_EQ(results[0].order, order);
+  EXPECT_EQ(results[0].custom_rationale,
+            "Demixing matrix coefficients diverge from Opus Channel Mapping "
+            "Family 3 reference.");
+}
+
+INSTANTIATE_TEST_SUITE_P(Orders3_4, CustomProjectionMatrixTest,
                          testing::Values(3, 4));
 
 class CustomMonoModeTest : public testing::TestWithParam<int> {};
@@ -265,6 +310,60 @@ TEST(VerificationTestSuite, ReportNonOpusCodecConfig) {
   EXPECT_EQ((*results)[0].status, VerificationStatus::kInvalidOrNonOpus);
   EXPECT_TRUE(absl::StrContains((*results)[0].custom_rationale,
                                 "Not an Opus Codec Config"));
+}
+
+TEST(VerificationReportTestSuite, IngestFileWithNoAudioElements) {
+  CodecConfigObu codec_config = MakeOpusCodecConfigObu(kCodecConfigId);
+  IASequenceHeaderObu seq_header(ObuHeader{.obu_type = kObuIaSequenceHeader},
+                                 ProfileVersion::kIamfBaseProfile,
+                                 ProfileVersion::kIamfBaseProfile);
+  AudioFrameObu audio_frame(ObuHeader{.obu_type = kObuIaAudioFrame},
+                            /*substream_id=*/0, /*audio_frame=*/{0});
+
+  std::vector<uint8_t> bitstream =
+      SerializeObusExpectOk({&seq_header, &codec_config, &audio_frame});
+  std::string file_path = testing::TempDir() + "/no_audio_elements.iamf";
+  WriteBytesToFile(file_path, bitstream);
+
+  auto results = VerifyOpusAmbisonics(file_path);
+  ASSERT_TRUE(results.ok()) << results.status();
+  EXPECT_TRUE(results->empty());
+
+  VerificationReport report = GenerateVerificationReport(*results);
+  EXPECT_TRUE(report.all_canonical);
+  EXPECT_EQ(report.overall_summary,
+            "Result: No Opus Ambisonics Audio Elements found.");
+  EXPECT_EQ(report.report,
+            "\nResult: No Opus Ambisonics Audio Elements found.\n");
+}
+
+TEST(VerificationReportTestSuite, GenerateReportForNonAmbisonicsAudioElement) {
+  CodecConfigObu codec_config = MakeOpusCodecConfigObu(kCodecConfigId);
+  ScalableChannelLayoutConfig scalable_config;
+  scalable_config.channel_audio_layer_configs.push_back(ChannelAudioLayerConfig{
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
+      .output_gain_is_present_flag = 0,
+      .recon_gain_is_present_flag = 0,
+      .substream_count = 1,
+      .coupled_substream_count = 0,
+  });
+
+  AudioElementObu channel_audio_element =
+      AudioElementObu::CreateForScalableChannelLayout(
+          ObuHeader{.obu_type = kObuIaAudioElement}, kAudioElementId,
+          /*reserved=*/0, kCodecConfigId, /*audio_substream_ids=*/{0},
+          scalable_config)
+          .value();
+
+  auto results = RunVerificationOnElement(codec_config, channel_audio_element);
+  EXPECT_TRUE(results.empty());
+
+  VerificationReport report = GenerateVerificationReport(results);
+  EXPECT_TRUE(report.all_canonical);
+  EXPECT_EQ(report.overall_summary,
+            "Result: No Opus Ambisonics Audio Elements found.");
+  EXPECT_EQ(report.report,
+            "\nResult: No Opus Ambisonics Audio Elements found.\n");
 }
 
 }  // namespace

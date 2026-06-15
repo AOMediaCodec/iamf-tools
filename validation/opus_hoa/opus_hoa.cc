@@ -19,12 +19,14 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
+#include "validation/opus_hoa/mapping_matrix.h"
 
 namespace iamf_tools {
 namespace opus_hoa {
@@ -125,6 +127,17 @@ absl::StatusOr<std::vector<AudioElementVerificationResult>> VerifyAudioElements(
           "Order " + std::to_string(result.order) +
           " recommended practice is " + mode_str + " mode, but found mode: " +
           std::to_string(static_cast<uint32_t>(result.ambisonics_mode));
+    } else if (result.ambisonics_mode ==
+               AmbisonicsConfig::kAmbisonicsModeProjection) {
+      absl::Span<const int16_t> target_matrix =
+          (result.order == 3) ? absl::MakeConstSpan(kIamfDemixingMatrix3OA)
+                              : absl::MakeConstSpan(kIamfDemixingMatrix4OA);
+      if (ambisonics_config.GetDemixingMatrix() != target_matrix) {
+        result.status = VerificationStatus::kCustom;
+        result.custom_rationale =
+            "Demixing matrix coefficients diverge from Opus Channel Mapping "
+            "Family 3 reference.";
+      }
     }
 
     results.push_back(result);

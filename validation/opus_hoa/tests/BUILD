@@ -17,6 +17,8 @@ cc_test(
         "//validation/opus_hoa",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
+        "@libopus",
     ],
 )
