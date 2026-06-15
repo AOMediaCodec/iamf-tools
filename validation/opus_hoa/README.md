@@ -14,6 +14,7 @@ The verifier checks if Opus Ambisonics Audio Elements adhere to recommended prac
 
 * **0OA to 2OA**: Use **MONO** mode (0).
 * **3OA to 4OA**: Use **PROJECTION** mode (1) with the reference Opus demixing matrix coefficients.
+* **PROJECTION mode**: `coupled_substream_count` should be the floor of half the total input channel count.
 
 ## Build
 
@@ -53,7 +54,9 @@ Written to `--report_file`:
   Rationale: Order 1 recommended practice is MONO (0) mode, but found mode: 1
 [Audio Element ID: 302] Status: CUSTOM (3OA)
   Rationale: Demixing matrix coefficients diverge from Opus Channel Mapping Family 3 reference.
-[Audio Element ID: 303] Status: INVALID OR NON-OPUS (skipping)
+[Audio Element ID: 303] Status: CUSTOM (3OA)
+  Rationale: coupled_substream_count should be the floor of half the total input channel count.
+[Audio Element ID: 304] Status: INVALID OR NON-OPUS (skipping)
   Details: Not an Opus Codec Config
 
 Result: Non-Canonical Elements Detected

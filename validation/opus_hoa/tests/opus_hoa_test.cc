@@ -82,15 +82,17 @@ AudioElementObu MakeAmbisonicsProjectionObu(uint32_t audio_element_id,
                                             uint32_t codec_config_id,
                                             int order) {
   int channel_count = (order + 1) * (order + 1);
-  std::vector<DecodedUleb128> substreams(channel_count);
+  int coupled_substream_count = channel_count / 2;
+  int substream_count = channel_count - coupled_substream_count;
+  std::vector<DecodedUleb128> substreams(substream_count);
   std::iota(substreams.begin(), substreams.end(), 0);
   std::vector<int16_t> matrix(channel_count * channel_count, 0);
 
   return AudioElementObu::CreateForProjectionAmbisonics(
              ObuHeader{.obu_type = kObuIaAudioElement}, audio_element_id,
              /*reserved=*/0, codec_config_id, substreams,
-             /*output_channel_count=*/channel_count,
-             /*coupled_substream_count=*/0, matrix)
+             /*output_channel_count=*/channel_count, coupled_substream_count,
+             matrix)
       .value();
 }
 
@@ -98,7 +100,10 @@ AudioElementObu MakeCanonicalAmbisonicsProjectionObu(uint32_t audio_element_id,
                                                      uint32_t codec_config_id,
                                                      int order) {
   int channel_count = (order + 1) * (order + 1);
-  std::vector<DecodedUleb128> substreams(channel_count, 0);
+  int coupled_substream_count = channel_count / 2;
+  int substream_count = channel_count - coupled_substream_count;
+  std::vector<DecodedUleb128> substreams(substream_count, 0);
+  std::iota(substreams.begin(), substreams.end(), 0);
 
   absl::Span<const int16_t> matrix_span =
       (order == 3) ? absl::MakeConstSpan(kIamfDemixingMatrix3OA)
@@ -109,8 +114,8 @@ AudioElementObu MakeCanonicalAmbisonicsProjectionObu(uint32_t audio_element_id,
   return AudioElementObu::CreateForProjectionAmbisonics(
              ObuHeader{.obu_type = kObuIaAudioElement}, audio_element_id,
              /*reserved=*/0, codec_config_id, substreams,
-             /*output_channel_count=*/channel_count,
-             /*coupled_substream_count=*/0, matrix)
+             /*output_channel_count=*/channel_count, coupled_substream_count,
+             matrix)
       .value();
 }
 
@@ -236,6 +241,39 @@ TEST_P(CustomMonoModeTest, Verify3OA_4OA) {
 }
 
 INSTANTIATE_TEST_SUITE_P(Orders3_4, CustomMonoModeTest, testing::Values(3, 4));
+
+class CustomCoupledSubstreamCountTest : public testing::TestWithParam<int> {};
+
+TEST_P(CustomCoupledSubstreamCountTest, Verify3OA_4OA) {
+  int order = GetParam();
+  int channel_count = (order + 1) * (order + 1);
+  int invalid_coupled = 0;
+  int substream_count = channel_count;
+
+  CodecConfigObu codec_config = MakeOpusCodecConfigObu(kCodecConfigId);
+  std::vector<DecodedUleb128> substreams(substream_count);
+  std::iota(substreams.begin(), substreams.end(), 0);
+  std::vector<int16_t> matrix(channel_count * channel_count, 0);
+
+  AudioElementObu audio_element =
+      AudioElementObu::CreateForProjectionAmbisonics(
+          ObuHeader{.obu_type = kObuIaAudioElement}, kAudioElementId,
+          /*reserved=*/0, kCodecConfigId, substreams,
+          /*output_channel_count=*/channel_count, invalid_coupled, matrix)
+          .value();
+
+  auto results = RunVerificationOnElement(codec_config, audio_element);
+  ASSERT_EQ(results.size(), 1);
+  EXPECT_EQ(results[0].status, VerificationStatus::kCustom);
+  EXPECT_EQ(results[0].order, order);
+  EXPECT_TRUE(absl::StrContains(
+      results[0].custom_rationale,
+      "coupled_substream_count should be the floor of half the total "
+      "input channel count."));
+}
+
+INSTANTIATE_TEST_SUITE_P(Orders3_4, CustomCoupledSubstreamCountTest,
+                         testing::Values(3, 4));
 
 TEST(HermeticVerificationTestSuite, RejectMalformedDescriptors) {
   // Construct a bitstream with a truncated IA Sequence Header OBU payload.

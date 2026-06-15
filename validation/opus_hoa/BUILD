@@ -19,6 +19,7 @@ cc_library(
         "//iamf/obu:codec_config",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
         "@libopus",
     ],

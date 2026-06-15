@@ -19,6 +19,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_join.h"
 #include "absl/types/span.h"
 #include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/descriptor_obus.h"
@@ -117,27 +118,49 @@ absl::StatusOr<std::vector<AudioElementVerificationResult>> VerifyAudioElements(
                                 ? AmbisonicsConfig::kAmbisonicsModeMono
                                 : AmbisonicsConfig::kAmbisonicsModeProjection;
 
+    std::vector<std::string> custom_rationales;
+
     if (result.ambisonics_mode != recommended_mode) {
       result.status = VerificationStatus::kCustom;
       std::string mode_str =
           (recommended_mode == AmbisonicsConfig::kAmbisonicsModeMono)
               ? "MONO (0)"
               : "PROJECTION (1)";
-      result.custom_rationale =
+      custom_rationales.push_back(
           "Order " + std::to_string(result.order) +
           " recommended practice is " + mode_str + " mode, but found mode: " +
-          std::to_string(static_cast<uint32_t>(result.ambisonics_mode));
-    } else if (result.ambisonics_mode ==
-               AmbisonicsConfig::kAmbisonicsModeProjection) {
-      absl::Span<const int16_t> target_matrix =
-          (result.order == 3) ? absl::MakeConstSpan(kIamfDemixingMatrix3OA)
-                              : absl::MakeConstSpan(kIamfDemixingMatrix4OA);
-      if (ambisonics_config.GetDemixingMatrix() != target_matrix) {
+          std::to_string(static_cast<uint32_t>(result.ambisonics_mode)));
+    }
+
+    if (result.ambisonics_mode == AmbisonicsConfig::kAmbisonicsModeProjection) {
+      const auto& projection_config = std::get<AmbisonicsProjectionConfig>(
+          ambisonics_config.ambisonics_config);
+      uint8_t coupled_substream_count =
+          projection_config.GetCoupledSubstreamCount();
+
+      if (coupled_substream_count != (channel_count / 2)) {
         result.status = VerificationStatus::kCustom;
-        result.custom_rationale =
-            "Demixing matrix coefficients diverge from Opus Channel Mapping "
-            "Family 3 reference.";
+        custom_rationales.push_back(
+            "coupled_substream_count should be the floor of half the "
+            "total input channel count.");
       }
+
+      if (result.order == 3 || result.order == 4) {
+        absl::Span<const int16_t> target_matrix =
+            (result.order == 3) ? absl::MakeConstSpan(kIamfDemixingMatrix3OA)
+                                : absl::MakeConstSpan(kIamfDemixingMatrix4OA);
+
+        if (ambisonics_config.GetDemixingMatrix() != target_matrix) {
+          result.status = VerificationStatus::kCustom;
+          custom_rationales.push_back(
+              "Demixing matrix coefficients diverge from Opus Channel Mapping "
+              "Family 3 reference.");
+        }
+      }
+    }
+
+    if (!custom_rationales.empty()) {
+      result.custom_rationale = absl::StrJoin(custom_rationales, " ");
     }
 
     results.push_back(result);
