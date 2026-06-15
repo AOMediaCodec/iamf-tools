@@ -22,10 +22,18 @@
 #include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/obu/ambisonics_config.h"
+#include "iamf/obu/audio_element.h"
+#include "iamf/obu/codec_config.h"
 
 namespace iamf_tools {
 namespace opus_hoa {
 namespace {
+
+// IAMF Profiles restrict Higher-Order Ambisonics to a maximum order of 4.
+constexpr int kMaxAmbisonicsOrder = 4;
+// Recommendation is to use MONO mode (0) for orders <= 2.
+constexpr int kMaxMonoAmbisonicsOrder = 2;
 
 absl::StatusOr<DescriptorObus> ParseIamfFile(const std::string& file_path) {
   constexpr int64_t kBufferCapacity = 1024 * 1024;  // 1 MB buffer capacity.
@@ -56,7 +64,73 @@ absl::StatusOr<DescriptorObus> ParseIamfFile(const std::string& file_path) {
 
 absl::StatusOr<std::vector<AudioElementVerificationResult>> VerifyAudioElements(
     const DescriptorObus& obus) {
-  return std::vector<AudioElementVerificationResult>{};
+  std::vector<AudioElementVerificationResult> results;
+
+  for (const auto& [id, audio_element_with_data] : obus.audio_elements) {
+    const auto& obu = audio_element_with_data.obu;
+    if (obu.GetAudioElementType() != AudioElementObu::kAudioElementSceneBased) {
+      continue;  // Skip non-Ambisonics elements.
+    }
+
+    const auto& ambisonics_config = std::get<AmbisonicsConfig>(obu.config_);
+    AudioElementVerificationResult result = {
+        .audio_element_id = obu.GetAudioElementId(),
+        .status = VerificationStatus::kCanonical,
+        .order = -1,
+        .ambisonics_mode = ambisonics_config.GetAmbisonicsMode(),
+    };
+
+    uint32_t codec_config_id = obu.GetCodecConfigId();
+    auto it = obus.codec_config_obus.find(codec_config_id);
+
+    if (it == obus.codec_config_obus.end() ||
+        it->second.GetCodecConfig().codec_id != CodecConfig::kCodecIdOpus) {
+      result.status = VerificationStatus::kInvalidOrNonOpus;
+      result.custom_rationale = (it == obus.codec_config_obus.end())
+                                    ? "Missing Codec Config OBU for ID: " +
+                                          std::to_string(codec_config_id)
+                                    : "Not an Opus Codec Config";
+      results.push_back(result);
+      continue;
+    }
+
+    uint8_t channel_count = ambisonics_config.GetOutputChannelCount();
+    for (int n = 0; n <= kMaxAmbisonicsOrder; ++n) {
+      if (channel_count == (n + 1) * (n + 1)) {
+        result.order = n;
+        break;
+      }
+    }
+
+    if (result.order == -1) {
+      result.status = VerificationStatus::kCustom;
+      result.custom_rationale =
+          "Unsupported output_channel_count: " + std::to_string(channel_count) +
+          " (Not 0OA to 4OA)";
+      results.push_back(result);
+      continue;
+    }
+
+    auto recommended_mode = (result.order <= kMaxMonoAmbisonicsOrder)
+                                ? AmbisonicsConfig::kAmbisonicsModeMono
+                                : AmbisonicsConfig::kAmbisonicsModeProjection;
+
+    if (result.ambisonics_mode != recommended_mode) {
+      result.status = VerificationStatus::kCustom;
+      std::string mode_str =
+          (recommended_mode == AmbisonicsConfig::kAmbisonicsModeMono)
+              ? "MONO (0)"
+              : "PROJECTION (1)";
+      result.custom_rationale =
+          "Order " + std::to_string(result.order) +
+          " recommended practice is " + mode_str + " mode, but found mode: " +
+          std::to_string(static_cast<uint32_t>(result.ambisonics_mode));
+    }
+
+    results.push_back(result);
+  }
+
+  return results;
 }
 
 }  // namespace

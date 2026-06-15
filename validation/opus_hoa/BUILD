@@ -12,6 +12,8 @@ cc_library(
         "//iamf/cli:descriptor_obus",
         "//iamf/common:read_bit_buffer",
         "//iamf/obu:ambisonics_config",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
     ],
