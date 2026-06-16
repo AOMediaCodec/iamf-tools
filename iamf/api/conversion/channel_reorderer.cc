@@ -17,28 +17,42 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+using ::absl::InvalidArgumentError;
+using ::absl::OkStatus;
+using ::absl::Status;
+
 namespace {
 
 // No transformation.
-void NoOp(std::vector<absl::Span<const InternalSampleType>>& samples) {}
+absl::Status NoOp(std::vector<absl::Span<const InternalSampleType>>& samples) {
+  return OkStatus();
+}
 
-void SwapBackAndSides(
+absl::Status SwapBackAndSides(
     std::vector<absl::Span<const InternalSampleType>>& samples) {
+  if (samples.size() < 8) {
+    return InvalidArgumentError(
+        "Channel count smaller than expected for reorderer.");
+  }
   // 7-something layout are ordered as [L, R, C, LFE, Lss, Rss, Lrs, Rrs].
   // Android needs rear before side surrounds.
   std::swap(samples[4], samples[6]);
   std::swap(samples[5], samples[7]);
+  return OkStatus();
 }
 
-void ReorderSoundSystemFForAndroid(
+absl::Status ReorderSoundSystemFForAndroid(
     std::vector<absl::Span<const InternalSampleType>>& samples) {
-  if (samples.empty()) {
-    return;
+  if (samples.size() < 11) {
+    return InvalidArgumentError(
+        "Channel count smaller than expected for reorderer.");
   }
   //             0  1  2   3   4   5   6   7   8   9    10    11
   // Ordered as [C, L, R, LH, RH, LS, RS, LB, RB, CH, LFE1, LFE2].
@@ -58,10 +72,17 @@ void ReorderSoundSystemFForAndroid(
   samples[9] = originals[3];
   samples[10] = originals[4];
   // Channel 11 is the same.
+
+  return OkStatus();
 }
 
-void ReorderSoundSystemGForAndroid(
+absl::Status ReorderSoundSystemGForAndroid(
     std::vector<absl::Span<const InternalSampleType>>& samples) {
+  if (samples.size() < 14) {
+    return InvalidArgumentError(
+        "Channel count smaller than expected for reorderer.");
+  }
+
   // Ordered as
   //  0  1  2    3    4    5    6    7    8    9   10   11   12   13
   // [L, R, C, LFE, Lss, Rss, Lrs, Rrs, Ltf, Rtf, Ltb, Rtb, Lsc, Rsc]
@@ -83,10 +104,17 @@ void ReorderSoundSystemGForAndroid(
   samples[11] = originals[9];
   samples[12] = originals[10];
   samples[13] = originals[11];
+
+  return OkStatus();
 }
 
-void ReorderSoundSystemHForAndroid(
+absl::Status ReorderSoundSystemHForAndroid(
     std::vector<absl::Span<const InternalSampleType>>& samples) {
+  if (samples.size() < 24) {
+    return InvalidArgumentError(
+        "Channel count smaller than expected for reorderer.");
+  }
+
   // Ordered as
   //   0   1   2     3  4    5    6    7   8     9  10    11   12     13    14
   // [FL, FR, FC, LFE1, BL, BR, FLc, FRc, BC, LFE2, SiL, SiR, TpFL, TpFR, TpFC,
@@ -118,9 +146,11 @@ void ReorderSoundSystemHForAndroid(
   // 21 is the same.
   samples[22] = originals[23];
   samples[23] = originals[9];
+
+  return OkStatus();
 }
 
-std::function<void(std::vector<absl::Span<const InternalSampleType>>&)>
+std::function<absl::Status(std::vector<absl::Span<const InternalSampleType>>&)>
 MakeFunction(LoudspeakersSsConventionLayout::SoundSystem original_layout,
              ChannelReorderer::RearrangementScheme scheme) {
   switch (scheme) {
@@ -159,7 +189,7 @@ MakeFunction(LoudspeakersSsConventionLayout::SoundSystem original_layout,
 }  // namespace
 
 ChannelReorderer::ChannelReorderer(
-    std::function<void(std::vector<absl::Span<const InternalSampleType>>&)>
+    std::function<Status(std::vector<absl::Span<const InternalSampleType>>&)>
         reorder_function)
     : reorder_function_(reorder_function) {}
 
@@ -172,9 +202,9 @@ ChannelReorderer ChannelReorderer::Create(
   return ChannelReorderer(MakeFunction(original_layout, scheme));
 }
 
-void ChannelReorderer::Reorder(
+absl::Status ChannelReorderer::Reorder(
     std::vector<absl::Span<const InternalSampleType>>& audio_frame) {
-  reorder_function_(audio_frame);
+  return reorder_function_(audio_frame);
 }
 
 }  // namespace iamf_tools

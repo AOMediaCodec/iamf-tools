@@ -27,6 +27,7 @@ cc_library(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",

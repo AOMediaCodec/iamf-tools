@@ -72,7 +72,7 @@ static void BM_ReorderForAndroid(
 
   // Measure the calls to `ChannelReorderer::Reorder()`.
   for (auto _ : state) {
-    reorderer.Reorder(sample_spans);
+    ABSL_CHECK_OK(reorderer.Reorder(sample_spans));
   }
 }
 

@@ -27,7 +27,9 @@
 namespace iamf_tools {
 
 using ::absl::MakeSpan;
+using ::absl_testing::IsOk;
 using ::testing::ContainerEq;
+using ::testing::Not;
 using ::testing::TestWithParam;
 using ::testing::UnorderedElementsAreArray;
 
@@ -79,7 +81,7 @@ TEST_P(ChannelReordererTest_NoChange, SamplesAreUnaltered) {
   auto samples = CreateAudioSamples(sound_system);
   auto expected = samples;  // Save a copy for comparison.
 
-  reorderer.Reorder(samples);
+  EXPECT_THAT(reorderer.Reorder(samples), IsOk());
 
   EXPECT_THAT(samples, ContainerEq(expected));
 }
@@ -176,7 +178,7 @@ TEST_P(ChannelReordererTest_SwapBackAndSides, SamplesAreUnaltered) {
   auto samples = CreateAudioSamples(sound_system, /*num_ticks=*/1);
   const auto original = samples;  // Save a copy for comparison.
 
-  reorderer.Reorder(samples);
+  EXPECT_THAT(reorderer.Reorder(samples), IsOk());
 
   EXPECT_EQ(samples[4], original[6]);
   EXPECT_EQ(samples[5], original[7]);
@@ -216,7 +218,7 @@ TEST(ChannelReordererTest, TestLayoutFForAndroid) {
       /*num_ticks=*/1);
   const auto original = samples;  // Save a copy for comparison.
 
-  reorderer.Reorder(samples);
+  EXPECT_THAT(reorderer.Reorder(samples), IsOk());
 
   // Check we have all the same samples.
   EXPECT_THAT(samples, UnorderedElementsAreArray(original));
@@ -243,7 +245,7 @@ TEST(ChannelReordererTest, TestLayoutGForAndroid) {
       /*num_ticks=*/1);
   auto original = samples;  // Save a copy for comparison.
 
-  reorderer.Reorder(samples);
+  EXPECT_THAT(reorderer.Reorder(samples), IsOk());
 
   // Check we have all the same samples.
   EXPECT_THAT(samples, UnorderedElementsAreArray(original));
@@ -272,7 +274,7 @@ TEST(ChannelReordererTest, TestLayoutHForAndroid) {
       /*num_ticks=*/1);
   auto original = samples;  // Save a copy for comparison.
 
-  reorderer.Reorder(samples);
+  EXPECT_THAT(reorderer.Reorder(samples), IsOk());
 
   // Check we have all the same samples.
   EXPECT_THAT(samples, UnorderedElementsAreArray(original));
@@ -298,6 +300,56 @@ TEST(ChannelReordererTest, TestLayoutHForAndroid) {
   EXPECT_EQ(samples[21], original[21]);
   EXPECT_EQ(samples[22], original[23]);
   EXPECT_EQ(samples[23], original[9]);
+}
+
+// Test mismatched audio, one for each of the different reordering types.
+TEST(ChannelReordererTest,
+     TestAudioFrameSizeMismatchedToLayout_SwapBackAndSides) {
+  // Sound System I, an 8-channel layout which needs back and sides swapped.
+  auto reorderer = ChannelReorderer::Create(
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemI_0_7_0,
+      ChannelReorderer::RearrangementScheme::kReorderForAndroid);
+  // Stereo samples, only 2-channels.
+  auto samples = CreateAudioSamples(
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemA_0_2_0);
+
+  EXPECT_THAT(reorderer.Reorder(samples), Not(IsOk()));
+}
+
+TEST(ChannelReordererTest, TestAudioFrameSizeMismatchedToLayout_SoundSystemF) {
+  // Sound System F has 12 channels and a unique reordering scheme.
+  auto reorderer = ChannelReorderer::Create(
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemF_3_7_0,
+      ChannelReorderer::RearrangementScheme::kReorderForAndroid);
+  // Stereo samples, only 2-channels.
+  auto samples = CreateAudioSamples(
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemA_0_2_0);
+
+  EXPECT_THAT(reorderer.Reorder(samples), Not(IsOk()));
+}
+
+TEST(ChannelReordererTest, TestAudioFrameSizeMismatchedToLayout_SoundSystemG) {
+  // Sound System G has 14 channels and a unique reordering scheme.
+  auto reorderer = ChannelReorderer::Create(
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemG_4_9_0,
+      ChannelReorderer::RearrangementScheme::kReorderForAndroid);
+  // Stereo samples, only 2-channels.
+  auto samples = CreateAudioSamples(
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemA_0_2_0);
+
+  EXPECT_THAT(reorderer.Reorder(samples), Not(IsOk()));
+}
+
+TEST(ChannelReordererTest, TestAudioFrameSizeMismatchedToLayout_SoundSystemH) {
+  // Sound System G has 14 channels and a unique reordering scheme.
+  auto reorderer = ChannelReorderer::Create(
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemG_4_9_0,
+      ChannelReorderer::RearrangementScheme::kReorderForAndroid);
+  // Stereo samples, only 2-channels.
+  auto samples = CreateAudioSamples(
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemA_0_2_0);
+
+  EXPECT_THAT(reorderer.Reorder(samples), Not(IsOk()));
 }
 
 }  // namespace

@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -233,7 +234,7 @@ IamfStatus DecodeOneTemporalUnit(
     rendered_samples = std::vector(rendered_samples_for_temporal_unit->begin(),
                                    rendered_samples_for_temporal_unit->end());
     if (channel_reorderer.has_value()) {
-      channel_reorderer->Reorder(rendered_samples);
+      ABSL_CHECK_OK(channel_reorderer->Reorder(rendered_samples));
     }
   }
   // Empty the buffer of the data that was processed thus far.

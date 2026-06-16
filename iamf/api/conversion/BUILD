@@ -13,6 +13,7 @@ cc_library(
     deps = [
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
+        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/types:span",
     ],
 )

@@ -16,6 +16,7 @@
 #include <functional>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
@@ -46,14 +47,17 @@ class ChannelReorderer {
    * \param audio_frame Samples arranged in (channel, time) axes to reorder in
    *        place.
    */
-  void Reorder(std::vector<absl::Span<const InternalSampleType>>& audio_frame);
+  absl::Status Reorder(
+      std::vector<absl::Span<const InternalSampleType>>& audio_frame);
 
  private:
   explicit ChannelReorderer(
-      std::function<void(std::vector<absl::Span<const InternalSampleType>>&)>
+      std::function<
+          absl::Status(std::vector<absl::Span<const InternalSampleType>>&)>
           reorder_function);
 
-  std::function<void(std::vector<absl::Span<const InternalSampleType>>&)>
+  std::function<absl::Status(
+      std::vector<absl::Span<const InternalSampleType>>&)>
       reorder_function_;
 };
 
