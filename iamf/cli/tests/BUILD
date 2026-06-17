@@ -92,6 +92,18 @@ cc_library(
 )
 
 cc_test(
+    name = "ambisonics_projection_util_test",
+    srcs = ["ambisonics_projection_util_test.cc"],
+    deps = [
+        "//iamf/cli:ambisonics_projection_util",
+        "//iamf/obu:ambisonics_config",
+        "//iamf/obu:codec_config",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "audio_frame_decoder_benchmark",
     srcs = ["audio_frame_decoder_benchmark.cc"],
     deps = [

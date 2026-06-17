@@ -22,6 +22,19 @@ exports_files(
 
 # keep-sorted start block=yes prefix_order=cc_library,cc_binary newline_separated=yes
 cc_library(
+    name = "ambisonics_projection_util",
+    srcs = ["ambisonics_projection_util.cc"],
+    hdrs = ["ambisonics_projection_util.h"],
+    deps = [
+        "//iamf/obu:ambisonics_config",
+        "//iamf/obu:codec_config",
+        "@abseil-cpp//absl/log:absl_check",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "audio_element_with_data",
     hdrs = ["audio_element_with_data.h"],
     deps = [
