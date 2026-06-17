@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build
         uses: ./.github/actions/iamf-tools-builder
         with:
@@ -16,7 +16,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build
         uses: ./.github/actions/iamf-tools-builder
         with:
@@ -25,7 +25,7 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build
         uses: ./.github/actions/iamf-tools-builder
         with:
@@ -34,7 +34,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build
         uses: ./.github/actions/iamf-tools-builder
         with:
@@ -43,6 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Generate test vectors
         uses: ./.github/actions/iamf-tools-test-suite-generator
