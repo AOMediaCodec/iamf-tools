@@ -18,7 +18,6 @@ cc_library(
         "//validation:__subpackages__",
     ],
     deps = [
-        ":iamf_status_adl",
         "@googletest//:gtest",
         "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/container:flat_hash_map",
@@ -787,6 +786,7 @@ cc_test(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/tests/portable:get_test_path",
         "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
         "@googletest//:gtest_main",

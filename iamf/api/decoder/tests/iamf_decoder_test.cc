@@ -19,7 +19,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -28,6 +27,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/tests/iamf_status_adl.h"  // IWYU pragma: keep
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/audio_frame.h"

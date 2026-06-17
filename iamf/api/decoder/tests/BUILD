@@ -16,7 +16,6 @@ cc_test(
     ],
     deps = [
         "//iamf/api/decoder:iamf_decoder",
-        "//iamf/cli/tests:iamf_status_adl",
         "//iamf/cli/tests/portable:get_test_path",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "@abseil-cpp//absl/strings:string_view",
@@ -35,6 +34,7 @@ cc_test(
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli/tests:cli_test_utils",
+        "//iamf/cli/tests:iamf_status_adl",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:audio_frame",
@@ -44,7 +44,6 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:temporal_delimiter",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
     ],

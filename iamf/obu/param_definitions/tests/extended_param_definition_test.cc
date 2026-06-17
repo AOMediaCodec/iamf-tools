@@ -13,7 +13,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "absl/status/status_matchers.h"

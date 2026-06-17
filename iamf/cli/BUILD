@@ -632,6 +632,7 @@ cc_library(
         "//iamf/cli/renderer:audio_element_renderer_binaural",
         "//iamf/cli/renderer:audio_element_renderer_channel_to_channel",
         "//iamf/cli/renderer:audio_element_renderer_passthrough",
+        "//iamf/obu:ambisonics_config",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:rendering_config",

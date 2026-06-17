@@ -31,7 +31,6 @@ cc_library(
     hdrs = ["numeric_utils.h"],
     deps = [
         ":validation_utils",
-        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:string_view",

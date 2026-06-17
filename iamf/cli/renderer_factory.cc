@@ -22,6 +22,7 @@
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer/audio_element_renderer_channel_to_channel.h"
 #include "iamf/cli/renderer/audio_element_renderer_passthrough.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/rendering_config.h"

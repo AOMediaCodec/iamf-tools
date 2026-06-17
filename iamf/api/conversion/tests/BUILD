@@ -23,6 +23,7 @@ cc_test(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
     ],

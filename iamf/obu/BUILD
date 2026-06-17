@@ -64,7 +64,6 @@ cc_library(
         "//iamf/obu/param_definitions:extended_param_definition",
         "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:recon_gain_param_definition",
-        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",

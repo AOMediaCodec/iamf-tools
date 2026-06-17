@@ -14,7 +14,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <optional>
 #include <utility>
 #include <vector>
 

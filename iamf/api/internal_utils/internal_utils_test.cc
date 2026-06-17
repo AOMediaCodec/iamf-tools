@@ -19,12 +19,12 @@
 #include <string>
 #include <vector>
 
-#include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/tests/iamf_status_adl.h"  // IWYU pragma: keep
 #include "iamf/cli/wav_writer.h"
 #include "iamf/include/iamf_tools/iamf_decoder_factory.h"
 #include "iamf/include/iamf_tools/iamf_decoder_interface.h"
