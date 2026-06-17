@@ -78,18 +78,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "iamf_status_adl",
-    testonly = True,
-    hdrs = ["iamf_status_adl.h"],
-    visibility = [
-        "//iamf:__subpackages__",
-    ],
-    deps = [
-        "//iamf/include/iamf_tools:iamf_tools_api_types",
-    ],
-)
-
 cc_test(
     name = "ambisonics_projection_util_test",
     srcs = ["ambisonics_projection_util_test.cc"],

@@ -34,7 +34,6 @@ cc_test(
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli/tests:cli_test_utils",
-        "//iamf/cli/tests:iamf_status_adl",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:audio_frame",

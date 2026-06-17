@@ -28,7 +28,6 @@ cc_test(
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:wav_writer",
         "//iamf/cli/tests:cli_test_utils",
-        "//iamf/cli/tests:iamf_status_adl",
         "//iamf/include/iamf_tools:iamf_decoder_factory",
         "//iamf/include/iamf_tools:iamf_decoder_interface",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
