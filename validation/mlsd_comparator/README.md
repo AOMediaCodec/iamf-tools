@@ -1,6 +1,6 @@
 # Mel Log Spectral Distance (MLSD) Comparator
 
-Validates audio quality by calculating Mel Log Spectral Distance (MLSD) between WAV files, averaged across all channels and frames.
+Validates audio quality by calculating Mel Log Spectral Distance (MLSD) between WAV files.
 
 Rather than relying on a single overall score, this tool employs a dual-criterion evaluation framework to independently detect transient glitches and long-term encoding artifacts:
 
