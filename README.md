@@ -42,6 +42,15 @@ standalone IAMF and IAMF in MP4.
 -   [`IamfDecoderInterface` API](docs/iamf_decoder_interface.md)
 -   [Command-line decoder for standalone IAMF files](docs/iamf_decoder_main.md)
 
+### Inspecting IAMF content
+
+`iamf-tools` provides a probe that summarizes the descriptor OBUs (and,
+optionally, the temporal units) of a standalone IAMF file without decoding
+any audio:
+
+-   [`Probe` API](iamf/cli/probe.h)
+-   [Command-line probe for standalone IAMF files](docs/iamf_probe_main.md)
+
 ### Web Demo
 
 The [web demo](https://aomediacodec.github.io/iamf-tools/web_demo/) hosted in

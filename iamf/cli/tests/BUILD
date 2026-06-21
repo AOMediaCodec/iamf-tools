@@ -599,6 +599,55 @@ cc_test(
 )
 
 cc_test(
+    name = "probe_json_test",
+    srcs = ["probe_json_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:descriptor_obus",
+        "//iamf/cli:probe",
+        "//iamf/cli:probe_json",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:obu_base",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "probe_test",
+    srcs = ["probe_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:descriptor_obus",
+        "//iamf/cli:probe",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_base",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "//iamf/obu/decoder_config:flac_decoder_config",
+        "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "//iamf/obu/param_definitions:subblock_schedule",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "profile_filter_test",
     srcs = ["profile_filter_test.cc"],
     deps = [

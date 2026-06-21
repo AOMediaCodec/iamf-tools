@@ -580,6 +580,55 @@ cc_library(
 )
 
 cc_library(
+    name = "probe",
+    srcs = ["probe.cc"],
+    hdrs = ["probe.h"],
+    deps = [
+        ":audio_element_with_data",
+        ":cli_util",
+        ":descriptor_obu_parser",
+        ":descriptor_obus",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:rendering_config",
+        "//iamf/obu:types",
+        "//iamf/obu/decoder_config:aac_decoder_config",
+        "//iamf/obu/decoder_config:flac_decoder_config",
+        "//iamf/obu/decoder_config:lpcm_decoder_config",
+        "//iamf/obu/decoder_config:opus_decoder_config",
+        "//iamf/obu/param_definitions:demixing_param_definition",
+        "//iamf/obu/param_definitions:extended_param_definition",
+        "//iamf/obu/param_definitions:param_definition_base",
+        "//iamf/obu/param_definitions:param_definition_variant",
+        "//iamf/obu/param_definitions:recon_gain_param_definition",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "probe_json",
+    srcs = ["probe_json.cc"],
+    hdrs = ["probe_json.h"],
+    deps = [
+        ":probe",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:str_format",
+    ],
+)
+
+cc_library(
     name = "profile_filter",
     srcs = ["profile_filter.cc"],
     hdrs = ["profile_filter.h"],
@@ -825,6 +874,24 @@ cc_binary(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@protobuf",
+    ],
+)
+
+cc_binary(
+    name = "probe_main",
+    srcs = ["probe_main.cc"],
+    deps = [
+        ":probe",
+        ":probe_json",
+        "@abseil-cpp//absl/flags:flag",
+        "@abseil-cpp//absl/flags:parse",
+        "@abseil-cpp//absl/flags:usage",
+        "@abseil-cpp//absl/log:globals",
+        "@abseil-cpp//absl/log:initialize",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:str_format",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
