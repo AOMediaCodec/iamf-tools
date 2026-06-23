@@ -13,13 +13,19 @@
 #ifndef CLI_AMBISONICS_MIXER_H_
 #define CLI_AMBISONICS_MIXER_H_
 
+#include <cstddef>
+
+#include "absl/status/status.h"
+#include "absl/types/span.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 /*!\brief Represents an Ambisonics mixer. */
-class AmbisonicsMixer {
+class AmbisonicsMixer : public SampleProcessorBase {
  public:
   /*!\brief Preset configuration for Ambisonics.
    *
@@ -39,18 +45,21 @@ class AmbisonicsMixer {
    *
    * \param codec_id Codec ID.
    * \param preset Preset configuration.
+   * \param max_input_samples_per_frame Maximum number of samples per frame.
    * \return AmbisonicsMixer.
    */
   static AmbisonicsMixer MakeFromPreset(CodecConfig::CodecId codec_id,
-                                        Preset preset);
+                                        Preset preset,
+                                        size_t max_input_samples_per_frame);
 
   /*!\brief Makes an Ambisonics mixer from an existing Ambisonics configuration.
    *
    * \param config Ambisonics configuration.
+   * \param max_input_samples_per_frame Maximum number of samples per frame.
    * \return AmbisonicsMixer.
    */
   static AmbisonicsMixer MakeFromAmbisonicsConfig(
-      const AmbisonicsConfig& config);
+      const AmbisonicsConfig& config, size_t max_input_samples_per_frame);
 
   /*!\brief Returns the Ambisonics configuration.
    *
@@ -62,8 +71,27 @@ class AmbisonicsMixer {
   /*!\brief Private constructor.
    *
    * \param config Ambisonics configuration.
+   * \param max_input_samples_per_frame Maximum number of samples per frame.
    */
-  explicit AmbisonicsMixer(AmbisonicsConfig config);
+  AmbisonicsMixer(AmbisonicsConfig config, size_t max_input_samples_per_frame);
+
+  /*!\brief Pushes a frame of samples to the mixer.
+   *
+   * When no mixer is available, it transparently copies the input to the
+   * output.
+   *
+   * \param channel_time_samples Samples to push arranged in (channel, time).
+   * \return `absl::OkStatus()` on success.
+   */
+  absl::Status PushFrameDerived(
+      absl::Span<const absl::Span<const InternalSampleType>>
+          channel_time_samples) override;
+
+  /*!\brief Signals to close the mixer and flush any remaining samples.
+   *
+   * \return `absl::OkStatus()` on success.
+   */
+  absl::Status FlushDerived() override { return absl::OkStatus(); }
 
   AmbisonicsConfig ambisonics_config_;
 };

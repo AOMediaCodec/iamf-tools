@@ -13,13 +13,17 @@
 #include "iamf/cli/ambisonics_mixer.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 #include "absl/log/absl_check.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -108,21 +112,41 @@ AmbisonicsConfig MakeAmbisonicsConfig(CodecConfig::CodecId codec_id,
 
 }  // namespace
 
-AmbisonicsMixer AmbisonicsMixer::MakeFromPreset(CodecConfig::CodecId codec_id,
-                                                Preset preset) {
-  return AmbisonicsMixer(MakeAmbisonicsConfig(codec_id, preset));
+AmbisonicsMixer AmbisonicsMixer::MakeFromPreset(
+    CodecConfig::CodecId codec_id, Preset preset,
+    size_t max_input_samples_per_frame) {
+  auto config = MakeAmbisonicsConfig(codec_id, preset);
+  return AmbisonicsMixer(config, max_input_samples_per_frame);
 }
 
 AmbisonicsMixer AmbisonicsMixer::MakeFromAmbisonicsConfig(
-    const AmbisonicsConfig& config) {
-  return AmbisonicsMixer(config);
+    const AmbisonicsConfig& config, size_t max_input_samples_per_frame) {
+  return AmbisonicsMixer(config, max_input_samples_per_frame);
 }
 
 AmbisonicsConfig AmbisonicsMixer::GetAmbisonicsConfig() const {
   return ambisonics_config_;
 }
 
-AmbisonicsMixer::AmbisonicsMixer(AmbisonicsConfig config)
-    : ambisonics_config_(config) {}
+absl::Status AmbisonicsMixer::PushFrameDerived(
+    absl::Span<const absl::Span<const InternalSampleType>>
+        channel_time_samples) {
+  // TODO(b/450899154): Implement mixing for presets that use projection.
+
+  // For mono mixing and user-supplied configurations, we just copy the input
+  // samples to the output.
+  for (size_t c = 0; c < num_channels_; ++c) {
+    output_channel_time_samples_[c].assign(channel_time_samples[c].begin(),
+                                           channel_time_samples[c].end());
+  }
+  return absl::OkStatus();
+}
+
+AmbisonicsMixer::AmbisonicsMixer(AmbisonicsConfig config,
+                                 size_t max_input_samples_per_frame)
+    : SampleProcessorBase(max_input_samples_per_frame,
+                          config.GetOutputChannelCount(),
+                          max_input_samples_per_frame),
+      ambisonics_config_(config) {}
 
 }  // namespace iamf_tools

@@ -82,11 +82,15 @@ cc_test(
     name = "ambisonics_mixer_test",
     srcs = ["ambisonics_mixer_test.cc"],
     deps = [
+        ":cli_test_utils",
         "//iamf/cli:ambisonics_mixer",
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:codec_config",
+        "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
+        "@libopus",
     ],
 )
 
