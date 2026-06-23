@@ -13,6 +13,7 @@
 #include "iamf/cli/ambisonics_mixer.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -52,6 +53,29 @@ MATCHER_P2(PointwiseDoubleNear2D, expected, tolerance, "") {
     }
   }
   return true;
+}
+
+void ApplyDemixingMatrix(
+    absl::Span<const int16_t> demixing_matrix,
+    absl::Span<const absl::Span<const InternalSampleType>> mixed_samples,
+    std::vector<std::vector<InternalSampleType>>& reconstructed_samples) {
+  const size_t num_channels = mixed_samples.size();
+  const auto num_ticks = mixed_samples[0].size();
+  reconstructed_samples.assign(num_channels,
+                               std::vector<InternalSampleType>(num_ticks, 0.0));
+
+  for (size_t out_channel = 0; out_channel < num_channels; ++out_channel) {
+    for (size_t in_channel = 0; in_channel < num_channels; ++in_channel) {
+      const double demixing_value =
+          static_cast<double>(
+              demixing_matrix[in_channel * num_channels + out_channel]) /
+          32768.0;
+      for (size_t t = 0; t < num_ticks; ++t) {
+        reconstructed_samples[out_channel][t] +=
+            demixing_value * mixed_samples[in_channel][t];
+      }
+    }
+  }
 }
 
 struct MakeFromPresetTestCase {
@@ -168,9 +192,41 @@ TEST(PushFrame, IsTransparentForNonProjection) {
 
   EXPECT_THAT(mixer.PushFrame(MakeSpanOfConstSpans(input_samples)), IsOk());
 
-  EXPECT_THAT(
-      mixer.GetOutputSamplesAsSpan(),
-      PointwiseDoubleNear2D(MakeSpanOfConstSpans(input_samples), kTolerance));
+  EXPECT_THAT(mixer.GetOutputSamplesAsSpan(),
+              PointwiseDoubleNear2D(input_samples, kTolerance));
+}
+
+TEST(PushFrame, ThirdOrderProjectionIsReversibleWithDemixingMatrix) {
+  // Due to quantization errors, the reconstructed samples will not be exactly
+  // the same as the input ones.
+  constexpr double kEquivalenceTolerance = 5e-4;
+  auto mixer = AmbisonicsMixer::MakeFromPreset(
+      CodecConfig::kCodecIdOpus,
+      AmbisonicsMixer::Preset::kBestPracticeForOrder3, kSamplesPerFrame);
+  const size_t kNumChannels = 16;
+  std::vector<std::vector<InternalSampleType>> input_samples(kNumChannels);
+  // Fill input with sine waves of different frequencies.
+  for (size_t c = 0; c < kNumChannels; ++c) {
+    double frequency_hz = 1000.0 + c * 100.0;
+    input_samples[c] = GenerateSineWav(/*start_tick=*/0, kSamplesPerFrame,
+                                       /*sample_rate_hz=*/48000, frequency_hz,
+                                       /*amplitude=*/1.0);
+  }
+
+  // Mix from HOA to substreams signals.
+  EXPECT_THAT(mixer.PushFrame(MakeSpanOfConstSpans(input_samples)), IsOk());
+
+  // Reconstruct from substreams signals to ACN using the demixing matrix.
+  auto mixed_samples = mixer.GetOutputSamplesAsSpan();
+  auto config = mixer.GetAmbisonicsConfig();
+  auto demixing_matrix = config.GetDemixingMatrix();
+  ASSERT_TRUE(demixing_matrix.has_value());
+  std::vector<std::vector<InternalSampleType>> reconstructed_samples;
+  ApplyDemixingMatrix(*demixing_matrix, mixed_samples, reconstructed_samples);
+
+  // We expect the reconstructed samples to be close to the original ones.
+  EXPECT_THAT(reconstructed_samples,
+              PointwiseDoubleNear2D(input_samples, kEquivalenceTolerance));
 }
 
 }  // namespace

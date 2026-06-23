@@ -30,6 +30,7 @@ cc_library(
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:codec_config",
         "//iamf/obu:types",
+        "@abseil-cpp//absl/algorithm:container",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",

@@ -14,6 +14,9 @@
 #define CLI_AMBISONICS_MIXER_H_
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/types/span.h"
@@ -71,9 +74,12 @@ class AmbisonicsMixer : public SampleProcessorBase {
   /*!\brief Private constructor.
    *
    * \param config Ambisonics configuration.
+   * \param mixing_matrix Optional mixing matrix to apply.
    * \param max_input_samples_per_frame Maximum number of samples per frame.
    */
-  AmbisonicsMixer(AmbisonicsConfig config, size_t max_input_samples_per_frame);
+  AmbisonicsMixer(AmbisonicsConfig config,
+                  std::optional<absl::Span<const int16_t>> mixing_matrix,
+                  size_t max_input_samples_per_frame);
 
   /*!\brief Pushes a frame of samples to the mixer.
    *
@@ -94,6 +100,7 @@ class AmbisonicsMixer : public SampleProcessorBase {
   absl::Status FlushDerived() override { return absl::OkStatus(); }
 
   AmbisonicsConfig ambisonics_config_;
+  std::vector<double> mixing_matrix_;  // Empty when no mixing is needed.
 };
 
 }  // namespace iamf_tools
