@@ -10,7 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/cli/ambisonics_projection_util.h"
+#include "iamf/cli/ambisonics_mixer.h"
 
 #include <string>
 

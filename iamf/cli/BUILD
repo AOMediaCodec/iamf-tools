@@ -22,9 +22,9 @@ exports_files(
 
 # keep-sorted start block=yes prefix_order=cc_library,cc_binary newline_separated=yes
 cc_library(
-    name = "ambisonics_projection_util",
-    srcs = ["ambisonics_projection_util.cc"],
-    hdrs = ["ambisonics_projection_util.h"],
+    name = "ambisonics_mixer",
+    srcs = ["ambisonics_mixer.cc"],
+    hdrs = ["ambisonics_mixer.h"],
     deps = [
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:codec_config",
@@ -115,7 +115,6 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":descriptor_obus",
-        "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:sample_processing_utils",
         "//iamf/common/utils:validation_utils",
@@ -126,7 +125,6 @@ cc_library(
         "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:param_definition_variant",
         "//iamf/obu/param_definitions:recon_gain_param_definition",
-        "//iamf/obu/param_definitions:subblock_schedule",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/log:absl_log",

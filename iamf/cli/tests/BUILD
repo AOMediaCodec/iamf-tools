@@ -79,10 +79,10 @@ cc_library(
 )
 
 cc_test(
-    name = "ambisonics_projection_util_test",
-    srcs = ["ambisonics_projection_util_test.cc"],
+    name = "ambisonics_mixer_test",
+    srcs = ["ambisonics_mixer_test.cc"],
     deps = [
-        "//iamf/cli:ambisonics_projection_util",
+        "//iamf/cli:ambisonics_mixer",
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:codec_config",
         "@abseil-cpp//absl/status:status_matchers",

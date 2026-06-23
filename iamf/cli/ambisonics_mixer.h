@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_AMBISONICS_PROJECTION_UTIL_H_
-#define CLI_AMBISONICS_PROJECTION_UTIL_H_
+#ifndef CLI_AMBISONICS_MIXER_H_
+#define CLI_AMBISONICS_MIXER_H_
 
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/codec_config.h"
@@ -70,4 +70,4 @@ class AmbisonicsMixer {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_AMBISONICS_PROJECTION_UTIL_H_
+#endif  // CLI_AMBISONICS_MIXER_H_
