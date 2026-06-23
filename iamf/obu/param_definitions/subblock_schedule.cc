@@ -195,7 +195,8 @@ SubblockSchedule::CreateWithConstantSubblockDuration(
   if (duration % constant_subblock_duration != 0) {
     num_subblocks += 1;
   }
-
+  RETURN_IF_NOT_OK(ValidateInRange(
+      num_subblocks, {DecodedUleb128{1}, kMaxNumSubblocks}, "num_subblocks"));
   return SubblockSchedule(duration, constant_subblock_duration, num_subblocks,
                           {});
 }

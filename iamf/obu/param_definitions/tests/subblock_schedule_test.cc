@@ -56,6 +56,19 @@ TEST(CreateWithConstantSubblockDuration,
               IsOk());
 }
 
+TEST(CreateWithConstantSubblockDuration, FailsWhenNumSubblocksExceedsMaximum) {
+  EXPECT_THAT(SubblockSchedule::CreateWithConstantSubblockDuration(
+                  SubblockSchedule::kMaxNumSubblocks + 1, 1),
+              Not(IsOk()));
+}
+
+TEST(CreateWithConstantSubblockDuration,
+     SucceedsWhenNumSubblocksEqualsMaximum) {
+  EXPECT_THAT(SubblockSchedule::CreateWithConstantSubblockDuration(
+                  SubblockSchedule::kMaxNumSubblocks, 1),
+              IsOk());
+}
+
 TEST(CreateWithVariableSubblockDuration, FailsWhenEmptyInput) {
   EXPECT_THAT(SubblockSchedule::CreateWithVariableSubblockDuration({}),
               Not(IsOk()));
