@@ -57,23 +57,18 @@ GetParamDefinitionVariantMap(
   return param_definition_variants;
 }
 
-class GlobalTimingModuleTest : public ::testing::Test {
- protected:
-  // Sets up a single audio element with the given substream IDs.
-  void SetupObusForSubstreamIds(
-      absl::Span<const DecodedUleb128> substream_ids) {
-    constexpr DecodedUleb128 kCodecConfigId = 0;
-    constexpr DecodedUleb128 kFirstAudioElementId = 0;
-    AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
-                                          codec_config_obus_);
-    AddAmbisonicsMonoAudioElementWithSubstreamIds(
-        kFirstAudioElementId, kCodecConfigId, substream_ids, codec_config_obus_,
-        audio_elements_);
-  }
-
-  CodecConfigsById codec_config_obus_;
-  AudioElementsById audio_elements_;
-};
+DescriptorObus MakeObusForSubstreamIds(
+    absl::Span<const DecodedUleb128> substream_ids) {
+  DescriptorObus descriptor_obus;
+  constexpr DecodedUleb128 kCodecConfigId = 0;
+  constexpr DecodedUleb128 kFirstAudioElementId = 0;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        descriptor_obus.codec_config_obus);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kCodecConfigId, substream_ids,
+      descriptor_obus.codec_config_obus, descriptor_obus.audio_elements);
+  return descriptor_obus;
+}
 
 TEST(Create, SucceedsForEmptyAudioElementsAndParamDefinitions) {
   const AudioElementsById kEmptyAudioElements;
@@ -128,12 +123,13 @@ TEST(Create, FailsForParameterIdWithZeroRate) {
       IsNull());
 }
 
-TEST_F(GlobalTimingModuleTest, GetNextAudioFrameTimestampAdvancesTimestamps) {
-  SetupObusForSubstreamIds({kFirstAudioFrameId});
+TEST(GetNextAudioFrameTimestamp, AdvancesTimestampsForSingleSubstream) {
+  const DescriptorObus descriptor_obus =
+      MakeObusForSubstreamIds({kFirstAudioFrameId});
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       kEmptyParamDefinitionVariants;
   auto global_timing_module = GlobalTimingModule::Create(
-      audio_elements_, kEmptyParamDefinitionVariants);
+      descriptor_obus.audio_elements, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   constexpr uint32_t kDuration = 128;
@@ -148,15 +144,15 @@ TEST_F(GlobalTimingModuleTest, GetNextAudioFrameTimestampAdvancesTimestamps) {
   EXPECT_EQ(end_timestamp, kDuration);
 }
 
-TEST_F(GlobalTimingModuleTest,
-       GetNextAudioFrameTimestampAdvancesTimestampsEachSubsteamIndependently) {
-  constexpr DecodedUleb128 kFirstSubstreamId = 1000;
+TEST(GetNextAudioFrameTimestamp, AdvancesTimestampsEachSubsteamIndependently) {
+  constexpr DecodedUleb128 kFirstSubstreamId = kFirstAudioFrameId;
   constexpr DecodedUleb128 kSecondSubstreamId = 2000;
-  SetupObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
+  const DescriptorObus descriptor_obus =
+      MakeObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       kEmptyParamDefinitionVariants;
   auto global_timing_module = GlobalTimingModule::Create(
-      audio_elements_, kEmptyParamDefinitionVariants);
+      descriptor_obus.audio_elements, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   constexpr uint32_t kDuration = 128;
@@ -296,16 +292,16 @@ TEST(GetGlobalAudioFrameTimestamp, ReturnsErrorWhenNoAudioFrames) {
   EXPECT_EQ(global_timestamp, std::nullopt);
 }
 
-TEST_F(
-    GlobalTimingModuleTest,
-    GetGlobalAudioFrameTimestampReturnsCommonTimestampWhenAudioFramesAreInSync) {
+TEST(GetGlobalAudioFrameTimestamp,
+     ReturnsCommonTimestampWhenAudioFramesAreInSync) {
   constexpr DecodedUleb128 kFirstSubstreamId = kFirstAudioFrameId;
   constexpr DecodedUleb128 kSecondSubstreamId = 2000;
-  SetupObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
+  const DescriptorObus descriptor_obus =
+      MakeObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       kEmptyParamDefinitionVariants;
   auto global_timing_module = GlobalTimingModule::Create(
-      audio_elements_, kEmptyParamDefinitionVariants);
+      descriptor_obus.audio_elements, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   // Simulate a full temporal unit; two substreams are in sync.
@@ -329,16 +325,16 @@ TEST_F(
   EXPECT_EQ(global_timestamp, kDuration);
 }
 
-TEST_F(
-    GlobalTimingModuleTest,
-    GetGlobalAudioFrameTimestampReturnsOkButSetsNulloptWhenAudioFramesAreOutOfSync) {
+TEST(GetGlobalAudioFrameTimestamp,
+     ReturnsOkButSetsNulloptWhenAudioFramesAreOutOfSync) {
   constexpr DecodedUleb128 kFirstSubstreamId = kFirstAudioFrameId;
   constexpr DecodedUleb128 kSecondSubstreamId = 2000;
-  SetupObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
+  const DescriptorObus descriptor_obus =
+      MakeObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       kEmptyParamDefinitionVariants;
   auto global_timing_module = GlobalTimingModule::Create(
-      audio_elements_, kEmptyParamDefinitionVariants);
+      descriptor_obus.audio_elements, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
   // Simulate substreams which are desynchronized.
   constexpr uint32_t kDuration = 128;
