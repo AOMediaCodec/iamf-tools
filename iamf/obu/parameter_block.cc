@@ -275,7 +275,7 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
     const DecodedUleb128 num_subblocks = param_definition_.GetNumSubblocks();
     subblocks_.clear();
     subblocks_.reserve(static_cast<size_t>(num_subblocks));
-    for (int i = 0; i < num_subblocks; ++i) {
+    for (DecodedUleb128 i = 0; i < num_subblocks; ++i) {
       auto param_data = param_definition_.CreateParameterData();
       RETURN_IF_NOT_OK(param_data->ReadAndValidate(rb));
       subblocks_.push_back(std::move(param_data));
