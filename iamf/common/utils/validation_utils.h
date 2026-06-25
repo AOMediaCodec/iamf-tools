@@ -12,6 +12,7 @@
 #ifndef COMMON_UTILS_VALIDATION_UTILS_H_
 #define COMMON_UTILS_VALIDATION_UTILS_H_
 
+#include <iterator>
 #include <optional>
 #include <utility>
 
@@ -137,7 +138,8 @@ absl::Status ValidateNotNull(const T& pointer, absl::string_view context) {
 template <class InputIt>
 absl::Status ValidateUnique(InputIt first, InputIt last,
                             absl::string_view context) {
-  absl::flat_hash_set<typename InputIt::value_type> seen_values;
+  absl::flat_hash_set<typename std::iterator_traits<InputIt>::value_type>
+      seen_values;
 
   for (auto iter = first; iter != last; ++iter) {
     if (const auto& [unused_iter, inserted] = seen_values.insert(*iter);

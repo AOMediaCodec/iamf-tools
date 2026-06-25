@@ -191,6 +191,15 @@ TEST(CreateScalableAudioElementObu, FailsWithInvalidNumSubstreams) {
   EXPECT_THAT(obu, Not(IsOk()));
 }
 
+TEST(CreateScalableAudioElementObu, FailsWithDuplicateSubstreamIds) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.substream_ids = {3, 3};
+
+  EXPECT_THAT(CreateScalableAudioElementObu(
+                  common_args, GetOneLayerStereoScalableChannelLayout()),
+              Not(IsOk()));
+}
+
 TEST(ValidateAndWriteObu, SerializesOneLayerStereoScalableChannelLayout) {
   auto obu =
       CreateScalableAudioElementObu(CreateScalableAudioElementArgs(),
@@ -1394,6 +1403,18 @@ TEST(CreateMonoAmbisonicsAudioElement, FailsWithInvalidChannelMapping) {
       kInvalidChannelMapping);
 }
 
+TEST(CreateMonoAmbisonicsAudioElement, FailsWithDuplicateSubstreamIds) {
+  auto common_args = CreateAmbisonicsArgs();
+  common_args.substream_ids = {3, 3};
+  constexpr std::array<uint8_t, 2> kChannelMapping = {0, 1};
+
+  EXPECT_THAT(AudioElementObu::CreateForMonoAmbisonics(
+                  common_args.header, common_args.audio_element_id,
+                  common_args.reserved, common_args.codec_config_id,
+                  common_args.substream_ids, kChannelMapping),
+              Not(IsOk()));
+}
+
 absl::StatusOr<AudioElementObu> CreateMonoAmbisonicsAudioElement(
     const CommonAudioElementArgs& common_args,
     const absl::Span<const uint8_t> channel_mapping) {
@@ -1536,6 +1557,20 @@ absl::StatusOr<AudioElementObu> CreateProjectionAmbisonicsAudioElement(
   return obu;
 }
 
+TEST(CreateProjectionAmbisonicsAudioElement, FailsWithDuplicateSubstreamIds) {
+  auto common_args = CreateAmbisonicsArgs();
+  common_args.substream_ids = {3, 3};
+  constexpr uint8_t kOutputChannelCount = 1;
+  constexpr uint8_t kCoupledSubstreamCount = 0;
+
+  EXPECT_THAT(AudioElementObu::CreateForProjectionAmbisonics(
+                  common_args.header, common_args.audio_element_id,
+                  common_args.reserved, common_args.codec_config_id,
+                  common_args.substream_ids, kOutputChannelCount,
+                  kCoupledSubstreamCount, {1}),
+              Not(IsOk()));
+}
+
 TEST(ValidateAndWriteObu, WritesAmbisonicsProjection) {
   constexpr uint8_t kOutputChannelCount = 1;
   constexpr uint8_t kCoupledSubstreamCount = 0;
@@ -1674,6 +1709,14 @@ absl::StatusOr<AudioElementObu> CreateExtensionConfigAudioElement(
     obu->audio_element_params_.push_back(param);
   }
   return obu;
+}
+
+TEST(CreateExtensionConfigAudioElement, FailsWithDuplicateSubstreamIds) {
+  CommonAudioElementArgs common_args = CreateExtensionConfigAudioElementArgs(
+      AudioElementObu::kAudioElementBeginReserved);
+  common_args.substream_ids = {3, 3};
+
+  EXPECT_THAT(CreateExtensionConfigAudioElement(common_args, {}), Not(IsOk()));
 }
 
 TEST(ValidateAndWriteObu, WriteExtensionConfigSizeZero) {
@@ -1902,6 +1945,37 @@ TEST(CreateFromBuffer, InvalidWhenPayloadIsEmpty) {
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
   ObuHeader header;
   EXPECT_THAT(AudioElementObu::CreateFromBuffer(header, 0, *buffer),
+              Not(IsOk()));
+}
+
+TEST(CreateFromBuffer, FailsWithDuplicateSubstreamIds) {
+  constexpr auto kMonoConfigWithDuplicateSubstreamIds = std::to_array<uint8_t>({
+      // `audio_element_id`.
+      1,
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementSceneBased << 5,  // Req. for Ambisonics.
+      // `codec_config_id`.
+      2,
+      // `num_substreams`.
+      4,
+      // `audio_substream_ids` with duplicates.
+      3, 3, 5, 6,
+      // `num_parameters`.
+      0,
+      // `AmbisonicsMonoConfig`.
+      static_cast<uint8_t>(
+          AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeMono),
+      4,          // `output_channel_count`
+      4,          // `substream_count`
+      0, 1, 2, 3  // `channel_mapping`, one per `output_channel_count`.
+
+  });
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kMonoConfigWithDuplicateSubstreamIds));
+  ObuHeader header;
+
+  EXPECT_THAT(AudioElementObu::CreateFromBuffer(
+                  header, kMonoConfigWithDuplicateSubstreamIds.size(), *buffer),
               Not(IsOk()));
 }
 

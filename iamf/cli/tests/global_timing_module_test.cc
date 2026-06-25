@@ -87,15 +87,30 @@ TEST(Create, SucceedsForEmptyAudioElementsAndParamDefinitions) {
               NotNull());
 }
 
-TEST_F(GlobalTimingModuleTest, CreateFailsForDuplicateSubstreamIds) {
-  const DecodedUleb128 kDuplicateSubsteamId = kFirstAudioFrameId;
-  SetupObusForSubstreamIds({kDuplicateSubsteamId, kDuplicateSubsteamId});
+TEST(Create, FailsForDuplicateSubstreamIdsAcrossAudioElements) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  constexpr DecodedUleb128 kFirstSubstreamId = 1000;  // Arbitrary.
+  constexpr DecodedUleb128 kReusedSubstreamId = kFirstSubstreamId;
+  constexpr DecodedUleb128 kCodecConfigId = 0;
+  constexpr DecodedUleb128 kFirstAudioElementId = 0;
+  constexpr DecodedUleb128 kSecondAudioElementId = 1;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  // Among the two audio elements, the substream ID is duplicated.
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
+      codec_config_obus, audio_elements);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kSecondAudioElementId, kCodecConfigId, {kReusedSubstreamId},
+      codec_config_obus, audio_elements);
+
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       kEmptyParamDefinitionVariants;
 
-  EXPECT_THAT(GlobalTimingModule::Create(audio_elements_,
-                                         kEmptyParamDefinitionVariants),
-              IsNull());
+  EXPECT_THAT(
+      GlobalTimingModule::Create(audio_elements, kEmptyParamDefinitionVariants),
+      IsNull());
 }
 
 TEST(Create, FailsForParameterIdWithZeroRate) {
@@ -135,7 +150,7 @@ TEST_F(GlobalTimingModuleTest, GetNextAudioFrameTimestampAdvancesTimestamps) {
 
 TEST_F(GlobalTimingModuleTest,
        GetNextAudioFrameTimestampAdvancesTimestampsEachSubsteamIndependently) {
-  constexpr DecodedUleb128 kFirstSubstreamId = kFirstAudioFrameId;
+  constexpr DecodedUleb128 kFirstSubstreamId = 1000;
   constexpr DecodedUleb128 kSecondSubstreamId = 2000;
   SetupObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
