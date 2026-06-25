@@ -34,9 +34,9 @@ cc_library(
     srcs = ["audio_element_renderer_base.cc"],
     hdrs = ["audio_element_renderer_base.h"],
     deps = [
-        ":renderer_utils",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:labeled_frame",
+        "//iamf/cli:sample_processing_utils",
         "//iamf/common/utils:macros",
         "//iamf/obu:types",
         "@abseil-cpp//absl/base:core_headers",
@@ -159,11 +159,8 @@ cc_library(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
-        "//iamf/cli:labeled_frame",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
-        "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:mix_presentation",

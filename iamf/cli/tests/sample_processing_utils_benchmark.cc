@@ -20,12 +20,11 @@
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
-#include "iamf/cli/renderer/renderer_utils.h"
+#include "iamf/cli/labeled_frame.h"
+#include "iamf/cli/sample_processing_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-namespace renderer_utils {
 namespace {
 
 using enum ChannelLabel::Label;
@@ -127,7 +126,7 @@ static std::vector<ChannelLabel::Label> CreateLabels(int num_channels) {
   return shuffled_labels;
 }
 
-static void BM_ArrangeSamplesToRender(benchmark::State& state) {
+static void BM_ArrangeSamples(benchmark::State& state) {
   const int num_channels = state.range(0);
   const int num_ticks = state.range(1);
 
@@ -152,17 +151,17 @@ static void BM_ArrangeSamplesToRender(benchmark::State& state) {
       num_channels);
   size_t num_valid_samples = 0;
 
-  // Measure the calls to `ArrangeSamplesToRender()`.
+  // Measure the calls to `ArrangeSamples()`.
   for (auto _ : state) {
-    auto status = ArrangeSamplesToRender(labeled_frame, ordered_labels,
-                                         kEmptyChannel, TrimmingSettings{},
-                                         samples_to_render, num_valid_samples);
+    auto status = ArrangeSamples(labeled_frame, ordered_labels, kEmptyChannel,
+                                 TrimmingSettings{}, samples_to_render,
+                                 num_valid_samples);
     ABSL_CHECK_OK(status);
   }
 }
 
 // Benchmark various combinations of (#channels, #ticks).
-BENCHMARK(BM_ArrangeSamplesToRender)
+BENCHMARK(BM_ArrangeSamples)
     ->Args({2, 1 << 4})
     ->Args({2, 1 << 8})
     ->Args({2, 1 << 12})
@@ -174,5 +173,4 @@ BENCHMARK(BM_ArrangeSamplesToRender)
     ->Args({32, 1 << 12});
 
 }  // namespace
-}  // namespace renderer_utils
 }  // namespace iamf_tools

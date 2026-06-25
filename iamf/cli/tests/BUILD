@@ -793,6 +793,36 @@ cc_test(
 )
 
 cc_test(
+    name = "sample_processing_utils_benchmark",
+    srcs = ["sample_processing_utils_benchmark.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/cli:labeled_frame",
+        "//iamf/cli:sample_processing_utils",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/log:absl_check",
+        "@abseil-cpp//absl/random",
+        "@abseil-cpp//absl/types:span",
+        "@google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_test(
+    name = "sample_processing_utils_test",
+    size = "small",
+    srcs = ["sample_processing_utils_test.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/cli:labeled_frame",
+        "//iamf/cli:sample_processing_utils",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "sample_processor_base_test",
     srcs = ["sample_processor_base_test.cc"],
     deps = [

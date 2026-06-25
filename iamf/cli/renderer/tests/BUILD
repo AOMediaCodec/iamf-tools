@@ -119,27 +119,11 @@ cc_test(
 )
 
 cc_test(
-    name = "renderer_utils_benchmark",
-    srcs = ["renderer_utils_benchmark.cc"],
-    deps = [
-        "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
-        "//iamf/cli/renderer:renderer_utils",
-        "//iamf/obu:types",
-        "@abseil-cpp//absl/log:absl_check",
-        "@abseil-cpp//absl/random",
-        "@abseil-cpp//absl/types:span",
-        "@google_benchmark//:benchmark_main",
-    ],
-)
-
-cc_test(
     name = "renderer_utils_test",
     srcs = ["renderer_utils_test.cc"],
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
         "//iamf/cli/renderer:renderer_utils",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:ambisonics_config",

@@ -744,6 +744,23 @@ cc_library(
 )
 
 cc_library(
+    name = "sample_processing_utils",
+    srcs = ["sample_processing_utils.cc"],
+    hdrs = ["sample_processing_utils.h"],
+    deps = [
+        ":channel_label",
+        ":labeled_frame",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:numeric_utils",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "sample_processor_base",
     srcs = ["sample_processor_base.cc"],
     hdrs = ["sample_processor_base.h"],
