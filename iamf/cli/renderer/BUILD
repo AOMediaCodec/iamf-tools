@@ -160,6 +160,7 @@ cc_library(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
+        "//iamf/cli:labeled_frame",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:numeric_utils",

@@ -148,6 +148,7 @@ cc_library(
         ":channel_label",
         ":cli_util",
         ":descriptor_obus",
+        ":labeled_frame",
         ":substream_frames",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
@@ -159,7 +160,6 @@ cc_library(
         "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/container:flat_hash_set",
-        "@abseil-cpp//absl/container:node_hash_map",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
@@ -332,6 +332,22 @@ cc_library(
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "labeled_frame",
+    srcs = ["labeled_frame.cc"],
+    hdrs = ["labeled_frame.h"],
+    deps = [
+        ":channel_label",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/container:node_hash_map",
+        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
     ],
@@ -658,7 +674,7 @@ cc_library(
     hdrs = ["recon_gain_generator.h"],
     deps = [
         ":channel_label",
-        ":demixing_module",
+        ":labeled_frame",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/obu:types",

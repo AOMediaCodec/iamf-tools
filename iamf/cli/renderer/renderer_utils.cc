@@ -26,7 +26,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
@@ -54,7 +54,7 @@ absl::StatusOr<size_t> GetCommonNumTrimmedTimeTicks(
     }
 
     absl::Span<const InternalSampleType> samples_to_render;
-    RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
+    RETURN_IF_NOT_OK(FindSamplesOrDemixedSamples(
         label, labeled_frame.label_to_samples, samples_to_render));
 
     if (!num_raw_time_ticks.has_value()) {
@@ -222,7 +222,7 @@ absl::Status ArrangeSamplesToRender(
       // updated. Point to the passed-in empty channel.
       channel_samples = absl::MakeConstSpan(empty_channel);
     } else {
-      RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
+      RETURN_IF_NOT_OK(FindSamplesOrDemixedSamples(
           channel_label, labeled_frame.label_to_samples, channel_samples));
     }
 

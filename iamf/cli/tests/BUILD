@@ -234,6 +234,7 @@ cc_test(
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obus",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:substream_frames",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common/utils:numeric_utils",
@@ -388,6 +389,20 @@ cc_test(
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
         "@protobuf",
+    ],
+)
+
+cc_test(
+    name = "labeled_frame_test",
+    size = "small",
+    srcs = ["labeled_frame_test.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/cli:labeled_frame",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -686,7 +701,7 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:recon_gain_generator",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:types",

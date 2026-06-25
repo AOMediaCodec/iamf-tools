@@ -21,18 +21,16 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -53,22 +51,6 @@ struct SubstreamData {
   std::vector<double> output_gains_linear;
   uint32_t num_samples_to_trim_at_end;
   uint32_t num_samples_to_trim_at_start;
-};
-
-// Mapping from channel label to a frame of samples.
-typedef absl::node_hash_map<ChannelLabel::Label,
-                            std::vector<InternalSampleType>>
-    LabelSamplesMap;
-
-struct LabeledFrame {
-  uint32_t samples_to_trim_at_end;
-  uint32_t samples_to_trim_at_start;
-  LabelSamplesMap label_to_samples;
-  DownMixingParams demixing_params;
-  ReconGainInfoParameterData recon_gain_info_parameter_data;
-  // Vector of length `num_layers`. Only populated for scalable channel audio.
-  std::vector<ChannelAudioLayerConfig::LoudspeakerLayout>
-      loudspeaker_layout_per_layer;
 };
 
 // Mapping from audio element ids to `LabeledFrame`s.
@@ -162,18 +144,6 @@ class DemixingModule {
   static absl::StatusOr<DemixingModule> CreateForReconstruction(
       const absl::flat_hash_map<DecodedUleb128, ReconstructionConfig>&
           id_to_config);
-
-  /*!\brief Searches the input map for the target samples or demixed samples.
-   *
-   * \param label Label of the channel (or its demixed version) to search for.
-   * \param label_to_samples Map of label to samples to search.
-   * \param samples Output span to the samples if found.
-   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         the search failed.
-   */
-  static absl::Status FindSamplesOrDemixedSamples(
-      ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
-      absl::Span<const InternalSampleType>& samples);
 
   /*!\brief Down-mixes samples of input channels to substreams.
    *

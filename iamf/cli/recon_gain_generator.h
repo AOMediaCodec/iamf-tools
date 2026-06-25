@@ -15,7 +15,7 @@
 
 #include "absl/status/status.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/labeled_frame.h"
 
 namespace iamf_tools {
 

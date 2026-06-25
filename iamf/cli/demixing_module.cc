@@ -37,6 +37,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
@@ -145,18 +146,18 @@ absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
   absl::Span<const InternalSampleType> r5_samples;
   absl::Span<const InternalSampleType> rs5_samples;
   absl::Span<const InternalSampleType> rss7_samples;
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kL5, label_to_samples, l5_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kLs5, label_to_samples, ls5_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kLss7, label_to_samples, lss7_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kR5, label_to_samples, r5_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kRs5, label_to_samples, rs5_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kRss7, label_to_samples, rss7_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kL5, label_to_samples, l5_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kLs5, label_to_samples, ls5_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kLss7, label_to_samples, lss7_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kR5, label_to_samples, r5_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kRs5, label_to_samples, rs5_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kRss7, label_to_samples, rss7_samples));
 
   absl::StatusOr<size_t> num_ticks =
       GetCommonNumTicks(MakeConstSpan({l5_samples, ls5_samples, lss7_samples,
@@ -228,14 +229,14 @@ absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
   absl::Span<const InternalSampleType> l5_samples;
   absl::Span<const InternalSampleType> r3_samples;
   absl::Span<const InternalSampleType> r5_samples;
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kL3, label_to_samples, l3_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kL5, label_to_samples, l5_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kR3, label_to_samples, r3_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kR5, label_to_samples, r5_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kL3, label_to_samples, l3_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kL5, label_to_samples, l5_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kR3, label_to_samples, r3_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kR5, label_to_samples, r5_samples));
 
   absl::StatusOr<size_t> num_ticks = GetCommonNumTicks(
       MakeConstSpan({l3_samples, l5_samples, r3_samples, r5_samples}));
@@ -289,12 +290,12 @@ absl::Status S2ToS3Demixer(const DownMixingParams& /*down_mixing_params*/,
   absl::Span<const InternalSampleType> l2_samples;
   absl::Span<const InternalSampleType> r2_samples;
   absl::Span<const InternalSampleType> c_samples;
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kL2, label_to_samples, l2_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kR2, label_to_samples, r2_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kCentre, label_to_samples, c_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kL2, label_to_samples, l2_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kR2, label_to_samples, r2_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kCentre, label_to_samples, c_samples));
 
   absl::StatusOr<size_t> num_ticks =
       GetCommonNumTicks(MakeConstSpan({l2_samples, r2_samples, c_samples}));
@@ -343,10 +344,10 @@ absl::Status S1ToS2Demixer(const DownMixingParams& /*down_mixing_params*/,
 
   absl::Span<const InternalSampleType> l2_samples;
   absl::Span<const InternalSampleType> mono_samples;
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kL2, label_to_samples, l2_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kMono, label_to_samples, mono_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kL2, label_to_samples, l2_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kMono, label_to_samples, mono_samples));
 
   absl::StatusOr<size_t> num_ticks =
       GetCommonNumTicks(MakeConstSpan({l2_samples, mono_samples}));
@@ -404,14 +405,14 @@ absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
   absl::Span<const InternalSampleType> ltf4_samples;
   absl::Span<const InternalSampleType> rtf2_samples;
   absl::Span<const InternalSampleType> rtf4_samples;
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kLtf2, label_to_samples, ltf2_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kLtf4, label_to_samples, ltf4_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kRtf2, label_to_samples, rtf2_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kRtf4, label_to_samples, rtf4_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kLtf2, label_to_samples, ltf2_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kLtf4, label_to_samples, ltf4_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kRtf2, label_to_samples, rtf2_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kRtf4, label_to_samples, rtf4_samples));
 
   absl::StatusOr<size_t> num_ticks = GetCommonNumTicks(
       MakeConstSpan({ltf2_samples, ltf4_samples, rtf2_samples, rtf4_samples}));
@@ -474,18 +475,18 @@ absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
   absl::Span<const InternalSampleType> rtf3_samples;
   absl::Span<const InternalSampleType> r3_samples;
   absl::Span<const InternalSampleType> r5_samples;
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kLtf3, label_to_samples, ltf3_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kL3, label_to_samples, l3_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kL5, label_to_samples, l5_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kRtf3, label_to_samples, rtf3_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kR3, label_to_samples, r3_samples));
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      kR5, label_to_samples, r5_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kLtf3, label_to_samples, ltf3_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kL3, label_to_samples, l3_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kL5, label_to_samples, l5_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kRtf3, label_to_samples, rtf3_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kR3, label_to_samples, r3_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(kR5, label_to_samples, r5_samples));
 
   absl::StatusOr<size_t> num_ticks =
       GetCommonNumTicks(MakeConstSpan({ltf3_samples, l3_samples, l5_samples,
@@ -851,27 +852,6 @@ DemixingModule::CreateIdToReconstructionConfig(
     };
   }
   return result;
-}
-
-absl::Status DemixingModule::FindSamplesOrDemixedSamples(
-    ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
-    absl::Span<const InternalSampleType>& samples) {
-  if (label_to_samples.find(label) != label_to_samples.end()) {
-    samples = absl::MakeConstSpan(label_to_samples.at(label));
-    return absl::OkStatus();
-  }
-
-  auto demixed_label = ChannelLabel::GetDemixedLabel(label);
-  if (!demixed_label.ok()) {
-    return demixed_label.status();
-  }
-  if (label_to_samples.find(*demixed_label) != label_to_samples.end()) {
-    samples = absl::MakeConstSpan(label_to_samples.at(*demixed_label));
-    return absl::OkStatus();
-  } else {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Channel ", label, " or ", *demixed_label, " not found"));
-  }
 }
 
 absl::StatusOr<DemixingModule>

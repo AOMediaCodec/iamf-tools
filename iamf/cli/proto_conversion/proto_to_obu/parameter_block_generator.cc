@@ -31,6 +31,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"

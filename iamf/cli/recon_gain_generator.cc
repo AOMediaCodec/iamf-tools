@@ -19,7 +19,7 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/obu/types.h"
@@ -29,7 +29,7 @@ namespace iamf_tools {
 namespace {
 
 // Returns the Root Mean Square (RMS) power of input `samples`.
-double ComputeSignalPower(absl::Span<const InternalSampleType>& samples) {
+double ComputeSignalPower(absl::Span<const InternalSampleType> samples) {
   double mean_square = 0.0;
   const double scale = 1.0 / static_cast<double>(samples.size());
   for (const auto s : samples) {
@@ -73,8 +73,8 @@ absl::Status FindRelevantMixedSamples(
 
   ABSL_LOG_IF(INFO, additional_logging)
       << "Relevant mixed samples has label: " << relevant_mixed_label;
-  return DemixingModule::FindSamplesOrDemixedSamples(
-      relevant_mixed_label, label_to_samples, relevant_mixed_samples);
+  return FindSamplesOrDemixedSamples(relevant_mixed_label, label_to_samples,
+                                     relevant_mixed_samples);
 }
 
 }  // namespace
@@ -85,8 +85,8 @@ absl::Status ReconGainGenerator::ComputeReconGain(
     const bool additional_logging, double& recon_gain) {
   // Gather information about the original samples.
   absl::Span<const InternalSampleType> original_samples;
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      label, label_to_samples, original_samples));
+  RETURN_IF_NOT_OK(
+      FindSamplesOrDemixedSamples(label, label_to_samples, original_samples));
   ABSL_LOG_IF(INFO, additional_logging)
       << "[" << label
       << "] original_samples.size()= " << original_samples.size();
@@ -139,8 +139,8 @@ absl::Status ReconGainGenerator::ComputeReconGain(
 
   // Gather information about the demixed samples.
   absl::Span<const InternalSampleType> demixed_samples;
-  RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      label, label_to_decoded_samples, demixed_samples));
+  RETURN_IF_NOT_OK(FindSamplesOrDemixedSamples(label, label_to_decoded_samples,
+                                               demixed_samples));
   ABSL_LOG_IF(INFO, additional_logging)
       << "[" << label << "] demixed_samples.size()= " << demixed_samples.size();
 

@@ -212,6 +212,7 @@ cc_library(
         "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:global_timing_module",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli:recon_gain_generator",
         "//iamf/cli/proto:parameter_block_cc_proto",

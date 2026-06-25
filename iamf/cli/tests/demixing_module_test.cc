@@ -30,6 +30,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -73,60 +74,6 @@ constexpr DownMixingParams kIrrelevantDownMixingParams = {};
 
 // TODO(b/305927287): Test computation of linear output gains. Test some cases
 //                    of erroneous input.
-
-TEST(FindSamplesOrDemixedSamples, FindsMatchingSamples) {
-  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
-  const LabelSamplesMap kLabelToSamples = {{kL2, kSamplesToFind}};
-
-  absl::Span<const InternalSampleType> found_samples;
-  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kL2, kLabelToSamples,
-                                                          found_samples),
-              IsOk());
-  EXPECT_THAT(found_samples, Pointwise(DoubleEq(), kSamplesToFind));
-}
-
-TEST(FindSamplesOrDemixedSamples, FindsMatchingDemixedSamples) {
-  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
-  const LabelSamplesMap kLabelToSamples = {{kDemixedR2, kSamplesToFind}};
-
-  absl::Span<const InternalSampleType> found_samples;
-  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kR2, kLabelToSamples,
-                                                          found_samples),
-              IsOk());
-  EXPECT_THAT(found_samples, Pointwise(DoubleEq(), kSamplesToFind));
-}
-
-TEST(FindSamplesOrDemixedSamples, InvalidWhenThereIsNoDemixingLabel) {
-  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
-  const LabelSamplesMap kLabelToSamples = {{kDemixedR2, kSamplesToFind}};
-
-  absl::Span<const InternalSampleType> found_samples;
-  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kL2, kLabelToSamples,
-                                                          found_samples),
-              Not(IsOk()));
-}
-
-TEST(FindSamplesOrDemixedSamples, RegularSamplesTakePrecedence) {
-  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
-  const std::vector<InternalSampleType> kDemixedSamplesToIgnore = {4, 5, 6};
-  const LabelSamplesMap kLabelToSamples = {
-      {kR2, kSamplesToFind}, {kDemixedR2, kDemixedSamplesToIgnore}};
-  absl::Span<const InternalSampleType> found_samples;
-  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kR2, kLabelToSamples,
-                                                          found_samples),
-              IsOk());
-  EXPECT_THAT(found_samples, Pointwise(DoubleEq(), kSamplesToFind));
-}
-
-TEST(FindSamplesOrDemixedSamples, ErrorNoMatchingSamples) {
-  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
-  const LabelSamplesMap kLabelToSamples = {{kL2, kSamplesToFind}};
-
-  absl::Span<const InternalSampleType> found_samples;
-  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kL3, kLabelToSamples,
-                                                          found_samples),
-              Not(IsOk()));
-}
 
 void InitAudioElementWithLabelsAndScalableChannelLayout(
     const SubstreamIdLabelsMap& substream_id_to_labels,
