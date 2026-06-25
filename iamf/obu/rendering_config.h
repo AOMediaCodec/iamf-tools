@@ -41,8 +41,8 @@ struct RenderingConfigParamDefinition {
   friend bool operator==(const RenderingConfigParamDefinition& lhs,
                          const RenderingConfigParamDefinition& rhs) = default;
 
-  /*!\brief Default constructor. */
-  RenderingConfigParamDefinition() = default;
+  // Use `Create` or `CreateFromBuffer` instead.
+  RenderingConfigParamDefinition() = delete;
 
   /*!\brief Move constructor. */
   RenderingConfigParamDefinition(RenderingConfigParamDefinition&& other) =
