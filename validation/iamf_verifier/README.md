@@ -8,7 +8,7 @@ The `iamf_verifier` tool compares an encoded Test bitstream (either standalone `
    * If the test input is an `.mp4` container, extracts the standalone `.iamf` bitstream using GPAC.
 
 2. **Bitstream Syntax Compliance**:
-   * Invokes [Compliance Warden](https://github.com/felicialim/ComplianceWarden/tree/iamf) on the test file to verify bitstream syntax compliance.
+   * Invokes [Compliance Warden](https://github.com/gpac/ComplianceWarden) on the test file to verify bitstream syntax compliance.
 
 3. **Loudness Verification**:
    * Invokes `iamf_loudness_comparator_main` to verify integrated loudness and digital peak metadata align with the reference within a `+/- 0.1 LUFS` tolerance.
@@ -27,7 +27,7 @@ The `iamf_verifier` tool compares an encoded Test bitstream (either standalone `
 
 Ensure the following external executables are available on your system `PATH` or provided via explicit command-line flags:
 
-* **[Compliance Warden](https://github.com/felicialim/ComplianceWarden/tree/iamf)** (`cw.exe`): Required for bitstream syntax verification (`--cw_cmd`). *(Note: Please use the `iamf` branch from [this fork](https://github.com/felicialim/ComplianceWarden/tree/iamf) while these IAMF compliance rules are being actively upstreamed to the main Compliance Warden repository).*
+* **[Compliance Warden](https://github.com/gpac/ComplianceWarden)** (`cw.exe`): Required for bitstream syntax verification (`--cw_cmd`). *(Note: Please use commit 1552606 or later).*
 * **[GPAC](https://github.com/gpac/gpac)** (`gpac`): Required if the Test IAMF file is an `.mp4`.
 
 ---
