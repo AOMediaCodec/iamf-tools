@@ -209,14 +209,6 @@ INSTANTIATE_TEST_SUITE_P(SupportedAmbisonicsOrder,
                          MixedOrderAmbisonicsProjectionTest,
                          ::testing::Values<int>(1, 2, 3, 4));
 
-TEST(CreateFromScalableChannelLayoutConfig, DoesNotSupportTooSmallFrames) {
-  const size_t kTooSmallNumSamplesPerFrame = 8;
-  EXPECT_EQ(AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
-                kStereoScalableChannelLayoutConfig, kTooSmallNumSamplesPerFrame,
-                kSampleRate),
-            nullptr);
-}
-
 TEST(CreateFromScalableChannelLayoutConfig,
      DoesNotSupportSampleRatesDeathTest) {
   // TODO(b/451901158): We need better documentation about what sample rates are
@@ -260,6 +252,31 @@ TEST(CreateFromScalableChannelLayoutConfig,
       IsOk());
   EXPECT_THAT(renderer->Finalize(), IsOk());
   EXPECT_TRUE(renderer->IsFinalized());
+}
+
+TEST(CreateFromScalableChannelLayoutConfig, FrameSizeTooSmallFails) {
+  EXPECT_EQ(AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
+                kStereoScalableChannelLayoutConfig, 31, kSampleRate),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig, FrameSizeTooLargeFails) {
+  EXPECT_EQ(AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
+                kStereoScalableChannelLayoutConfig, 16385, kSampleRate),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig, SampleRateZeroFails) {
+  EXPECT_EQ(AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
+                kStereoScalableChannelLayoutConfig, kNumSamplesPerFrame, 0),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig, ValidArgumentsSucceed) {
+  EXPECT_NE(
+      AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
+          kStereoScalableChannelLayoutConfig, kNumSamplesPerFrame, kSampleRate),
+      nullptr);
 }
 
 TEST(RenderLabeledFrame, ReturnsNumberOfTicks) {
