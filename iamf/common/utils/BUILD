@@ -51,19 +51,6 @@ cc_library(
 )
 
 cc_library(
-    name = "sample_processing_utils",
-    srcs = ["sample_processing_utils.cc"],
-    hdrs = ["sample_processing_utils.h"],
-    deps = [
-        "@abseil-cpp//absl/functional:any_invocable",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/strings",
-        "@abseil-cpp//absl/strings:string_view",
-        "@abseil-cpp//absl/types:span",
-    ],
-)
-
-cc_library(
     name = "validation_utils",
     hdrs = ["validation_utils.h"],
     deps = [

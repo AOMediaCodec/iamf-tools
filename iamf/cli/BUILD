@@ -119,8 +119,8 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":descriptor_obus",
+        ":sample_processing_utils",
         "//iamf/common/utils:macros",
-        "//iamf/common/utils:sample_processing_utils",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
@@ -753,9 +753,11 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/obu:types",
+        "@abseil-cpp//absl/functional:any_invocable",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:string_view",
         "@abseil-cpp//absl/types:span",
     ],
 )
@@ -847,10 +849,10 @@ cc_library(
     srcs = ["wav_writer.cc"],
     hdrs = ["wav_writer.h"],
     deps = [
+        ":sample_processing_utils",
         ":sample_processor_base",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
-        "//iamf/common/utils:sample_processing_utils",
         "//iamf/obu:types",
         "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/functional:any_invocable",

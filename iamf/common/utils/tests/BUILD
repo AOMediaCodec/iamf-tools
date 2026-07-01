@@ -34,21 +34,6 @@ cc_test(
 )
 
 cc_test(
-    name = "sample_processing_utils_test",
-    srcs = ["sample_processing_utils_test.cc"],
-    deps = [
-        "//iamf/cli/tests:cli_test_utils",
-        "//iamf/common/utils:sample_processing_utils",
-        "@abseil-cpp//absl/functional:any_invocable",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:status_matchers",
-        "@abseil-cpp//absl/strings:string_view",
-        "@abseil-cpp//absl/types:span",
-        "@googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "validation_utils_test",
     size = "small",
     srcs = ["validation_utils_test.cc"],
