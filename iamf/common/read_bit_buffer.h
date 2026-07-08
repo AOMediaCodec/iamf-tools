@@ -422,13 +422,9 @@ class StreamBasedReadBitBuffer : public MemoryBasedReadBitBuffer {
 
   /*!\brief Flush already processed data from StreamBasedReadBitBuffer.
    *
-   * Should be called whenever the caller no longer needs the first `num_bytes`
-   * of data.
-   *
-   * \param num_bytes Bytes to flush from StreamBasedReadBitBuffer
-   * \return `absl::OkStatus()` on success. Specific statuses on failure.
+   * Flushes any already processed data up to the most recently read byte.
    */
-  absl::Status Flush(int64_t num_bytes);
+  void Flush();
 
   /*!\brief Destructor.*/
   ~StreamBasedReadBitBuffer() override = default;

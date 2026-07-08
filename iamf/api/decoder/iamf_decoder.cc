@@ -157,7 +157,7 @@ absl::Status IamfDecoder::DecoderState::CreateObuProcessor() {
   descriptor_obus.resize(num_bytes_read);
   RETURN_IF_NOT_OK(
       read_bit_buffer->ReadUint8Span(absl::MakeSpan(descriptor_obus)));
-  RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bytes_read));
+  read_bit_buffer->Flush();
 
   auto new_mix_presentation_id =
       temp_obu_processor->GetOutputMixPresentationId();
@@ -212,7 +212,6 @@ IamfStatus DecodeOneTemporalUnit(
   if (obu_processor == nullptr) {
     return IamfStatus::ErrorStatus("Internal Error: Obu processor is null.");
   }
-  const auto start_position_bits = read_bit_buffer->Tell();
   std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
   bool unused_continue_processing = true;
   absl::Status absl_status = obu_processor->ProcessTemporalUnit(
@@ -238,11 +237,7 @@ IamfStatus DecodeOneTemporalUnit(
     }
   }
   // Empty the buffer of the data that was processed thus far.
-  const auto num_bits_read = read_bit_buffer->Tell() - start_position_bits;
-  absl::Status flush_status = read_bit_buffer->Flush(num_bits_read / 8);
-  if (!flush_status.ok()) {
-    return AbslToIamfStatus(flush_status);
-  }
+  read_bit_buffer->Flush();
   return IamfStatus::OkStatus();
 }
 

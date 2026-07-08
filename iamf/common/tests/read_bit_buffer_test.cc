@@ -997,13 +997,34 @@ TYPED_TEST(ReadBitBufferTest, IgnoreBytesExactlyToEndSucceeds) {
 // --- Specific StreamBasedReadBitBuffer tests ---
 
 // --- `Flush` tests ---
-TEST(StreamBasedReadBitBufferTest, FlushFailsWhenTryingToFlushTooManyBytes) {
+TEST(StreamBasedReadBitBufferTest, FlushWithoutReadingFlushesZeroBytes) {
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
-  std::vector<uint8_t> output_buffer(kThreeBytes.size());
-  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
-  EXPECT_THAT(rb->Flush(kThreeBytes.size() + 1), Not(IsOk()));
+
+  rb->Flush();
+
+  EXPECT_EQ(rb->NumBytesAvailable(), 3);
+}
+
+TEST(StreamBasedReadBitBufferTest,
+     FlushWithNonByteAlignedReadPositionSafelyFlushesFullBytes) {
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
+  uint64_t first_byte;
+  EXPECT_THAT(rb->ReadUnsignedLiteral(8, first_byte), IsOk());
+  uint64_t three_bits;
+  EXPECT_THAT(rb->ReadUnsignedLiteral(3, three_bits), IsOk());
+  EXPECT_EQ(rb->Tell(), 11);
+
+  rb->Flush();
+
+  EXPECT_EQ(rb->NumBytesAvailable(), 1);
+  EXPECT_EQ(rb->Tell(), 3);
+  uint64_t remaining_five_bits;
+  EXPECT_THAT(rb->ReadUnsignedLiteral(5, remaining_five_bits), IsOk());
+  EXPECT_EQ((three_bits << 5) | remaining_five_bits, kThreeBytes[1]);
 }
 
 TEST(StreamBasedReadBitBufferTest, FlushSuccessfullyEmptiesSource) {
@@ -1012,7 +1033,9 @@ TEST(StreamBasedReadBitBufferTest, FlushSuccessfullyEmptiesSource) {
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   std::vector<uint8_t> output_buffer(kThreeBytes.size());
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
-  EXPECT_THAT(rb->Flush(kThreeBytes.size()), IsOk());
+
+  rb->Flush();
+
   EXPECT_FALSE(rb->IsDataAvailable());
 }
 
@@ -1023,7 +1046,9 @@ TEST(StreamBasedReadBitBufferTest,
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   std::vector<uint8_t> output = {0};
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
-  EXPECT_THAT(rb->Flush(output.size()), IsOk());
+
+  rb->Flush();
+
   EXPECT_TRUE(rb->IsDataAvailable());
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
@@ -1035,7 +1060,9 @@ TEST(StreamBasedReadBitBufferTest, FlushAndPushingMoreDataSucceeds) {
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   std::vector<uint8_t> output_buffer(kThreeBytes.size());
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
-  EXPECT_THAT(rb->Flush(output_buffer.size()), IsOk());
+
+  rb->Flush();
+
   EXPECT_FALSE(rb->IsDataAvailable());
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   EXPECT_TRUE(rb->IsDataAvailable());
@@ -1046,8 +1073,12 @@ TEST(StreamBasedReadBitBufferTest, TellFlushAndSeek) {
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
-  EXPECT_EQ(rb->Tell(), 0);
-  EXPECT_THAT(rb->Flush(kThreeBytes.size()), IsOk());
+  std::vector<uint8_t> output = {0};
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
+  EXPECT_EQ(rb->Tell(), 8);
+
+  rb->Flush();
+
   // Seeking is disabled after Flush().
   EXPECT_THAT(rb->Seek(0), Not(IsOk()));
 }
@@ -1061,7 +1092,9 @@ TEST(StreamBasedReadBitBufferTest, PushBytesNumBytesAvailableSucceeds) {
   std::vector<uint8_t> output_buffer(kThreeBytes.size());
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
   EXPECT_EQ(rb->NumBytesAvailable(), 0);
-  EXPECT_THAT(rb->Flush(kThreeBytes.size()), IsOk());
+
+  rb->Flush();
+
   EXPECT_EQ(rb->NumBytesAvailable(), 0);
   EXPECT_THAT(rb->PushBytes(kThreeBytes), IsOk());
   EXPECT_EQ(rb->NumBytesAvailable(), 3);
