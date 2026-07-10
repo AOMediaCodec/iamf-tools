@@ -47,8 +47,11 @@ namespace {
 
 using absl_testing::IsOk;
 using absl_testing::IsOkAndHolds;
+using absl_testing::StatusIs;
+using ::testing::FloatNear;
 using ::testing::Not;
 using ::testing::NotNull;
+using ::testing::Pointwise;
 
 using absl::MakeConstSpan;
 using enum MixGainParameterData::AnimationType;
@@ -298,19 +301,6 @@ TEST(CreateFromBuffer, ParamDefinitionMode1) {
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(0), IsOkAndHolds(1));
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(1), IsOkAndHolds(3));
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(2), IsOkAndHolds(6));
-
-  float linear_mix_gain;
-  // The first subblock covers [0, subblock_duration[0]).
-  EXPECT_THAT((*parameter_block)->GetLinearMixGain(0, linear_mix_gain), IsOk());
-  EXPECT_FLOAT_EQ(linear_mix_gain, 2.9961426f);
-  EXPECT_THAT((*parameter_block)->GetLinearMixGain(1, linear_mix_gain), IsOk());
-  EXPECT_FLOAT_EQ(linear_mix_gain, 2.343807f);
-  EXPECT_THAT((*parameter_block)->GetLinearMixGain(4, linear_mix_gain), IsOk());
-  EXPECT_FLOAT_EQ(linear_mix_gain, 1.8335015f);
-
-  // Parameter blocks are open intervals.
-  EXPECT_THAT((*parameter_block)->GetLinearMixGain(10, linear_mix_gain),
-              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ReturnsErrorWhenNumSubblocksIsGreaterThanTotalDuration) {
@@ -407,19 +397,86 @@ TEST(CreateFromBuffer, ParamDefinitionMode0) {
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(0), IsOkAndHolds(1));
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(1), IsOkAndHolds(3));
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(2), IsOkAndHolds(6));
+}
 
-  float linear_mix_gain;
-  // The first subblock covers [0, subblock_duration[0]).
-  EXPECT_THAT((*parameter_block)->GetLinearMixGain(0, linear_mix_gain), IsOk());
-  EXPECT_FLOAT_EQ(linear_mix_gain, 2.9961426f);
-  EXPECT_THAT((*parameter_block)->GetLinearMixGain(1, linear_mix_gain), IsOk());
-  EXPECT_FLOAT_EQ(linear_mix_gain, 2.343807f);
-  EXPECT_THAT((*parameter_block)->GetLinearMixGain(4, linear_mix_gain), IsOk());
-  EXPECT_FLOAT_EQ(linear_mix_gain, 1.8335015f);
+TEST(GetLinearMixGains, FailsForNonParameterDefinitionMixGain) {
+  DemixingParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(kParameterId, kParameterRate,
+                                             kDuration));
+  auto parameter_block =
+      ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
+  ASSERT_THAT(parameter_block, NotNull());
 
-  // Parameter blocks are open intervals.
-  EXPECT_THAT((*parameter_block)->GetLinearMixGain(10, linear_mix_gain),
-              Not(IsOk()));
+  std::vector<float> linear_mix_gain_per_tick(1);
+  EXPECT_THAT(parameter_block->GetLinearMixGains(linear_mix_gain_per_tick),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(GetLinearMixGains, FailsForNoMixGainParameterData) {
+  MixGainParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(kParameterId, kParameterRate,
+                                             kDuration));
+  auto parameter_block =
+      ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
+
+  std::vector<float> linear_mix_gain_per_tick(12, 100.0f);
+  EXPECT_THAT(parameter_block->GetLinearMixGains(linear_mix_gain_per_tick),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(GetLinearMixGains, FillInAppropriateValues) {
+  std::vector<uint8_t> source_data = {
+      // Parameter ID.
+      kParameterId,
+      // Duration.
+      0x0a,
+      // Constant subblock duration.
+      0x00,
+      // Number of subblocks.
+      0x03,
+      // Subblock duration.
+      0x01,
+      // Animation type.
+      kAnimateStep,
+      // Start point value.
+      0x09,
+      0x88,
+      // Subblock duration.
+      0x03,
+      // Animation type.
+      kAnimateStep,
+      // Start point value.
+      0x07,
+      0x66,
+      // Subblock duration.
+      0x06,
+      // Animation type.
+      kAnimateStep,
+      // Start point value.
+      0x05,
+      0x44,
+  };
+  const int64_t payload_size = source_data.size();
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+  MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kParameterId, /*parameter_rate=*/1));
+  auto parameter_block = ParameterBlockObu::CreateFromBuffer(
+      ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
+      param_definition, *buffer);
+  ASSERT_THAT(parameter_block, IsOk());
+
+  // Size the output vector to cover all 10 ticks, plus 2 extra ticks to
+  // verify they are untouched when exceeding the parameter block duration.
+  std::vector<float> linear_mix_gain_per_tick(12, 100.0f);
+  EXPECT_THAT((*parameter_block)->GetLinearMixGains(linear_mix_gain_per_tick),
+              IsOk());
+  // Subblock durations are 1, 3, and 6.
+  EXPECT_THAT(
+      linear_mix_gain_per_tick,
+      Pointwise(FloatNear(1e-5f), {2.996143f, 2.343807f, 2.343807f, 2.343807f,
+                                   1.833502f, 1.833502f, 1.833502f, 1.833502f,
+                                   1.833502f, 1.833502f, 100.0f, 100.0f}));
 }
 
 TEST(CreateFromBuffer, FailsWhenSubblockDurationsAreInconsistent) {

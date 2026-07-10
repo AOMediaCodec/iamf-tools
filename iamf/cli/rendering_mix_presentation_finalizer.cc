@@ -229,17 +229,8 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
     return absl::OkStatus();
   }
   const auto& parameter_block = *parameter_block_iter->second;
-  InternalTimestamp cur_tick = parameter_block.start_timestamp;
-  // Process as many ticks as possible until all are found or the parameter
-  // block ends.
-  while (cur_tick < parameter_block.end_timestamp &&
-         static_cast<size_t>(cur_tick - parameter_block.start_timestamp) <
-             linear_mix_gain_per_tick.size()) {
-    RETURN_IF_NOT_OK(parameter_block.obu->GetLinearMixGain(
-        cur_tick - parameter_block.start_timestamp,
-        linear_mix_gain_per_tick[cur_tick - parameter_block.start_timestamp]));
-    cur_tick++;
-  }
+  RETURN_IF_NOT_OK(
+      parameter_block.obu->GetLinearMixGains(linear_mix_gain_per_tick));
   return absl::OkStatus();
 }
 

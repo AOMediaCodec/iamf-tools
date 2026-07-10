@@ -144,17 +144,16 @@ class ParameterBlockObu : public ObuBase {
    */
   absl::StatusOr<DecodedUleb128> GetSubblockDuration(int subblock_index) const;
 
-  /*!\brief Outputs the linear mix gain at the target time.
+  /*!\brief Outputs the linear mix gains at each tick starting at the start of
+   * the OBU.
    *
-   * \param obu_relative_time Time relative to the start of the OBU to get the
-   *        mix gain of.
-   * \param linear_mix_gain Output linear mix gain converted from a dB value
-   *        stored as Q7.8.
+   * \param linear_mix_gain_per_tick Output linear mix gain converted from a dB
+   * value stored as Q7.8.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` on
    *         failure.
    */
-  absl::Status GetLinearMixGain(InternalTimestamp obu_relative_time,
-                                float& linear_mix_gain) const;
+  absl::Status GetLinearMixGains(
+      std::vector<float>& linear_mix_gain_per_tick) const;
 
   /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
