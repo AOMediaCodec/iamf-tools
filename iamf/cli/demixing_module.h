@@ -26,6 +26,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/demixer.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/substream_frames.h"
@@ -55,8 +56,6 @@ struct SubstreamData {
 
 // Mapping from audio element ids to `LabeledFrame`s.
 typedef absl::flat_hash_map<DecodedUleb128, LabeledFrame> IdLabeledFrameMap;
-
-typedef absl::Status (*Demixer)(const DownMixingParams&, LabelSamplesMap&);
 
 /*!\brief Manages data and processing to down-mix and demix audio elements.
  *

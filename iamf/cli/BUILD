@@ -139,6 +139,24 @@ cc_library(
 )
 
 cc_library(
+    name = "demixer",
+    srcs = ["demixer.cc"],
+    hdrs = ["demixer.h"],
+    deps = [
+        ":channel_label",
+        ":labeled_frame",
+        ":sample_processing_utils",
+        "//iamf/common/utils:macros",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "demixing_module",
     srcs = ["demixing_module.cc"],
     hdrs = ["demixing_module.h"],
@@ -147,6 +165,7 @@ cc_library(
         ":audio_frame_with_data",
         ":channel_label",
         ":cli_util",
+        ":demixer",
         ":descriptor_obus",
         ":labeled_frame",
         ":sample_processing_utils",

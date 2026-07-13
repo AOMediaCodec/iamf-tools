@@ -29,12 +29,12 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/demixer.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -1171,63 +1171,6 @@ class DemixingModuleTest : public ::testing::Test {
     }
   }
 
-  void ConfiguredExpectedDemixingChannelFrame(
-      ChannelLabel::Label label,
-      const std::vector<int32_t>& expected_demixed_samples) {
-    std::vector<InternalSampleType> expected_demixed_samples_as_internal_type;
-    expected_demixed_samples_as_internal_type.reserve(
-        expected_demixed_samples.size());
-    for (int32_t sample : expected_demixed_samples) {
-      expected_demixed_samples_as_internal_type.push_back(
-          Int32ToNormalizedFloatingPoint<InternalSampleType>(sample));
-    }
-
-    // Configure the expected demixed channels. Typically the input `label`
-    // should have a "D_" prefix.
-    expected_id_to_labeled_decoded_frame_[kAudioElementId]
-        .label_to_samples[label] = expected_demixed_samples_as_internal_type;
-  }
-
-  void TestLosslessDemixing(int expected_number_of_down_mixers) {
-    auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-        {{kAudioElementId,
-          DemixingModule::DownmixingAndReconstructionConfig{
-              .user_labels = input_labels_,
-              .substream_id_to_labels = substream_id_to_labels_}}});
-    ASSERT_THAT(demixing_module, IsOk());
-    ExpectHasNumDownMixers(*demixing_module, expected_number_of_down_mixers);
-    ExpectHasNumDemixers(*demixing_module, expected_number_of_down_mixers);
-
-    const auto id_to_labeled_decoded_frame =
-        demixing_module->DemixDecodedAudioSamples(audio_frames_);
-    ASSERT_THAT(id_to_labeled_decoded_frame, IsOk());
-    ASSERT_TRUE(id_to_labeled_decoded_frame->contains(kAudioElementId));
-
-    // Check that the demixed samples have the correct values.
-    const auto& actual_label_to_samples =
-        id_to_labeled_decoded_frame->at(kAudioElementId).label_to_samples;
-
-    const auto& expected_label_to_samples =
-        expected_id_to_labeled_decoded_frame_[kAudioElementId].label_to_samples;
-    EXPECT_EQ(actual_label_to_samples.size(), expected_label_to_samples.size());
-    for (const auto& [label, samples] : actual_label_to_samples) {
-      // Use `DoubleNear` with a tolerance because floating-point arithmetic
-      // introduces errors larger than allowed by `DoubleEq`.
-      constexpr double kErrorTolerance = 1e-14;
-      EXPECT_THAT(samples, Pointwise(DoubleNear(kErrorTolerance),
-                                     expected_label_to_samples.at(label)));
-    }
-
-    // Also, since this is lossless, we expect demixing the original samples
-    // should give the same result.
-    const auto id_to_labeled_frame =
-        demixing_module->DemixOriginalAudioSamples(audio_frames_);
-    ASSERT_THAT(id_to_labeled_frame, IsOk());
-    ASSERT_TRUE(id_to_labeled_frame->contains(kAudioElementId));
-    EXPECT_EQ(id_to_labeled_frame->at(kAudioElementId).label_to_samples,
-              actual_label_to_samples);
-  }
-
   absl::flat_hash_set<ChannelLabel::Label> input_labels_;
   SubstreamIdLabelsMap substream_id_to_labels_;
 
@@ -1266,23 +1209,15 @@ TEST_F(DemixingModuleTest, AmbisonicsHasNoDemixers) {
   ConfigureLosslessAudioFrame({kA2}, {{1}});
   ConfigureLosslessAudioFrame({kA3}, {{1}});
 
-  TestLosslessDemixing(0);
-}
+  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
+      {{kAudioElementId,
+        DemixingModule::DownmixingAndReconstructionConfig{
+            .user_labels = input_labels_,
+            .substream_id_to_labels = substream_id_to_labels_}}});
 
-TEST_F(DemixingModuleTest, S1ToS2Demixer) {
-  // The highest layer is stereo.
-  input_labels_ = {kL2, kR2};
-
-  // Mono is the lowest layer.
-  ConfigureLosslessAudioFrame({kMono}, {{750, 1500}});
-  // Stereo is the next layer.
-  ConfigureLosslessAudioFrame({kL2}, {{1000, 2000}});
-
-  // Demixing recovers kDemixedR2
-  // D_R2 =  M - (L2 - 6 dB)  + 6 dB.
-  ConfiguredExpectedDemixingChannelFrame(kDemixedR2, {500, 1000});
-
-  TestLosslessDemixing(1);
+  ASSERT_THAT(demixing_module, IsOk());
+  EXPECT_THAT(demixing_module->GetDemixers(kAudioElementId),
+              IsOkAndHolds(Pointee(IsEmpty())));
 }
 
 TEST_F(DemixingModuleTest,
@@ -1304,175 +1239,6 @@ TEST_F(DemixingModuleTest,
   audio_frames_.back().encoded_samples = std::nullopt;
 
   EXPECT_THAT(demixing_module->DemixOriginalAudioSamples(audio_frames_),
-              Not(IsOk()));
-}
-
-TEST_F(DemixingModuleTest, S2ToS3Demixer) {
-  // The highest layer is 3.1.2.
-  input_labels_ = {kL3, kR3, kCentre, kLtf3, kRtf3};
-
-  // Stereo is the lowest layer.
-  ConfigureLosslessAudioFrame({kL2, kR2}, {{70, 1700}, {70, 1700}});
-
-  // 3.1.2 as the next layer.
-  ConfigureLosslessAudioFrame({kCentre}, {{2000, 1000}});
-  ConfigureLosslessAudioFrame({kLtf3, kRtf3}, {{99999, 99999}, {99998, 99998}});
-
-  // L3/R3 get demixed from the lower layers.
-  // L3 = L2 - (C - 3 dB).
-  // R3 = R2 - (C - 3 dB).
-  ConfiguredExpectedDemixingChannelFrame(kDemixedL3, {-1344, 993});
-  ConfiguredExpectedDemixingChannelFrame(kDemixedR3, {-1344, 993});
-
-  TestLosslessDemixing(1);
-}
-
-TEST_F(DemixingModuleTest, S3ToS5AndTf2ToT2Demixers) {
-  // Adding a (valid) layer on top of 3.1.2 will always result in both S3ToS5
-  // and Tf2ToT2 demixers.
-  // The highest layer is 5.1.2.
-  input_labels_ = {kL5, kR5, kCentre, kLtf2, kRtf2};
-
-  const DownMixingParams kDownMixingParams = {.delta = .866, .w = 0.25};
-
-  // 3.1.2 is the lowest layer.
-  ConfigureLosslessAudioFrame({kL3, kR3}, {{18660}, {28660}},
-                              kDownMixingParams);
-  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLtf3, kRtf3}, {{1000}, {2000}},
-                              kDownMixingParams);
-
-  // 5.1.2 as the next layer.
-  ConfigureLosslessAudioFrame({kL5, kR5}, {{10000}, {20000}},
-                              kDownMixingParams);
-
-  // S3ToS5: Ls5/Rs5 get demixed from the lower layers.
-  // Ls5 = (1 / delta) * (L3 - L5).
-  // Rs5 = (1 / delta) * (R3 - R5).
-  ConfiguredExpectedDemixingChannelFrame(kDemixedLs5, {10000});
-  ConfiguredExpectedDemixingChannelFrame(kDemixedRs5, {10000});
-
-  // Tf2ToT2: Ltf2/Rtf2 get demixed from the lower layers.
-  // Ltf2 = Ltf3 - w * (L3 - L5).
-  // Rtf2 = Rtf3 - w * (R3 - R5).
-  ConfiguredExpectedDemixingChannelFrame(kDemixedLtf2, {-1165});
-  ConfiguredExpectedDemixingChannelFrame(kDemixedRtf2, {-165});
-
-  TestLosslessDemixing(2);
-}
-
-TEST_F(DemixingModuleTest, S5ToS7Demixer) {
-  // The highest layer is 7.1.0.
-  input_labels_ = {kL7, kR7, kCentre, kLss7, kRss7, kLrs7, kRrs7};
-
-  const DownMixingParams kDownMixingParams = {.alpha = 0.866, .beta = .866};
-
-  // 5.1.0 is the lowest layer.
-  ConfigureLosslessAudioFrame({kL5, kR5}, {{100}, {100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLs5, kRs5}, {{7794}, {7794}},
-                              kDownMixingParams);
-  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
-
-  // 7.1.0 as the next layer.
-  ConfigureLosslessAudioFrame({kLss7, kRss7}, {{1000}, {2000}},
-                              kDownMixingParams);
-
-  // L7/R7 get demixed from the lower layers.
-  // L7 = R5.
-  // R7 = R5.
-  ConfiguredExpectedDemixingChannelFrame(kDemixedL7, {100});
-  ConfiguredExpectedDemixingChannelFrame(kDemixedR7, {100});
-
-  // Lrs7/Rrs7 get demixed from the lower layers.
-  // Lrs7 = (1 / beta) * (Ls5 - alpha * Lss7).
-  // Rrs7 = (1 / beta) * (Rs5 - alpha * Rss7).
-  ConfiguredExpectedDemixingChannelFrame(kDemixedLrs7, {8000});
-  ConfiguredExpectedDemixingChannelFrame(kDemixedRrs7, {7000});
-
-  TestLosslessDemixing(1);
-}
-
-TEST_F(DemixingModuleTest, T2ToT4Demixer) {
-  // The highest layer is 5.1.4.
-  input_labels_ = {kL5, kR5, kCentre, kLtf4, kRtf4};
-
-  const DownMixingParams kDownMixingParams = {.gamma = .866};
-
-  // 5.1.2 is the lowest layer.
-  ConfigureLosslessAudioFrame({kL5, kR5}, {{100}, {100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLs5, kRs5}, {{100}, {100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLtf2, kRtf2}, {{8660}, {17320}},
-                              kDownMixingParams);
-
-  // 5.1.4 as the next layer.
-  ConfigureLosslessAudioFrame({kLtf4, kRtf4}, {{866}, {1732}},
-                              kDownMixingParams);
-
-  // Ltb4/Rtb4 get demixed from the lower layers.
-  // Ltb4 = (1 / gamma) * (Ltf2 - Ltf4).
-  // Ttb4 = (1 / gamma) * (Ttf2 - Rtf4).
-  ConfiguredExpectedDemixingChannelFrame(kDemixedLtb4, {9000});
-  ConfiguredExpectedDemixingChannelFrame(kDemixedRtb4, {18000});
-
-  TestLosslessDemixing(1);
-}
-
-TEST_F(DemixingModuleTest, S5ToS7DemixerFailsWhenBetaIsZero) {
-  input_labels_ = {kL7, kR7, kCentre, kLss7, kRss7, kLrs7, kRrs7};
-  const DownMixingParams kDownMixingParams = {.alpha = 0.866, .beta = 0.0};
-  ConfigureLosslessAudioFrame({kL5, kR5}, {{100}, {100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLs5, kRs5}, {{7794}, {7794}},
-                              kDownMixingParams);
-  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLss7, kRss7}, {{1000}, {2000}},
-                              kDownMixingParams);
-
-  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-      {{kAudioElementId,
-        DemixingModule::DownmixingAndReconstructionConfig{
-            .user_labels = input_labels_,
-            .substream_id_to_labels = substream_id_to_labels_}}});
-  ASSERT_THAT(demixing_module, IsOk());
-  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(audio_frames_),
-              Not(IsOk()));
-}
-
-TEST_F(DemixingModuleTest, S3ToS5DemixerFailsWhenDeltaIsZero) {
-  input_labels_ = {kL5, kR5, kCentre, kLtf2, kRtf2};
-  const DownMixingParams kDownMixingParams = {.delta = 0.0, .w = 0.25};
-  ConfigureLosslessAudioFrame({kL3, kR3}, {{18660}, {28660}},
-                              kDownMixingParams);
-  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLtf3, kRtf3}, {{1000}, {2000}},
-                              kDownMixingParams);
-
-  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-      {{kAudioElementId,
-        DemixingModule::DownmixingAndReconstructionConfig{
-            .user_labels = input_labels_,
-            .substream_id_to_labels = substream_id_to_labels_}}});
-  ASSERT_THAT(demixing_module, IsOk());
-  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(audio_frames_),
-              Not(IsOk()));
-}
-
-TEST_F(DemixingModuleTest, T2ToT4DemixerFailsWhenGammaIsZero) {
-  input_labels_ = {kL5, kR5, kCentre, kLtf4, kRtf4};
-  const DownMixingParams kDownMixingParams = {.gamma = 0.0};
-  ConfigureLosslessAudioFrame({kL5, kR5}, {{100}, {100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLs5, kRs5}, {{100}, {100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kCentre}, {{100}}, kDownMixingParams);
-  ConfigureLosslessAudioFrame({kLtf2, kRtf2}, {{8660}, {17320}},
-                              kDownMixingParams);
-
-  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-      {{kAudioElementId,
-        DemixingModule::DownmixingAndReconstructionConfig{
-            .user_labels = input_labels_,
-            .substream_id_to_labels = substream_id_to_labels_}}});
-  ASSERT_THAT(demixing_module, IsOk());
-  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(audio_frames_),
               Not(IsOk()));
 }
 

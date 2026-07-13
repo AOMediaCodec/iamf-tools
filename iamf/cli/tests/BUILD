@@ -203,6 +203,20 @@ cc_test(
 )
 
 cc_test(
+    name = "demixer_test",
+    srcs = ["demixer_test.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixer",
+        "//iamf/cli:labeled_frame",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "demixing_module_benchmark",
     srcs = ["demixing_module_benchmark.cc"],
     deps = [
@@ -232,12 +246,12 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
+        "//iamf/cli:demixer",
         "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:labeled_frame",
         "//iamf/cli:substream_frames",
         "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/common/utils:numeric_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
         "//iamf/obu:obu_header",
