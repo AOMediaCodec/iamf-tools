@@ -249,6 +249,7 @@ cc_test(
         "//iamf/cli:demixer",
         "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obus",
+        "//iamf/cli:downmixer",
         "//iamf/cli:labeled_frame",
         "//iamf/cli:substream_frames",
         "//iamf/cli/proto:user_metadata_cc_proto",
@@ -297,6 +298,20 @@ cc_test(
         "//iamf/cli:descriptor_obus",
         "//iamf/obu:codec_config",
         "//iamf/obu:types",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "downmixer_test",
+    srcs = ["downmixer_test.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/cli:downmixer",
+        "//iamf/cli:labeled_frame",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
     ],
 )

@@ -28,6 +28,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixer.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/obu/audio_element.h"
@@ -78,7 +79,7 @@ class DemixingModule {
  public:
   struct DemixingMetadataForAudioElementId {
     std::list<Demixer> demixers;
-    std::list<Demixer> down_mixers;
+    std::list<DownMixer> down_mixers;
     SubstreamIdLabelsMap substream_id_to_labels;
     LabelGainMap label_to_output_gain;
   };
@@ -191,7 +192,7 @@ class DemixingModule {
    * \param down_mixers Output pointer to the list of down-mixers.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::StatusOr<const std::list<Demixer>* absl_nonnull> GetDownMixers(
+  absl::StatusOr<const std::list<DownMixer>* absl_nonnull> GetDownMixers(
       DecodedUleb128 audio_element_id) const;
 
   /*!\brief Gets the demixers associated with an Audio Element ID.

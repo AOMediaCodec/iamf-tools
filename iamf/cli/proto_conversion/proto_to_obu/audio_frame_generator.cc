@@ -47,7 +47,9 @@
 #include "iamf/cli/codec/opus_encoder.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer.h"
 #include "iamf/cli/global_timing_module.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -742,7 +744,7 @@ AudioFrameGenerator::Create(
 
     // Validate that a `DemixingParamDefinition` is available if down-mixing
     // is needed.
-    absl::StatusOr<const std::list<Demixer>*> down_mixers =
+    absl::StatusOr<const std::list<DownMixer>*> down_mixers =
         demixing_module.GetDownMixers(audio_element_id);
     if (!down_mixers.ok()) {
       return down_mixers.status();

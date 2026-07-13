@@ -167,6 +167,7 @@ cc_library(
         ":cli_util",
         ":demixer",
         ":descriptor_obus",
+        ":downmixer",
         ":labeled_frame",
         ":sample_processing_utils",
         ":substream_frames",
@@ -223,6 +224,21 @@ cc_library(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:node_hash_map",
+    ],
+)
+
+cc_library(
+    name = "downmixer",
+    srcs = ["downmixer.cc"],
+    hdrs = ["downmixer.h"],
+    deps = [
+        ":channel_label",
+        ":labeled_frame",
+        ":sample_processing_utils",
+        "//iamf/obu:parameter_data",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
     ],
 )
 
