@@ -38,6 +38,7 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/labeled_frame.h"
+#include "iamf/cli/sample_processing_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
@@ -54,44 +55,6 @@ using enum ChannelLabel::Label;
 using DemixingMetadataForAudioElementId =
     DemixingModule::DemixingMetadataForAudioElementId;
 using ::absl::MakeConstSpan;
-
-// Returns the common size of all the spans in `samples` if they are all the
-// same size. Otherwise, returns an error.
-template <typename T>
-absl::StatusOr<size_t> GetCommonNumTicks(absl::Span<const T> samples) {
-  const size_t expected_size = samples.empty() ? 0 : samples[0].size();
-
-  for (size_t i = 1; i < samples.size(); ++i) {
-    RETURN_IF_NOT_OK(ValidateContainerSizeEqual("Sample count across channels",
-                                                samples[i], expected_size));
-  }
-  return expected_size;
-}
-
-// Returns the number of time ticks in the provided `label_to_samples` if all
-// channels have the same number of samples. If samples are missing, or have a
-// different number of samples, returns an error.
-absl::StatusOr<size_t> CheckPresenceAndGetCommonNumTicks(
-    const LabelSamplesMap& label_to_samples,
-    absl::Span<const ChannelLabel::Label> labels) {
-  // Fallback to 0 if no labels are provided.
-  size_t expected_size = 0;
-  for (size_t i = 0; i < labels.size(); ++i) {
-    auto it = label_to_samples.find(labels[i]);
-    if (it == label_to_samples.end()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Missing input channel: ", labels[i]));
-    }
-
-    if (i == 0) {
-      expected_size = it->second.size();
-    }
-
-    RETURN_IF_NOT_OK(ValidateContainerSizeEqual("Sample count across channels",
-                                                it->second, expected_size));
-  }
-  return expected_size;
-}
 
 absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
                              LabelSamplesMap& label_to_samples) {

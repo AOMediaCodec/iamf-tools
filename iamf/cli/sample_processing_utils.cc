@@ -25,6 +25,7 @@
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -133,6 +134,25 @@ absl::Status ArrangeSamples(
   }
 
   return absl::OkStatus();
+}
+
+absl::StatusOr<size_t> CheckPresenceAndGetCommonNumTicks(
+    const LabelSamplesMap& label_to_samples,
+    absl::Span<const ChannelLabel::Label> labels) {
+  size_t expected_size = 0;
+  for (size_t i = 0; i < labels.size(); ++i) {
+    auto it = label_to_samples.find(labels[i]);
+    if (it == label_to_samples.end()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Missing input channel: ", labels[i]));
+    }
+    if (i == 0) {
+      expected_size = it->second.size();
+    }
+    RETURN_IF_NOT_OK(ValidateContainerSizeEqual("Sample count across channels",
+                                                it->second, expected_size));
+  }
+  return expected_size;
 }
 
 absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,

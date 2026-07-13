@@ -34,6 +34,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::testing::DoubleEq;
 using ::testing::ElementsAre;
@@ -41,6 +42,11 @@ using ::testing::ElementsAreArray;
 using ::testing::Not;
 using enum ChannelLabel::Label;
 using ::testing::Pointwise;
+
+using enum ChannelLabel::Label;
+using absl::MakeConstSpan;
+
+constexpr InternalSampleType kArbitrarySample = 0.5;
 
 TEST(ArrangeSamples, SucceedsOnEmptyFrame) {
   constexpr size_t kNumChannels = 2;
@@ -355,6 +361,65 @@ TEST(ArrangeSamples, IncludesAllSamplesWhenTrimmingIsDisabled) {
 
   EXPECT_THAT(samples,
               ElementsAre(Pointwise(DoubleEq(), {999.0, 100.0, 999.0})));
+}
+
+TEST(CheckPresenceAndGetCommonNumTicks, Succeeds) {
+  constexpr size_t kNumTicks = 10;
+  LabelSamplesMap label_to_samples = {
+      {kL2, std::vector<InternalSampleType>(kNumTicks, kArbitrarySample)},
+      {kR2, std::vector<InternalSampleType>(kNumTicks, kArbitrarySample)},
+  };
+
+  EXPECT_THAT(CheckPresenceAndGetCommonNumTicks(label_to_samples, {kL2, kR2}),
+              IsOkAndHolds(kNumTicks));
+}
+
+TEST(CheckPresenceAndGetCommonNumTicks, ReturnsZeroIfNoLabelsAreRequested) {
+  LabelSamplesMap label_to_samples = {};
+
+  EXPECT_THAT(CheckPresenceAndGetCommonNumTicks(label_to_samples, {}),
+              IsOkAndHolds(0));
+}
+
+TEST(CheckPresenceAndGetCommonNumTicks, FailsOnInconsistentNumberOfTicks) {
+  constexpr size_t kNumTicks = 10;
+  LabelSamplesMap label_to_samples = {
+      {kL2, std::vector<InternalSampleType>(kNumTicks, kArbitrarySample)},
+      {kR2, std::vector<InternalSampleType>(kNumTicks + 1, kArbitrarySample)},
+  };
+
+  EXPECT_THAT(CheckPresenceAndGetCommonNumTicks(label_to_samples, {kL2, kR2}),
+              Not(IsOk()));
+}
+
+TEST(CheckPresenceAndGetCommonNumTicks, FailsOnMissingChannel) {
+  LabelSamplesMap label_to_samples = {};
+
+  EXPECT_THAT(CheckPresenceAndGetCommonNumTicks(label_to_samples, {kL2}),
+              Not(IsOk()));
+}
+
+TEST(GetCommonNumTicks, Succeeds) {
+  constexpr size_t kNumTicks = 10;
+  std::vector<InternalSampleType> s1(kNumTicks, kArbitrarySample);
+  std::vector<InternalSampleType> s2(kNumTicks, kArbitrarySample);
+
+  EXPECT_THAT(GetCommonNumTicks(MakeConstSpan({s1, s2})),
+              IsOkAndHolds(kNumTicks));
+}
+
+TEST(GetCommonNumTicks, ReturnsZeroOnEmptyInput) {
+  const std::vector<std::vector<InternalSampleType>> empty_input = {};
+
+  EXPECT_THAT(GetCommonNumTicks(MakeConstSpan(empty_input)), IsOkAndHolds(0));
+}
+
+TEST(GetCommonNumTicks, FailsOnDifferentNumberOfTicks) {
+  constexpr size_t kNumTicks = 10;
+  std::vector<InternalSampleType> s1(kNumTicks, kArbitrarySample);
+  std::vector<InternalSampleType> s2(kNumTicks + 1, kArbitrarySample);
+
+  EXPECT_THAT(GetCommonNumTicks(MakeConstSpan({s1, s2})), Not(IsOk()));
 }
 
 TEST(WritePcmSample, LittleEndian32Bits) {
