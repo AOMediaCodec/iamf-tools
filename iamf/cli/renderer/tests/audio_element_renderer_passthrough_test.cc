@@ -102,8 +102,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
       nullptr);
 }
 
-TEST(CreateFromScalableChannelLayoutConfig, DoesNotSupportBinauralToStereo) {
-  EXPECT_EQ(
+TEST(CreateFromScalableChannelLayoutConfig, SupportsBinauralToStereo) {
+  EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           kBinauralScalableChannelLayoutConfig, kStereoLayout,
           kFourSamplesPerFrame),
