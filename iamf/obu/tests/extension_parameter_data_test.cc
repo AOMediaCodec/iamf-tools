@@ -19,11 +19,14 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
 
 using absl_testing::IsOk;
+using ::testing::Not;
 
 TEST(ExtensionParameterDataReadTest, NineBytes) {
   std::vector<uint8_t> source_data = {// `parameter_data_size`.
@@ -41,6 +44,16 @@ TEST(ExtensionParameterDataReadTest, NineBytes) {
       'a', 'r', 'b', 'i', 't', 'r', 'a', 'r', 'y'};
   EXPECT_EQ(extension_parameter_data.parameter_data_bytes,
             expected_parameter_data_bytes);
+}
+
+TEST(ExtensionParameterDataReadTest, FailsWithParameterDataSizeTooLarge) {
+  WriteBitBuffer wb(8);
+  EXPECT_THAT(wb.WriteUleb128(kEntireObuSizeMaxTwoMegabytes + 1), IsOk());
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(wb.bit_buffer()));
+  ExtensionParameterData extension_parameter_data;
+
+  EXPECT_THAT(extension_parameter_data.ReadAndValidate(*rb), Not(IsOk()));
 }
 
 }  // namespace

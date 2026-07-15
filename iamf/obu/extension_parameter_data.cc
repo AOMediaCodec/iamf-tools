@@ -27,6 +27,11 @@ namespace iamf_tools {
 absl::Status ExtensionParameterData::ReadAndValidate(ReadBitBuffer& rb) {
   DecodedUleb128 parameter_data_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_data_size));
+  if (parameter_data_size > kEntireObuSizeMaxTwoMegabytes) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("parameter_data_size= ", parameter_data_size,
+                     " exceeds maximum OBU size."));
+  }
   parameter_data_bytes.resize(parameter_data_size);
   return rb.ReadUint8Span(absl::MakeSpan(parameter_data_bytes));
 }

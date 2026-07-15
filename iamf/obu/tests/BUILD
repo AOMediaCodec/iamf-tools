@@ -289,6 +289,7 @@ cc_test(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
         "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
