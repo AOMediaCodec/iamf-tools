@@ -476,13 +476,13 @@ def main(argv: list[str]) -> None:
     raise app.UsageError("Unexpected positional arguments.")
 
   is_pass, report = _run_verifier(
-      ref_file=_REF_FILE.value,
-      test_file=_TEST_FILE.value,
-      cw_cmd=_CW_CMD.value,
-      decoder_cmd=_DECODER_CMD.value,
-      loudness_cmd=_LOUDNESS_CMD.value,
+      ref_file=_REF_FILE.value,  # pyrefly: ignore[bad-argument-type]
+      test_file=_TEST_FILE.value,  # pyrefly: ignore[bad-argument-type]
+      cw_cmd=_CW_CMD.value,  # pyrefly: ignore[bad-argument-type]
+      decoder_cmd=_DECODER_CMD.value,  # pyrefly: ignore[bad-argument-type]
+      loudness_cmd=_LOUDNESS_CMD.value,  # pyrefly: ignore[bad-argument-type]
       opus_hoa_cmd=_OPUS_HOA_CMD.value,
-      gpac_cmd=_GPAC_CMD.value,
+      gpac_cmd=_GPAC_CMD.value,  # pyrefly: ignore[bad-argument-type]
   )
 
   print(report)
