@@ -85,8 +85,8 @@ absl::StatusOr<CollectedObus> CollectObusFromIaSequence(
 struct DecodeSpecification {
   uint32_t mix_presentation_id;
   uint32_t sub_mix_index;
-  LoudspeakersSsConventionLayout::SoundSystem sound_system;
   uint32_t layout_index;
+  Layout layout;
   uint32_t sample_rate;
 };
 

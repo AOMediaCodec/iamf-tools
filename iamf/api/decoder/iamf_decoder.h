@@ -35,7 +35,7 @@ class IamfDecoder : public api::IamfDecoderInterface {
   struct Settings {
     // Specifies the desired output Mix Presentation ID and/or layout.
     //
-    // See MixRequest struct for details on how the contents are
+    // See `RequestedMix` struct for details on how the contents are
     // used and prioritized.
     //
     // The resulting Mix Presentation ID and layout will be retrievable after

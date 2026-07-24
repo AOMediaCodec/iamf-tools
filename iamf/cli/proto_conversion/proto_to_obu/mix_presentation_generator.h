@@ -46,6 +46,16 @@ class MixPresentationGenerator {
       const iamf_tools_cli_proto::LoudnessInfo& input_loudness_info,
       uint8_t& loudness_info_type);
 
+  /*!\brief Copies the loudness layout from the corresponding protocol buffer.
+   *
+   * \param input_loudness_layout Input protocol buffer.
+   * \param loudness_layout Result.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  static absl::Status CopyLoundessLayout(
+      const iamf_tools_cli_proto::Layout& input_loudness_layout,
+      Layout& loudness_layout);
+
   /*!\brief Copies over user provided integrated loudness and peak values.
    *
    * \param user_loudness User provided loudness information.

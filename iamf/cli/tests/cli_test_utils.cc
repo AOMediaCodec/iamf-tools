@@ -577,22 +577,12 @@ std::vector<DecodeSpecification> GetDecodeSpecifications(
         decode_specification.mix_presentation_id =
             mix_presentation.mix_presentation_id();
         decode_specification.sub_mix_index = i;
-        if (mix_presentation.sub_mixes(i)
-                .layouts(j)
-                .loudness_layout()
-                .has_ss_layout()) {
-          auto sound_system_status = MixPresentationGenerator::CopySoundSystem(
-              mix_presentation.sub_mixes(i)
-                  .layouts(j)
-                  .loudness_layout()
-                  .ss_layout()
-                  .sound_system(),
-              decode_specification.sound_system);
-          if (!sound_system_status.ok()) {
-            ABSL_LOG(ERROR)
-                << "Failed to copy sound system: " << sound_system_status;
-            continue;
-          }
+        const auto layout_status = MixPresentationGenerator::CopyLoundessLayout(
+            mix_presentation.sub_mixes(i).layouts(j).loudness_layout(),
+            decode_specification.layout);
+        if (!layout_status.ok()) {
+          ABSL_LOG(ERROR) << "Failed to copy sound system: " << layout_status;
+          continue;
         }
         decode_specification.sample_rate = GetSampleRateForAudioElementMetadata(
             user_metadata,

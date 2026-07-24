@@ -439,52 +439,11 @@ absl::Status FillLayouts(
   sub_mix.layouts.reserve(input_sub_mix.layouts_size());
 
   for (const auto& input_layout : input_sub_mix.layouts()) {
-    const auto& input_loudness_layout = input_layout.loudness_layout();
     MixPresentationLayout layout;
-
-    switch (input_loudness_layout.layout_type()) {
-      using enum iamf_tools_cli_proto::LayoutType;
-      using enum Layout::LayoutType;
-      case LAYOUT_TYPE_RESERVED_0:
-        RETURN_IF_NOT_OK(CopyReservedOrBinauralLayout(
-            kLayoutTypeReserved0,
-            input_loudness_layout.reserved_or_binaural_layout(),
-            layout.loudness_layout));
-        break;
-      case LAYOUT_TYPE_RESERVED_1:
-        RETURN_IF_NOT_OK(CopyReservedOrBinauralLayout(
-            kLayoutTypeReserved1,
-            input_loudness_layout.reserved_or_binaural_layout(),
-            layout.loudness_layout));
-        break;
-      case LAYOUT_TYPE_BINAURAL:
-        RETURN_IF_NOT_OK(CopyReservedOrBinauralLayout(
-            kLayoutTypeBinaural,
-            input_loudness_layout.reserved_or_binaural_layout(),
-            layout.loudness_layout));
-        break;
-      case LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION: {
-        layout.loudness_layout.layout_type =
-            kLayoutTypeLoudspeakersSsConvention;
-        LoudspeakersSsConventionLayout obu_ss_layout;
-        RETURN_IF_NOT_OK(MixPresentationGenerator::CopySoundSystem(
-            input_loudness_layout.ss_layout().sound_system(),
-            obu_ss_layout.sound_system));
-        RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-            "LoudspeakersSsConventionLayout.reserved",
-            input_loudness_layout.ss_layout().reserved(),
-            obu_ss_layout.reserved));
-        layout.loudness_layout.specific_layout = obu_ss_layout;
-        break;
-      }
-      default:
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Unknown layout_type= ", input_loudness_layout.layout_type()));
-    }
-
+    RETURN_IF_NOT_OK(MixPresentationGenerator::CopyLoundessLayout(
+        input_layout.loudness_layout(), layout.loudness_layout));
     RETURN_IF_NOT_OK(MixPresentationGenerator::CopyInfoType(
         input_layout.loudness(), layout.loudness.info_type));
-
     RETURN_IF_NOT_OK(
         MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
             input_layout.loudness(), layout.loudness));
@@ -605,6 +564,50 @@ absl::Status MixPresentationGenerator::CopyInfoType(
   }
 
   loudness_info_type = accumulated_info_type_bitmask;
+  return absl::OkStatus();
+}
+
+absl::Status MixPresentationGenerator::CopyLoundessLayout(
+    const iamf_tools_cli_proto::Layout& input_loudness_layout,
+    Layout& loudness_layout) {
+  switch (input_loudness_layout.layout_type()) {
+    using enum iamf_tools_cli_proto::LayoutType;
+    using enum Layout::LayoutType;
+    case LAYOUT_TYPE_RESERVED_0:
+      RETURN_IF_NOT_OK(CopyReservedOrBinauralLayout(
+          kLayoutTypeReserved0,
+          input_loudness_layout.reserved_or_binaural_layout(),
+          loudness_layout));
+      break;
+    case LAYOUT_TYPE_RESERVED_1:
+      RETURN_IF_NOT_OK(CopyReservedOrBinauralLayout(
+          kLayoutTypeReserved1,
+          input_loudness_layout.reserved_or_binaural_layout(),
+          loudness_layout));
+      break;
+    case LAYOUT_TYPE_BINAURAL:
+      RETURN_IF_NOT_OK(CopyReservedOrBinauralLayout(
+          kLayoutTypeBinaural,
+          input_loudness_layout.reserved_or_binaural_layout(),
+          loudness_layout));
+      break;
+    case LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION: {
+      loudness_layout.layout_type = kLayoutTypeLoudspeakersSsConvention;
+      LoudspeakersSsConventionLayout obu_ss_layout;
+      RETURN_IF_NOT_OK(MixPresentationGenerator::CopySoundSystem(
+          input_loudness_layout.ss_layout().sound_system(),
+          obu_ss_layout.sound_system));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+          "LoudspeakersSsConventionLayout.reserved",
+          input_loudness_layout.ss_layout().reserved(),
+          obu_ss_layout.reserved));
+      loudness_layout.specific_layout = obu_ss_layout;
+      break;
+    }
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Unknown layout_type= ", input_loudness_layout.layout_type()));
+  }
   return absl::OkStatus();
 }
 
