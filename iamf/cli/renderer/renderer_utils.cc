@@ -230,6 +230,13 @@ absl::Status ProjectSamplesToRender(
   const auto num_input_channels = input_samples.size();
   const auto num_ticks = input_samples[0].size();
 
+  for (const auto& input_channel : input_samples) {
+    if (input_channel.size() != num_ticks) {
+      return absl::InvalidArgumentError(
+          "All input channels must have the same number of samples.");
+    }
+  }
+
   const int num_elements_in_demixing_matrix = demixing_matrix.size();
   if (num_elements_in_demixing_matrix % num_input_channels != 0) {
     return absl::InvalidArgumentError(
