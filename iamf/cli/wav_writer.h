@@ -54,6 +54,9 @@ class WavWriter : public SampleProcessorBase {
   /*!\brief Finalizes the wav header and closes the underlying file.*/
   ~WavWriter();
 
+  WavWriter(const WavWriter&) = delete;
+  WavWriter& operator=(const WavWriter&) = delete;
+
   /*!\brief Returns the bit-depth.*/
   int bit_depth() const { return bit_depth_; }
 
