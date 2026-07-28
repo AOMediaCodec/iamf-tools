@@ -26,6 +26,12 @@ namespace api {
  * The functions below constitute our IAMF Iterative Decoder API. Below is a
  * sample usage of the API.
  *
+ * Thread safety: a single decoder instance is not thread-safe. All calls on a
+ * given instance (Decode, GetOutputTemporalUnit, Reset, etc.) must be made from
+ * one thread at a time; they mutate shared internal state without locking.
+ * Distinct decoder instances are independent and may be used on separate
+ * threads concurrently.
+ *
  * Example Reconfigurable Standalone IAMF Usage
  * using iamf_tools::api::IamfDecoderFactory;
  * using iamf_tools::api::IamfDecoderInterface;
