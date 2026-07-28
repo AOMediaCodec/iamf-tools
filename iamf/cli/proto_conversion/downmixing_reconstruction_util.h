@@ -15,25 +15,25 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
-/*!\brief Creates a map of ID to DownmixingAndReconstructionConfig.
+/*!\brief Creates a map of ID to DownmixingConfig.
  *
  * \param user_metadata Proto UserMetadata, the source of ChannelLabels.
  * \param audio_elements AudioElements to source SubStreamIdsToLabels and
  *        LabelToOutputGains.
- * \return Map of Audio Element ID to DemixingMetadata on success. An error if
+ * \return Map of Audio Element ID to DownmixingConfig on success. An error if
  *         any Audio Element ID is not found in `audio_elements`. An error if
  *         any labels fail to be converted.
  */
-absl::StatusOr<absl::flat_hash_map<
-    DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
-CreateAudioElementIdToDemixingMetadata(
+absl::StatusOr<
+    absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
+CreateAudioElementIdToDownmixingConfig(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const DescriptorObus::AudioElementsById& audio_elements);
 

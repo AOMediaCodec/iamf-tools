@@ -10,8 +10,6 @@
  * www.aomedia.org/license/patent.
  */
 
-#include <cstddef>
-#include <cstdint>
 #include <list>
 #include <utility>
 #include <vector>
@@ -25,8 +23,8 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/substream_frames.h"
+#include "iamf/cli/descriptor_obus.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
@@ -40,50 +38,6 @@ constexpr DecodedUleb128 kAudioElementId = 591;
 constexpr DownMixingParams kDownMixingParams = {
     .alpha = 1, .beta = .866, .gamma = .866, .delta = .866, .w = 0.25};
 constexpr InternalTimestamp kStartTimestamp = 0;
-
-static void ConfigureInputChannel(ChannelLabel::Label label, int num_ticks,
-                                  LabelSamplesMap& input_label_to_samples) {
-  auto [iter, inserted] = input_label_to_samples.emplace(
-      label, std::vector<InternalSampleType>(num_ticks, 0.0));
-
-  // This function should not be called with the same label twice, so the
-  // insertion should succeed.
-  ABSL_CHECK(inserted);
-}
-
-static void ConfigureOutputChannel(
-    const std::list<ChannelLabel::Label>& requested_output_labels,
-    const size_t num_samples_per_frame,
-    SubstreamIdLabelsMap& substream_id_to_labels,
-    absl::flat_hash_map<uint32_t, SubstreamData>&
-        substream_id_to_substream_data) {
-  // The substream ID itself does not matter. Generate a unique one.
-  const uint32_t substream_id = substream_id_to_labels.size();
-  substream_id_to_labels[substream_id] = requested_output_labels;
-  const auto num_channels = requested_output_labels.size();
-  substream_id_to_substream_data.emplace(
-      substream_id, SubstreamData{
-                        .substream_id = substream_id,
-                        .frames_in_obu = SubstreamFrames<InternalSampleType>(
-                            num_channels, num_samples_per_frame),
-                        .frames_to_encode = SubstreamFrames<int32_t>(
-                            num_channels, num_samples_per_frame),
-                    });
-}
-
-static DemixingModule CreateDemixingModule(
-    const SubstreamIdLabelsMap& substream_id_to_labels) {
-  // To form a complete stereo layout, R2 will be demixed from mono and L2.
-  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-      {{kAudioElementId, DemixingModule::DownmixingAndReconstructionConfig{
-                             .user_labels = {kL2, kR2},
-                             .substream_id_to_labels = substream_id_to_labels,
-                             .label_to_output_gain = {{kMono, 0}, {kR2, 0}},
-                         }}});
-  ABSL_CHECK_OK(demixing_module);
-
-  return *demixing_module;
-}
 
 static void ConfigureLosslessAudioFrame(
     const std::list<ChannelLabel::Label>& labels, const int num_ticks,
@@ -105,38 +59,47 @@ static void ConfigureLosslessAudioFrame(
                          .down_mixing_params = kDownMixingParams});
 }
 
-// Currently benchmarking down-mixing from stereo to mono and demixing from
-// mono to stereo. Both consist of the basic unit of operation: mixing two
-// channels into one. Down-mixing/demixing between other layouts should take
-// time proportional to the number of units of operations.
-static void BM_DownMixing(benchmark::State& state) {
-  // Set up the input.
-  const int num_ticks = state.range(0);
-  LabelSamplesMap input_label_to_samples;
-  ConfigureInputChannel(kL2, num_ticks, input_label_to_samples);
-  ConfigureInputChannel(kR2, num_ticks, input_label_to_samples);
-
-  // Placeholder for the output.
-  SubstreamIdLabelsMap substream_id_to_labels;
-  absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data;
-  ConfigureOutputChannel({kMono}, num_ticks, substream_id_to_labels,
-                         substream_id_to_substream_data);
-
-  // Create a demixing module.
-  auto demixing_module = CreateDemixingModule(substream_id_to_labels);
-
-  // Measure the calls to `DemixingModule::DownMixSamplesToSubstreams()`.
-  for (auto _ : state) {
-    auto status = demixing_module.DownMixSamplesToSubstreams(
-        kAudioElementId, kDownMixingParams, input_label_to_samples,
-        substream_id_to_substream_data);
-
-    // Simulate consuming the substream data by popping the samples.
-    for (auto& [unused_id, substream_data] : substream_id_to_substream_data) {
-      substream_data.frames_to_encode.PopFront();
-      substream_data.frames_in_obu.PopFront();
-    }
+static void InitAudioElementWithLabelsAndScalableChannelLayout(
+    const SubstreamIdLabelsMap& substream_id_to_labels,
+    const ScalableChannelLayoutConfig& config,
+    DescriptorObus::AudioElementsById& audio_elements) {
+  constexpr DecodedUleb128 kCodecConfigId = 0;
+  std::vector<DecodedUleb128> substream_ids;
+  substream_ids.reserve(substream_id_to_labels.size());
+  for (const auto& [substream_id, labels] : substream_id_to_labels) {
+    substream_ids.push_back(substream_id);
   }
+
+  auto obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kAudioElementId, /*reserved=*/0, kCodecConfigId,
+      substream_ids, config);
+  ABSL_CHECK_OK(obu.status());
+
+  audio_elements.emplace(kAudioElementId,
+                         AudioElementWithData{
+                             .obu = *std::move(obu),
+                             .substream_id_to_labels = substream_id_to_labels,
+                         });
+}
+
+const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
+    .channel_audio_layer_configs = {
+        {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
+         .substream_count = 1},
+        {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+         .substream_count = 1}}};
+
+static DemixingModule CreateDemixingModule(
+    const SubstreamIdLabelsMap& substream_id_to_labels) {
+  DescriptorObus::AudioElementsById audio_elements;
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      substream_id_to_labels, kTwoLayerStereoConfig, audio_elements);
+
+  auto demixing_module = DemixingModule::Create(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
+  ABSL_CHECK_OK(demixing_module);
+
+  return *demixing_module;
 }
 
 absl::StatusOr<IdLabeledFrameMap> CallDemixing(
@@ -184,7 +147,6 @@ static void BM_DemixingDecoded(benchmark::State& state) {
 }
 
 // Benchmark with different number of samples per frame.
-BENCHMARK(BM_DownMixing)->Args({1 << 8})->Args({1 << 10})->Args({1 << 12});
 BENCHMARK(BM_DemixingOriginal)
     ->Args({1 << 8})
     ->Args({1 << 10})

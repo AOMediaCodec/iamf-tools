@@ -762,7 +762,7 @@ ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
   }
 
   absl::StatusOr<DemixingModule> demixing_module =
-      DemixingModule::CreateForReconstruction(id_to_reconstruction_config);
+      DemixingModule::Create(id_to_reconstruction_config);
   if (!demixing_module.ok()) {
     return demixing_module.status();
   }

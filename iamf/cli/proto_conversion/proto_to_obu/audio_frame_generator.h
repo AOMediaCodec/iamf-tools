@@ -29,9 +29,10 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/codec/encoder_base.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -101,7 +102,7 @@ class AudioFrameGenerator {
       const ::google::protobuf::RepeatedPtrField<
           iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata,
       const DescriptorObus::AudioElementsById& audio_elements,
-      const DemixingModule& demixing_module,
+      const DownmixerManager& downmixer_manager,
       ParametersManager& parameters_manager,
       GlobalTimingModule& global_timing_module);
 
@@ -208,7 +209,7 @@ class AudioFrameGenerator {
                           absl::flat_hash_set<ChannelLabel::Label>>
           audio_element_id_to_labels,
       const DescriptorObus::AudioElementsById& audio_elements,
-      const DemixingModule& demixing_module,
+      const DownmixerManager& downmixer_manager,
       ParametersManager& parameters_manager,
       GlobalTimingModule& global_timing_module,
       absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
@@ -225,7 +226,7 @@ class AudioFrameGenerator {
             std::move(substream_id_to_substream_data)),
         substream_id_to_trimming_state_(
             std::move(substream_id_to_trimming_state)),
-        demixing_module_(demixing_module),
+        downmixer_manager_(downmixer_manager),
         parameters_manager_(parameters_manager),
         global_timing_module_(global_timing_module),
         state_(substream_id_to_encoder_.empty() ? kFlushingRemaining
@@ -254,7 +255,7 @@ class AudioFrameGenerator {
   absl::flat_hash_map<uint32_t, TrimmingState> substream_id_to_trimming_state_
       ABSL_GUARDED_BY(mutex_);
 
-  const DemixingModule demixing_module_;
+  const DownmixerManager downmixer_manager_;
 
   // TODO(b/390150766): Be more careful about the lifetime of the
   //                    `parameters_manager_` and `global_timing_module_`, as

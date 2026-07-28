@@ -13,9 +13,7 @@
 
 #include <algorithm>
 #include <climits>
-#include <cmath>
 #include <cstddef>
-#include <cstdint>
 #include <list>
 #include <optional>
 #include <utility>
@@ -38,11 +36,9 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixer.h"
 #include "iamf/cli/descriptor_obus.h"
-#include "iamf/cli/downmixer.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/sample_processing_utils.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
@@ -62,10 +58,9 @@ absl::Status FillRequiredDemixingMetadata(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const LabelGainMap& label_to_output_gain,
     DemixingMetadataForAudioElementId& demixing_metadata) {
-  auto& down_mixers = demixing_metadata.down_mixers;
   auto& demixers = demixing_metadata.demixers;
 
-  if (!down_mixers.empty() || !demixers.empty()) {
+  if (!demixers.empty()) {
     return absl::UnknownError(
         "`FillRequiredDemixingMetadata()` should only be called once per Audio "
         "Element ID");
@@ -110,28 +105,20 @@ absl::Status FillRequiredDemixingMetadata(
       break;
     }
   }
-  ABSL_VLOG(1) << "Surround down-mixers from S" << input_surround_number
-               << " to S" << output_lowest_surround_number << " needed:";
+  ABSL_VLOG(1) << "Surround demixers from S" << input_surround_number << " to S"
+               << output_lowest_surround_number << " needed:";
   for (int surround_number = input_surround_number;
        surround_number > output_lowest_surround_number; surround_number--) {
     if (surround_number == 7) {
-      down_mixers.push_back(S7ToS5DownMixer);
-      ABSL_VLOG(1) << "  S7ToS5DownMixer added";
       demixers.push_front(S5ToS7Demixer);
       ABSL_VLOG(1) << "  S5ToS7Demixer added";
     } else if (surround_number == 5) {
-      down_mixers.push_back(S5ToS3DownMixer);
-      ABSL_VLOG(1) << "  S5ToS3DownMixer added";
       demixers.push_front(S3ToS5Demixer);
       ABSL_VLOG(1) << "  S3ToS5Demixer added";
     } else if (surround_number == 3) {
-      down_mixers.push_back(S3ToS2DownMixer);
-      ABSL_VLOG(1) << "  S3ToS2DownMixer added";
       demixers.push_front(S2ToS3Demixer);
       ABSL_VLOG(1) << "  S2ToS3Demixer added";
     } else if (surround_number == 2) {
-      down_mixers.push_back(S2ToS1DownMixer);
-      ABSL_VLOG(1) << "  S2ToS1DownMixer added";
       demixers.push_front(S1ToS2Demixer);
       ABSL_VLOG(1) << "  S1ToS2Demixer added";
     }
@@ -169,20 +156,16 @@ absl::Status FillRequiredDemixingMetadata(
   // Collect demixers in a separate list first and append the list to the
   // output later. Height demixers need to be in reverse order as height
   // down-mixers but should go after the surround demixers.
-  ABSL_VLOG(1) << "Height down-mixers from T" << input_height_number << " to "
+  ABSL_VLOG(1) << "Height demixers from T" << input_height_number << " to "
                << (output_lowest_height_number == 2 ? "T2" : "TF3")
                << " needed:";
   std::list<Demixer> height_demixers;
   for (int height_number = input_height_number;
        height_number > output_lowest_height_number; height_number--) {
     if (height_number == 4) {
-      down_mixers.push_back(T4ToT2DownMixer);
-      ABSL_VLOG(1) << "  T4ToT2DownMixer added";
       height_demixers.push_front(T2ToT4Demixer);
       ABSL_VLOG(1) << "  T2ToT4Demixer added";
     } else if (height_number == 2) {
-      down_mixers.push_back(T2ToTf2DownMixer);
-      ABSL_VLOG(1) << "  T2ToTf2DownMixer added";
       height_demixers.push_front(Tf2ToT2Demixer);
       ABSL_VLOG(1) << "  Tf2ToT2Demixer added";
     }
@@ -362,7 +345,9 @@ LookupLabelsToReconstruct(const AudioElementObu& obu) {
               channel_audio_layer_configs.back().expanded_loudspeaker_layout);
     }
     case kAudioElementSceneBased:
-      // OK. Ambisonics does not have any channels to be reconstructed.
+    case kAudioElementObjectBased:
+      // OK. Neither Ambisonics nor object-based audio elements have channels to
+      // be reconstructed.
       return absl::flat_hash_set<ChannelLabel::Label>{};
     default:
       return absl::UnimplementedError(absl::StrCat(
@@ -401,25 +386,7 @@ DemixingModule::CreateIdToReconstructionConfig(
   return result;
 }
 
-absl::StatusOr<DemixingModule>
-DemixingModule::CreateForDownMixingAndReconstruction(
-    const absl::flat_hash_map<
-        DecodedUleb128, DownmixingAndReconstructionConfig>&& id_to_config_map) {
-  absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>
-      audio_element_id_to_demixing_metadata;
-
-  for (const auto& [audio_element_id, config] : id_to_config_map) {
-    RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
-        config.user_labels, config.substream_id_to_labels,
-        config.label_to_output_gain,
-        audio_element_id_to_demixing_metadata[audio_element_id]));
-  }
-
-  return DemixingModule(DemixingMode::kDownMixingAndReconstruction,
-                        std::move(audio_element_id_to_demixing_metadata));
-}
-
-absl::StatusOr<DemixingModule> DemixingModule::CreateForReconstruction(
+absl::StatusOr<DemixingModule> DemixingModule::Create(
     const absl::flat_hash_map<DecodedUleb128, ReconstructionConfig>&
         id_to_config) {
   absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>
@@ -440,83 +407,13 @@ absl::StatusOr<DemixingModule> DemixingModule::CreateForReconstruction(
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
         *labels_to_reconstruct, reconstruction_config.substream_id_to_labels,
         reconstruction_config.label_to_output_gain, iter->second));
-    iter->second.down_mixers.clear();
   }
 
-  return DemixingModule(DemixingMode::kReconstruction,
-                        std::move(audio_element_id_to_demixing_metadata));
+  return DemixingModule(std::move(audio_element_id_to_demixing_metadata));
 }
 
-absl::Status DemixingModule::DownMixSamplesToSubstreams(
-    DecodedUleb128 audio_element_id, const DownMixingParams& down_mixing_params,
-    LabelSamplesMap& input_label_to_samples,
-    absl::flat_hash_map<uint32_t, SubstreamData>&
-        substream_id_to_substream_data) const {
-  const DemixingMetadataForAudioElementId* demixing_metadata = nullptr;
-  RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
-                                      audio_element_id_to_demixing_metadata_,
-                                      demixing_metadata));
-
-  // First perform all the down mixing.
-  for (const auto& down_mixer : demixing_metadata->down_mixers) {
-    RETURN_IF_NOT_OK(down_mixer(down_mixing_params, input_label_to_samples));
-  }
-
-  for (const auto& [substream_id, output_channel_labels] :
-       demixing_metadata->substream_id_to_labels) {
-    // Find the `SubstreamData` with this `substream_id`.
-    auto substream_data_iter =
-        substream_id_to_substream_data.find(substream_id);
-    if (substream_data_iter == substream_id_to_substream_data.end()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Failed to find substream data for substream ID= ", substream_id));
-    }
-    auto& substream_data = substream_data_iter->second;
-
-    int channel_index = 0;
-    for (const auto& output_channel_label : output_channel_labels) {
-      // Compute and store the linear output gains for this channel.
-      const auto gain_iter =
-          demixing_metadata->label_to_output_gain.find(output_channel_label);
-      const double output_gain_linear =
-          (gain_iter == demixing_metadata->label_to_output_gain.end())
-              ? 1.0
-              : std::pow(10.0, gain_iter->second / 20.0);
-      auto samples_iter = input_label_to_samples.find(output_channel_label);
-      if (samples_iter == input_label_to_samples.end()) {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Samples do not exist for channel: ", output_channel_label));
-      }
-      const auto& input_samples = samples_iter->second;
-
-      // Add all down mixed samples to both substream frames.
-      for (const auto input_sample : input_samples) {
-        substream_data.frames_in_obu.PushSample(channel_index, input_sample);
-
-        // Apply output gains to the samples going to the encoder and also
-        // convert the samples to 32-bit integers.
-        int32_t attenuated_sample_int32 = 0;
-        RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
-            input_sample / output_gain_linear, attenuated_sample_int32));
-        substream_data.frames_to_encode.PushSample(channel_index,
-                                                   attenuated_sample_int32);
-      }
-
-      channel_index++;
-    }
-  }
-
-  return absl::OkStatus();
-}
-
-// TODO(b/288240600): Down-mix audio samples in a standalone function too.
 absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixOriginalAudioSamples(
     const std::list<AudioFrameWithData>& audio_frames) const {
-  if (demixing_mode_ == DemixingMode::kReconstruction) {
-    return absl::FailedPreconditionError(
-        "Demixing original audio samples is not available in reconstruction "
-        "mode.");
-  }
   IdLabeledFrameMap id_to_labeled_frame;
   for (const auto& [audio_element_id, demixing_metadata] :
        audio_element_id_to_demixing_metadata_) {
@@ -559,15 +456,6 @@ absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixDecodedAudioSamples(
   }
 
   return id_to_labeled_decoded_frame;
-}
-
-absl::StatusOr<const std::list<DownMixer>* absl_nonnull>
-DemixingModule::GetDownMixers(DecodedUleb128 audio_element_id) const {
-  const DemixingMetadataForAudioElementId* demixing_metadata = nullptr;
-  RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
-                                      audio_element_id_to_demixing_metadata_,
-                                      demixing_metadata));
-  return &demixing_metadata->down_mixers;
 }
 
 absl::StatusOr<const std::list<Demixer>* absl_nonnull>

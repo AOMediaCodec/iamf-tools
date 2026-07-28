@@ -45,9 +45,9 @@
 #include "iamf/cli/codec/flac_encoder.h"
 #include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/codec/opus_encoder.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer.h"
+#include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/parameters_manager.h"
@@ -274,7 +274,7 @@ bool SamplesReadyForAudioElement(const LabelSamplesMap& label_to_samples,
 }
 
 absl::Status DownMixSamples(const DecodedUleb128 audio_element_id,
-                            const DemixingModule& demixing_module,
+                            const DownmixerManager& downmixer_manager,
                             LabelSamplesMap& label_to_samples,
                             ParametersManager& parameters_manager,
                             absl::flat_hash_map<uint32_t, SubstreamData>&
@@ -296,7 +296,7 @@ absl::Status DownMixSamples(const DecodedUleb128 audio_element_id,
   // Down-mix OBU-aligned samples from input channels to substreams. May
   // generate intermediate channels (e.g. L3 on the way of down-mixing L7 to L2)
   // and expand `label_to_samples`.
-  RETURN_IF_NOT_OK(demixing_module.DownMixSamplesToSubstreams(
+  RETURN_IF_NOT_OK(downmixer_manager.DownMixSamplesToSubstreams(
       audio_element_id, down_mixing_params, label_to_samples,
       substream_id_to_substream_data));
 
@@ -307,7 +307,8 @@ absl::Status DownMixSamples(const DecodedUleb128 audio_element_id,
 // read from a file or from padding.
 absl::Status GetNextFrameSubstreamData(
     const DecodedUleb128 audio_element_id,
-    const DemixingModule& demixing_module, const size_t num_samples_per_frame,
+    const DownmixerManager& downmixer_manager,
+    const size_t num_samples_per_frame,
     const SubstreamIdLabelsMap& substream_id_to_labels,
     absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
         substream_id_to_trimming_state,
@@ -329,7 +330,7 @@ absl::Status GetNextFrameSubstreamData(
   }
 
   RETURN_IF_NOT_OK(DownMixSamples(
-      audio_element_id, demixing_module, label_to_samples, parameters_manager,
+      audio_element_id, downmixer_manager, label_to_samples, parameters_manager,
       substream_id_to_substream_data, down_mixing_params));
 
   // Padding.
@@ -391,7 +392,7 @@ std::pair<uint32_t, uint32_t> GetNumSamplesToTrimForFrame(
 absl::Status MaybeEncodeFramesForAudioElement(
     const DecodedUleb128 audio_element_id,
     const AudioElementWithData& audio_element_with_data,
-    const DemixingModule& demixing_module,
+    const DownmixerManager& downmixer_manager,
     const absl::flat_hash_set<ChannelLabel::Label>&
         channel_labels_for_audio_element,
     LabelSamplesMap& label_to_samples,
@@ -441,7 +442,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
   bool more_samples_to_encode = false;
   do {
     RETURN_IF_NOT_OK(GetNextFrameSubstreamData(
-        audio_element_id, demixing_module, num_samples_per_frame,
+        audio_element_id, downmixer_manager, num_samples_per_frame,
         audio_element_with_data.substream_id_to_labels,
         substream_id_to_trimming_state, label_to_samples, parameters_manager,
         substream_id_to_substream_data, down_mixing_params));
@@ -647,14 +648,14 @@ AudioFrameGenerator::Create(
     const ::google::protobuf::RepeatedPtrField<
         iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadatas,
     const DescriptorObus::AudioElementsById& audio_elements,
-    const DemixingModule& demixing_module,
+    const DownmixerManager& downmixer_manager,
     ParametersManager& parameters_manager,
     GlobalTimingModule& global_timing_module) {
   if (audio_frame_metadatas.empty()) {
     // Ok, nothing will be generated. This state helps clients handle trivial IA
     // Sequences.
     return absl::WrapUnique(
-        new AudioFrameGenerator({}, {}, demixing_module, parameters_manager,
+        new AudioFrameGenerator({}, {}, downmixer_manager, parameters_manager,
                                 global_timing_module, {}, {}, {},
                                 /*max_codec_delay=*/0));
   }
@@ -745,7 +746,7 @@ AudioFrameGenerator::Create(
     // Validate that a `DemixingParamDefinition` is available if down-mixing
     // is needed.
     absl::StatusOr<const std::list<DownMixer>*> down_mixers =
-        demixing_module.GetDownMixers(audio_element_id);
+        downmixer_manager.GetDownMixers(audio_element_id);
     if (!down_mixers.ok()) {
       return down_mixers.status();
     }
@@ -783,7 +784,7 @@ AudioFrameGenerator::Create(
   }
 
   return absl::WrapUnique(new AudioFrameGenerator(
-      audio_element_id_to_labels, audio_elements, demixing_module,
+      audio_element_id_to_labels, audio_elements, downmixer_manager,
       parameters_manager, global_timing_module,
       std::move(substream_id_to_encoder),
       std::move(substream_id_to_substream_data),
@@ -849,7 +850,7 @@ absl::Status AudioFrameGenerator::AddSamples(
   const auto& audio_element_with_data = audio_element_iter->second;
 
   RETURN_IF_NOT_OK(MaybeEncodeFramesForAudioElement(
-      audio_element_id, audio_element_with_data, demixing_module_,
+      audio_element_id, audio_element_with_data, downmixer_manager_,
       audio_element_labels_iter->second, labeled_samples,
       substream_id_to_trimming_state_, parameters_manager_,
       substream_id_to_encoder_, substream_id_to_substream_data_,
@@ -883,7 +884,7 @@ absl::Status AudioFrameGenerator::OutputFrames(
     for (const auto& [audio_element_id, audio_element_with_data] :
          audio_elements_) {
       RETURN_IF_NOT_OK(MaybeEncodeFramesForAudioElement(
-          audio_element_id, audio_element_with_data, demixing_module_,
+          audio_element_id, audio_element_with_data, downmixer_manager_,
           audio_element_id_to_labels_.at(audio_element_id),
           id_to_labeled_samples_[audio_element_id],
           substream_id_to_trimming_state_, parameters_manager_,

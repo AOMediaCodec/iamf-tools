@@ -54,14 +54,15 @@ cc_library(
     hdrs = ["downmixing_reconstruction_util.h"],
     visibility = [
         "//iamf/cli:__pkg__",
+        "//iamf/cli/proto_conversion/proto_to_obu/tests:__pkg__",
         "//iamf/cli/proto_conversion/tests:__pkg__",
     ],
     deps = [
         ":channel_label_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obus",
+        "//iamf/cli:downmixer_manager",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/obu:types",

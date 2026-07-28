@@ -27,14 +27,15 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -325,9 +326,11 @@ void InitializeAudioFrameGenerator(
       audio_element_generator.Generate(codec_config_obus, audio_elements),
       IsOk());
 
-  auto demixing_module = DemixingModule::CreateForReconstruction(
-      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
-  ASSERT_THAT(demixing_module, IsOk());
+  const auto downmixing_config =
+      CreateAudioElementIdToDownmixingConfig(user_metadata, audio_elements);
+  ASSERT_THAT(downmixing_config, IsOk());
+  auto downmixer_manager = DownmixerManager::Create(*downmixing_config);
+  ASSERT_THAT(downmixer_manager, IsOk());
   global_timing_module =
       GlobalTimingModule::Create(audio_elements, param_definitions);
   ASSERT_THAT(global_timing_module, NotNull());
@@ -339,7 +342,7 @@ void InitializeAudioFrameGenerator(
   // Generate the audio frames.
   auto temp_audio_frame_generator = AudioFrameGenerator::Create(
       user_metadata.audio_frame_metadata(),
-      user_metadata.codec_config_metadata(), audio_elements, *demixing_module,
+      user_metadata.codec_config_metadata(), audio_elements, *downmixer_manager,
       *parameters_manager, *global_timing_module);
 
   // Initialize.

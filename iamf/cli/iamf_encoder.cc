@@ -35,7 +35,9 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_streaming_iamf.h"
@@ -349,24 +351,31 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   // Down-mix the audio samples and then demix audio samples while decoding
   // them. This is useful to create multi-layer audio elements and to determine
   // the recon gain parameters and to measuring loudness.
-  const absl::StatusOr<absl::flat_hash_map<
-      DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
-      audio_element_id_to_demixing_metadata =
-          CreateAudioElementIdToDemixingMetadata(user_metadata,
+  const absl::StatusOr<
+      absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
+      audio_element_id_to_downmixing_config =
+          CreateAudioElementIdToDownmixingConfig(user_metadata,
                                                  *audio_elements);
-  if (!audio_element_id_to_demixing_metadata.ok()) {
-    return audio_element_id_to_demixing_metadata.status();
+  if (!audio_element_id_to_downmixing_config.ok()) {
+    return audio_element_id_to_downmixing_config.status();
   }
-  auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-      *std::move(audio_element_id_to_demixing_metadata));
+  auto downmixer_manager =
+      DownmixerManager::Create(*audio_element_id_to_downmixing_config);
+  if (!downmixer_manager.ok()) {
+    return downmixer_manager.status();
+  }
+
+  const auto reconstruction_config =
+      DemixingModule::CreateIdToReconstructionConfig(*audio_elements);
+  auto demixing_module = DemixingModule::Create(reconstruction_config);
   if (!demixing_module.ok()) {
     return demixing_module.status();
   }
 
   auto audio_frame_generator = AudioFrameGenerator::Create(
       user_metadata.audio_frame_metadata(),
-      user_metadata.codec_config_metadata(), *audio_elements, *demixing_module,
-      **parameters_manager, *global_timing_module);
+      user_metadata.codec_config_metadata(), *audio_elements,
+      *downmixer_manager, **parameters_manager, *global_timing_module);
   if (!audio_frame_generator.ok()) {
     return audio_frame_generator.status();
   }

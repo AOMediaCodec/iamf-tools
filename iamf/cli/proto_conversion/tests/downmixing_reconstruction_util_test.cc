@@ -24,8 +24,8 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/audio_element.h"
@@ -86,16 +86,16 @@ ProtoAudioFrameObuMetadata MakeAudioFrameObuMetadata(
   return audio_frame_metadata;
 }
 
-TEST(CreateAudioElementIdToDemixingMetadata, EmptyInputsEmptyOutputs_IsOk) {
-  absl::StatusOr<absl::flat_hash_map<
-      DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
-      id_to_config_map = CreateAudioElementIdToDemixingMetadata({}, {});
+TEST(CreateAudioElementIdToDownmixingConfig, EmptyInputsEmptyOutputs_IsOk) {
+  absl::StatusOr<
+      absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
+      id_to_config_map = CreateAudioElementIdToDownmixingConfig({}, {});
 
   EXPECT_THAT(id_to_config_map, IsOk());
   EXPECT_TRUE(id_to_config_map->empty());
 }
 
-TEST(CreateAudioElementIdToDemixingMetadata,
+TEST(CreateAudioElementIdToDownmixingConfig,
      AudioElementIdNotFound_ReturnsError) {
   // Create user metadata with an ID that does not exist in the audio elements.
   const DecodedUleb128 user_id = 2;
@@ -106,16 +106,16 @@ TEST(CreateAudioElementIdToDemixingMetadata,
   AudioElementsById audio_elements;
   audio_elements.emplace(audio_element_id, MakeAudioElement(audio_element_id));
 
-  absl::StatusOr<absl::flat_hash_map<
-      DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
+  absl::StatusOr<
+      absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
       id_to_config_map =
-          CreateAudioElementIdToDemixingMetadata(user_metadata, audio_elements);
+          CreateAudioElementIdToDownmixingConfig(user_metadata, audio_elements);
 
   EXPECT_THAT(id_to_config_map, Not(IsOk()));
   EXPECT_THAT(id_to_config_map.status().message(), HasSubstr("not found"));
 }
 
-TEST(CreateAudioElementIdToDemixingMetadata, MustHaveConvertibleLabels) {
+TEST(CreateAudioElementIdToDownmixingConfig, MustHaveConvertibleLabels) {
   const DecodedUleb128 element_id = 1;
   iamf_tools_cli_proto::UserMetadata user_metadata;
   *user_metadata.add_audio_frame_metadata() = MakeAudioFrameObuMetadata(
@@ -124,16 +124,16 @@ TEST(CreateAudioElementIdToDemixingMetadata, MustHaveConvertibleLabels) {
   AudioElementsById audio_elements;
   audio_elements.emplace(element_id, MakeAudioElement(element_id));
 
-  absl::StatusOr<absl::flat_hash_map<
-      DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
+  absl::StatusOr<
+      absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
       id_to_config_map =
-          CreateAudioElementIdToDemixingMetadata(user_metadata, audio_elements);
+          CreateAudioElementIdToDownmixingConfig(user_metadata, audio_elements);
 
   EXPECT_THAT(id_to_config_map, Not(IsOk()));
   EXPECT_THAT(id_to_config_map.status().message(), HasSubstr("Duplicate"));
 }
 
-TEST(CreateAudioElementIdToDemixingMetadata, SucceedsWithValidInputs) {
+TEST(CreateAudioElementIdToDownmixingConfig, SucceedsWithValidInputs) {
   const DecodedUleb128 element_id = 1;
   iamf_tools_cli_proto::UserMetadata user_metadata;
   *user_metadata.add_audio_frame_metadata() = MakeAudioFrameObuMetadata(
@@ -142,15 +142,15 @@ TEST(CreateAudioElementIdToDemixingMetadata, SucceedsWithValidInputs) {
   AudioElementsById audio_elements;
   audio_elements.emplace(element_id, MakeAudioElement(element_id));
 
-  absl::StatusOr<absl::flat_hash_map<
-      DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
+  absl::StatusOr<
+      absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
       id_to_config_map =
-          CreateAudioElementIdToDemixingMetadata(user_metadata, audio_elements);
+          CreateAudioElementIdToDownmixingConfig(user_metadata, audio_elements);
 
   EXPECT_THAT(id_to_config_map, IsOk());
 }
 
-TEST(CreateAudioElementIdToDemixingMetadata,
+TEST(CreateAudioElementIdToDownmixingConfig,
      CopiesSubStreamIdToLabelsAndOutputGains) {
   const DecodedUleb128 element_id = 1;
   iamf_tools_cli_proto::UserMetadata user_metadata;
@@ -168,10 +168,10 @@ TEST(CreateAudioElementIdToDemixingMetadata,
                          MakeAudioElement(element_id, substream_id_to_labels,
                                           label_to_output_gain));
 
-  absl::StatusOr<absl::flat_hash_map<
-      DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
+  absl::StatusOr<
+      absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
       id_to_config_map =
-          CreateAudioElementIdToDemixingMetadata(user_metadata, audio_elements);
+          CreateAudioElementIdToDownmixingConfig(user_metadata, audio_elements);
   EXPECT_THAT(id_to_config_map, IsOk());
   EXPECT_THAT(id_to_config_map->at(element_id).substream_id_to_labels,
               ContainerEq(substream_id_to_labels));

@@ -19,8 +19,8 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/common/utils/macros.h"
@@ -28,13 +28,12 @@
 
 namespace iamf_tools {
 
-absl::StatusOr<absl::flat_hash_map<
-    DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
-CreateAudioElementIdToDemixingMetadata(
+absl::StatusOr<
+    absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
+CreateAudioElementIdToDownmixingConfig(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const DescriptorObus::AudioElementsById& audio_elements) {
-  absl::flat_hash_map<DecodedUleb128,
-                      DemixingModule::DownmixingAndReconstructionConfig>
+  absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>
       result;
   // For each AudioFrameObuMetadata, we pull out the audio element ID, find
   // the matching AudioElementWithData, and convert the proto labels to internal
