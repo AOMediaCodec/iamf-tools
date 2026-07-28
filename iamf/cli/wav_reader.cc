@@ -49,6 +49,10 @@ absl::StatusOr<WavReader> WavReader::CreateFromFile(
 
   ReadWavInfo info;
   if (ReadWavHeader(file, &info) == kAudioToTactileFailure) {
+    // Ownership of `file` only transfers to the `WavReader` on the success
+    // path below, so it must be closed here to avoid leaking the descriptor
+    // on every malformed input.
+    std::fclose(file);
     return absl::FailedPreconditionError(
         absl::StrCat("Failed to read header of file: \"", wav_filename,
                      "\". Maybe it is not a valid RIFF WAV."));
