@@ -698,6 +698,11 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
     }
     case kAudioBlock: {
       // Populates audio block object.
+      if (handler.adm.audio_channels.empty()) {
+        // Defensive: character data for a block can only be attached to a
+        // parent audioChannelFormat. Avoid indexing `audio_channels[-1]`.
+        break;
+      }
       idx = handler.adm.audio_channels.size();
       auto& audio_blocks = handler.adm.audio_channels[idx - 1].audio_blocks;
       switch (handler.audio_block_tag) {
@@ -816,6 +821,14 @@ void XMLStartTagHandlerForExpat(void* parser_data, const char* name,
     // If the tag 'audioBlockFormat' is encountered while parsing the axml,
     // create an instance of AudioBlockFormat class, populate its attributes and
     // add it to ADM.
+    if (handler.adm.audio_channels.empty()) {
+      // An audioBlockFormat is only valid nested within an
+      // audioChannelFormat. A crafted axml that omits the parent channel would
+      // otherwise dereference `audio_channels.back()` on an empty vector below.
+      handler.status = absl::InvalidArgumentError(
+          "Encountered audioBlockFormat without a parent audioChannelFormat.");
+      return;
+    }
     handler.parent = kAudioBlock;
     AudioBlockFormat audio_block;
     CartesianPosition position;

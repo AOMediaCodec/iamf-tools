@@ -39,6 +39,20 @@ TEST(ParseXmlToAdm, InvalidXml) {
               Not(IsOk()));
 }
 
+TEST(ParseXmlToAdm, AudioBlockFormatWithoutParentChannelIsRejected) {
+  // An `audioBlockFormat` is only valid nested within an `audioChannelFormat`.
+  // A crafted axml that omits the parent channel must be rejected rather than
+  // dereferencing an empty `audio_channels` vector.
+  EXPECT_THAT(ParseXmlToAdm(R"xml(
+                <audioFormatExtended>
+                  <audioBlockFormat audioBlockFormatID="AB_00031001_00000001">
+                    <position coordinate="X">0.0</position>
+                  </audioBlockFormat>
+                </audioFormatExtended>)xml",
+                            kImportanceThreshold, kAdmFileTypeDefault),
+              Not(IsOk()));
+}
+
 TEST(ParseXmlToAdm, LoadsAudioProgrammes) {
   const auto adm = ParseXmlToAdm(
       R"xml(
