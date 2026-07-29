@@ -32,6 +32,7 @@ cc_library(
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obus",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:loudness_calculator_base",
         "//iamf/cli:loudness_calculator_factory_base",
         "//iamf/cli:obu_processor",

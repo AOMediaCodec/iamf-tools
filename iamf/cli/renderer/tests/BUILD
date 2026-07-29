@@ -111,6 +111,7 @@ cc_test(
     srcs = ["loudspeakers_renderer_test.cc"],
     deps = [
         "//iamf/cli/renderer:loudspeakers_renderer",
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:parameter_data",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",

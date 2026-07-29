@@ -32,8 +32,8 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_processor.h"
@@ -522,6 +522,23 @@ MATCHER_P(InternalSamples2DMatch, expected, "") {
         testing::Pointwise(testing::DoubleEq(), expected[c]), arg[c],
         result_listener);
   }
+}
+
+/*!\brief Matches a 2D container's shape.
+ *
+ * Ensures all of the "first dimension" slots have exactly the given number of
+ * elements in the "second dimension".
+ *
+ * For example:
+ *    EXPECT_THAT(matrix, Has2DShape(kTwoChannels, kOneSamplePerFrame));
+ *
+ * \param first_dimension Number of elements in the first dimension to match.
+ * \param second_dimension Number of columns to match.
+ * \return A matcher that matches a 2D container with the given shape.
+ */
+inline auto Has2DShape(size_t first_dimension, size_t second_dimension) {
+  return testing::AllOf(testing::SizeIs(first_dimension),
+                        testing::Each(testing::SizeIs(second_dimension)));
 }
 
 /*!\brief Matches a tag that is the build information of the IAMF encoder.

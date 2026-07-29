@@ -18,6 +18,7 @@
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 
 namespace iamf_tools {
@@ -25,11 +26,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
-using ::testing::AllOf;
-using ::testing::Each;
 using ::testing::Not;
 using ::testing::Optional;
-using ::testing::SizeIs;
 
 constexpr absl::string_view kFOAInputKey = "A1";
 constexpr absl::string_view k7_1_4InputKey = "4+7+0";
@@ -42,14 +40,6 @@ constexpr size_t kExpectedStereoColumns = 2;
 constexpr absl::string_view kUnknownInputKey = "UNKNOWN";
 constexpr absl::string_view kUnknownOutputKey = "UNKNOWN";
 
-// Returns a matcher that checks if the container has the given number of rows
-// and columns. Gain matrices in this context are 2D vectors, with the number
-// of rows corresponding to the number of input channels and the number of
-// columns corresponding to the number of output channels.
-auto HasShape(size_t rows, size_t cols) {
-  return AllOf(SizeIs(rows), Each(SizeIs(cols)));
-}
-
 TEST(LookupPrecomputedGains, SucceedsForKnownPrecomputedGains) {
   EXPECT_THAT(LookupPrecomputedGains(kFOAInputKey, kStereoOutputKey), IsOk());
 }
@@ -57,8 +47,8 @@ TEST(LookupPrecomputedGains, SucceedsForKnownPrecomputedGains) {
 TEST(LookupPrecomputedGains, ShapeAgreesWithInputKey) {
   const auto gains = LookupPrecomputedGains(kFOAInputKey, kStereoOutputKey);
 
-  EXPECT_THAT(gains, IsOkAndHolds(HasShape(kExpectedFOAMatrixRows,
-                                           kExpectedStereoColumns)));
+  EXPECT_THAT(gains, IsOkAndHolds(Has2DShape(kExpectedFOAMatrixRows,
+                                             kExpectedStereoColumns)));
 }
 
 TEST(LookupPrecomputedGains, ReturnsErrorWhenInputKeyIsUnknown) {
@@ -95,8 +85,8 @@ TEST(MaybeComputeDynamicGains, ReturnsGainsForKnownLayouts) {
   constexpr size_t kExpectedOutput3_1_2Cols = 6;
   // Just check that the shape of the input gains agrees with the input and
   // output layouts. ""
-  EXPECT_THAT(gains, Optional(HasShape(kExpectedInput7_1_4Rows,
-                                       kExpectedOutput3_1_2Cols)));
+  EXPECT_THAT(gains, Optional(Has2DShape(kExpectedInput7_1_4Rows,
+                                         kExpectedOutput3_1_2Cols)));
 }
 
 TEST(MaybeComputeDynamicGains, ReturnsNulloptWhenGainsNotInBitstream) {

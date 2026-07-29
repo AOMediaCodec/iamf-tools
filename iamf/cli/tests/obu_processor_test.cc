@@ -104,14 +104,6 @@ constexpr std::array<uint8_t, 16> kArbitraryAudioFrame = {
 const absl::flat_hash_set<ProfileVersion> kIamfV1_0_0ErrataProfiles = {
     ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
 
-// Matcher that checks if the container has the given number of rows
-// and columns. Rendered samples in this context are 2D vectors, with the first
-// dimension corresponding to the number of channels and the second dimension
-// corresponding to the number of time ticks.
-auto HasShape(size_t num_channels, size_t num_time_ticks) {
-  return AllOf(SizeIs(num_channels), Each(SizeIs(num_time_ticks)));
-}
-
 std::vector<uint8_t> AddSequenceHeaderAndSerializeObusExpectOk(
     const std::list<const ObuBase*>& input_ia_sequence_without_header) {
   const IASequenceHeaderObu ia_sequence_header(
@@ -1519,7 +1511,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
   constexpr int kExpectedNumSamplesPerFrame = 1;
   EXPECT_THAT(
       rendered_samples,
-      IsOkAndHolds(HasShape(kTwoChannels, kExpectedNumSamplesPerFrame)));
+      IsOkAndHolds(Has2DShape(kTwoChannels, kExpectedNumSamplesPerFrame)));
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
@@ -1583,7 +1575,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   constexpr int kExpectedNumSamplesPerFrame = 1;
   EXPECT_THAT(
       rendered_samples,
-      IsOkAndHolds(HasShape(kTwoChannels, kExpectedNumSamplesPerFrame)));
+      IsOkAndHolds(Has2DShape(kTwoChannels, kExpectedNumSamplesPerFrame)));
 }
 
 void AddOneLayerStereoAudioElement(DecodedUleb128 codec_config_id,
@@ -1779,7 +1771,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   auto rendered_samples = obu_processor->RenderTemporalUnitAndMeasureLoudness(
       /*timestamp=*/0, kNoParameterBlocks, audio_frames_with_data);
   ASSERT_THAT(rendered_samples, IsOk());
-  EXPECT_THAT(*rendered_samples, HasShape(2, 1));
+  EXPECT_THAT(*rendered_samples, Has2DShape(2, 1));
   EXPECT_EQ((*rendered_samples)[0][0],
             kExpectedFirstSampleForFirstMixPresentation);
 }

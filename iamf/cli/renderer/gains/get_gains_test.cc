@@ -18,16 +18,14 @@
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
-using ::testing::AllOf;
-using ::testing::Each;
 using ::testing::Not;
-using ::testing::SizeIs;
 
 constexpr absl::string_view kFOAInputKey = "A1";
 constexpr size_t kExpectedFOAMatrixRows = 4;
@@ -38,15 +36,11 @@ constexpr size_t kExpectedStereoColumns = 2;
 constexpr absl::string_view kUnknownInputKey = "UNKNOWN";
 constexpr absl::string_view kUnknownOutputKey = "UNKNOWN";
 
-auto HasShape(size_t rows, size_t cols) {
-  return AllOf(SizeIs(rows), Each(SizeIs(cols)));
-}
-
 TEST(GetGainsForLayoutPair, ShapeAgreesWithInputKey) {
   const auto gains = GetGainsForLayoutPair(kFOAInputKey, kStereoOutputKey);
 
-  EXPECT_THAT(gains, IsOkAndHolds(HasShape(kExpectedFOAMatrixRows,
-                                           kExpectedStereoColumns)));
+  EXPECT_THAT(gains, IsOkAndHolds(Has2DShape(kExpectedFOAMatrixRows,
+                                             kExpectedStereoColumns)));
 }
 
 TEST(GetGainsForLayoutPair, ReturnsErrorWhenInputKeyIsUnknown) {

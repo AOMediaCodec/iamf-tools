@@ -54,6 +54,7 @@ cc_test(
     srcs = ["get_gains_test.cc"],
     deps = [
         ":get_gains",
+        "//iamf/cli/tests:cli_test_utils",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings",
         "@googletest//:gtest_main",
