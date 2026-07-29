@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/demixing_manager.h"
 
 #include <algorithm>
 #include <climits>
@@ -51,7 +51,7 @@ namespace {
 
 using enum ChannelLabel::Label;
 using DemixingMetadataForAudioElementId =
-    DemixingModule::DemixingMetadataForAudioElementId;
+    DemixingManager::DemixingMetadataForAudioElementId;
 
 absl::Status FillRequiredDemixingMetadata(
     const absl::flat_hash_set<ChannelLabel::Label>& labels_to_demix,
@@ -369,10 +369,10 @@ void LogForAudioElementId(absl::string_view log_prefix,
 
 }  // namespace
 
-absl::flat_hash_map<DecodedUleb128, DemixingModule::ReconstructionConfig>
-DemixingModule::CreateIdToReconstructionConfig(
+absl::flat_hash_map<DecodedUleb128, DemixingManager::ReconstructionConfig>
+DemixingManager::CreateIdToReconstructionConfig(
     const DescriptorObus::AudioElementsById& audio_elements) {
-  absl::flat_hash_map<DecodedUleb128, DemixingModule::ReconstructionConfig>
+  absl::flat_hash_map<DecodedUleb128, DemixingManager::ReconstructionConfig>
       result;
   for (const auto& [audio_element_id, audio_element_with_data] :
        audio_elements) {
@@ -386,7 +386,7 @@ DemixingModule::CreateIdToReconstructionConfig(
   return result;
 }
 
-absl::StatusOr<DemixingModule> DemixingModule::Create(
+absl::StatusOr<DemixingManager> DemixingManager::Create(
     const absl::flat_hash_map<DecodedUleb128, ReconstructionConfig>&
         id_to_config) {
   absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>
@@ -409,10 +409,10 @@ absl::StatusOr<DemixingModule> DemixingModule::Create(
         reconstruction_config.label_to_output_gain, iter->second));
   }
 
-  return DemixingModule(std::move(audio_element_id_to_demixing_metadata));
+  return DemixingManager(std::move(audio_element_id_to_demixing_metadata));
 }
 
-absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixOriginalAudioSamples(
+absl::StatusOr<IdLabeledFrameMap> DemixingManager::DemixOriginalAudioSamples(
     const std::list<AudioFrameWithData>& audio_frames) const {
   IdLabeledFrameMap id_to_labeled_frame;
   for (const auto& [audio_element_id, demixing_metadata] :
@@ -434,7 +434,7 @@ absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixOriginalAudioSamples(
   return id_to_labeled_frame;
 }
 
-absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixDecodedAudioSamples(
+absl::StatusOr<IdLabeledFrameMap> DemixingManager::DemixDecodedAudioSamples(
     const std::list<AudioFrameWithData>& decoded_audio_frames) const {
   IdLabeledFrameMap id_to_labeled_decoded_frame;
   for (const auto& [audio_element_id, demixing_metadata] :
@@ -459,7 +459,7 @@ absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixDecodedAudioSamples(
 }
 
 absl::StatusOr<const std::list<Demixer>* absl_nonnull>
-DemixingModule::GetDemixers(DecodedUleb128 audio_element_id) const {
+DemixingManager::GetDemixers(DecodedUleb128 audio_element_id) const {
   const DemixingMetadataForAudioElementId* demixing_metadata = nullptr;
   RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
                                       audio_element_id_to_demixing_metadata_,

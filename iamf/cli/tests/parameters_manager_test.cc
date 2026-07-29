@@ -512,7 +512,7 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceWithoutUpdateSameW) {
   parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   // Get down-mix parameters twice without calling
-  // `AddDemixingParameterBlock()` and `UpdateDemixngState()`; the same
+  // `AddDemixingParameterBlock()` and `UpdateDemixingState()`; the same
   // down-mix parameters will be returned.
   DownMixingParams down_mixing_params;
   ASSERT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,

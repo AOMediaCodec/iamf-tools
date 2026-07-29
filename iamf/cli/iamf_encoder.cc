@@ -33,7 +33,7 @@
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
@@ -366,10 +366,10 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   }
 
   const auto reconstruction_config =
-      DemixingModule::CreateIdToReconstructionConfig(*audio_elements);
-  auto demixing_module = DemixingModule::Create(reconstruction_config);
-  if (!demixing_module.ok()) {
-    return demixing_module.status();
+      DemixingManager::CreateIdToReconstructionConfig(*audio_elements);
+  auto demixing_manager = DemixingManager::Create(reconstruction_config);
+  if (!demixing_manager.ok()) {
+    return demixing_manager.status();
   }
 
   auto audio_frame_generator = AudioFrameGenerator::Create(
@@ -421,7 +421,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
       std::move(timestamp_to_arbitrary_obus),
       std::move(param_definition_variants),
       std::move(parameter_block_generator), std::move(*parameters_manager),
-      *demixing_module, *std::move(audio_frame_generator),
+      *demixing_manager, *std::move(audio_frame_generator),
       std::move(audio_frame_decoder), std::move(global_timing_module),
       std::move(*mix_presentation_finalizer), std::move(obu_sequencers),
       std::move(streaming_obu_sequencer)));
@@ -627,12 +627,12 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   // Demix the original and decoded audio frames, differences between them are
   // useful to compute the recon gain parameters.
   const auto id_to_labeled_frame =
-      demixing_module_.DemixOriginalAudioSamples(audio_frames);
+      demixing_manager_.DemixOriginalAudioSamples(audio_frames);
   if (!id_to_labeled_frame.ok()) {
     return id_to_labeled_frame.status();
   }
   const auto id_to_labeled_decoded_frame =
-      demixing_module_.DemixDecodedAudioSamples(audio_frames);
+      demixing_manager_.DemixDecodedAudioSamples(audio_frames);
   if (!id_to_labeled_decoded_frame.ok()) {
     return id_to_labeled_decoded_frame.status();
   }

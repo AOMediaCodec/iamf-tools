@@ -22,7 +22,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
@@ -89,26 +89,26 @@ const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
         {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
          .substream_count = 1}}};
 
-static DemixingModule CreateDemixingModule(
+static DemixingManager CreateDemixingManager(
     const SubstreamIdLabelsMap& substream_id_to_labels) {
   DescriptorObus::AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       substream_id_to_labels, kTwoLayerStereoConfig, audio_elements);
 
-  auto demixing_module = DemixingModule::Create(
-      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
-  ABSL_CHECK_OK(demixing_module);
+  auto demixing_manager = DemixingManager::Create(
+      DemixingManager::CreateIdToReconstructionConfig(audio_elements));
+  ABSL_CHECK_OK(demixing_manager);
 
-  return *demixing_module;
+  return *demixing_manager;
 }
 
 absl::StatusOr<IdLabeledFrameMap> CallDemixing(
     bool use_original_samples, const std::list<AudioFrameWithData>& frames,
-    DemixingModule& demixing_module) {
+    DemixingManager& demixing_manager) {
   if (use_original_samples) {
-    return demixing_module.DemixOriginalAudioSamples(frames);
+    return demixing_manager.DemixOriginalAudioSamples(frames);
   } else {
-    return demixing_module.DemixDecodedAudioSamples(frames);
+    return demixing_manager.DemixDecodedAudioSamples(frames);
   }
 }
 
@@ -126,14 +126,14 @@ void BM_Demixing(bool use_original_samples, benchmark::State& state) {
   ConfigureLosslessAudioFrame({kL2}, num_ticks, substream_id_to_labels,
                               audio_frames);
 
-  // Create a demixing module.
-  auto demixing_module = CreateDemixingModule(substream_id_to_labels);
+  // Create a demixing manager.
+  auto demixing_manager = CreateDemixingManager(substream_id_to_labels);
 
-  // Measure the calls to either `DemixingModule::DemixOriginalAudioSamples()`
-  // or `DemixingModule::DemixDecodedAudioSamples()`.
+  // Measure the calls to either `DemixingManager::DemixOriginalAudioSamples()`
+  // or `DemixingManager::DemixDecodedAudioSamples()`.
   for (auto _ : state) {
     auto id_to_labeled_frame =
-        CallDemixing(use_original_samples, audio_frames, demixing_module);
+        CallDemixing(use_original_samples, audio_frames, demixing_manager);
     ABSL_CHECK_OK(id_to_labeled_frame);
   }
 }

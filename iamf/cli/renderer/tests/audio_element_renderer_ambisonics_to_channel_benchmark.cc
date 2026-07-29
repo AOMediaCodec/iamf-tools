@@ -24,7 +24,7 @@
 #include "benchmark/benchmark.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/renderer/audio_element_renderer_ambisonics_to_channel.h"
 #include "iamf/common/utils/numeric_utils.h"

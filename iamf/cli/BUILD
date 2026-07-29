@@ -157,9 +157,9 @@ cc_library(
 )
 
 cc_library(
-    name = "demixing_module",
-    srcs = ["demixing_module.cc"],
-    hdrs = ["demixing_module.h"],
+    name = "demixing_manager",
+    srcs = ["demixing_manager.cc"],
+    hdrs = ["demixing_manager.h"],
     deps = [
         ":audio_element_with_data",
         ":audio_frame_with_data",
@@ -269,10 +269,10 @@ cc_library(
     srcs = ["encoder_main_lib.cc"],
     hdrs = ["encoder_main_lib.h"],
     deps = [
-        ":demixing_module",
         ":descriptor_obus",
         ":iamf_components",
         ":iamf_encoder",
+        ":labeled_frame",
         ":parameter_block_partitioner",
         ":rendering_mix_presentation_finalizer",
         ":sample_processor_base",
@@ -346,7 +346,7 @@ cc_library(
         ":audio_frame_decoder",
         ":audio_frame_with_data",
         ":cli_util",
-        ":demixing_module",
+        ":demixing_manager",
         ":descriptor_obus",
         ":downmixer_manager",
         ":global_timing_module",
@@ -445,7 +445,7 @@ cc_library(
         ":audio_frame_decoder",
         ":audio_frame_with_data",
         ":cli_util",
-        ":demixing_module",
+        ":demixing_manager",
         ":descriptor_obu_parser",
         ":descriptor_obus",
         ":global_timing_module",
@@ -773,8 +773,9 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":cli_util",
-        ":demixing_module",
+        ":demixing_manager",
         ":descriptor_obus",
+        ":labeled_frame",
         ":loudness_calculator_base",
         ":loudness_calculator_factory_base",
         ":parameter_block_with_data",
@@ -886,8 +887,8 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":channel_label",
-        ":demixing_module",
         ":descriptor_obus",
+        ":labeled_frame",
         ":wav_reader",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto_conversion:channel_label_utils",

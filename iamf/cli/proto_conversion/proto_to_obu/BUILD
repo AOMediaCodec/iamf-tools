@@ -211,7 +211,7 @@ cc_library(
     deps = [
         "//iamf/cli:channel_label",
         "//iamf/cli:cli_util",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:demixing_manager",
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:labeled_frame",

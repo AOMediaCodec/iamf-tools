@@ -30,7 +30,6 @@ cc_library(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:labeled_frame",
         "//iamf/cli:loudness_calculator_base",
@@ -218,13 +217,13 @@ cc_test(
 )
 
 cc_test(
-    name = "demixing_module_benchmark",
-    srcs = ["demixing_module_benchmark.cc"],
+    name = "demixing_manager_benchmark",
+    srcs = ["demixing_manager_benchmark.cc"],
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:demixing_manager",
         "//iamf/cli:descriptor_obus",
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
@@ -240,15 +239,15 @@ cc_test(
 )
 
 cc_test(
-    name = "demixing_module_test",
-    srcs = ["demixing_module_test.cc"],
+    name = "demixing_manager_test",
+    srcs = ["demixing_manager_test.cc"],
     deps = [
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixer",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:demixing_manager",
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:labeled_frame",
         "//iamf/cli/proto:user_metadata_cc_proto",
@@ -806,8 +805,9 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:demixing_manager",
         "//iamf/cli:descriptor_obus",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli:renderer_factory",
         "//iamf/cli:rendering_mix_presentation_finalizer",
@@ -830,8 +830,9 @@ cc_test(
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:demixing_manager",
         "//iamf/cli:descriptor_obus",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:loudness_calculator_base",
         "//iamf/cli:loudness_calculator_factory_base",
         "//iamf/cli:parameter_block_with_data",
@@ -981,8 +982,8 @@ cc_test(
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obus",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:wav_sample_provider",
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:audio_frame_cc_proto",

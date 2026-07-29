@@ -28,7 +28,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"

@@ -9,7 +9,7 @@ cc_test(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:obu_with_data_generator",
         "//iamf/cli/renderer:audio_element_renderer_ambisonics_to_channel",
         "//iamf/common/utils:numeric_utils",
@@ -30,7 +30,7 @@ cc_test(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli/renderer:audio_element_renderer_ambisonics_to_channel",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:ambisonics_config",
@@ -78,7 +78,7 @@ cc_test(
     srcs = ["audio_element_renderer_channel_to_channel_test.cc"],
     deps = [
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli/renderer:audio_element_renderer_channel_to_channel",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:audio_element",
@@ -95,7 +95,7 @@ cc_test(
     srcs = ["audio_element_renderer_passthrough_test.cc"],
     deps = [
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli/renderer:audio_element_renderer_passthrough",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:audio_element",

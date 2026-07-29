@@ -22,7 +22,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/mix_presentation.h"

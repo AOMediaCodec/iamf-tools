@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_DEMIXING_MODULE_H_
-#define CLI_DEMIXING_MODULE_H_
+#ifndef CLI_DEMIXING_MANAGER_H_
+#define CLI_DEMIXING_MANAGER_H_
 
 #include <list>
 #include <utility>
@@ -44,7 +44,7 @@ typedef absl::flat_hash_map<DecodedUleb128, LabeledFrame> IdLabeledFrameMap;
  * Demixers are created according to
  * https://aomediacodec.github.io/iamf/#processing-scalablechannelaudio.
  */
-class DemixingModule {
+class DemixingManager {
  public:
   struct DemixingMetadataForAudioElementId {
     std::list<Demixer> demixers;
@@ -81,7 +81,7 @@ class DemixingModule {
    * \param id_to_config Map of Audio Element IDs to `ReconstructionConfig`.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  static absl::StatusOr<DemixingModule> Create(
+  static absl::StatusOr<DemixingManager> Create(
       const absl::flat_hash_map<DecodedUleb128, ReconstructionConfig>&
           id_to_config);
 
@@ -125,7 +125,7 @@ class DemixingModule {
    * \param audio_element_id_to_demixing_metadata Mapping from audio element ID
    *        to demixing metadata.
    */
-  explicit DemixingModule(
+  explicit DemixingManager(
       absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>&&
           audio_element_id_to_demixing_metadata)
       : audio_element_id_to_demixing_metadata_(
@@ -137,4 +137,4 @@ class DemixingModule {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_DEMIXING_MODULE_H_
+#endif  // CLI_DEMIXING_MANAGER_H_

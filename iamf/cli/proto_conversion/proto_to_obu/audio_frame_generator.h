@@ -91,7 +91,7 @@ class AudioFrameGenerator {
    * \param audio_frame_metadata Input audio frame metadata.
    * \param codec_config_metadata Input codec config metadata.
    * \param audio_elements Input Audio Element OBUs with data.
-   * \param demixing_module Demixng module.
+   * \param demixing_manager Demixing manager.
    * \param parameters_manager Manager of parameters.
    * \param global_timing_module Global Timing Module.
    */
@@ -194,7 +194,7 @@ class AudioFrameGenerator {
    *
    * \param audio_element_id_to_labels Mapping from Audio Element ID to labels.
    * \param audio_elements Mapping from Audio Element ID to audio element data.
-   * \param demixing_module Demixng module.
+   * \param demixing_manager Demixing manager.
    * \param parameters_manager Manager of parameters.
    * \param global_timing_module Global Timing Module.
    * \param substream_id_to_encoder Mapping from audio substream IDs to

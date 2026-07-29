@@ -35,7 +35,7 @@
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
-#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
@@ -692,7 +692,8 @@ ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
 
   // Reconstruct the temporal unit and store the result in the output map.
   const auto& decoded_labeled_frames_for_temporal_unit =
-      rendering_models_->demixing_module.DemixDecodedAudioSamples(audio_frames);
+      rendering_models_->demixing_manager.DemixDecodedAudioSamples(
+          audio_frames);
   if (!decoded_labeled_frames_for_temporal_unit.ok()) {
     return decoded_labeled_frames_for_temporal_unit.status();
   }
@@ -736,11 +737,11 @@ ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
   }
 
   // Configure the `AudioFrameDecoder`, and prepare the strucutre which
-  // configures the `DemixingModule`. Filter out any irrelevant audio
+  // configures the `DemixingManager`. Filter out any irrelevant audio
   // elements. Also cache any irrelevant substream IDs to be filtered out in
   // temporal units.
   AudioFrameDecoder audio_frame_decoder;
-  absl::flat_hash_map<DecodedUleb128, DemixingModule::ReconstructionConfig>
+  absl::flat_hash_map<DecodedUleb128, DemixingManager::ReconstructionConfig>
       id_to_reconstruction_config;
   absl::flat_hash_set<DecodedUleb128> relevant_substream_ids;
   for (const auto& [audio_element_id, audio_element_with_data] :
@@ -761,10 +762,10 @@ ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
         .label_to_output_gain = audio_element_with_data.label_to_output_gain};
   }
 
-  absl::StatusOr<DemixingModule> demixing_module =
-      DemixingModule::Create(id_to_reconstruction_config);
-  if (!demixing_module.ok()) {
-    return demixing_module.status();
+  absl::StatusOr<DemixingManager> demixing_manager =
+      DemixingManager::Create(id_to_reconstruction_config);
+  if (!demixing_manager.ok()) {
+    return demixing_manager.status();
   }
 
   // Create the mix presentation finalizer which is used to render the output
@@ -784,7 +785,7 @@ ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
   return RenderingModels{
       .relevant_substream_ids = std::move(relevant_substream_ids),
       .audio_frame_decoder = std::move(audio_frame_decoder),
-      .demixing_module = *std::move(demixing_module),
+      .demixing_manager = *std::move(demixing_manager),
       .mix_presentation_finalizer = *std::move(mix_presentation_finalizer),
   };
 }
