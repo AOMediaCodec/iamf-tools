@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -69,6 +70,53 @@ constexpr absl::string_view kAdmBwfWithOneStereoAndOneMonoObject(
     "</audioObject>"
     "</topLevel>",
     253);
+
+// A mono IEEE float32 WAV (format tag 3) holding the samples
+// {0.0, 0.5, -0.5, 1.0, -1.0, NaN, 1.5, -1.5, +inf}; the last three are
+// out of the normalized [-1.0, 1.0] range to exercise clamping.
+constexpr absl::string_view kMonoIeeeFloat32Wav(
+    "RIFF"
+    "\x48\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
+    "WAVE"
+    "fmt "
+    "\x10\x00\x00\x00"  // Size of the `fmt ` chunk.
+    "\x03\x00"          // Format tag (IEEE float).
+    "\x01\x00"          // Number of channels.
+    "\x80\xbb\x00\x00"  // Samples per second (48000).
+    "\x00\xee\x02\x00"  // Bytes per second (48000 * 4).
+    "\x04\x00"          // Block align.
+    "\x20\x00"          // Bits per sample (32).
+    "data"
+    "\x24\x00\x00\x00"   // Size of `data` chunk.
+    "\x00\x00\x00\x00"   // 0.0f
+    "\x00\x00\x00\x3f"   // 0.5f
+    "\x00\x00\x00\xbf"   // -0.5f
+    "\x00\x00\x80\x3f"   // 1.0f
+    "\x00\x00\x80\xbf"   // -1.0f
+    "\x00\x00\xc0\x7f"   // NaN
+    "\x00\x00\xc0\x3f"   // 1.5f
+    "\x00\x00\xc0\xbf"   // -1.5f
+    "\x00\x00\x80\x7f",  // +inf
+    80);
+
+// A mono IEEE float64 WAV (format tag 3) holding the samples {0.5, -1.0}.
+constexpr absl::string_view kMonoIeeeFloat64Wav(
+    "RIFF"
+    "\x34\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
+    "WAVE"
+    "fmt "
+    "\x10\x00\x00\x00"  // Size of the `fmt ` chunk.
+    "\x03\x00"          // Format tag (IEEE float).
+    "\x01\x00"          // Number of channels.
+    "\x80\xbb\x00\x00"  // Samples per second (48000).
+    "\x00\xdc\x05\x00"  // Bytes per second (48000 * 8).
+    "\x08\x00"          // Block align.
+    "\x40\x00"          // Bits per sample (64).
+    "data"
+    "\x10\x00\x00\x00"                   // Size of `data` chunk.
+    "\x00\x00\x00\x00\x00\x00\xe0\x3f"   // 0.5
+    "\x00\x00\x00\x00\x00\x00\xf0\xbf",  // -1.0
+    60);
 
 void CreateFileFromStringView(absl::string_view file_contents,
                               absl::string_view file_path_suffix,
@@ -313,6 +361,43 @@ TEST(WavReader, OneFrame32BitLittleEndian) {
       {0, 82180641, 151850024, 198401618, 214748364, 198401618, 151850024,
        82180641}};
   EXPECT_EQ(wav_reader.buffers_, expected_frame);
+}
+
+TEST(WavReader, OneFrameIeeeFloat32) {
+  const size_t kNumSamplesPerFrame = 9;
+  std::string wav_file_name;
+  CreateFileFromStringView(kMonoIeeeFloat32Wav, ".wav", wav_file_name);
+
+  auto wav_reader = InitAndValidate(wav_file_name, kNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.bit_depth(), 32);
+
+  // Float samples are normalized to [-1.0, 1.0]; the reader scales them to
+  // the full int32 range. Out-of-range values are clamped and NaN maps to 0.
+  EXPECT_EQ(wav_reader.ReadFrame(), 9);
+  const std::vector<std::vector<int32_t>> kExpectedFrame = {
+      {0, 0x40000000, -0x40000000, std::numeric_limits<int32_t>::max(),
+       std::numeric_limits<int32_t>::min(), 0,
+       std::numeric_limits<int32_t>::max(), std::numeric_limits<int32_t>::min(),
+       std::numeric_limits<int32_t>::max()}};
+  EXPECT_EQ(wav_reader.buffers_, kExpectedFrame);
+}
+
+TEST(WavReader, OneFrameIeeeFloat64) {
+  const size_t kNumSamplesPerFrame = 2;
+  std::string wav_file_name;
+  CreateFileFromStringView(kMonoIeeeFloat64Wav, ".wav", wav_file_name);
+
+  auto wav_reader = InitAndValidate(wav_file_name, kNumSamplesPerFrame);
+  // `bit_depth()` reports the 64-bit source container width, even though the
+  // decoded samples span the full int32 range. Downstream encoder validation
+  // rejects readers whose bit-depth exceeds the codec's, so float64 input is
+  // usable through `WavReader` directly but not the encoder pipeline.
+  EXPECT_EQ(wav_reader.bit_depth(), 64);
+
+  EXPECT_EQ(wav_reader.ReadFrame(), 2);
+  const std::vector<std::vector<int32_t>> kExpectedFrame = {
+      {0x40000000, std::numeric_limits<int32_t>::min()}};
+  EXPECT_EQ(wav_reader.buffers_, kExpectedFrame);
 }
 
 TEST(WavReader, OneFrameAdm) {
