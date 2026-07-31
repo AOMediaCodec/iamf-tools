@@ -329,6 +329,7 @@ cc_test(
         "//iamf/cli:labeled_frame",
         "//iamf/cli:substream_frames",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:obu_header",
         "//iamf/obu:parameter_data",

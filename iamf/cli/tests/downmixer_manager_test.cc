@@ -12,6 +12,7 @@
 #include "iamf/cli/downmixer_manager.h"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <list>
@@ -33,6 +34,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
@@ -43,6 +45,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::DoubleNear;
+using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Not;
 using ::testing::Pointee;
@@ -58,9 +62,7 @@ constexpr DecodedUleb128 kStereoSubstreamId = 2;
 
 constexpr DownMixingParams kIrrelevantDownMixingParams = {};
 
-// TODO(b/305927287): Test computation of linear output gains. Test some cases
-//                    of erroneous input.
-
+// TODO(b/305927287): Test some cases of erroneous input.
 void InitAudioElementWithLabelsAndScalableChannelLayout(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const ScalableChannelLayoutConfig& config,
@@ -264,6 +266,61 @@ TEST_F(DownMixingModuleTest, OneLayerStereo) {
                          substream_id_to_expected_samples_,
                          input_label_to_samples_,
                          substream_id_to_substream_data_);
+}
+
+TEST(DownMixSamplesToSubstreams, AppliesInverseOutputGainsToFramesToEncode) {
+  const DecodedUleb128 kSubstreamId = 0;
+  const double kHalfGainDb = 20.0 * std::log10(0.5);
+  const double kDoubleGainDb = 20.0 * std::log10(2.0);
+  auto downmixer_manager = DownmixerManager::Create(
+      {{kAudioElementId,
+        DownmixerManager::DownmixingConfig{
+            .user_labels = {kL2, kR2},
+            .substream_id_to_labels = {{kSubstreamId, {kL2, kR2}}},
+            .label_to_output_gain = {{kL2, kHalfGainDb},
+                                     {kR2, kDoubleGainDb}}}}});
+  ASSERT_THAT(downmixer_manager, IsOk());
+  LabelSamplesMap input_label_to_samples = {
+      {kL2, Int32ToInternalSampleType({1000})},
+      {kR2, Int32ToInternalSampleType({5000})},
+  };
+  constexpr int kTwoChannels = 2;
+  constexpr size_t kOneSamplePerFrame = 1;
+  absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data;
+  substream_id_to_substream_data.emplace(
+      kSubstreamId, SubstreamData{
+                        .substream_id = 0,
+                        .frames_in_obu = SubstreamFrames<InternalSampleType>(
+                            kTwoChannels, kOneSamplePerFrame),
+                        .frames_to_encode = SubstreamFrames<int32_t>(
+                            kTwoChannels, kOneSamplePerFrame),
+                    });
+
+  EXPECT_THAT(downmixer_manager->DownMixSamplesToSubstreams(
+                  kAudioElementId, kIrrelevantDownMixingParams,
+                  input_label_to_samples, substream_id_to_substream_data),
+              IsOk());
+
+  // Compare in the floating point domain to allow for some tolerance in the
+  // expected outputs.
+  ASSERT_TRUE(substream_id_to_substream_data.contains(kSubstreamId));
+  const auto& downmixed_frame =
+      substream_id_to_substream_data.at(kSubstreamId).frames_to_encode.Front();
+  ASSERT_THAT(downmixed_frame, Has2DShape(kTwoChannels, kOneSamplePerFrame));
+  constexpr double kEquivalenceTolerance = 1e-6;
+  // The downmixer divides by the output gains to compensate for the downstream
+  // decoder's multiplication.
+  // - L2 is divided by 0.5
+  // - R2 is divided by 2.0.
+  constexpr InternalSampleType kExpectedL2Sample =
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(2000);
+  constexpr InternalSampleType kExpectedR2Sample =
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(2500);
+  EXPECT_THAT(
+      Int32ToInternalSampleType2D(downmixed_frame),
+      ElementsAre(
+          ElementsAre(DoubleNear(kExpectedL2Sample, kEquivalenceTolerance)),
+          ElementsAre(DoubleNear(kExpectedR2Sample, kEquivalenceTolerance))));
 }
 
 TEST_F(DownMixingModuleTest, ReturnsErrorWhenMissingInputChannels) {
