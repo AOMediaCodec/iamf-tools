@@ -17,10 +17,12 @@ cc_test(
     srcs = ["wav_file_splicer_test.cc"],
     deps = [
         "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
+        "//iamf/cli/adm_to_user_metadata/adm:panner",
         "//iamf/cli/adm_to_user_metadata/adm:wav_file_splicer",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:ia_sequence_header",
         "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:string_view",
         "@googletest//:gtest_main",
     ],
