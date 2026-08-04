@@ -30,6 +30,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer.h"
+#include "iamf/cli/downmixer_factory.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/substream_frames.h"
@@ -42,6 +43,23 @@
 
 namespace iamf_tools {
 namespace {
+
+absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>
+CreateConfigMap(DecodedUleb128 id,
+                absl::flat_hash_set<ChannelLabel::Label> user_labels,
+                SubstreamIdLabelsMap substream_id_to_labels,
+                LabelGainMap label_to_output_gain = {}) {
+  auto down_mixers = *DownmixerFactory::CreateScalableChannelDownmixers(
+      user_labels, substream_id_to_labels);
+  DownmixerManager::DownmixingConfig out_config{
+      .down_mixers = std::move(down_mixers),
+      .substream_id_to_labels = substream_id_to_labels,
+      .label_to_output_gain = label_to_output_gain,
+  };
+  absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig> m;
+  m.emplace(id, std::move(out_config));
+  return m;
+}
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
@@ -93,12 +111,8 @@ TEST(Create, EmptyConfigMapIsOk) {
 
 TEST(Create, ValidWithTwoLayerStereo) {
   DecodedUleb128 id = 137;
-  DownmixerManager::DownmixingConfig config = {
-      .user_labels = {kL2, kR2},
-      .substream_id_to_labels = {{0, {kMono}}, {1, {kL2}}},
-      .label_to_output_gain = {}};
-  absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>
-      id_to_config_map = {{id, config}};
+  auto id_to_config_map =
+      CreateConfigMap(id, {kL2, kR2}, {{0, {kMono}}, {1, {kL2}}}, {});
   const auto downmixer_manager = DownmixerManager::Create(id_to_config_map);
   EXPECT_THAT(downmixer_manager, IsOk());
 }
@@ -195,58 +209,6 @@ class DownMixingModuleTest : public ::testing::Test {
       substream_id_to_expected_samples_;
 };
 
-TEST(Create, OneLayerStereoHasNoDownMixers) {
-  const absl::flat_hash_set<ChannelLabel::Label> kStereoInputLabels = {kL2,
-                                                                       kR2};
-  const SubstreamIdLabelsMap kOneLayerStereoOutputIdToLabels = {
-      {kStereoSubstreamId, {kL2, kR2}}};
-
-  auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = kStereoInputLabels,
-            .substream_id_to_labels = kOneLayerStereoOutputIdToLabels}}});
-  ASSERT_THAT(downmixer_manager, IsOk());
-
-  ExpectHasNumDownMixers(*downmixer_manager, 0);
-}
-
-TEST(Create, OneLayer7_1_4HasNoDownMixers) {
-  // Initialize arguments for single layer 7.1.4.
-  const absl::flat_hash_set<ChannelLabel::Label> k7_1_4InputLabels = {
-      kL7,   kR7,   kCentre, kLFE,  kLss7, kRss7,
-      kLrs7, kRrs7, kLtf4,   kRtf4, kLtb4, kRtb4};
-  const SubstreamIdLabelsMap kOneLayer7_1_4OutputIdToLabels = {
-      {0, {kL7, kR7}},     {1, {kLss7, kRss7}}, {2, {kLrs7, kRrs7}},
-      {3, {kLtf4, kRtf4}}, {4, {kLtb4, kRtb4}}, {5, {kCentre}},
-      {6, {kLFE}}};
-
-  auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = k7_1_4InputLabels,
-            .substream_id_to_labels = kOneLayer7_1_4OutputIdToLabels}}});
-  ASSERT_THAT(downmixer_manager, IsOk());
-
-  ExpectHasNumDownMixers(*downmixer_manager, 0);
-}
-
-TEST(Create, AmbisonicsHasNoDownMixers) {
-  const absl::flat_hash_set<ChannelLabel::Label> kAmbisonicsInputLabels = {
-      kA0, kA1, kA2, kA3};
-  const SubstreamIdLabelsMap kAmbisonicsOutputIdToLabels = {
-      {0, {kA0}}, {1, {kA1}}, {2, {kA2}}, {3, {kA3}}};
-
-  auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = kAmbisonicsInputLabels,
-            .substream_id_to_labels = kAmbisonicsOutputIdToLabels}}});
-  ASSERT_THAT(downmixer_manager, IsOk());
-
-  ExpectHasNumDownMixers(*downmixer_manager, 0);
-}
-
 TEST_F(DownMixingModuleTest, OneLayerStereo) {
   ConfigureInputChannel(kL2, {0, 1, 2, 3});
   ConfigureInputChannel(kR2, {100, 101, 102, 103});
@@ -255,10 +217,7 @@ TEST_F(DownMixingModuleTest, OneLayerStereo) {
   ConfigureOutputChannel({kL2, kR2}, {{0, 1, 2, 3}, {100, 101, 102, 103}});
 
   auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = input_labels_,
-            .substream_id_to_labels = substream_id_to_labels_}}});
+      CreateConfigMap(kAudioElementId, input_labels_, substream_id_to_labels_));
   ASSERT_THAT(downmixer_manager, IsOk());
   ExpectHasNumDownMixers(*downmixer_manager, 0);
 
@@ -273,12 +232,8 @@ TEST(DownMixSamplesToSubstreams, AppliesInverseOutputGainsToFramesToEncode) {
   const double kHalfGainDb = 20.0 * std::log10(0.5);
   const double kDoubleGainDb = 20.0 * std::log10(2.0);
   auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = {kL2, kR2},
-            .substream_id_to_labels = {{kSubstreamId, {kL2, kR2}}},
-            .label_to_output_gain = {{kL2, kHalfGainDb},
-                                     {kR2, kDoubleGainDb}}}}});
+      CreateConfigMap(kAudioElementId, {kL2, kR2}, {{kSubstreamId, {kL2, kR2}}},
+                      {{kL2, kHalfGainDb}, {kR2, kDoubleGainDb}}));
   ASSERT_THAT(downmixer_manager, IsOk());
   LabelSamplesMap input_label_to_samples = {
       {kL2, Int32ToInternalSampleType({1000})},
@@ -330,10 +285,7 @@ TEST_F(DownMixingModuleTest, ReturnsErrorWhenMissingInputChannels) {
   ConfigureOutputChannel({kL2}, {{0}});
   ConfigureOutputChannel({kMono}, {{0}});
   auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = input_labels_,
-            .substream_id_to_labels = substream_id_to_labels_}}});
+      CreateConfigMap(kAudioElementId, input_labels_, substream_id_to_labels_));
   ASSERT_THAT(downmixer_manager, IsOk());
 
   // Later, the L2 channel was missing.
@@ -349,11 +301,8 @@ TEST(DownMixSamplesToSubstreams, ReturnsErrorWhenAudioElementIdNotFound) {
                                                                        kR2};
   const SubstreamIdLabelsMap kOneLayerStereoOutputIdToLabels = {
       {kStereoSubstreamId, {kL2, kR2}}};
-  auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = kStereoInputLabels,
-            .substream_id_to_labels = kOneLayerStereoOutputIdToLabels}}});
+  auto downmixer_manager = DownmixerManager::Create(CreateConfigMap(
+      kAudioElementId, kStereoInputLabels, kOneLayerStereoOutputIdToLabels));
   ASSERT_THAT(downmixer_manager, IsOk());
   const DecodedUleb128 kUnconfiguredAudioElementId = kAudioElementId + 1;
   LabelSamplesMap empty_input_label_to_samples;
@@ -372,11 +321,8 @@ TEST(GetDownMixers, ReturnsErrorWhenAudioElementIdNotFound) {
                                                                        kR2};
   const SubstreamIdLabelsMap kOneLayerStereoOutputIdToLabels = {
       {kStereoSubstreamId, {kL2, kR2}}};
-  auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = kStereoInputLabels,
-            .substream_id_to_labels = kOneLayerStereoOutputIdToLabels}}});
+  auto downmixer_manager = DownmixerManager::Create(CreateConfigMap(
+      kAudioElementId, kStereoInputLabels, kOneLayerStereoOutputIdToLabels));
   ASSERT_THAT(downmixer_manager, IsOk());
   // Call with a non-existent audio element ID.
   const DecodedUleb128 kUnconfiguredAudioElementId = kAudioElementId + 1;
@@ -434,10 +380,7 @@ TEST_F(DownMixingModuleTest, SixLayer7_1_4) {
   ConfigureOutputChannel({kMono}, {{6130}});
 
   auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId,
-        DownmixerManager::DownmixingConfig{
-            .user_labels = input_labels_,
-            .substream_id_to_labels = substream_id_to_labels_}}});
+      CreateConfigMap(kAudioElementId, input_labels_, substream_id_to_labels_));
   ASSERT_THAT(downmixer_manager, IsOk());
   ExpectHasNumDownMixers(*downmixer_manager, 6);
 

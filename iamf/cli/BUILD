@@ -240,6 +240,22 @@ cc_library(
 )
 
 cc_library(
+    name = "downmixer_factory",
+    srcs = ["downmixer_factory.cc"],
+    hdrs = ["downmixer_factory.h"],
+    deps = [
+        ":audio_element_with_data",
+        ":channel_label",
+        ":downmixer",
+        "@abseil-cpp//absl/algorithm:container",
+        "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "downmixer_manager",
     srcs = ["downmixer_manager.cc"],
     hdrs = ["downmixer_manager.h"],
@@ -257,7 +273,6 @@ cc_library(
         "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/container:flat_hash_set",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",

@@ -15,16 +15,13 @@
 
 #include <cstdint>
 #include <list>
-#include <utility>
 #include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer.h"
 #include "iamf/cli/labeled_frame.h"
@@ -61,14 +58,8 @@ struct SubstreamData {
  */
 class DownmixerManager {
  public:
-  struct DownmixerMetadataForAudioElementId {
-    std::list<DownMixer> down_mixers;
-    SubstreamIdLabelsMap substream_id_to_labels;
-    LabelGainMap label_to_output_gain;
-  };
-
   struct DownmixingConfig {
-    absl::flat_hash_set<ChannelLabel::Label> user_labels;
+    std::list<DownMixer> down_mixers;
     SubstreamIdLabelsMap substream_id_to_labels;
     LabelGainMap label_to_output_gain;
   };
@@ -137,13 +128,13 @@ class DownmixerManager {
    *        to downmixer metadata.
    */
   explicit DownmixerManager(
-      absl::flat_hash_map<DecodedUleb128, DownmixerMetadataForAudioElementId>&&
-          audio_element_id_to_downmixer_metadata)
-      : audio_element_id_to_downmixer_metadata_(
-            std::move(audio_element_id_to_downmixer_metadata)) {}
+      const absl::flat_hash_map<DecodedUleb128, DownmixingConfig>&
+          audio_element_id_to_downmixing_config)
+      : audio_element_id_to_downmixing_config_(
+            audio_element_id_to_downmixing_config) {}
 
-  absl::flat_hash_map<DecodedUleb128, DownmixerMetadataForAudioElementId>
-      audio_element_id_to_downmixer_metadata_;
+  absl::flat_hash_map<DecodedUleb128, DownmixingConfig>
+      audio_element_id_to_downmixing_config_;
 };
 
 }  // namespace iamf_tools

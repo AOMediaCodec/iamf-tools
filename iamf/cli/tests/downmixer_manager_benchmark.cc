@@ -21,6 +21,7 @@
 #include "benchmark/benchmark.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/downmixer_factory.h"
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/substream_frames.h"
@@ -34,7 +35,6 @@ using enum ChannelLabel::Label;
 constexpr DecodedUleb128 kAudioElementId = 591;
 constexpr DownMixingParams kDownMixingParams = {
     .alpha = 1, .beta = .866, .gamma = .866, .delta = .866, .w = 0.25};
-constexpr InternalTimestamp kStartTimestamp = 0;
 
 static void ConfigureInputChannel(ChannelLabel::Label label, int num_ticks,
                                   LabelSamplesMap& input_label_to_samples) {
@@ -68,12 +68,16 @@ static void ConfigureOutputChannel(
 
 static DownmixerManager CreateDownmixerManager(
     const SubstreamIdLabelsMap& substream_id_to_labels) {
-  auto downmixer_manager = DownmixerManager::Create(
-      {{kAudioElementId, DownmixerManager::DownmixingConfig{
-                             .user_labels = {kL2, kR2},
-                             .substream_id_to_labels = substream_id_to_labels,
-                             .label_to_output_gain = {{kMono, 0}, {kR2, 0}},
-                         }}});
+  auto downmixers = DownmixerFactory::CreateScalableChannelDownmixers(
+      {kL2, kR2}, substream_id_to_labels);
+  ABSL_CHECK_OK(downmixers);
+  auto downmixer_manager = DownmixerManager::Create({{
+      kAudioElementId,
+      DownmixerManager::DownmixingConfig{
+          .down_mixers = *downmixers,
+          .substream_id_to_labels = substream_id_to_labels,
+          .label_to_output_gain = {{kMono, 0}, {kR2, 0}}},
+  }});
   ABSL_CHECK_OK(downmixer_manager);
 
   return *downmixer_manager;

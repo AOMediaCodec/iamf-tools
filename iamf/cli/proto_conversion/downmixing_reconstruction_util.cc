@@ -12,6 +12,9 @@
 
 #include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 
+#include <list>
+#include <utility>
+
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
@@ -20,6 +23,8 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer.h"
+#include "iamf/cli/downmixer_factory.h"
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
@@ -52,7 +57,15 @@ CreateAudioElementIdToDownmixingConfig(
     RETURN_IF_NOT_OK(ChannelLabelUtils::ConvertAndFillLabels(
         user_audio_frame_metadata.channel_metadatas(), user_channel_labels));
     const auto& audio_element_with_data = audio_element->second;
-    result[audio_element_id] = {user_channel_labels,
+    absl::StatusOr<std::list<DownMixer>> down_mixers =
+        DownmixerFactory::CreateScalableChannelDownmixers(
+            user_channel_labels,
+            audio_element_with_data.substream_id_to_labels);
+    if (!down_mixers.ok()) {
+      return down_mixers.status();
+    }
+
+    result[audio_element_id] = {*std::move(down_mixers),
                                 audio_element_with_data.substream_id_to_labels,
                                 audio_element_with_data.label_to_output_gain};
   }

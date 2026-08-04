@@ -300,11 +300,26 @@ cc_test(
 )
 
 cc_test(
+    name = "downmixer_factory_test",
+    srcs = ["downmixer_factory_test.cc"],
+    deps = [
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:downmixer_factory",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "downmixer_manager_benchmark",
     srcs = ["downmixer_manager_benchmark.cc"],
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
+        "//iamf/cli:downmixer_factory",
         "//iamf/cli:downmixer_manager",
         "//iamf/cli:labeled_frame",
         "//iamf/cli:substream_frames",
@@ -325,6 +340,7 @@ cc_test(
         "//iamf/cli:channel_label",
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:downmixer",
+        "//iamf/cli:downmixer_factory",
         "//iamf/cli:downmixer_manager",
         "//iamf/cli:labeled_frame",
         "//iamf/cli:substream_frames",
