@@ -351,18 +351,13 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   // Down-mix the audio samples and then demix audio samples while decoding
   // them. This is useful to create multi-layer audio elements and to determine
   // the recon gain parameters and to measuring loudness.
-  const absl::StatusOr<
+  absl::StatusOr<
       absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>>
       audio_element_id_to_downmixing_config =
           CreateAudioElementIdToDownmixingConfig(user_metadata,
                                                  *audio_elements);
   if (!audio_element_id_to_downmixing_config.ok()) {
     return audio_element_id_to_downmixing_config.status();
-  }
-  auto downmixer_manager =
-      DownmixerManager::Create(*audio_element_id_to_downmixing_config);
-  if (!downmixer_manager.ok()) {
-    return downmixer_manager.status();
   }
 
   const auto reconstruction_config =
@@ -375,7 +370,8 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   auto audio_frame_generator = AudioFrameGenerator::Create(
       user_metadata.audio_frame_metadata(),
       user_metadata.codec_config_metadata(), *audio_elements,
-      *downmixer_manager, **parameters_manager, *global_timing_module);
+      DownmixerManager::Make(*std::move(audio_element_id_to_downmixing_config)),
+      **parameters_manager, *global_timing_module);
   if (!audio_frame_generator.ok()) {
     return audio_frame_generator.status();
   }

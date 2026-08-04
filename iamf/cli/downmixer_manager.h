@@ -15,12 +15,13 @@
 
 #include <cstdint>
 #include <list>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer.h"
@@ -75,11 +76,10 @@ class DownmixerManager {
    * that audio element.
    *
    * \param id_to_config_map Map of Audio Element IDs to `DownmixingConfig`.
-   * \return `DownmixerManager` on success. A specific status on failure.
+   * \return `DownmixerManager` on success.
    */
-  static absl::StatusOr<DownmixerManager> Create(
-      const absl::flat_hash_map<DecodedUleb128, DownmixingConfig>&
-          id_to_config_map);
+  static std::unique_ptr<DownmixerManager> absl_nonnull Make(
+      absl::flat_hash_map<DecodedUleb128, DownmixingConfig> id_to_config_map);
 
   /*!\brief Creates a `DownmixerManager` for passthrough (no downmixing).
    *
@@ -87,9 +87,9 @@ class DownmixerManager {
    * downmixing is not needed, but we still need to manage substream metadata.
    *
    * \param audio_elements Map of Audio Element ID to `AudioElementWithData`.
-   * \return `DownmixerManager` on success. A specific status on failure.
+   * \return `DownmixerManager` on success.
    */
-  static absl::StatusOr<DownmixerManager> CreateForPassthrough(
+  static std::unique_ptr<DownmixerManager> absl_nonnull MakeForPassthrough(
       const DescriptorObus::AudioElementsById& audio_elements);
 
   /*!\brief Down-mixes samples of input channels to substreams.
@@ -128,10 +128,10 @@ class DownmixerManager {
    *        to downmixer metadata.
    */
   explicit DownmixerManager(
-      const absl::flat_hash_map<DecodedUleb128, DownmixingConfig>&
+      absl::flat_hash_map<DecodedUleb128, DownmixingConfig>
           audio_element_id_to_downmixing_config)
       : audio_element_id_to_downmixing_config_(
-            audio_element_id_to_downmixing_config) {}
+            std::move(audio_element_id_to_downmixing_config)) {}
 
   absl::flat_hash_map<DecodedUleb128, DownmixingConfig>
       audio_element_id_to_downmixing_config_;

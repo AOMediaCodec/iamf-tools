@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -66,21 +67,18 @@ static void ConfigureOutputChannel(
                     });
 }
 
-static DownmixerManager CreateDownmixerManager(
+static std::unique_ptr<DownmixerManager> CreateDownmixerManager(
     const SubstreamIdLabelsMap& substream_id_to_labels) {
   auto downmixers = DownmixerFactory::CreateScalableChannelDownmixers(
       {kL2, kR2}, substream_id_to_labels);
   ABSL_CHECK_OK(downmixers);
-  auto downmixer_manager = DownmixerManager::Create({{
-      kAudioElementId,
-      DownmixerManager::DownmixingConfig{
-          .down_mixers = *downmixers,
-          .substream_id_to_labels = substream_id_to_labels,
-          .label_to_output_gain = {{kMono, 0}, {kR2, 0}}},
-  }});
-  ABSL_CHECK_OK(downmixer_manager);
-
-  return *downmixer_manager;
+  absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig> map;
+  map.emplace(kAudioElementId,
+              DownmixerManager::DownmixingConfig{
+                  .down_mixers = *std::move(downmixers),
+                  .substream_id_to_labels = substream_id_to_labels,
+                  .label_to_output_gain = {{kMono, 0}, {kR2, 0}}});
+  return DownmixerManager::Make(std::move(map));
 }
 
 // Currently benchmarking down-mixing from stereo to mono.
@@ -104,7 +102,7 @@ static void BM_DownMixing(benchmark::State& state) {
 
   // Measure the calls to `DownmixerManager::DownMixSamplesToSubstreams()`.
   for (auto _ : state) {
-    auto status = downmixer_manager.DownMixSamplesToSubstreams(
+    auto status = downmixer_manager->DownMixSamplesToSubstreams(
         kAudioElementId, kDownMixingParams, input_label_to_samples,
         substream_id_to_substream_data);
 

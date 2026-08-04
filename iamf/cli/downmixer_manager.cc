@@ -15,12 +15,15 @@
 #include <cmath>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <utility>
 
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
@@ -57,13 +60,13 @@ absl::Status GetDownmixerMetadata(
 
 }  // namespace
 
-absl::StatusOr<DownmixerManager> DownmixerManager::Create(
-    const absl::flat_hash_map<DecodedUleb128, DownmixingConfig>&
-        audio_element_id_to_downmixing_config) {
-  return DownmixerManager(audio_element_id_to_downmixing_config);
+std::unique_ptr<DownmixerManager> absl_nonnull DownmixerManager::Make(
+    absl::flat_hash_map<DecodedUleb128, DownmixingConfig> id_to_config_map) {
+  return absl::WrapUnique(new DownmixerManager(std::move(id_to_config_map)));
 }
 
-absl::StatusOr<DownmixerManager> DownmixerManager::CreateForPassthrough(
+std::unique_ptr<DownmixerManager> absl_nonnull
+DownmixerManager::MakeForPassthrough(
     const DescriptorObus::AudioElementsById& audio_elements) {
   absl::flat_hash_map<DecodedUleb128, DownmixingConfig>
       audio_element_id_to_downmixing_config;
@@ -83,7 +86,7 @@ absl::StatusOr<DownmixerManager> DownmixerManager::CreateForPassthrough(
         });
   }
 
-  return DownmixerManager(audio_element_id_to_downmixing_config);
+  return Make(std::move(audio_element_id_to_downmixing_config));
 }
 
 absl::Status DownmixerManager::DownMixSamplesToSubstreams(

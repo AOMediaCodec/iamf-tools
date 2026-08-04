@@ -368,6 +368,7 @@ cc_test(
         "//iamf/cli:labeled_frame",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
+        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
     ],

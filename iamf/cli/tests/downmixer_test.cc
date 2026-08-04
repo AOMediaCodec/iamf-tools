@@ -14,6 +14,7 @@
 
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -140,7 +141,7 @@ TEST(DownMixerTest, T2ToTf2DownMixer) {
 }
 
 struct DownMixerMissingLabelTestCase {
-  DownMixer down_mixer;
+  absl::Status (*down_mixer)(const DownMixingParams&, LabelSamplesMap&);
   DownMixingParams params;
   std::vector<ChannelLabel::Label> required_labels;
 };

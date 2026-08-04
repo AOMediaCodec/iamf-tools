@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -49,8 +50,9 @@ CreateConfigMap(DecodedUleb128 id,
                 absl::flat_hash_set<ChannelLabel::Label> user_labels,
                 SubstreamIdLabelsMap substream_id_to_labels,
                 LabelGainMap label_to_output_gain = {}) {
-  auto down_mixers = *DownmixerFactory::CreateScalableChannelDownmixers(
-      user_labels, substream_id_to_labels);
+  auto down_mixers =
+      *std::move(DownmixerFactory::CreateScalableChannelDownmixers(
+          user_labels, substream_id_to_labels));
   DownmixerManager::DownmixingConfig out_config{
       .down_mixers = std::move(down_mixers),
       .substream_id_to_labels = substream_id_to_labels,
@@ -67,6 +69,7 @@ using ::testing::DoubleNear;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Not;
+using ::testing::NotNull;
 using ::testing::Pointee;
 using ::testing::Pointwise;
 
@@ -102,19 +105,21 @@ void InitAudioElementWithLabelsAndScalableChannelLayout(
                          });
 }
 
-TEST(Create, EmptyConfigMapIsOk) {
+TEST(Make, EmptyConfigMapIsOk) {
   absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>
       id_to_config_map;
-  const auto downmixer_manager = DownmixerManager::Create(id_to_config_map);
-  EXPECT_THAT(downmixer_manager, IsOk());
+  const auto downmixer_manager =
+      DownmixerManager::Make(std::move(id_to_config_map));
+  EXPECT_THAT(downmixer_manager, NotNull());
 }
 
-TEST(Create, ValidWithTwoLayerStereo) {
+TEST(Make, ValidWithTwoLayerStereo) {
   DecodedUleb128 id = 137;
   auto id_to_config_map =
       CreateConfigMap(id, {kL2, kR2}, {{0, {kMono}}, {1, {kL2}}}, {});
-  const auto downmixer_manager = DownmixerManager::Create(id_to_config_map);
-  EXPECT_THAT(downmixer_manager, IsOk());
+  const auto downmixer_manager =
+      DownmixerManager::Make(std::move(id_to_config_map));
+  EXPECT_THAT(downmixer_manager, NotNull());
 }
 
 const ScalableChannelLayoutConfig kOneLayerStereoConfig = {
@@ -130,23 +135,24 @@ const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
         {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
          .substream_count = 1}}};
 
-void ExpectHasNumDownMixers(const DownmixerManager& downmixer_manager,
-                            int expected_number_of_down_mixers) {
+void ExpectHasNumDownMixers(
+    const std::unique_ptr<DownmixerManager>& downmixer_manager,
+    int expected_number_of_down_mixers) {
   absl::StatusOr<const std::list<DownMixer>*> down_mixers =
-      downmixer_manager.GetDownMixers(kAudioElementId);
+      downmixer_manager->GetDownMixers(kAudioElementId);
   ASSERT_THAT(down_mixers, IsOk());
   EXPECT_EQ((*down_mixers)->size(), expected_number_of_down_mixers);
 }
 
 void DownMixAndExpectOutput(
-    const DownmixerManager& downmixer_manager,
+    const std::unique_ptr<DownmixerManager>& downmixer_manager,
     const DownMixingParams& down_mixing_params,
     const absl::flat_hash_map<uint32_t, std::vector<std::vector<int32_t>>>&
         substream_id_to_expected_samples,
     LabelSamplesMap input_label_to_samples,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data) {
-  EXPECT_THAT(downmixer_manager.DownMixSamplesToSubstreams(
+  EXPECT_THAT(downmixer_manager->DownMixSamplesToSubstreams(
                   kAudioElementId, down_mixing_params, input_label_to_samples,
                   substream_id_to_substream_data),
               IsOk());
@@ -216,12 +222,12 @@ TEST_F(DownMixingModuleTest, OneLayerStereo) {
   // the original input.
   ConfigureOutputChannel({kL2, kR2}, {{0, 1, 2, 3}, {100, 101, 102, 103}});
 
-  auto downmixer_manager = DownmixerManager::Create(
+  auto downmixer_manager = DownmixerManager::Make(
       CreateConfigMap(kAudioElementId, input_labels_, substream_id_to_labels_));
-  ASSERT_THAT(downmixer_manager, IsOk());
-  ExpectHasNumDownMixers(*downmixer_manager, 0);
+  ASSERT_THAT(downmixer_manager, NotNull());
+  ExpectHasNumDownMixers(downmixer_manager, 0);
 
-  DownMixAndExpectOutput(*downmixer_manager, kIrrelevantDownMixingParams,
+  DownMixAndExpectOutput(downmixer_manager, kIrrelevantDownMixingParams,
                          substream_id_to_expected_samples_,
                          input_label_to_samples_,
                          substream_id_to_substream_data_);
@@ -231,10 +237,10 @@ TEST(DownMixSamplesToSubstreams, AppliesInverseOutputGainsToFramesToEncode) {
   const DecodedUleb128 kSubstreamId = 0;
   const double kHalfGainDb = 20.0 * std::log10(0.5);
   const double kDoubleGainDb = 20.0 * std::log10(2.0);
-  auto downmixer_manager = DownmixerManager::Create(
+  auto downmixer_manager = DownmixerManager::Make(
       CreateConfigMap(kAudioElementId, {kL2, kR2}, {{kSubstreamId, {kL2, kR2}}},
                       {{kL2, kHalfGainDb}, {kR2, kDoubleGainDb}}));
-  ASSERT_THAT(downmixer_manager, IsOk());
+  ASSERT_THAT(downmixer_manager, NotNull());
   LabelSamplesMap input_label_to_samples = {
       {kL2, Int32ToInternalSampleType({1000})},
       {kR2, Int32ToInternalSampleType({5000})},
@@ -284,9 +290,9 @@ TEST_F(DownMixingModuleTest, ReturnsErrorWhenMissingInputChannels) {
   ConfigureInputChannel(kR2, {0});
   ConfigureOutputChannel({kL2}, {{0}});
   ConfigureOutputChannel({kMono}, {{0}});
-  auto downmixer_manager = DownmixerManager::Create(
+  auto downmixer_manager = DownmixerManager::Make(
       CreateConfigMap(kAudioElementId, input_labels_, substream_id_to_labels_));
-  ASSERT_THAT(downmixer_manager, IsOk());
+  ASSERT_THAT(downmixer_manager, NotNull());
 
   // Later, the L2 channel was missing.
   input_label_to_samples_.erase(kL2);
@@ -301,9 +307,9 @@ TEST(DownMixSamplesToSubstreams, ReturnsErrorWhenAudioElementIdNotFound) {
                                                                        kR2};
   const SubstreamIdLabelsMap kOneLayerStereoOutputIdToLabels = {
       {kStereoSubstreamId, {kL2, kR2}}};
-  auto downmixer_manager = DownmixerManager::Create(CreateConfigMap(
+  auto downmixer_manager = DownmixerManager::Make(CreateConfigMap(
       kAudioElementId, kStereoInputLabels, kOneLayerStereoOutputIdToLabels));
-  ASSERT_THAT(downmixer_manager, IsOk());
+  ASSERT_THAT(downmixer_manager, NotNull());
   const DecodedUleb128 kUnconfiguredAudioElementId = kAudioElementId + 1;
   LabelSamplesMap empty_input_label_to_samples;
   absl::flat_hash_map<uint32_t, SubstreamData>
@@ -321,9 +327,9 @@ TEST(GetDownMixers, ReturnsErrorWhenAudioElementIdNotFound) {
                                                                        kR2};
   const SubstreamIdLabelsMap kOneLayerStereoOutputIdToLabels = {
       {kStereoSubstreamId, {kL2, kR2}}};
-  auto downmixer_manager = DownmixerManager::Create(CreateConfigMap(
+  auto downmixer_manager = DownmixerManager::Make(CreateConfigMap(
       kAudioElementId, kStereoInputLabels, kOneLayerStereoOutputIdToLabels));
-  ASSERT_THAT(downmixer_manager, IsOk());
+  ASSERT_THAT(downmixer_manager, NotNull());
   // Call with a non-existent audio element ID.
   const DecodedUleb128 kUnconfiguredAudioElementId = kAudioElementId + 1;
 
@@ -379,37 +385,36 @@ TEST_F(DownMixingModuleTest, SixLayer7_1_4) {
   // M = (L2 - 6 dB) + (R2 - 6 dB).
   ConfigureOutputChannel({kMono}, {{6130}});
 
-  auto downmixer_manager = DownmixerManager::Create(
+  auto downmixer_manager = DownmixerManager::Make(
       CreateConfigMap(kAudioElementId, input_labels_, substream_id_to_labels_));
-  ASSERT_THAT(downmixer_manager, IsOk());
-  ExpectHasNumDownMixers(*downmixer_manager, 6);
+  ASSERT_THAT(downmixer_manager, NotNull());
+  ExpectHasNumDownMixers(downmixer_manager, 6);
 
   DownMixAndExpectOutput(
-      *downmixer_manager,
+      downmixer_manager,
       {.alpha = 1, .beta = .866, .gamma = .866, .delta = .866, .w = 0.25},
       substream_id_to_expected_samples_, input_label_to_samples_,
       substream_id_to_substream_data_);
 }
 
-TEST(CreateForPassthrough, EmptyMapIsOk) {
+TEST(MakeForPassthrough, EmptyMapIsOk) {
   DescriptorObus::AudioElementsById audio_elements;
 
   const auto downmixer_manager =
-      DownmixerManager::CreateForPassthrough(audio_elements);
+      DownmixerManager::MakeForPassthrough(audio_elements);
 
-  EXPECT_THAT(downmixer_manager, IsOk());
+  EXPECT_THAT(downmixer_manager, NotNull());
 }
 
-TEST(CreateForPassthrough, TwoLayerStereoHasNoDownMixers) {
+TEST(MakeForPassthrough, TwoLayerStereoHasNoDownMixers) {
   const SubstreamIdLabelsMap substream_id_to_labels = {{0, {kMono}},
                                                        {1, {kL2}}};
   DescriptorObus::AudioElementsById audio_elements;
   InitAudioElementWithLabelsAndScalableChannelLayout(
       substream_id_to_labels, kTwoLayerStereoConfig, audio_elements);
 
-  auto downmixer_manager =
-      DownmixerManager::CreateForPassthrough(audio_elements);
-  ASSERT_THAT(downmixer_manager, IsOk());
+  auto downmixer_manager = DownmixerManager::MakeForPassthrough(audio_elements);
+  ASSERT_THAT(downmixer_manager, NotNull());
 
   auto down_mixers = downmixer_manager->GetDownMixers(kAudioElementId);
   EXPECT_THAT(down_mixers, IsOkAndHolds(Pointee(IsEmpty())));

@@ -13,8 +13,7 @@
 #ifndef CLI_DOWNMIXER_H_
 #define CLI_DOWNMIXER_H_
 
-#include <functional>
-
+#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -37,8 +36,8 @@ namespace iamf_tools {
  *        down-mixed channels are inserted into the map.
  * \return `OkStatus()` on success, or a specific status on failure.
  */
-using DownMixer =
-    std::function<absl::Status(const DownMixingParams&, LabelSamplesMap&)>;
+using DownMixer = absl::AnyInvocable<absl::Status(const DownMixingParams&,
+                                                  LabelSamplesMap&) const>;
 
 /*!\brief Down-mixes 7 surround channels (S7) to 5 surround channels (S5).
  *

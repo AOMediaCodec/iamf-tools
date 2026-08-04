@@ -648,16 +648,17 @@ AudioFrameGenerator::Create(
     const ::google::protobuf::RepeatedPtrField<
         iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadatas,
     const DescriptorObus::AudioElementsById& audio_elements,
-    const DownmixerManager& downmixer_manager,
+    std::unique_ptr<const DownmixerManager> absl_nonnull downmixer_manager,
     ParametersManager& parameters_manager,
     GlobalTimingModule& global_timing_module) {
+  ABSL_CHECK_NE(downmixer_manager, nullptr);
   if (audio_frame_metadatas.empty()) {
     // Ok, nothing will be generated. This state helps clients handle trivial IA
     // Sequences.
-    return absl::WrapUnique(
-        new AudioFrameGenerator({}, {}, downmixer_manager, parameters_manager,
-                                global_timing_module, {}, {}, {},
-                                /*max_codec_delay=*/0));
+    return absl::WrapUnique(new AudioFrameGenerator(
+        {}, {}, std::move(downmixer_manager), parameters_manager,
+        global_timing_module, {}, {}, {},
+        /*max_codec_delay=*/0));
   }
 
   // Mapping from Codec Config ID to additional codec config metadata used
@@ -746,7 +747,7 @@ AudioFrameGenerator::Create(
     // Validate that a `DemixingParamDefinition` is available if down-mixing
     // is needed.
     absl::StatusOr<const std::list<DownMixer>*> down_mixers =
-        downmixer_manager.GetDownMixers(audio_element_id);
+        downmixer_manager->GetDownMixers(audio_element_id);
     if (!down_mixers.ok()) {
       return down_mixers.status();
     }
@@ -784,7 +785,7 @@ AudioFrameGenerator::Create(
   }
 
   return absl::WrapUnique(new AudioFrameGenerator(
-      audio_element_id_to_labels, audio_elements, downmixer_manager,
+      audio_element_id_to_labels, audio_elements, std::move(downmixer_manager),
       parameters_manager, global_timing_module,
       std::move(substream_id_to_encoder),
       std::move(substream_id_to_substream_data),
@@ -850,7 +851,7 @@ absl::Status AudioFrameGenerator::AddSamples(
   const auto& audio_element_with_data = audio_element_iter->second;
 
   RETURN_IF_NOT_OK(MaybeEncodeFramesForAudioElement(
-      audio_element_id, audio_element_with_data, downmixer_manager_,
+      audio_element_id, audio_element_with_data, *downmixer_manager_,
       audio_element_labels_iter->second, labeled_samples,
       substream_id_to_trimming_state_, parameters_manager_,
       substream_id_to_encoder_, substream_id_to_substream_data_,
@@ -884,7 +885,7 @@ absl::Status AudioFrameGenerator::OutputFrames(
     for (const auto& [audio_element_id, audio_element_with_data] :
          audio_elements_) {
       RETURN_IF_NOT_OK(MaybeEncodeFramesForAudioElement(
-          audio_element_id, audio_element_with_data, downmixer_manager_,
+          audio_element_id, audio_element_with_data, *downmixer_manager_,
           audio_element_id_to_labels_.at(audio_element_id),
           id_to_labeled_samples_[audio_element_id],
           substream_id_to_trimming_state_, parameters_manager_,

@@ -92,11 +92,12 @@ void InitializeAudioFrameGenerator(
   ABSL_CHECK_OK(
       audio_element_generator.Generate(codec_config_obus, audio_elements));
 
-  const auto downmixing_config =
+  auto downmixing_config =
       CreateAudioElementIdToDownmixingConfig(user_metadata, audio_elements);
   ABSL_CHECK_OK(downmixing_config);
-  auto downmixer_manager = DownmixerManager::Create(*downmixing_config);
-  ABSL_CHECK_OK(downmixer_manager);
+  auto downmixer_manager =
+      DownmixerManager::Make(*std::move(downmixing_config));
+  ABSL_CHECK_NE(downmixer_manager, nullptr);
   global_timing_module =
       GlobalTimingModule::Create(audio_elements, param_definitions);
   ABSL_CHECK_NE(global_timing_module, nullptr);
@@ -108,8 +109,8 @@ void InitializeAudioFrameGenerator(
   // Create an audio frame generator.
   auto temp_audio_frame_generator = AudioFrameGenerator::Create(
       user_metadata.audio_frame_metadata(),
-      user_metadata.codec_config_metadata(), audio_elements, *downmixer_manager,
-      *parameters_manager, *global_timing_module);
+      user_metadata.codec_config_metadata(), audio_elements,
+      std::move(downmixer_manager), *parameters_manager, *global_timing_module);
   ABSL_CHECK_OK(temp_audio_frame_generator);
   audio_frame_generator = std::move(*temp_audio_frame_generator);
 }
