@@ -35,6 +35,13 @@ constexpr uint32_t kMaxInputTicks = 4;
 constexpr uint32_t kMaxOutputTicks = 4;
 constexpr size_t kNumChannels = 2;
 
+TEST(GetNumChannels, ReturnsNumChannelsFromConstructor) {
+  MockSampleProcessor mock_processor(kMaxInputTicks, kNumChannels,
+                                     kMaxOutputTicks);
+
+  EXPECT_EQ(mock_processor.GetNumChannels(), kNumChannels);
+}
+
 TEST(GetOutputSamplesAsSpan, ReturnsEmptyAfterConstruction) {
   MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
                                      kMaxOutputTicks);
