@@ -55,6 +55,9 @@ constexpr size_t kMaxNumSamplesPerFrame = kSizeToFlush / 2;
 // Error tolerance set to the minimum precision allowed by ADM file to describe
 // timing related parameters.
 constexpr double kErrorTolerance = 1e-5;
+// Floating-point duration math can cause per-segment sample accumulation to
+// round down, leaving at most one unread sample.
+constexpr int64_t kMaxSpliceRoundingDriftSamples = 1;
 // Offset for data chunk within the extensible format wav file.
 constexpr int32_t kExtensibleOffset = 72;
 // Standard size for a wav header.
@@ -343,8 +346,8 @@ absl::Status ConvertFromObjectsTo3OA(
   double total_processed_duration = 0.0;
   // Holds the number of samples left over from the previous segment due to
   // rounding error.
-  double leftover_sample_duration = 0.0f;
-  int num_samples_count = 0;
+  double leftover_sample_duration = 0.0;
+  int64_t num_samples_count = 0;
 
   // Initialize segment duration for all channels with the corresponding first
   // audio block duration.
@@ -408,14 +411,20 @@ absl::Status ConvertFromObjectsTo3OA(
           leftover_sample_duration;
       // Length of the processed audio segment. Samples are rounded off for the
       // current segment.
-      const auto processed_seg_length = std::floor(this_seg_length);
-      leftover_sample_duration = this_seg_length - processed_seg_length;
+      const auto processed_seg_length =
+          static_cast<int64_t>(std::floor(this_seg_length));
+      leftover_sample_duration =
+          this_seg_length - static_cast<double>(processed_seg_length);
 
       num_samples_count += processed_seg_length;
 
-      ABSL_CHECK_LE(processed_seg_length, *total_samples_per_channel)
-          << "Samples in segment should not be greater than actual samples in "
-             "the wav file";
+      if (processed_seg_length >
+          static_cast<int64_t>(*total_samples_per_channel)) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Segment length (", processed_seg_length,
+            ") should not be greater than the actual samples per channel (",
+            *total_samples_per_channel, ") in the wav file."));
+      }
 
       RETURN_IF_NOT_OK(SpliceWavSegment(input_stream, processed_seg_length,
                                         total_channel_size, samples_buffer,
@@ -431,10 +440,39 @@ absl::Status ConvertFromObjectsTo3OA(
                             audio_block_indices);
   }
 
-  ABSL_CHECK_LE(fabs(total_processed_duration - total_duration),
-                kErrorTolerance);
-  ABSL_CHECK_LE(fabs(num_samples_count - *total_samples_per_channel),
-                kErrorTolerance);
+  if (fabs(total_processed_duration - total_duration) > kErrorTolerance) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Total processed duration (", total_processed_duration,
+                     ") does not reconcile with the wav file duration (",
+                     total_duration, ")."));
+  }
+  // Reconcile the spliced sample count. A shortfall within
+  // `kMaxSpliceRoundingDriftSamples` is caused by benign floating-point
+  // rounding; splice the unread remaining sample through the panner to keep
+  // output sample-exact.
+  const int64_t sample_count_drift =
+      static_cast<int64_t>(*total_samples_per_channel) - num_samples_count;
+  if (sample_count_drift < 0 ||
+      sample_count_drift > kMaxSpliceRoundingDriftSamples) {
+    return absl::InternalError(absl::StrCat(
+        "Spliced sample count (", num_samples_count,
+        ") does not reconcile with the samples per channel in the wav file (",
+        *total_samples_per_channel, ")."));
+  }
+  if (sample_count_drift > 0) {
+    {
+      auto wav_writer = WavWriter::Create(
+          input_file.string(), wav_file_fmt.num_channels,
+          wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample,
+          kMaxNumSamplesPerFrame);
+      RETURN_IF_NOT_OK(SpliceWavSegment(input_stream, sample_count_drift,
+                                        total_channel_size, samples_buffer,
+                                        *wav_writer));
+    }
+    RETURN_IF_NOT_OK(PanObjectsToAmbisonics(input_file.string(), input_adm,
+                                            audio_block_indices,
+                                            *output_wav_writer));
+  }
 
   // Delete the temporary files.
   if (!std::filesystem::remove(input_file)) {
