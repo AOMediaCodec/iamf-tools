@@ -30,6 +30,8 @@
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
+ABSL_POINTERS_DEFAULT_NONNULL
+
 namespace iamf_tools {
 
 struct SubstreamData {
@@ -78,7 +80,7 @@ class DownmixerManager {
    * \param id_to_config_map Map of Audio Element IDs to `DownmixingConfig`.
    * \return `DownmixerManager` on success.
    */
-  static std::unique_ptr<DownmixerManager> absl_nonnull Make(
+  static std::unique_ptr<DownmixerManager> Make(
       absl::flat_hash_map<DecodedUleb128, DownmixingConfig> id_to_config_map);
 
   /*!\brief Creates a `DownmixerManager` for passthrough (no downmixing).
@@ -89,7 +91,7 @@ class DownmixerManager {
    * \param audio_elements Map of Audio Element ID to `AudioElementWithData`.
    * \return `DownmixerManager` on success.
    */
-  static std::unique_ptr<DownmixerManager> absl_nonnull MakeForPassthrough(
+  static std::unique_ptr<DownmixerManager> MakeForPassthrough(
       const DescriptorObus::AudioElementsById& audio_elements);
 
   /*!\brief Down-mixes samples of input channels to substreams.
@@ -110,14 +112,13 @@ class DownmixerManager {
       absl::flat_hash_map<uint32_t, SubstreamData>&
           substream_id_to_substream_data) const;
 
-  /*!\brief Gets the down-mixers associated with an Audio Element ID.
+  /*!\brief Returns whether there are down-mixers for an Audio Element ID.
    *
    * \param audio_element_id Audio Element ID.
-   * \return Pointer to the list of down-mixers on success. A specific status
-   *         on failure.
+   * \return `true` if there are down-mixers for an audio element, `false` if
+   *     there are no associated down-mixers or the audio element ID is unknown.
    */
-  absl::StatusOr<const std::list<DownMixer>* absl_nonnull> GetDownMixers(
-      DecodedUleb128 audio_element_id) const;
+  bool HasDownMixers(DecodedUleb128 audio_element_id) const;
 
  private:
   /*!\brief Private constructor.

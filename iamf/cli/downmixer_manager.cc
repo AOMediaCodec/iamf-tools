@@ -23,50 +23,25 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
-#include "iamf/cli/downmixer.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
+ABSL_POINTERS_DEFAULT_NONNULL
+
 namespace iamf_tools {
 
-namespace {
-
-using enum ChannelLabel::Label;
-
-absl::Status GetDownmixerMetadata(
-    const DecodedUleb128 audio_element_id,
-    const absl::flat_hash_map<DecodedUleb128,
-                              DownmixerManager::DownmixingConfig>&
-        audio_element_id_to_downmixer_metadata,
-    const DownmixerManager::DownmixingConfig*& downmixer_metadata) {
-  const auto iter =
-      audio_element_id_to_downmixer_metadata.find(audio_element_id);
-  if (iter == audio_element_id_to_downmixer_metadata.end()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Downmixing metadata for Audio Element ID= ", audio_element_id,
-        " not found"));
-  }
-  downmixer_metadata = &iter->second;
-  return absl::OkStatus();
-}
-
-}  // namespace
-
-std::unique_ptr<DownmixerManager> absl_nonnull DownmixerManager::Make(
+std::unique_ptr<DownmixerManager> DownmixerManager::Make(
     absl::flat_hash_map<DecodedUleb128, DownmixingConfig> id_to_config_map) {
   return absl::WrapUnique(new DownmixerManager(std::move(id_to_config_map)));
 }
 
-std::unique_ptr<DownmixerManager> absl_nonnull
-DownmixerManager::MakeForPassthrough(
+std::unique_ptr<DownmixerManager> DownmixerManager::MakeForPassthrough(
     const DescriptorObus::AudioElementsById& audio_elements) {
   absl::flat_hash_map<DecodedUleb128, DownmixingConfig>
       audio_element_id_to_downmixing_config;
@@ -94,18 +69,20 @@ absl::Status DownmixerManager::DownMixSamplesToSubstreams(
     LabelSamplesMap& input_label_to_samples,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data) const {
-  const DownmixingConfig* downmixer_metadata = nullptr;
-  RETURN_IF_NOT_OK(GetDownmixerMetadata(audio_element_id,
-                                        audio_element_id_to_downmixing_config_,
-                                        downmixer_metadata));
+  auto iter = audio_element_id_to_downmixing_config_.find(audio_element_id);
+  if (iter == audio_element_id_to_downmixing_config_.end()) {
+    return absl::NotFoundError(
+        absl::StrCat("Audio element ID not found: ", audio_element_id));
+  }
+  const DownmixingConfig& downmixer_metadata = iter->second;
 
   // First perform all the down mixing.
-  for (const auto& down_mixer : downmixer_metadata->down_mixers) {
+  for (const auto& down_mixer : downmixer_metadata.down_mixers) {
     RETURN_IF_NOT_OK(down_mixer(down_mixing_params, input_label_to_samples));
   }
 
   for (const auto& [substream_id, output_channel_labels] :
-       downmixer_metadata->substream_id_to_labels) {
+       downmixer_metadata.substream_id_to_labels) {
     // Find the `SubstreamData` with this `substream_id`.
     auto substream_data_iter =
         substream_id_to_substream_data.find(substream_id);
@@ -119,9 +96,9 @@ absl::Status DownmixerManager::DownMixSamplesToSubstreams(
     for (const auto& output_channel_label : output_channel_labels) {
       // Compute and store the linear output gains for this channel.
       const auto gain_iter =
-          downmixer_metadata->label_to_output_gain.find(output_channel_label);
+          downmixer_metadata.label_to_output_gain.find(output_channel_label);
       const double output_gain_linear =
-          (gain_iter == downmixer_metadata->label_to_output_gain.end())
+          (gain_iter == downmixer_metadata.label_to_output_gain.end())
               ? 1.0
               : std::pow(10.0, gain_iter->second / 20.0);
       auto samples_iter = input_label_to_samples.find(output_channel_label);
@@ -150,13 +127,12 @@ absl::Status DownmixerManager::DownMixSamplesToSubstreams(
   return absl::OkStatus();
 }
 
-absl::StatusOr<const std::list<DownMixer>* absl_nonnull>
-DownmixerManager::GetDownMixers(DecodedUleb128 audio_element_id) const {
-  const DownmixingConfig* downmixer_metadata = nullptr;
-  RETURN_IF_NOT_OK(GetDownmixerMetadata(audio_element_id,
-                                        audio_element_id_to_downmixing_config_,
-                                        downmixer_metadata));
-  return &downmixer_metadata->down_mixers;
+bool DownmixerManager::HasDownMixers(DecodedUleb128 audio_element_id) const {
+  auto iter = audio_element_id_to_downmixing_config_.find(audio_element_id);
+  if (iter == audio_element_id_to_downmixing_config_.end()) {
+    return false;
+  }
+  return !iter->second.down_mixers.empty();
 }
 
 }  // namespace iamf_tools

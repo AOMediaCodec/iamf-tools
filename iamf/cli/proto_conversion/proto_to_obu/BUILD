@@ -68,7 +68,6 @@ cc_library(
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:descriptor_obus",
-        "//iamf/cli:downmixer",
         "//iamf/cli:downmixer_manager",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:labeled_frame",

@@ -262,7 +262,6 @@ cc_library(
     hdrs = ["downmixer_manager.h"],
     deps = [
         ":audio_element_with_data",
-        ":channel_label",
         ":descriptor_obus",
         ":downmixer",
         ":labeled_frame",
@@ -276,7 +275,6 @@ cc_library(
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
     ],
 )
