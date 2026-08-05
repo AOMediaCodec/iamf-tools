@@ -110,7 +110,7 @@ class DownmixerManager {
       const DownMixingParams& down_mixing_params,
       LabelSamplesMap& input_label_to_samples,
       absl::flat_hash_map<uint32_t, SubstreamData>&
-          substream_id_to_substream_data) const;
+          substream_id_to_substream_data);
 
   /*!\brief Returns whether there are down-mixers for an Audio Element ID.
    *

@@ -36,8 +36,8 @@ namespace iamf_tools {
  *        down-mixed channels are inserted into the map.
  * \return `OkStatus()` on success, or a specific status on failure.
  */
-using DownMixer = absl::AnyInvocable<absl::Status(const DownMixingParams&,
-                                                  LabelSamplesMap&) const>;
+using DownMixer =
+    absl::AnyInvocable<absl::Status(const DownMixingParams&, LabelSamplesMap&)>;
 
 /*!\brief Down-mixes 7 surround channels (S7) to 5 surround channels (S5).
  *

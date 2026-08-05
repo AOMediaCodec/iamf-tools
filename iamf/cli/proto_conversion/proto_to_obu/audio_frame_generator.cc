@@ -273,7 +273,7 @@ bool SamplesReadyForAudioElement(const LabelSamplesMap& label_to_samples,
 }
 
 absl::Status DownMixSamples(const DecodedUleb128 audio_element_id,
-                            const DownmixerManager& downmixer_manager,
+                            DownmixerManager& downmixer_manager,
                             LabelSamplesMap& label_to_samples,
                             ParametersManager& parameters_manager,
                             absl::flat_hash_map<uint32_t, SubstreamData>&
@@ -295,20 +295,17 @@ absl::Status DownMixSamples(const DecodedUleb128 audio_element_id,
   // Down-mix OBU-aligned samples from input channels to substreams. May
   // generate intermediate channels (e.g. L3 on the way of down-mixing L7 to L2)
   // and expand `label_to_samples`.
-  RETURN_IF_NOT_OK(downmixer_manager.DownMixSamplesToSubstreams(
+  return downmixer_manager.DownMixSamplesToSubstreams(
       audio_element_id, down_mixing_params, label_to_samples,
-      substream_id_to_substream_data));
-
-  return absl::OkStatus();
+      substream_id_to_substream_data);
 }
 
 // Gets the next frame of samples for all streams, either from "real" samples
 // read from a file or from padding.
 absl::Status GetNextFrameSubstreamData(
-    const DecodedUleb128 audio_element_id,
-    const DownmixerManager& downmixer_manager,
-    const size_t num_samples_per_frame,
+    const DecodedUleb128 audio_element_id, const size_t num_samples_per_frame,
     const SubstreamIdLabelsMap& substream_id_to_labels,
+    DownmixerManager& downmixer_manager,
     absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
         substream_id_to_trimming_state,
     LabelSamplesMap& label_to_samples, ParametersManager& parameters_manager,
@@ -391,10 +388,9 @@ std::pair<uint32_t, uint32_t> GetNumSamplesToTrimForFrame(
 absl::Status MaybeEncodeFramesForAudioElement(
     const DecodedUleb128 audio_element_id,
     const AudioElementWithData& audio_element_with_data,
-    const DownmixerManager& downmixer_manager,
     const absl::flat_hash_set<ChannelLabel::Label>&
         channel_labels_for_audio_element,
-    LabelSamplesMap& label_to_samples,
+    DownmixerManager& downmixer_manager, LabelSamplesMap& label_to_samples,
     absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
         substream_id_to_trimming_state,
     ParametersManager& parameters_manager,
@@ -441,8 +437,8 @@ absl::Status MaybeEncodeFramesForAudioElement(
   bool more_samples_to_encode = false;
   do {
     RETURN_IF_NOT_OK(GetNextFrameSubstreamData(
-        audio_element_id, downmixer_manager, num_samples_per_frame,
-        audio_element_with_data.substream_id_to_labels,
+        audio_element_id, num_samples_per_frame,
+        audio_element_with_data.substream_id_to_labels, downmixer_manager,
         substream_id_to_trimming_state, label_to_samples, parameters_manager,
         substream_id_to_substream_data, down_mixing_params));
 
@@ -647,7 +643,7 @@ AudioFrameGenerator::Create(
     const ::google::protobuf::RepeatedPtrField<
         iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadatas,
     const DescriptorObus::AudioElementsById& audio_elements,
-    std::unique_ptr<const DownmixerManager> absl_nonnull downmixer_manager,
+    std::unique_ptr<DownmixerManager> absl_nonnull downmixer_manager,
     ParametersManager& parameters_manager,
     GlobalTimingModule& global_timing_module) {
   ABSL_CHECK_NE(downmixer_manager, nullptr);
@@ -821,7 +817,7 @@ absl::Status AudioFrameGenerator::AddSamples(
 
   if (samples.empty()) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Adding emptry frames is not allowed before `Finalize()` ",
+        absl::StrCat("Adding empty frames is not allowed before `Finalize()` ",
                      "has been called. audio_element_id= ", audio_element_id));
   }
 
@@ -844,14 +840,12 @@ absl::Status AudioFrameGenerator::AddSamples(
   }
   const auto& audio_element_with_data = audio_element_iter->second;
 
-  RETURN_IF_NOT_OK(MaybeEncodeFramesForAudioElement(
-      audio_element_id, audio_element_with_data, *downmixer_manager_,
-      audio_element_labels_iter->second, labeled_samples,
+  return MaybeEncodeFramesForAudioElement(
+      audio_element_id, audio_element_with_data,
+      audio_element_labels_iter->second, *downmixer_manager_, labeled_samples,
       substream_id_to_trimming_state_, parameters_manager_,
       substream_id_to_encoder_, substream_id_to_substream_data_,
-      global_timing_module_));
-
-  return absl::OkStatus();
+      global_timing_module_);
 }
 
 absl::Status AudioFrameGenerator::Finalize() {
@@ -879,8 +873,8 @@ absl::Status AudioFrameGenerator::OutputFrames(
     for (const auto& [audio_element_id, audio_element_with_data] :
          audio_elements_) {
       RETURN_IF_NOT_OK(MaybeEncodeFramesForAudioElement(
-          audio_element_id, audio_element_with_data, *downmixer_manager_,
-          audio_element_id_to_labels_.at(audio_element_id),
+          audio_element_id, audio_element_with_data,
+          audio_element_id_to_labels_.at(audio_element_id), *downmixer_manager_,
           id_to_labeled_samples_[audio_element_id],
           substream_id_to_trimming_state_, parameters_manager_,
           substream_id_to_encoder_, substream_id_to_substream_data_,

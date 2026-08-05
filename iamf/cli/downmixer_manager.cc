@@ -68,16 +68,16 @@ absl::Status DownmixerManager::DownMixSamplesToSubstreams(
     DecodedUleb128 audio_element_id, const DownMixingParams& down_mixing_params,
     LabelSamplesMap& input_label_to_samples,
     absl::flat_hash_map<uint32_t, SubstreamData>&
-        substream_id_to_substream_data) const {
+        substream_id_to_substream_data) {
   auto iter = audio_element_id_to_downmixing_config_.find(audio_element_id);
   if (iter == audio_element_id_to_downmixing_config_.end()) {
     return absl::NotFoundError(
         absl::StrCat("Audio element ID not found: ", audio_element_id));
   }
-  const DownmixingConfig& downmixer_metadata = iter->second;
+  DownmixingConfig& downmixer_metadata = iter->second;
 
   // First perform all the down mixing.
-  for (const auto& down_mixer : downmixer_metadata.down_mixers) {
+  for (auto& down_mixer : downmixer_metadata.down_mixers) {
     RETURN_IF_NOT_OK(down_mixer(down_mixing_params, input_label_to_samples));
   }
 
