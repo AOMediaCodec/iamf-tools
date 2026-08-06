@@ -1,10 +1,11 @@
 name: cmake
 
 # Keeps the optional CMake build path (iamf-tools#75) honest: builds the three
-# CLIs from a clean checkout on Linux, then exercises them — probe, decode, and
-# a full encode -> probe -> decode round-trip — on in-tree test data. This
-# workflow is self-contained: removing it (plus CMakeLists.txt and
-# build_cmake.sh) removes the CMake path entirely.
+# CLIs from a clean checkout, then exercises them — probe, decode, and a full
+# encode -> probe -> decode round-trip — on in-tree test data. The per-platform
+# steps live in .github/actions/iamf-tools-cmake-builder, so adding an OS is a
+# job block. This workflow is self-contained: removing it (plus that action,
+# CMakeLists.txt and build_cmake.sh) removes the CMake path entirely.
 
 on: [push, pull_request]
 
@@ -18,71 +19,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
-      - name: Install system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake pkg-config g++ \
-            libopus-dev libflac-dev libexpat1-dev libeigen3-dev
-      - name: Build (CMake path)
-        run: ./build_cmake.sh "$RUNNER_TEMP/cmake-build"
-      - name: Smoke test (probe, decode, encode round-trip on in-tree data)
-        run: |
-          set -eux
-          BIN="$RUNNER_TEMP/cmake-build/src/build-iamf"
-          # Probe: parse descriptors of two in-tree IAMF files.
-          "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/noise_1024samp_5p1_opus.iamf
-          "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/tones_100ms_3OA_stereo_opus.iamf
-          # Decode: render an in-tree 5.1 Opus file; output must be non-empty.
-          "$BIN/decoder_main" \
-            --input_filename=iamf/cli/testdata/iamf/noise_1024samp_5p1_opus.iamf \
-            --output_filename="$RUNNER_TEMP/smoke_dec.wav"
-          test -s "$RUNNER_TEMP/smoke_dec.wav"
-          # Encode round-trip: encode an in-tree test vector, then probe and
-          # decode the result with the same freshly built tools.
-          mkdir -p "$RUNNER_TEMP/smoke_enc"
-          "$BIN/encoder_main" \
-            --user_metadata_filename=iamf/cli/testdata/test_000002.textproto \
-            --input_wav_directory=iamf/cli/testdata \
-            --output_iamf_directory="$RUNNER_TEMP/smoke_enc"
-          "$BIN/probe_main" --input_filename="$RUNNER_TEMP/smoke_enc/test_000002.iamf"
-          "$BIN/decoder_main" \
-            --input_filename="$RUNNER_TEMP/smoke_enc/test_000002.iamf" \
-            --output_filename="$RUNNER_TEMP/smoke_enc_dec.wav"
-          test -s "$RUNNER_TEMP/smoke_enc_dec.wav"
-
+      - name: Build and smoke test
+        uses: ./.github/actions/iamf-tools-cmake-builder
+        with:
+          platform: linux
   macos-arm64-cmake:
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
-      - name: Install system packages
-        # expat comes from the Xcode Command Line Tools SDK; macOS has no
-        # /usr/include, so build_cmake.sh discovers each header (see S2 there).
-        run: brew install cmake opus flac eigen
-      - name: Build (CMake path)
-        run: ./build_cmake.sh "$RUNNER_TEMP/cmake-build"
-      - name: Smoke test (probe, decode, encode round-trip on in-tree data)
-        run: |
-          set -eux
-          BIN="$RUNNER_TEMP/cmake-build/src/build-iamf"
-          # Probe: parse descriptors of two in-tree IAMF files.
-          "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/noise_1024samp_5p1_opus.iamf
-          "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/tones_100ms_3OA_stereo_opus.iamf
-          # Decode: render an in-tree 5.1 Opus file; output must be non-empty.
-          "$BIN/decoder_main" \
-            --input_filename=iamf/cli/testdata/iamf/noise_1024samp_5p1_opus.iamf \
-            --output_filename="$RUNNER_TEMP/smoke_dec.wav"
-          test -s "$RUNNER_TEMP/smoke_dec.wav"
-          # Encode round-trip: encode an in-tree test vector, then probe and
-          # decode the result with the same freshly built tools.
-          mkdir -p "$RUNNER_TEMP/smoke_enc"
-          "$BIN/encoder_main" \
-            --user_metadata_filename=iamf/cli/testdata/test_000002.textproto \
-            --input_wav_directory=iamf/cli/testdata \
-            --output_iamf_directory="$RUNNER_TEMP/smoke_enc"
-          "$BIN/probe_main" --input_filename="$RUNNER_TEMP/smoke_enc/test_000002.iamf"
-          "$BIN/decoder_main" \
-            --input_filename="$RUNNER_TEMP/smoke_enc/test_000002.iamf" \
-            --output_filename="$RUNNER_TEMP/smoke_enc_dec.wav"
-          test -s "$RUNNER_TEMP/smoke_enc_dec.wav"
+      - name: Build and smoke test
+        uses: ./.github/actions/iamf-tools-cmake-builder
+        with:
+          platform: macos
