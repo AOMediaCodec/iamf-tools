@@ -444,7 +444,6 @@ cc_test(
         "//iamf/cli:obu_processor",
         "//iamf/cli:renderer_factory",
         "//iamf/cli:rendering_mix_presentation_finalizer",
-        "//iamf/cli:wav_writer",
         "//iamf/cli/proto:arbitrary_obu_cc_proto",
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:codec_config_cc_proto",

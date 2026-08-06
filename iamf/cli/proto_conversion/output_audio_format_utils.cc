@@ -68,7 +68,7 @@ void ApplyOutputAudioFormatToSampleProcessorFactory(
   sample_processor_factory =
       [original_factory = std::move(sample_processor_factory),
        override_bit_depth](DecodedUleb128 mix_presentation_id,
-                           int sub_mix_index, int layout_index,
+                           size_t sub_mix_index, size_t layout_index,
                            const Layout& layout, int num_channels,
                            int sample_rate, int /*bit_depth*/,
                            size_t max_input_samples_per_frame)

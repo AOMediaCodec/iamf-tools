@@ -134,6 +134,51 @@ cc_library(
 )
 
 cc_library(
+    name = "default_layout_renderer",
+    srcs = ["default_layout_renderer.cc"],
+    hdrs = ["default_layout_renderer.h"],
+    deps = [
+        ":audio_element_renderer_base",
+        ":layout_renderer_base",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:demixing_manager",
+        "//iamf/cli:labeled_frame",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:renderer_factory",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:types",
+        "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/log:absl_check",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/memory",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/time",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "layout_renderer_base",
+    srcs = ["layout_renderer_base.cc"],
+    hdrs = ["layout_renderer_base.h"],
+    deps = [
+        "//iamf/cli:demixing_manager",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/obu:types",
+        "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "loudspeakers_renderer",
     srcs = [
         "loudspeakers_renderer.cc",

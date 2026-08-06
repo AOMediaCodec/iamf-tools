@@ -681,9 +681,9 @@ class MockLoudnessCalculator : public LoudnessCalculatorBase {
 
 /*!\brief A mock sample processor factory. */
 typedef testing::MockFunction<std::unique_ptr<SampleProcessorBase>(
-    DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
-    const Layout& layout, int num_channels, int sample_rate, int bit_depth,
-    size_t num_samples_per_frame)>
+    DecodedUleb128 mix_presentation_id, size_t sub_mix_index,
+    size_t layout_index, const Layout& layout, int num_channels,
+    int sample_rate, int bit_depth, size_t num_samples_per_frame)>
     MockSampleProcessorFactory;
 
 /*!\brief A mock OBU sequencer. */

@@ -267,7 +267,7 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory =
           [output_wav_file_prefix](DecodedUleb128 mix_presentation_id,
-                                   int sub_mix_index, int layout_index,
+                                   size_t sub_mix_index, size_t layout_index,
                                    const Layout&, int num_channels,
                                    int sample_rate, int bit_depth,
                                    size_t max_input_samples_per_frame)

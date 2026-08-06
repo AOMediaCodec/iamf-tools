@@ -107,6 +107,36 @@ cc_test(
 )
 
 cc_test(
+    name = "default_layout_renderer_test",
+    srcs = ["default_layout_renderer_test.cc"],
+    deps = [
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixing_manager",
+        "//iamf/cli:descriptor_obus",
+        "//iamf/cli:labeled_frame",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:renderer_factory",
+        "//iamf/cli/renderer:audio_element_renderer_base",
+        "//iamf/cli/renderer:default_layout_renderer",
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:rendering_config",
+        "//iamf/obu:types",
+        "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "//iamf/obu/param_definitions:param_definition_base",
+        "@abseil-cpp//absl/base:core_headers",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "loudspeakers_renderer_test",
     srcs = ["loudspeakers_renderer_test.cc"],
     deps = [

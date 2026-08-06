@@ -12,9 +12,7 @@
 #include "iamf/cli/iamf_encoder.h"
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <list>
 #include <memory>
 #include <optional>
@@ -49,7 +47,6 @@
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
-#include "iamf/cli/wav_writer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
@@ -75,7 +72,6 @@ using ::testing::_;
 using ::testing::Contains;
 using ::testing::Not;
 using ::testing::NotNull;
-using ::testing::Pointee;
 using ::testing::Return;
 using ::testing::SizeIs;
 
@@ -275,31 +271,6 @@ api::IamfTemporalUnitData MakeStereoTemporalUnitData(
       .audio_element_id_to_data = {{kAudioElementId,
                                     {{left_label_serialized, samples},
                                      {right_label_serialized, samples}}}}};
-}
-
-std::string GetFirstSubmixFirstLayoutExpectedPath(
-    absl::string_view output_directory) {
-  return (std::filesystem::path(output_directory) /
-          std::filesystem::path("first_file.wav"))
-      .string();
-}
-
-auto GetWavWriterFactoryThatProducesFirstSubMixFirstLayout(
-    absl::string_view output_directory) {
-  const std::string output_wav_path =
-      GetFirstSubmixFirstLayoutExpectedPath(output_directory);
-  return [output_wav_path](
-             DecodedUleb128 mix_presentation_id, int sub_mix_index,
-             int layout_index, const Layout&, int num_channels, int sample_rate,
-             int bit_depth,
-             size_t num_samples_per_frame) -> std::unique_ptr<WavWriter> {
-    if (sub_mix_index != 0 || layout_index != 0) {
-      return nullptr;
-    }
-
-    return WavWriter::Create(output_wav_path, num_channels, sample_rate,
-                             bit_depth, num_samples_per_frame);
-  };
 }
 
 class IamfEncoderTest : public ::testing::Test {
