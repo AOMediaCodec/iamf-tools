@@ -38,6 +38,12 @@ find_library(OPUS_LIB opus REQUIRED)
 find_library(FLAC_LIB FLAC REQUIRED)
 find_library(EXPAT_LIB expat REQUIRED)
 
+# Eigen is header-only and ships under an `eigen3/` suffix on every distro, but
+# the prefix is not portable: Debian/Ubuntu use /usr/include/eigen3, Homebrew
+# uses ${brew_prefix}/include/eigen3, and macOS has no /usr/include at all.
+# Discover it rather than hardcoding one distro's layout.
+find_path(EIGEN_INC NAMES Eigen/Core PATH_SUFFIXES eigen3 REQUIRED)
+
 # ---------------- FDK-AAC (exact upstream pin, own CMake) -------------------
 # Non-recursive on purpose: lib*/src/{arm,mips,x86}/ hold #include-only
 # assembly specializations that do not compile standalone.
@@ -71,7 +77,7 @@ target_link_libraries(ebur128_analyzer PUBLIC absl::status absl::statusor
 file(GLOB_RECURSE OBR_SRCS ${SRC}/obr/obr/*.cc)
 list(FILTER OBR_SRCS EXCLUDE REGEX "/tests?/|_test\\.cc|test_util\\.cc|/cli/")
 add_library(obr_lib STATIC ${OBR_SRCS})
-target_include_directories(obr_lib PUBLIC ${SRC}/obr /usr/include/eigen3)
+target_include_directories(obr_lib PUBLIC ${SRC}/obr ${EIGEN_INC})
 target_link_libraries(obr_lib PUBLIC pffft_static a2t_dsp
     absl::log absl::check absl::status absl::statusor absl::strings
     absl::flat_hash_map absl::span)
@@ -107,7 +113,7 @@ target_include_directories(iamf_core PUBLIC
     ${SRC}/shims/flac            # "include/FLAC/..."
     ${SRC}/shims/opus            # "include/opus.h"
     ${SRC}/shims/expat           # "expat/lib/expat.h"
-    /usr/include/eigen3)
+    ${EIGEN_INC})
 target_link_libraries(iamf_core PUBLIC
     iamf_protos ebur128_analyzer obr_lib a2t_dsp fdk_aac_static
     ${OPUS_LIB} ${FLAC_LIB} ${EXPAT_LIB}

@@ -21,6 +21,10 @@
 #                             # nothing under iamf/ is written)
 # Requirements (Debian/Ubuntu names): cmake pkg-config git g++
 #   libopus-dev libflac-dev libexpat1-dev libeigen3-dev
+# Requirements (macOS / Homebrew):     brew install cmake pkg-config opus flac eigen
+#   expat is supplied by the Xcode Command Line Tools SDK. macOS has no
+#   /usr/include at all, so system headers are discovered (S2 below) and eigen
+#   is located with find_path rather than a fixed prefix.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")" && pwd)"
@@ -28,7 +32,7 @@ ROOT="${1:-$(pwd)/build}"
 SRC="$ROOT/src"
 DEPS="$ROOT/deps"
 LOG="$ROOT/logs"
-JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
+JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)}"
 mkdir -p "$SRC" "$DEPS" "$LOG"
 
 stage() { echo "=== $1 [$(date +%H:%M:%S)] ==="; }
@@ -78,12 +82,34 @@ clone pffft            https://github.com/marton78/pffft           a4b03590cc2a4
 
 # ---------- S2: header shims for Bazel-style repo-relative includes ----------
 stage "S2 shims"
+# System header prefixes are not portable: Debian/Ubuntu use /usr/include,
+# Homebrew uses $(brew --prefix)/include, and macOS has no /usr/include at all
+# (expat ships inside the Xcode Command Line Tools SDK). Discover each header
+# instead of hardcoding one distro's layout.
+HDR_PREFIXES="/usr/include"
+_brew="$(brew --prefix 2>/dev/null || true)"
+[ -n "$_brew" ] && HDR_PREFIXES="$HDR_PREFIXES $_brew/include"
+_sdk="$(xcrun --show-sdk-path 2>/dev/null || true)"
+[ -n "$_sdk" ] && HDR_PREFIXES="$HDR_PREFIXES $_sdk/usr/include"
+find_hdr() { for p in $HDR_PREFIXES; do [ -e "$p/$1" ] && { printf '%s\n' "$p/$1"; return 0; }; done; return 1; }
+
 mkdir -p "$SRC/shims/flac/include" "$SRC/shims/opus/include" "$SRC/shims/expat/expat/lib"
-ln -sf /usr/include/FLAC "$SRC/shims/flac/include/FLAC"
-for h in /usr/include/opus/*.h; do ln -sf "$h" "$SRC/shims/opus/include/"; done
-ln -sf /usr/include/expat.h          "$SRC/shims/expat/expat/lib/expat.h"
-ln -sf /usr/include/expat_external.h "$SRC/shims/expat/expat/lib/expat_external.h"
-ln -sf /usr/include/expat_config.h   "$SRC/shims/expat/expat/lib/expat_config.h" 2>/dev/null || true
+FLAC_H="$(find_hdr FLAC)"     || { echo "S2 FAIL: FLAC headers not found in: $HDR_PREFIXES" >&2; exit 1; }
+OPUS_H="$(find_hdr opus)"     || { echo "S2 FAIL: opus headers not found in: $HDR_PREFIXES" >&2; exit 1; }
+EXPAT_H="$(find_hdr expat.h)" || { echo "S2 FAIL: expat.h not found in: $HDR_PREFIXES" >&2; exit 1; }
+ln -sf "$FLAC_H" "$SRC/shims/flac/include/FLAC"
+for h in "$OPUS_H"/*.h; do ln -sf "$h" "$SRC/shims/opus/include/"; done
+ln -sf "$EXPAT_H" "$SRC/shims/expat/expat/lib/expat.h"
+for extra in expat_external.h expat_config.h; do
+  _e="$(find_hdr "$extra")" && ln -sf "$_e" "$SRC/shims/expat/expat/lib/$extra"
+done
+# `ln -sf` to a NONEXISTENT target succeeds and returns 0, so without this check
+# the shim stage cannot fail on a missing dependency -- the error instead surfaces
+# hundreds of lines later as a confusing missing-header compile failure.
+for l in "$SRC/shims/flac/include/FLAC" "$SRC/shims/expat/expat/lib/expat.h"; do
+  [ -e "$l" ] || { echo "S2 FAIL: dangling shim symlink $l -> $(readlink "$l")" >&2; exit 1; }
+done
+echo "S2 shims OK: FLAC=$FLAC_H opus=$OPUS_H expat=$EXPAT_H"
 
 # ---------- S3: abseil (static, C++20, propagate std) ----------
 cmake_install abseil "$SRC/abseil-cpp" "$SRC/build-absl" \
