@@ -171,7 +171,9 @@ TEST_F(DefaultLayoutRendererTest, CreateFailsWhenFactoryReturnsNull) {
   EXPECT_THAT(renderer, IsNull());
 }
 
-TEST_F(DefaultLayoutRendererTest,
+using DefaultLayoutRendererDeathTest = DefaultLayoutRendererTest;
+
+TEST_F(DefaultLayoutRendererDeathTest,
        CreateDiesWhenSubMixAudioElementsSizeMismatch) {
   // Make the sizes of `audio_elements_in_sub_mix_` and
   // `sub_mix_audio_elements_` unequal by adding an extra element to
