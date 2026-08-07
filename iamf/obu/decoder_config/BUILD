@@ -36,6 +36,7 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
+        "//iamf/obu:types",
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/log:absl_log",
