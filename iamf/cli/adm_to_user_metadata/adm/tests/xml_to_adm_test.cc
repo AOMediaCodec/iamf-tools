@@ -51,6 +51,22 @@ TEST(ParseXmlToAdm, AudioObjectWithShortPackIdRefDoesNotCrash) {
               IsOk());
 }
 
+TEST(ParseXmlToAdm, DolbyPackWithUnresolvedChannelRefDoesNotCrash) {
+  // A Dolby-ADM DirectSpeakers pack whose audioChannelFormatIDRef does not
+  // resolve to any audioChannelFormat must handily resolve without crash.
+  EXPECT_THAT(ParseXmlToAdm(R"xml(
+                <TopLevelElement>
+                  <audioObject audioObjectID="obj1">
+                    <audioPackFormatIDRef>AP_00010001</audioPackFormatIDRef>
+                  </audioObject>
+                  <audioPackFormat audioPackFormatID="AP_00010001">
+                    <audioChannelFormatIDRef>AC_DOES_NOT_EXIST</audioChannelFormatIDRef>
+                  </audioPackFormat>
+                </TopLevelElement>)xml",
+                            kImportanceThreshold, kAdmFileTypeDolby),
+              IsOk());
+}
+
 TEST(ParseXmlToAdm, AudioBlockFormatWithoutParentChannelIsRejected) {
   // An `audioBlockFormat` is only valid nested within an `audioChannelFormat`.
   // A crafted axml that omits the parent channel must be rejected rather than

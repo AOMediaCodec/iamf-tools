@@ -481,6 +481,11 @@ absl::Status ValidateAdmObjectForDolbyAdm(const ADM& adm,
     std::vector<std::string> channel_names;
     for (auto& channel_ref :
          adm.audio_packs[pack_index].audio_channel_format_id_refs_map) {
+      if (channel_ref.second >= adm.audio_channels.size()) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("audioChannelFormatIDRef= ", channel_ref.first,
+                         " does not resolve to a known audioChannelFormat."));
+      }
       auto& audio_channel = adm.audio_channels[channel_ref.second];
       channel_names.push_back(audio_channel.name);
     }
