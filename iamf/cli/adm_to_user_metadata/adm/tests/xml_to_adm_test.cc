@@ -39,6 +39,18 @@ TEST(ParseXmlToAdm, InvalidXml) {
               Not(IsOk()));
 }
 
+TEST(ParseXmlToAdm, AudioObjectWithShortPackIdRefDoesNotCrash) {
+  // The audioPackFormatIDRef is expected to have the fixed form "AP_ttttyyyy".
+  // A shorter value must not be handed to substr(pos, ...) with pos past the
+  // end, which throws std::out_of_range (uncaught -> terminate).
+  EXPECT_THAT(ParseXmlToAdm(R"xml(
+                <audioObject audioObjectID="object_1">
+                  <audioPackFormatIDRef>AP</audioPackFormatIDRef>
+                </audioObject>)xml",
+                            kImportanceThreshold, kAdmFileTypeDefault),
+              IsOk());
+}
+
 TEST(ParseXmlToAdm, AudioBlockFormatWithoutParentChannelIsRejected) {
   // An `audioBlockFormat` is only valid nested within an `audioChannelFormat`.
   // A crafted axml that omits the parent channel must be rejected rather than

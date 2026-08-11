@@ -44,6 +44,8 @@ constexpr absl::string_view kTypeDefinitionObject = "0003";
 constexpr absl::string_view kTypeDefinitionHOA = "0004";
 constexpr absl::string_view kTypeDefinitionBinaural = "0005";
 
+constexpr size_t kAudioPackFormatIdRefLength = 11;
+
 // It defines adm elements.
 enum AdmElement {
   kAudioProgramme = 0,
@@ -506,6 +508,17 @@ void ValidateAudioObjects(const ADM& adm, Handler& handler) {
     }
 
     absl::string_view audio_pack_id = audio_object.audio_pack_format_id_refs[0];
+    // The reference is expected to have the fixed form "AP_ttttyyyy" (11
+    // characters). A shorter, attacker-controlled value would make the
+    // substr() calls below throw std::out_of_range, which is uncaught above
+    // this frame and terminates the process. Treat it as an invalid object.
+    if (audio_pack_id.size() < kAudioPackFormatIdRefLength) {
+      ABSL_LOG(WARNING) << "Ignoring object with malformed "
+                           "audio_pack_format_id_ref= "
+                        << audio_pack_id;
+      handler.invalid_audio_objects.insert(audio_object.id);
+      continue;
+    }
     absl::string_view type_definition = audio_pack_id.substr(3, 4);
     absl::string_view audio_pack_id_yyyy_part = audio_pack_id.substr(7, 4);
     if (adm.file_type == kAdmFileTypeDefault) {
