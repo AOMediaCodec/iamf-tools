@@ -14,6 +14,8 @@ and this project adheres to
     decoder.
 -   Add `IamfEncoderInterface::GetEncoderDelay` to retrieve the total encoder
     delay.
+-   Add `AmbisonicsPreset` modes, which automatically configure ambisonics
+    projection or ambisonics mode modes when it is the best practice to do so.
 
 ### Removed
 

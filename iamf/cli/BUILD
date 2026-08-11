@@ -26,6 +26,7 @@ cc_library(
     srcs = ["ambisonics_mixer.cc"],
     hdrs = ["ambisonics_mixer.h"],
     deps = [
+        ":channel_label",
         ":sample_processor_base",
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:codec_config",

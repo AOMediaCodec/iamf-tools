@@ -371,6 +371,22 @@ void ExpectAudioFrameGeneratorInitializeIsNotOk(
       /*expected_initialize_is_ok=*/false);
 }
 
+void ExpectAudioFrameGeneratorInitializeIsOk(
+    const iamf_tools_cli_proto::UserMetadata& user_metadata) {
+  CodecConfigsById codec_config_obus = {};
+  AudioElementsById audio_elements = {};
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
+      param_definitions = {};
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
+  std::unique_ptr<ParametersManager> parameters_manager;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
+
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator,
+      /*expected_initialize_is_ok=*/true);
+}
+
 // Safe to run simultaneously with `FlushAudioFrameGenerator`.
 void AddAllSamplesAndFinalizesExpectOk(
     DecodedUleb128 audio_element_id,
@@ -1096,19 +1112,8 @@ TEST(AudioFrameGenerator,
   const uint32_t kTooManySamplesToTrimAtEnd = 9;
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(
       kTooManySamplesToTrimAtEnd);
-  CodecConfigsById codec_config_obus = {};
-  AudioElementsById audio_elements = {};
-  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
-      param_definitions = {};
-  std::unique_ptr<GlobalTimingModule> global_timing_module;
-  std::unique_ptr<ParametersManager> parameters_manager;
-  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
 
-  constexpr bool kExpectInitializeIsOk = false;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                global_timing_module, parameters_manager,
-                                audio_frame_generator, kExpectInitializeIsOk);
+  ExpectAudioFrameGeneratorInitializeIsNotOk(user_metadata);
 }
 
 TEST(AudioFrameGenerator,
@@ -1467,6 +1472,51 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
               expected_sample);
     index++;
   }
+}
+
+TEST(AudioFrameGenerator,
+     SceneBasedDownmixingDoesNotRequireDemixingParamDefinition) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  // Configure a scene-based audio element with an ambisonics preset.
+  // `DemixingInfoParameterData` is neither included nor required.
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        codec_config_metadata {
+          codec_config_id: 99
+          codec_config {
+            codec_id: CODEC_ID_LPCM
+            num_samples_per_frame: 8
+            decoder_config_lpcm {
+              sample_format_flags: LPCM_LITTLE_ENDIAN
+              sample_size: 16
+              sample_rate: 48000
+            }
+          }
+        }
+        audio_element_metadata {
+          audio_element_id: 300
+          audio_element_type: AUDIO_ELEMENT_SCENE_BASED
+          codec_config_id: 99
+          audio_substream_ids: [ 0, 1, 2, 3 ]
+          ambisonics_config {
+            ambisonics_preset_config {
+              ambisonics_preset: AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER1
+            }
+          }
+        }
+        audio_frame_metadata {
+          wav_filename: ""
+          audio_element_id: 300
+          channel_metadatas:
+          [ { channel_id: 0, channel_label: CHANNEL_LABEL_A_0 }
+            , { channel_id: 1, channel_label: CHANNEL_LABEL_A_1 }
+            , { channel_id: 2, channel_label: CHANNEL_LABEL_A_2 }
+            , { channel_id: 3, channel_label: CHANNEL_LABEL_A_3 }]
+        }
+      )pb",
+      &user_metadata));
+
+  ExpectAudioFrameGeneratorInitializeIsOk(user_metadata);
 }
 
 }  // namespace

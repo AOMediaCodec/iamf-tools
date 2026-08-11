@@ -21,6 +21,7 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/codec_config.h"
@@ -31,11 +32,13 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::DoubleNear;
+using ::testing::ElementsAre;
 using ::testing::Pointwise;
 using ::testing::VariantWith;
 
 using enum CodecConfig::CodecId;
 using enum AmbisonicsConfig::AmbisonicsMode;
+using enum ChannelLabel::Label;
 
 constexpr size_t kSamplesPerFrame = 1024;
 constexpr InternalSampleType kTolerance = 1e-6;
@@ -227,6 +230,41 @@ TEST(PushFrame, ThirdOrderProjectionIsReversibleWithDemixingMatrix) {
   // We expect the reconstructed samples to be close to the original ones.
   EXPECT_THAT(reconstructed_samples,
               PointwiseDoubleNear2D(input_samples, kEquivalenceTolerance));
+}
+
+TEST(GetInputLabels, ReturnsLabelsForOrder0) {
+  auto mixer = AmbisonicsMixer::MakeFromPreset(
+      CodecConfig::kCodecIdOpus,
+      AmbisonicsMixer::Preset::kBestPracticeForOrder0, kSamplesPerFrame);
+
+  EXPECT_THAT(mixer.GetInputLabels(), ElementsAre(kA0));
+}
+
+TEST(GetInputLabels, ReturnsLabelsForOrder1) {
+  auto mixer = AmbisonicsMixer::MakeFromPreset(
+      CodecConfig::kCodecIdOpus,
+      AmbisonicsMixer::Preset::kBestPracticeForOrder1, kSamplesPerFrame);
+
+  EXPECT_THAT(mixer.GetInputLabels(), ElementsAre(kA0, kA1, kA2, kA3));
+}
+
+TEST(GetInputLabels, ReturnsLabelsForOrder2) {
+  auto mixer = AmbisonicsMixer::MakeFromPreset(
+      CodecConfig::kCodecIdOpus,
+      AmbisonicsMixer::Preset::kBestPracticeForOrder2, kSamplesPerFrame);
+
+  EXPECT_THAT(mixer.GetInputLabels(),
+              ElementsAre(kA0, kA1, kA2, kA3, kA4, kA5, kA6, kA7, kA8));
+}
+
+TEST(GetInputLabels, ReturnsLabelsForOrder3) {
+  auto mixer = AmbisonicsMixer::MakeFromPreset(
+      CodecConfig::kCodecIdOpus,
+      AmbisonicsMixer::Preset::kBestPracticeForOrder3, kSamplesPerFrame);
+
+  EXPECT_THAT(mixer.GetInputLabels(),
+              ElementsAre(kA0, kA1, kA2, kA3, kA4, kA5, kA6, kA7, kA8, kA9,
+                          kA10, kA11, kA12, kA13, kA14, kA15));
 }
 
 }  // namespace

@@ -57,6 +57,7 @@
 #include "iamf/cli/proto_conversion/codec_config_utils.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -740,8 +741,12 @@ AudioFrameGenerator::Create(
         substream_id_to_encoder, substream_id_to_substream_data));
 
     // Validate that a `DemixingParamDefinition` is available if down-mixing
-    // is needed.
-    if (!parameters_manager.DemixingParamDefinitionAvailable(
+    // is needed for channel-based audio elements.
+    const bool is_channel_based =
+        audio_element_with_data.obu.GetAudioElementType() ==
+        AudioElementObu::kAudioElementChannelBased;
+    if (is_channel_based &&
+        !parameters_manager.DemixingParamDefinitionAvailable(
             audio_element_id) &&
         downmixer_manager->HasDownMixers(audio_element_id)) {
       return absl::InvalidArgumentError(

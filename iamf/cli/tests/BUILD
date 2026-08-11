@@ -84,6 +84,7 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:ambisonics_mixer",
+        "//iamf/cli:channel_label",
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:codec_config",
         "//iamf/obu:types",

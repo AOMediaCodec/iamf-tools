@@ -26,9 +26,12 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer_manager.h"
+#include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/codec_config.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/types.h"
 
@@ -39,6 +42,7 @@ using ::absl_testing::IsOk;
 using ::testing::ContainerEq;
 using ::testing::HasSubstr;
 using ::testing::Not;
+using ::testing::SizeIs;
 
 using ProtoAudioFrameObuMetadata =
     ::iamf_tools_cli_proto::AudioFrameObuMetadata;
@@ -50,21 +54,24 @@ using AudioElementsById = DescriptorObus::AudioElementsById;
 AudioElementWithData MakeAudioElement(
     DecodedUleb128 audio_element_id,
     const SubstreamIdLabelsMap& substream_id_to_labels = {},
-    const LabelGainMap& label_to_output_gain = {}) {
+    const LabelGainMap& label_to_output_gain = {},
+    const CodecConfigObu* codec_config = nullptr,
+    AudioElementObu::AudioElementType audio_element_type =
+        AudioElementObu::kAudioElementChannelBased) {
   std::vector<DecodedUleb128> audio_substream_ids;
   for (const auto& [substream_id, labels] : substream_id_to_labels) {
     audio_substream_ids.push_back(substream_id);
   }
 
   auto obu = AudioElementObu::CreateForExtension(
-      ObuHeader(), audio_element_id,
-      AudioElementObu::AudioElementType::kAudioElementEndReserved,
+      ObuHeader(), audio_element_id, audio_element_type,
       /*reserved=*/0,
       /*codec_config_id=*/0, audio_substream_ids, {});
   ABSL_CHECK_OK(obu);
 
   return {
       .obu = *std::move(obu),
+      .codec_config = codec_config,
       .substream_id_to_labels = substream_id_to_labels,
       .label_to_output_gain = label_to_output_gain,
   };
@@ -177,6 +184,58 @@ TEST(CreateAudioElementIdToDownmixingConfig,
               ContainerEq(substream_id_to_labels));
   EXPECT_THAT(id_to_config_map->at(element_id).label_to_output_gain,
               ContainerEq(label_to_output_gain));
+}
+
+iamf_tools_cli_proto::UserMetadata MakeAmbisonicsPresetUserMetadata(
+    DecodedUleb128 element_id, iamf_tools_cli_proto::AmbisonicsPreset preset) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  auto* element_metadata = user_metadata.add_audio_element_metadata();
+  element_metadata->set_audio_element_id(element_id);
+  element_metadata->mutable_ambisonics_config()
+      ->mutable_ambisonics_preset_config()
+      ->set_ambisonics_preset(preset);
+  *user_metadata.add_audio_frame_metadata() = MakeAudioFrameObuMetadata(
+      element_id, {{0, ProtoChannelLabel::CHANNEL_LABEL_A_0}});
+  return user_metadata;
+}
+
+TEST(CreateAudioElementIdToDownmixingConfig, AmbisonicsPresetReturnsDownmixer) {
+  constexpr DecodedUleb128 kAudioElementId = 10;
+  constexpr uint32_t kCodecConfigId = 1;
+  const auto user_metadata = MakeAmbisonicsPresetUserMetadata(
+      kAudioElementId,
+      iamf_tools_cli_proto::AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER3);
+  DescriptorObus::CodecConfigsById codec_config_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
+  AudioElementsById audio_elements;
+  audio_elements.emplace(
+      kAudioElementId,
+      MakeAudioElement(kAudioElementId, {}, {}, &codec_config_obus.at(1),
+                       AudioElementObu::kAudioElementSceneBased));
+
+  auto id_to_config_map =
+      CreateAudioElementIdToDownmixingConfig(user_metadata, audio_elements);
+
+  ASSERT_THAT(id_to_config_map, IsOk());
+  EXPECT_THAT(id_to_config_map->at(kAudioElementId).down_mixers, SizeIs(1));
+}
+
+TEST(CreateAudioElementIdToDownmixingConfig,
+     AmbisonicsPresetWithoutCodecConfigReturnsError) {
+  constexpr DecodedUleb128 kAudioElementId = 10;
+  const auto user_metadata = MakeAmbisonicsPresetUserMetadata(
+      kAudioElementId,
+      iamf_tools_cli_proto::AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER1);
+  AudioElementsById audio_elements;
+  const CodecConfigObu* kMissingCodecConfig = nullptr;
+  audio_elements.emplace(
+      kAudioElementId,
+      MakeAudioElement(kAudioElementId, {}, {}, kMissingCodecConfig,
+                       AudioElementObu::kAudioElementSceneBased));
+
+  EXPECT_THAT(
+      CreateAudioElementIdToDownmixingConfig(user_metadata, audio_elements),
+      Not(IsOk()));
 }
 
 }  // namespace
