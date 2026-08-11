@@ -706,9 +706,9 @@ TEST(ProcessTemporalUnit, SkipsStrayAudioFrames) {
   // element and the audio frames associated will be dropped.
   CodecConfigsById codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_configs);
-  auto audio_element = AudioElementObu::CreateForMonoAmbisonics(
+  auto audio_element = AudioElementObu::CreateForAmbisonics(
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
-      {kFirstSubstreamId}, /*channel_mapping=*/{0});
+      {kFirstSubstreamId}, MakeFullOrderAmbisonicsMonoConfig(0));
   ASSERT_THAT(audio_element, IsOk());
   auto stray_audio_element = AudioElementObu::CreateForExtension(
       ObuHeader(), kSecondAudioElementId,

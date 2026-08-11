@@ -35,6 +35,7 @@
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -136,9 +137,12 @@ TEST(GenerateAudioElementWithData,
 
   std::vector<int16_t> matrix(channel_count * channel_count, 0);
 
-  auto obu = AudioElementObu::CreateForProjectionAmbisonics(
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      channel_count, substream_count, coupled_substream_count, matrix);
+  ASSERT_THAT(projection_config, IsOk());
+  auto obu = AudioElementObu::CreateForAmbisonics(
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
-      substreams, channel_count, coupled_substream_count, matrix);
+      substreams, AmbisonicsConfig{.ambisonics_config = *projection_config});
   ASSERT_THAT(obu, IsOk());
 
   CodecConfigsById codec_config_obus;

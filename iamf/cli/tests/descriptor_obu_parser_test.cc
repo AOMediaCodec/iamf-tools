@@ -31,6 +31,7 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -372,9 +373,9 @@ TEST(ProcessDescriptorObus, DropsUnknownCodecIds) {
        // `sample_rate`.
        0x00, 0x00, 0xbb, 0x80},
       ArbitraryObu::kInsertionHookAfterIaSequenceHeader);
-  auto audio_element = AudioElementObu::CreateForMonoAmbisonics(
+  auto audio_element = AudioElementObu::CreateForAmbisonics(
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
-      {kFirstSubstreamId}, /*channel_mapping=*/{0});
+      {kFirstSubstreamId}, MakeFullOrderAmbisonicsMonoConfig(0));
   ASSERT_THAT(audio_element, IsOk());
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(

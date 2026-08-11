@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/types/span.h"
@@ -31,6 +32,7 @@
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 #include "validation/opus_hoa/mapping_matrix.h"
 
@@ -66,15 +68,13 @@ CodecConfigObu MakeOpusCodecConfigObu(uint32_t codec_config_id) {
 
 AudioElementObu MakeAmbisonicsMonoObu(uint32_t audio_element_id,
                                       uint32_t codec_config_id, int order) {
-  int channel_count = (order + 1) * (order + 1);
-  std::vector<DecodedUleb128> substreams(channel_count);
+  const auto ambisonics_config = MakeFullOrderAmbisonicsMonoConfig(order);
+  std::vector<DecodedUleb128> substreams(ambisonics_config.GetNumSubstreams());
   std::iota(substreams.begin(), substreams.end(), 0);
-  std::vector<uint8_t> mapping(channel_count);
-  std::iota(mapping.begin(), mapping.end(), 0);
 
-  return AudioElementObu::CreateForMonoAmbisonics(
+  return AudioElementObu::CreateForAmbisonics(
              ObuHeader{.obu_type = kObuIaAudioElement}, audio_element_id,
-             /*reserved=*/0, codec_config_id, substreams, mapping)
+             /*reserved=*/0, codec_config_id, substreams, ambisonics_config)
       .value();
 }
 
@@ -88,11 +88,13 @@ AudioElementObu MakeAmbisonicsProjectionObu(uint32_t audio_element_id,
   std::iota(substreams.begin(), substreams.end(), 0);
   std::vector<int16_t> matrix(channel_count * channel_count, 0);
 
-  return AudioElementObu::CreateForProjectionAmbisonics(
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      channel_count, substream_count, coupled_substream_count, matrix);
+  ABSL_CHECK_OK(projection_config);
+  return AudioElementObu::CreateForAmbisonics(
              ObuHeader{.obu_type = kObuIaAudioElement}, audio_element_id,
              /*reserved=*/0, codec_config_id, substreams,
-             /*output_channel_count=*/channel_count, coupled_substream_count,
-             matrix)
+             AmbisonicsConfig{*projection_config})
       .value();
 }
 
@@ -111,11 +113,13 @@ AudioElementObu MakeCanonicalAmbisonicsProjectionObu(uint32_t audio_element_id,
 
   std::vector<int16_t> matrix(matrix_span.begin(), matrix_span.end());
 
-  return AudioElementObu::CreateForProjectionAmbisonics(
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      channel_count, substream_count, coupled_substream_count, matrix);
+  ABSL_CHECK_OK(projection_config);
+  return AudioElementObu::CreateForAmbisonics(
              ObuHeader{.obu_type = kObuIaAudioElement}, audio_element_id,
              /*reserved=*/0, codec_config_id, substreams,
-             /*output_channel_count=*/channel_count, coupled_substream_count,
-             matrix)
+             AmbisonicsConfig{*projection_config})
       .value();
 }
 
@@ -255,11 +259,14 @@ TEST_P(CustomCoupledSubstreamCountTest, Verify3OA_4OA) {
   std::iota(substreams.begin(), substreams.end(), 0);
   std::vector<int16_t> matrix(channel_count * channel_count, 0);
 
-  AudioElementObu audio_element =
-      AudioElementObu::CreateForProjectionAmbisonics(
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      channel_count, substream_count, invalid_coupled, matrix);
+  ABSL_CHECK_OK(projection_config);
+  auto audio_element =
+      AudioElementObu::CreateForAmbisonics(
           ObuHeader{.obu_type = kObuIaAudioElement}, kAudioElementId,
           /*reserved=*/0, kCodecConfigId, substreams,
-          /*output_channel_count=*/channel_count, invalid_coupled, matrix)
+          AmbisonicsConfig{*projection_config})
           .value();
 
   auto results = RunVerificationOnElement(codec_config, audio_element);

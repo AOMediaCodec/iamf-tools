@@ -58,7 +58,6 @@ cc_library(
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
-        "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu/param_definitions:demixing_param_definition",
         "//iamf/obu/param_definitions:extended_param_definition",

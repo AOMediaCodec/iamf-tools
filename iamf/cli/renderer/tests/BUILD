@@ -18,6 +18,7 @@ cc_test(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
+        "//iamf/obu/tests:obu_test_utils",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status:statusor",
         "@google_benchmark//:benchmark_main",

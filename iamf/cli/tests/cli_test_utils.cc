@@ -280,9 +280,12 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
             channel_mapping.begin() + substream_ids.size(), 0);
 
   // Create the Audio Element OBU without any parameters.
-  auto obu = AudioElementObu::CreateForMonoAmbisonics(
+  auto mono_config =
+      AmbisonicsMonoConfig::Create(substream_ids.size(), channel_mapping);
+  ASSERT_THAT(mono_config, IsOk());
+  auto obu = AudioElementObu::CreateForAmbisonics(
       ObuHeader(), audio_element_id, 0, codec_config_id, substream_ids,
-      channel_mapping);
+      AmbisonicsConfig{.ambisonics_config = *mono_config});
   ASSERT_THAT(obu, IsOk());
 
   AudioElementWithData audio_element_with_data{

@@ -459,7 +459,6 @@ absl::StatusOr<AmbisonicsMonoConfig> GetAmbisonicsMonoConfig(
 //                    not needed, or are checked at OBU creation.
 absl::StatusOr<AmbisonicsProjectionConfig> GetAmbisonicsProjectionConfig(
     DecodedUleb128 audio_element_id_for_debugging,
-    DecodedUleb128 num_substreams_in_obu,
     const iamf_tools_cli_proto::AmbisonicsConfig& input_config) {
   if (!input_config.has_ambisonics_projection_config()) {
     return InvalidArgumentError(
@@ -505,66 +504,54 @@ absl::StatusOr<AmbisonicsProjectionConfig> GetAmbisonicsProjectionConfig(
       demixing_matrix);
 }
 
-absl::StatusOr<AudioElementWithData> CreateAmbisonicsMonoAudioElementWithData(
-    const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
-    const CodecConfigObu& codec_config_obu) {
-  const auto& input_config = audio_element_metadata.ambisonics_config();
-  auto mono_config = GetAmbisonicsMonoConfig(
-      audio_element_metadata.audio_element_id(), input_config);
-  if (!mono_config.ok()) {
-    return mono_config.status();
+absl::StatusOr<AmbisonicsConfig> GetAmbisonicsConfig(
+    DecodedUleb128 audio_element_id_for_debugging,
+    const iamf_tools_cli_proto::AmbisonicsConfig& input_config) {
+  switch (input_config.ambisonics_config_case()) {
+    using enum iamf_tools_cli_proto::AmbisonicsConfig::AmbisonicsConfigCase;
+    case kAmbisonicsMonoConfig: {
+      auto mono_config =
+          GetAmbisonicsMonoConfig(audio_element_id_for_debugging, input_config);
+      if (!mono_config.ok()) {
+        return mono_config.status();
+      }
+      return AmbisonicsConfig{.ambisonics_config = *std::move(mono_config)};
+    }
+    case kAmbisonicsProjectionConfig: {
+      auto projection_config = GetAmbisonicsProjectionConfig(
+          audio_element_id_for_debugging, input_config);
+      if (!projection_config.ok()) {
+        return projection_config.status();
+      }
+      return AmbisonicsConfig{.ambisonics_config =
+                                  *std::move(projection_config)};
+    }
+    default:
+      return InvalidArgumentError(StrCat("Audio Element Metadata [",
+                                         audio_element_id_for_debugging,
+                                         "] has unknown `ambisonics_config`."));
   }
-
-  absl::StatusOr<AudioElementObu> obu =
-      AudioElementObu::CreateForMonoAmbisonics(
-          GetHeaderFromMetadata(audio_element_metadata.obu_header()),
-          audio_element_metadata.audio_element_id(),
-          audio_element_metadata.reserved(),
-          audio_element_metadata.codec_config_id(),
-          audio_element_metadata.audio_substream_ids(),
-          mono_config->GetChannelMappingView());
-
-  if (!obu.ok()) {
-    return obu.status();
-  }
-  RETURN_IF_NOT_OK(GenerateParameterDefinitions(audio_element_metadata,
-                                                codec_config_obu, *obu));
-
-  SubstreamIdLabelsMap substream_id_to_labels;
-  RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
-      *obu, substream_id_to_labels));
-  return AudioElementWithData{
-      .obu = *std::move(obu),
-      .codec_config = &codec_config_obu,
-      .substream_id_to_labels = std::move(substream_id_to_labels)};
 }
 
-absl::StatusOr<AudioElementWithData>
-CreateAmbisonicsProjectionAudioElementWithData(
+absl::StatusOr<AudioElementWithData> CreateAmbisonicsAudioElementWithData(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
     const CodecConfigObu& codec_config_obu) {
-  auto projection_config = GetAmbisonicsProjectionConfig(
-      audio_element_metadata.audio_element_id(),
-      audio_element_metadata.audio_substream_ids_size(),
-      audio_element_metadata.ambisonics_config());
-  if (!projection_config.ok()) {
-    return projection_config.status();
+  auto ambisonics_config =
+      GetAmbisonicsConfig(audio_element_metadata.audio_element_id(),
+                          audio_element_metadata.ambisonics_config());
+  if (!ambisonics_config.ok()) {
+    return ambisonics_config.status();
   }
-  const auto& demixing_view = projection_config->GetDemixingMatrixView();
-  absl::StatusOr<AudioElementObu> obu =
-      AudioElementObu::CreateForProjectionAmbisonics(
-          GetHeaderFromMetadata(audio_element_metadata.obu_header()),
-          audio_element_metadata.audio_element_id(),
-          audio_element_metadata.reserved(),
-          audio_element_metadata.codec_config_id(),
-          audio_element_metadata.audio_substream_ids(),
-          projection_config->GetOutputChannelCount(),
-          projection_config->GetCoupledSubstreamCount(),
-          std::vector<int16_t>(demixing_view.begin(), demixing_view.end()));
+
+  auto obu = AudioElementObu::CreateForAmbisonics(
+      GetHeaderFromMetadata(audio_element_metadata.obu_header()),
+      audio_element_metadata.audio_element_id(),
+      audio_element_metadata.reserved(),
+      audio_element_metadata.codec_config_id(),
+      audio_element_metadata.audio_substream_ids(), *ambisonics_config);
   if (!obu.ok()) {
     return obu.status();
   }
-
   RETURN_IF_NOT_OK(GenerateParameterDefinitions(audio_element_metadata,
                                                 codec_config_obu, *obu));
 
@@ -636,20 +623,8 @@ absl::StatusOr<AudioElementWithData> CreateAudioElementWithData(
         return InvalidArgumentError(
             StrCat(error_prefix, "has missing `ambisonics_config` field."));
       }
-      // Dispatch between the different sub-types of Ambisonics.
-      switch (
-          audio_element_metadata.ambisonics_config().ambisonics_config_case()) {
-        using enum iamf_tools_cli_proto::AmbisonicsConfig::AmbisonicsConfigCase;
-        case kAmbisonicsMonoConfig:
-          return CreateAmbisonicsMonoAudioElementWithData(
-              audio_element_metadata, codec_config_obu);
-        case kAmbisonicsProjectionConfig:
-          return CreateAmbisonicsProjectionAudioElementWithData(
-              audio_element_metadata, codec_config_obu);
-        default:
-          return InvalidArgumentError(
-              StrCat(error_prefix, "has unknown `ambisonics_config`"));
-      }
+      return CreateAmbisonicsAudioElementWithData(audio_element_metadata,
+                                                  codec_config_obu);
     }
     case AUDIO_ELEMENT_OBJECT_BASED:
       return CreateObjectsAudioElementWithData(audio_element_metadata,

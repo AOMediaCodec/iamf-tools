@@ -30,6 +30,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/q_format_or_floating_point.h"
+#include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -213,10 +214,9 @@ TEST(FilterProfilesForAudioElement,
 
 TEST(FilterProfilesForAudioElement,
      KeepsSceneBasedMonoAudioElementForAllKnownProfiles) {
-  constexpr std::array<uint8_t, 1> kMonoChannelMapping{0};
-  auto audio_element_obu = AudioElementObu::CreateForMonoAmbisonics(
+  auto audio_element_obu = AudioElementObu::CreateForAmbisonics(
       ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kMonoChannelMapping);
+      {kFirstSubstreamId}, MakeFullOrderAmbisonicsMonoConfig(0));
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
       kAllKnownProfileVersions;
@@ -233,10 +233,13 @@ TEST(FilterProfilesForAudioElement,
   constexpr uint8_t kOutputChannelCount = 1;
   constexpr uint8_t kCoupledSubstreamCount = 0;
   constexpr std::array<int16_t, 1> kDemixingMatrix{0};
-  auto audio_element_obu = AudioElementObu::CreateForProjectionAmbisonics(
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      kOutputChannelCount, 1, kCoupledSubstreamCount, kDemixingMatrix);
+  ASSERT_THAT(projection_config, IsOk());
+  auto audio_element_obu = AudioElementObu::CreateForAmbisonics(
       ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOutputChannelCount, kCoupledSubstreamCount,
-      kDemixingMatrix);
+      {kFirstSubstreamId},
+      AmbisonicsConfig{.ambisonics_config = *projection_config});
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
       kAllKnownProfileVersions;

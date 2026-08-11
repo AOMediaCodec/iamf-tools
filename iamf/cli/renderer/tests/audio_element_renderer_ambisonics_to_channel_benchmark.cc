@@ -32,6 +32,7 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -100,16 +101,20 @@ static absl::StatusOr<AudioElementObu> CreateFullOrderAudioElement() {
   std::iota(audio_substream_ids.begin(), audio_substream_ids.end(), 0);
 
   if (Mode == kAmbisonicsModeMono) {
-    std::vector<uint8_t> channel_mapping(num_channels);
-    std::iota(channel_mapping.begin(), channel_mapping.end(), 0);
-    return AudioElementObu::CreateForMonoAmbisonics(
+    return AudioElementObu::CreateForAmbisonics(
         ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId,
-        audio_substream_ids, channel_mapping);
+        audio_substream_ids, MakeFullOrderAmbisonicsMonoConfig(Order));
   }
-  return AudioElementObu::CreateForProjectionAmbisonics(
-      ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId,
-      audio_substream_ids, num_channels, kCoupledSubstreamCount,
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      num_channels, num_channels, kCoupledSubstreamCount,
       CreateIdentityMatrix(num_channels));
+  if (!projection_config.ok()) {
+    return projection_config.status();
+  }
+  return AudioElementObu::CreateForAmbisonics(
+      ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId,
+      audio_substream_ids,
+      AmbisonicsConfig{.ambisonics_config = *projection_config});
 }
 
 // Creates an Audio Element OBU for the given `AmbisonicsMode` using third-order
@@ -137,15 +142,25 @@ static absl::StatusOr<AudioElementObu> CreateHorizontalToaAudioElement() {
                                                      kInactiveChannel,
                                                      kInactiveChannel,
                                                      6};
-    return AudioElementObu::CreateForMonoAmbisonics(
+    auto mono_config =
+        AmbisonicsMonoConfig::Create(substream_ids.size(), channel_mapping);
+    if (!mono_config.ok()) {
+      return mono_config.status();
+    }
+    return AudioElementObu::CreateForAmbisonics(
         ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId, substream_ids,
-        channel_mapping);
+        AmbisonicsConfig{.ambisonics_config = *mono_config});
   }
   constexpr uint8_t kOutputChannelCount = 16;
-  return AudioElementObu::CreateForProjectionAmbisonics(
-      ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId, substream_ids,
-      kOutputChannelCount, kCoupledSubstreamCount,
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      kOutputChannelCount, substream_ids.size(), kCoupledSubstreamCount,
       CreateHorizontalToaProjectionMatrix());
+  if (!projection_config.ok()) {
+    return projection_config.status();
+  }
+  return AudioElementObu::CreateForAmbisonics(
+      ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId, substream_ids,
+      AmbisonicsConfig{.ambisonics_config = *projection_config});
 }
 
 static void RunRenderAmbisonicsBenchmark(const AudioElementObu& audio_element,

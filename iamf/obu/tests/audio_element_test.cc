@@ -1364,63 +1364,85 @@ TEST(ValidateAndWriteObu,
   EXPECT_THAT(obu->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
+constexpr DecodedUleb128 kAudioElementId = 1;
+constexpr uint8_t kReserved = 0;
+constexpr DecodedUleb128 kCodecConfigId = 2;
+constexpr std::array<DecodedUleb128, 1> kOneSubstreamId = {3};
+
 // Reasonable for mono or projection ambisonics.
 CommonAudioElementArgs CreateAmbisonicsArgs() {
   return {
       .header = ObuHeader(),
-      .audio_element_id = 1,
-      .audio_element_type = AudioElementObu::kAudioElementSceneBased,
-      .reserved = 0,
-      .codec_config_id = 2,
-      .substream_ids = {3},
+      .audio_element_id = kAudioElementId,
+      .reserved = kReserved,
+      .codec_config_id = kCodecConfigId,
+      .substream_ids = std::vector<DecodedUleb128>(kOneSubstreamId.begin(),
+                                                   kOneSubstreamId.end()),
       .audio_element_params = {},
   };
 }
 
-TEST(CreateMonoAmbisonicsAudioElement, SetsObuType) {
-  const auto common_args = CreateAmbisonicsArgs();
+TEST(CreateForAmbisonics, SetsObuTypeMono) {
+  auto obu = AudioElementObu::CreateForAmbisonics(
+      ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId, kOneSubstreamId,
+      MakeFullOrderAmbisonicsMonoConfig(0));
 
-  constexpr std::array<uint8_t, 1> kChannelMapping = {0};
-  auto obu = AudioElementObu::CreateForMonoAmbisonics(
-      common_args.header, common_args.audio_element_id, common_args.reserved,
-      common_args.codec_config_id, common_args.substream_ids, kChannelMapping);
   ASSERT_THAT(obu, IsOk());
-
   EXPECT_EQ(obu->GetAudioElementType(),
             AudioElementObu::kAudioElementSceneBased);
 }
 
-TEST(CreateMonoAmbisonicsAudioElement, FailsWithInvalidChannelMapping) {
-  auto common_args = CreateAmbisonicsArgs();
-  common_args.substream_ids = {0, 1, 2};
+TEST(CreateForAmbisonics, SetsObuTypeProjection) {
+  auto projection_config = AmbisonicsProjectionConfig::Create(1, 1, 0, {1});
+  ASSERT_THAT(projection_config, IsOk());
 
-  // The size of the channel mapping represents the output channel count; a
-  // square number.
-  constexpr std::array<uint8_t, 3> kInvalidChannelMapping = {0, 1, 2};
-  auto obu = AudioElementObu::CreateForMonoAmbisonics(
-      common_args.header, common_args.audio_element_id, common_args.reserved,
-      common_args.codec_config_id, common_args.substream_ids,
-      kInvalidChannelMapping);
+  auto obu = AudioElementObu::CreateForAmbisonics(
+      ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId, kOneSubstreamId,
+      AmbisonicsConfig{.ambisonics_config = *projection_config});
+
+  ASSERT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->GetAudioElementType(),
+            AudioElementObu::kAudioElementSceneBased);
 }
 
-TEST(CreateMonoAmbisonicsAudioElement, FailsWithDuplicateSubstreamIds) {
-  auto common_args = CreateAmbisonicsArgs();
-  common_args.substream_ids = {3, 3};
-  constexpr std::array<uint8_t, 2> kChannelMapping = {0, 1};
+TEST(CreateForAmbisonics, FailsWithSubstreamCountMismatch) {
+  // Order 0 has 1 substream.
+  AmbisonicsConfig zeroth_order_mono_config =
+      MakeFullOrderAmbisonicsMonoConfig(0);
+  constexpr std::array<DecodedUleb128, 2> kMismatchingNumberOfSubstreams = {0,
+                                                                            1};
 
-  EXPECT_THAT(AudioElementObu::CreateForMonoAmbisonics(
-                  common_args.header, common_args.audio_element_id,
-                  common_args.reserved, common_args.codec_config_id,
-                  common_args.substream_ids, kChannelMapping),
+  EXPECT_THAT(AudioElementObu::CreateForAmbisonics(
+                  ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId,
+                  kMismatchingNumberOfSubstreams, zeroth_order_mono_config),
+              Not(IsOk()));
+}
+
+TEST(CreateForAmbisonics, FailsWithDuplicateSubstreamIds) {
+  auto common_args = CreateAmbisonicsArgs();
+  // Duplicate substream IDs are not allowed.
+  constexpr std::array<DecodedUleb128, 4> kDuplicateSubstreamIds = {3, 3, 3, 3};
+  AmbisonicsConfig zeroth_order_mono_config =
+      MakeFullOrderAmbisonicsMonoConfig(1);
+
+  EXPECT_THAT(AudioElementObu::CreateForAmbisonics(
+                  ObuHeader{}, kAudioElementId, kReserved, kCodecConfigId,
+                  kDuplicateSubstreamIds, MakeFullOrderAmbisonicsMonoConfig(1)),
               Not(IsOk()));
 }
 
 absl::StatusOr<AudioElementObu> CreateMonoAmbisonicsAudioElement(
     const CommonAudioElementArgs& common_args,
     const absl::Span<const uint8_t> channel_mapping) {
-  auto obu = AudioElementObu::CreateForMonoAmbisonics(
+  auto mono_config = AmbisonicsMonoConfig::Create(
+      common_args.substream_ids.size(), channel_mapping);
+  if (!mono_config.ok()) {
+    return mono_config.status();
+  }
+  auto obu = AudioElementObu::CreateForAmbisonics(
       common_args.header, common_args.audio_element_id, common_args.reserved,
-      common_args.codec_config_id, common_args.substream_ids, channel_mapping);
+      common_args.codec_config_id, common_args.substream_ids,
+      AmbisonicsConfig{.ambisonics_config = *mono_config});
   if (!obu.ok()) {
     return obu.status();
   }
@@ -1543,10 +1565,16 @@ absl::StatusOr<AudioElementObu> CreateProjectionAmbisonicsAudioElement(
     const CommonAudioElementArgs& common_args, uint8_t output_channel_count,
     uint8_t coupled_substream_count,
     const absl::Span<const int16_t> demixing_matrix) {
-  auto obu = AudioElementObu::CreateForProjectionAmbisonics(
+  auto projection_config = AmbisonicsProjectionConfig::Create(
+      output_channel_count, common_args.substream_ids.size(),
+      coupled_substream_count, demixing_matrix);
+  if (!projection_config.ok()) {
+    return projection_config.status();
+  }
+  auto obu = AudioElementObu::CreateForAmbisonics(
       common_args.header, common_args.audio_element_id, common_args.reserved,
       common_args.codec_config_id, common_args.substream_ids,
-      output_channel_count, coupled_substream_count, demixing_matrix);
+      AmbisonicsConfig{.ambisonics_config = *projection_config});
   if (!obu.ok()) {
     return obu.status();
   }
@@ -1555,20 +1583,6 @@ absl::StatusOr<AudioElementObu> CreateProjectionAmbisonicsAudioElement(
     obu->audio_element_params_.push_back(param);
   }
   return obu;
-}
-
-TEST(CreateProjectionAmbisonicsAudioElement, FailsWithDuplicateSubstreamIds) {
-  auto common_args = CreateAmbisonicsArgs();
-  common_args.substream_ids = {3, 3};
-  constexpr uint8_t kOutputChannelCount = 1;
-  constexpr uint8_t kCoupledSubstreamCount = 0;
-
-  EXPECT_THAT(AudioElementObu::CreateForProjectionAmbisonics(
-                  common_args.header, common_args.audio_element_id,
-                  common_args.reserved, common_args.codec_config_id,
-                  common_args.substream_ids, kOutputChannelCount,
-                  kCoupledSubstreamCount, {1}),
-              Not(IsOk()));
 }
 
 TEST(ValidateAndWriteObu, WritesAmbisonicsProjection) {
