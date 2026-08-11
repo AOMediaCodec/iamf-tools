@@ -14,12 +14,16 @@
 #define CLI_DOWNMIXER_FACTORY_H_
 
 #include <list>
+#include <memory>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/downmixer.h"
+#include "iamf/cli/sample_processor_base.h"
 
 namespace iamf_tools {
 
@@ -43,6 +47,20 @@ class DownmixerFactory {
   static absl::StatusOr<std::list<DownMixer>> CreateScalableChannelDownmixers(
       const absl::flat_hash_set<ChannelLabel::Label>& labels_to_downmix,
       const SubstreamIdLabelsMap& substream_id_to_labels);
+
+  /*!\brief Wraps a `SampleProcessorBase` as a `DownMixer`.
+   *
+   * For compatibility with the rest of the down-mixing infrastructure.
+   *
+   * \param ordered_input_labels Input channel labels in the order they map to
+   *        channels. The size must match the number of channels in the
+   *        `processor`.
+   * \param processor Pointer to a sample processor instance to wrap.
+   * \return Wrapped `DownMixer`, or an error if invalid.
+   */
+  static absl::StatusOr<DownMixer> SampleProcessorToDownMixer(
+      absl::Span<const ChannelLabel::Label> ordered_input_labels,
+      std::unique_ptr<SampleProcessorBase> absl_nullable processor);
 };
 
 }  // namespace iamf_tools

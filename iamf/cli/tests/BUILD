@@ -303,13 +303,19 @@ cc_test(
     name = "downmixer_factory_test",
     srcs = ["downmixer_factory_test.cc"],
     deps = [
+        ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:downmixer_factory",
+        "//iamf/cli:labeled_frame",
+        "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
+        "@libopus",
     ],
 )
 
