@@ -29,6 +29,7 @@ cc_library(
     srcs = ["audio_element_generator.cc"],
     hdrs = ["audio_element_generator.h"],
     deps = [
+        "//iamf/cli:ambisonics_mixer",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:descriptor_obus",

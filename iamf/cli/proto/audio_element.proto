@@ -133,14 +133,32 @@ message AmbisonicsProjectionConfig {
   repeated int32 demixing_matrix = 4;
 }
 
+enum AmbisonicsPreset {
+  AMBISONICS_PRESET_UNSPECIFIED = 0;
+  // The "best practice" series of preset configurations are intended to provide
+  // reasonable default settings for a given use case. The best practices may
+  // evolve over time, and the final settings may vary on other IA Sequence
+  // settings (e.g. codec).
+  AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER0 = 1;
+  AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER1 = 2;
+  AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER2 = 3;
+  AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER3 = 4;
+}
+
+message AmbisonicsPresetConfig {
+  AmbisonicsPreset ambisonics_preset = 1;
+}
+
 message AmbisonicsConfig {
-  // `ambisonics_mode` is deprecated. The mode is inferred from the
-  // presence of `ambisonics_mono_config` or `ambisonics_projection_config`.
+  // `ambisonics_mode` is deprecated. The mode is inferred from type of
+  // `ambisonics_config`.
   AmbisonicsMode ambisonics_mode = 1 [deprecated = true];
 
   oneof ambisonics_config {
     AmbisonicsMonoConfig ambisonics_mono_config = 2;
     AmbisonicsProjectionConfig ambisonics_projection_config = 3;
+    // Automatically configure a preset based on context.
+    AmbisonicsPresetConfig ambisonics_preset_config = 4;
   }
 }
 

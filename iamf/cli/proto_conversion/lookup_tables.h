@@ -15,6 +15,7 @@
 #include <array>
 #include <utility>
 
+#include "iamf/cli/ambisonics_mixer.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -276,6 +277,18 @@ class LookupTables {
              {OBU_IA_RESERVED_30, kObuIaReserved30},
              {OBU_IA_SEQUENCE_HEADER, kObuIaSequenceHeader}});
       }();
+
+  static constexpr auto kProtoAndInternalAmbisonicsPresets = []() {
+    using enum iamf_tools_cli_proto::AmbisonicsPreset;
+    using enum AmbisonicsMixer::Preset;
+    return std::to_array<std::pair<iamf_tools_cli_proto::AmbisonicsPreset,
+                                   AmbisonicsMixer::Preset>>({
+        {AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER0, kBestPracticeForOrder0},
+        {AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER1, kBestPracticeForOrder1},
+        {AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER2, kBestPracticeForOrder2},
+        {AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER3, kBestPracticeForOrder3},
+    });
+  }();
 };
 
 }  // namespace iamf_tools

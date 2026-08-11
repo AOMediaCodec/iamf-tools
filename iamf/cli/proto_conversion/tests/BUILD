@@ -69,6 +69,8 @@ cc_test(
     name = "proto_utils_test",
     srcs = ["proto_utils_test.cc"],
     deps = [
+        "//iamf/cli:ambisonics_mixer",
+        "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_block_cc_proto",

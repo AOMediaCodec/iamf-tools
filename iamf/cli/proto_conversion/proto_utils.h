@@ -17,6 +17,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "iamf/cli/ambisonics_mixer.h"
+#include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
@@ -41,6 +43,15 @@ namespace iamf_tools {
 absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
     const iamf_tools_cli_proto::QFormatOrFloatingPoint&
         input_q_format_or_floating_point);
+
+/*!\brief Converts to the internal representation of the input protocol buffer.
+ *
+ * \param input_ambisonics_preset Input protocol buffer.
+ * \return Internal representation of `AmbisonicsMixer::Preset` on success. A
+ *     specific status on failure.
+ */
+absl::StatusOr<AmbisonicsMixer::Preset> ProtoToAmbisonicsPreset(
+    const iamf_tools_cli_proto::AmbisonicsPreset& input_ambisonics_preset);
 
 /*!\brief Copies param definitions from the corresponding protocol buffer.
  *

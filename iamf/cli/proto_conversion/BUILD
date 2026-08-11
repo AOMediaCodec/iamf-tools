@@ -80,6 +80,7 @@ cc_library(
     name = "lookup_tables",
     hdrs = ["lookup_tables.h"],
     deps = [
+        "//iamf/cli:ambisonics_mixer",
         "//iamf/cli/proto:arbitrary_obu_cc_proto",
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:codec_config_cc_proto",
@@ -130,6 +131,8 @@ cc_library(
     ],
     deps = [
         ":lookup_tables",
+        "//iamf/cli:ambisonics_mixer",
+        "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_block_cc_proto",

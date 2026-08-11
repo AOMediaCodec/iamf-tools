@@ -24,6 +24,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "iamf/cli/ambisonics_mixer.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
@@ -504,9 +505,23 @@ absl::StatusOr<AmbisonicsProjectionConfig> GetAmbisonicsProjectionConfig(
       demixing_matrix);
 }
 
+absl::StatusOr<AmbisonicsConfig> GetPresetConfig(
+    const CodecConfigObu& codec_config_obu,
+    const iamf_tools_cli_proto::AmbisonicsPresetConfig& input_config) {
+  auto preset = ProtoToAmbisonicsPreset(input_config.ambisonics_preset());
+  if (!preset.ok()) {
+    return preset.status();
+  }
+  auto mixer = AmbisonicsMixer::MakeFromPreset(
+      codec_config_obu.GetCodecConfig().codec_id, *preset,
+      codec_config_obu.GetNumSamplesPerFrame());
+  return mixer.GetAmbisonicsConfig();
+}
+
 absl::StatusOr<AmbisonicsConfig> GetAmbisonicsConfig(
     DecodedUleb128 audio_element_id_for_debugging,
-    const iamf_tools_cli_proto::AmbisonicsConfig& input_config) {
+    const iamf_tools_cli_proto::AmbisonicsConfig& input_config,
+    const CodecConfigObu& codec_config_obu) {
   switch (input_config.ambisonics_config_case()) {
     using enum iamf_tools_cli_proto::AmbisonicsConfig::AmbisonicsConfigCase;
     case kAmbisonicsMonoConfig: {
@@ -526,6 +541,9 @@ absl::StatusOr<AmbisonicsConfig> GetAmbisonicsConfig(
       return AmbisonicsConfig{.ambisonics_config =
                                   *std::move(projection_config)};
     }
+    case kAmbisonicsPresetConfig:
+      return GetPresetConfig(codec_config_obu,
+                             input_config.ambisonics_preset_config());
     default:
       return InvalidArgumentError(StrCat("Audio Element Metadata [",
                                          audio_element_id_for_debugging,
@@ -536,9 +554,9 @@ absl::StatusOr<AmbisonicsConfig> GetAmbisonicsConfig(
 absl::StatusOr<AudioElementWithData> CreateAmbisonicsAudioElementWithData(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
     const CodecConfigObu& codec_config_obu) {
-  auto ambisonics_config =
-      GetAmbisonicsConfig(audio_element_metadata.audio_element_id(),
-                          audio_element_metadata.ambisonics_config());
+  auto ambisonics_config = GetAmbisonicsConfig(
+      audio_element_metadata.audio_element_id(),
+      audio_element_metadata.ambisonics_config(), codec_config_obu);
   if (!ambisonics_config.ok()) {
     return ambisonics_config.status();
   }

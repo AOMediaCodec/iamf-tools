@@ -22,6 +22,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "iamf/cli/ambisonics_mixer.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
@@ -57,6 +58,14 @@ absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
     // By default, return a safe 0.
     return QFormatOrFloatingPoint::MakeFromQ7_8(0);
   }
+}
+
+absl::StatusOr<AmbisonicsMixer::Preset> ProtoToAmbisonicsPreset(
+    const iamf_tools_cli_proto::AmbisonicsPreset& input_ambisonics_preset) {
+  static const auto kProtoToInternalAmbisonicsPreset =
+      BuildStaticMapFromPairs(LookupTables::kProtoAndInternalAmbisonicsPresets);
+  return LookupInMap(*kProtoToInternalAmbisonicsPreset, input_ambisonics_preset,
+                     "Internal version of proto `AmbisonicsPreset`");
 }
 
 absl::StatusOr<ParamDefinition::BaseArgs> GetParamDefinitionBaseArgs(

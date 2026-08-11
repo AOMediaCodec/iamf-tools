@@ -476,6 +476,33 @@ TEST(Generate, GeneratesFirstOrderAmbisonics) {
               ElementsAre(0, 1, 2, 3));
 }
 
+TEST(Generate, GeneratesAmbisonicsPresetOrder1) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  auto* metadata = audio_element_metadatas.Add();
+  ASSERT_TRUE(TextFormat::ParseFromString(
+      R"pb(
+        audio_element_type: AUDIO_ELEMENT_SCENE_BASED
+        reserved: 0
+        audio_substream_ids: [ 0, 1, 2, 3 ]
+        ambisonics_config {
+          ambisonics_preset_config {
+            ambisonics_preset: AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER1
+          }
+        }
+      )pb",
+      metadata));
+  metadata->set_audio_element_id(kAudioElementId);
+  metadata->set_codec_config_id(kCodecConfigId);
+
+  CodecConfigsById codec_config_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  AudioElementsById output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+  EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
+}
+
 TEST(Generate, FirstOrderMonoAmbisonicsLargeSubstreamIds) {
   AudioElementObuMetadatas audio_element_metadatas;
   ASSERT_TRUE(TextFormat::ParseFromString(

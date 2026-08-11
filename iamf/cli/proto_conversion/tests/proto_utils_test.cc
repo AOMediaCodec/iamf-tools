@@ -18,6 +18,8 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/ambisonics_mixer.h"
+#include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
@@ -35,6 +37,31 @@ using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::FloatNear;
 using ::testing::Not;
+
+TEST(ProtoToAmbisonicsPreset, ConvertsAllPresets) {
+  using enum iamf_tools_cli_proto::AmbisonicsPreset;
+  using enum AmbisonicsMixer::Preset;
+
+  EXPECT_THAT(
+      ProtoToAmbisonicsPreset(AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER0),
+      IsOkAndHolds(kBestPracticeForOrder0));
+  EXPECT_THAT(
+      ProtoToAmbisonicsPreset(AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER1),
+      IsOkAndHolds(kBestPracticeForOrder1));
+  EXPECT_THAT(
+      ProtoToAmbisonicsPreset(AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER2),
+      IsOkAndHolds(kBestPracticeForOrder2));
+  EXPECT_THAT(
+      ProtoToAmbisonicsPreset(AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER3),
+      IsOkAndHolds(kBestPracticeForOrder3));
+}
+
+TEST(ProtoToAmbisonicsPreset, UnspecifiedOrInvalidReturnsError) {
+  using enum iamf_tools_cli_proto::AmbisonicsPreset;
+
+  EXPECT_THAT(ProtoToAmbisonicsPreset(AMBISONICS_PRESET_UNSPECIFIED),
+              Not(IsOk()));
+}
 
 TEST(GetQ7_8FromProto, Q7_8) {
   iamf_tools_cli_proto::QFormatOrFloatingPoint q_format_or_floating_point;
