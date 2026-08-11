@@ -70,6 +70,8 @@
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
+ABSL_POINTERS_DEFAULT_NONNULL
+
 namespace iamf_tools {
 
 namespace {
@@ -238,7 +240,7 @@ absl::Status FinalizeObuSequencers(
 
 }  // namespace
 
-std::vector<std::unique_ptr<ObuSequencerBase> absl_nonnull>
+std::vector<std::unique_ptr<ObuSequencerBase>>
 IamfEncoder::CreateNoObuSequencers() {
   return {};
 }
