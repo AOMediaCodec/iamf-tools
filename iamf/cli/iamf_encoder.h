@@ -286,7 +286,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
       std::unique_ptr<GlobalTimingModule> global_timing_module,
       RenderingMixPresentationFinalizer&& mix_presentation_finalizer,
       std::vector<std::unique_ptr<ObuSequencerBase>>&& obu_sequencers,
-      ObuSequencerStreamingIamf&& streaming_obu_sequencer)
+      std::unique_ptr<ObuSequencerStreamingIamf> streaming_obu_sequencer)
       : validate_user_loudness_(validate_user_loudness),
         ia_sequence_header_obu_(std::move(ia_sequence_header_obu)),
         metadata_obus_(std::move(metadata_obus)),
@@ -365,7 +365,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
   std::vector<std::unique_ptr<ObuSequencerBase>> obu_sequencers_;
   // Backing sequencer, to back output of serialized OBUs. Held as a specific
   // class, because it has extra functions not available in the base class.
-  ObuSequencerStreamingIamf streaming_obu_sequencer_;
+  std::unique_ptr<ObuSequencerStreamingIamf> streaming_obu_sequencer_;
   // True after the sequencers have been finalized.
   bool sequencers_finalized_ = false;
 };

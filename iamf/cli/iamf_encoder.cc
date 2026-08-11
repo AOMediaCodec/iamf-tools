@@ -391,7 +391,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   if (leb_generator == nullptr) {
     return absl::InvalidArgumentError("Failed to create LebGenerator.");
   }
-  ObuSequencerStreamingIamf streaming_obu_sequencer(
+  auto streaming_obu_sequencer = std::make_unique<ObuSequencerStreamingIamf>(
       user_metadata.temporal_delimiter_metadata().enable_temporal_delimiters(),
       *leb_generator);
 
@@ -406,7 +406,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
         *audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
   }
 
-  RETURN_IF_NOT_OK(streaming_obu_sequencer.PushDescriptorObus(
+  RETURN_IF_NOT_OK(streaming_obu_sequencer->PushDescriptorObus(
       *ia_sequence_header_obu, metadata_obus, *codec_config_obus,
       *audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
 
@@ -435,7 +435,7 @@ absl::Status IamfEncoder::GetDescriptorObus(
   }
   // Grab the latest from the streaming sequencer.
   const auto& descriptor_obus_span =
-      streaming_obu_sequencer_.GetSerializedDescriptorObus();
+      streaming_obu_sequencer_->GetSerializedDescriptorObus();
   descriptor_obus = {descriptor_obus_span.begin(), descriptor_obus_span.end()};
   output_obus_are_finalized = sequencers_finalized_;
   return absl::OkStatus();
@@ -592,7 +592,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
       if (!temporal_unit_arbitrary_obus.empty()) {
         RETURN_IF_NOT_OK(PushTemporalUnitToObuSequencers(
             parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
-            obu_sequencers_, streaming_obu_sequencer_, temporal_unit_obus));
+            obu_sequencers_, *streaming_obu_sequencer_, temporal_unit_obus));
       }
 
       if (!GeneratingTemporalUnits()) {
@@ -602,7 +602,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
             ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
             *audio_elements_, mix_presentation_obus_,
             descriptor_arbitrary_obus_, obu_sequencers_,
-            streaming_obu_sequencer_, sequencers_finalized_);
+            *streaming_obu_sequencer_, sequencers_finalized_);
       }
     }
     return absl::OkStatus();
@@ -671,7 +671,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
       parameter_blocks));
   RETURN_IF_NOT_OK(PushTemporalUnitToObuSequencers(
       parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
-      obu_sequencers_, streaming_obu_sequencer_, temporal_unit_obus));
+      obu_sequencers_, *streaming_obu_sequencer_, temporal_unit_obus));
 
   if (GeneratingTemporalUnits()) {
     return absl::OkStatus();
@@ -684,7 +684,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   return FinalizeObuSequencers(
       ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
       *audio_elements_, mix_presentation_obus_, descriptor_arbitrary_obus_,
-      obu_sequencers_, streaming_obu_sequencer_, sequencers_finalized_);
+      obu_sequencers_, *streaming_obu_sequencer_, sequencers_finalized_);
 }
 
 absl::Status IamfEncoder::FinalizeEncode() {
@@ -707,7 +707,7 @@ absl::Status IamfEncoder::FinalizeEncode() {
   return FinalizeObuSequencers(
       ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
       *audio_elements_, mix_presentation_obus_, descriptor_arbitrary_obus_,
-      obu_sequencers_, streaming_obu_sequencer_, sequencers_finalized_);
+      obu_sequencers_, *streaming_obu_sequencer_, sequencers_finalized_);
 }
 
 const DescriptorObus::AudioElementsById& IamfEncoder::GetAudioElements() const {
