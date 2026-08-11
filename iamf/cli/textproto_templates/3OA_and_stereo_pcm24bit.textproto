@@ -84,11 +84,8 @@ audio_element_metadata: [
     codec_config_id: 200
     audio_substream_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     ambisonics_config {
-      ambisonics_mode: AMBISONICS_MODE_MONO
-      ambisonics_mono_config {
-        output_channel_count: 16
-        substream_count: 16
-        channel_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+      ambisonics_preset_config {
+        ambisonics_preset: AMBISONICS_PRESET_BEST_PRACTICE_FOR_ORDER3
       }
     }
   },
