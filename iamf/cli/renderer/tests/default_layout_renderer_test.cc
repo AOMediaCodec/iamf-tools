@@ -37,7 +37,6 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
-#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
@@ -58,10 +57,12 @@ constexpr uint32_t kParameterId = 13;
 constexpr uint32_t kSampleRate = 48000;
 constexpr int32_t kNumChannelsForStereo = 2;
 constexpr uint32_t kNumSamplesPerFrame = 8;
-constexpr ParamDefinition::BaseArgs kParamDefinitionBaseArgs = {
-    .parameter_id = kParameterId,
-    .parameter_rate = kSampleRate,
-};
+MixGainParamDefinition GetDefaultMixGainParamDefinition() {
+  return MixGainParamDefinition({
+      .parameter_id = kParameterId,
+      .parameter_rate = kSampleRate,
+  });
+}
 
 class MockRenderer : public AudioElementRendererBase {
  public:
@@ -105,7 +106,7 @@ class MockRendererFactory : public RendererFactoryBase {
 class DefaultLayoutRendererTest : public ::testing::Test {
  public:
   DefaultLayoutRendererTest()
-      : output_mix_gain_(MixGainParamDefinition(kParamDefinitionBaseArgs)),
+      : output_mix_gain_(GetDefaultMixGainParamDefinition()),
         layout_(
             {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
              .specific_layout =
@@ -124,7 +125,7 @@ class DefaultLayoutRendererTest : public ::testing::Test {
     audio_elements_in_sub_mix_.push_back(&audio_elements_.at(kAudioElementId));
     SubMixAudioElement sub_mix_audio_element = {
         .audio_element_id = kAudioElementId,
-        .element_mix_gain = MixGainParamDefinition(kParamDefinitionBaseArgs),
+        .element_mix_gain = GetDefaultMixGainParamDefinition(),
     };
     sub_mix_audio_elements_.push_back(sub_mix_audio_element);
   }

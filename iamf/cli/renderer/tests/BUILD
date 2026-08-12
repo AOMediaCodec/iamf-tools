@@ -127,7 +127,6 @@ cc_test(
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
-        "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/base:core_headers",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status",
