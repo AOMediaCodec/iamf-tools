@@ -22,7 +22,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
@@ -31,11 +30,11 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/labeled_frame.h"
+#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -43,17 +42,13 @@
 #include "iamf/cli/proto/output_audio_format.pb.h"
 #include "iamf/cli/proto_conversion/output_audio_format_utils.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
-#include "iamf/cli/renderer/audio_element_renderer_base.h"
-#include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/cli/wav_writer.h"
-#include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -95,80 +90,12 @@ constexpr uint8_t kCodecConfigBitDepth = 16;
 constexpr std::array<DecodedUleb128, 1> kMonoSubstreamIds = {0};
 constexpr std::array<DecodedUleb128, 1> kStereoSubstreamIds = {1};
 
-constexpr std::array<ChannelLabel::Label, 2> kStereoLabels = {kL2, kR2};
-
 constexpr size_t kFirstSubmixIndex = 0;
 constexpr size_t kFirstLayoutIndex = 0;
 
 typedef ::google::protobuf::RepeatedPtrField<
     iamf_tools_cli_proto::CodecConfigObuMetadata>
     CodecConfigObuMetadatas;
-
-class MockRenderer : public AudioElementRendererBase {
- public:
-  MockRenderer(absl::Span<const ChannelLabel::Label> ordered_labels,
-               size_t num_output_channels)
-      : AudioElementRendererBase(ordered_labels,
-                                 static_cast<size_t>(kNumSamplesPerFrame),
-                                 num_output_channels),
-        kAllZeroRenderedSamples(
-            num_output_channels,
-            std::vector<InternalSampleType>(kNumSamplesPerFrame)) {
-    // Reset the `rendered_samples_` so that subsequent `Flush()` can output
-    // non-empty results.
-    ON_CALL(*this, RenderSamples(_))
-        .WillByDefault(testing::InvokeWithoutArgs(
-            this, &MockRenderer::ResetRenderedSamples));
-  }
-  MockRenderer() : MockRenderer({}, 0) {}
-
-  MOCK_METHOD(absl::Status, RenderSamples,
-              (absl::Span<const absl::Span<const InternalSampleType>>
-                   samples_to_render),
-              (override));
-
- private:
-  absl::Status ResetRenderedSamples() ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-    rendered_samples_ = kAllZeroRenderedSamples;
-    return absl::OkStatus();
-  }
-
-  const std::vector<std::vector<InternalSampleType>> kAllZeroRenderedSamples;
-};
-
-class MockRendererFactory : public RendererFactoryBase {
- public:
-  MockRendererFactory() : RendererFactoryBase() {}
-
-  MOCK_METHOD(std::unique_ptr<AudioElementRendererBase>,
-              CreateRendererForLayout,
-              (const std::vector<DecodedUleb128>& audio_substream_ids,
-               const SubstreamIdLabelsMap& substream_id_to_labels,
-               AudioElementObu::AudioElementType audio_element_type,
-               const AudioElementObu::AudioElementConfig& audio_element_config,
-               const RenderingConfig& rendering_config,
-               const Layout& loudness_layout, size_t num_samples_per_frame,
-               size_t sample_rate),
-              (const, override));
-};
-
-/*!\brief A simple factory which always returns `nullptr`. */
-class AlwaysNullRendererFactory : public RendererFactoryBase {
- public:
-  /*!\brief Destructor. */
-  ~AlwaysNullRendererFactory() override = default;
-
-  std::unique_ptr<AudioElementRendererBase> CreateRendererForLayout(
-      const std::vector<DecodedUleb128>& /*audio_substream_ids*/,
-      const SubstreamIdLabelsMap& /*substream_id_to_labels*/,
-      AudioElementObu::AudioElementType /*audio_element_type*/,
-      const AudioElementObu::AudioElementConfig& /*audio_element_config*/,
-      const RenderingConfig& /*rendering_config*/,
-      const Layout& /*loudness_layout*/, size_t /*num_samples_per_frame*/,
-      size_t /*sample_rate*/) const override {
-    return nullptr;
-  }
-};
 
 /*!\brief A simple factory which always returns `nullptr`. */
 class AlwaysNullLoudnessCalculatorFactory
@@ -247,7 +174,7 @@ class FinalizerTest : public ::testing::Test {
 
   RenderingMixPresentationFinalizer CreateFinalizerExpectOk() {
     auto finalizer = RenderingMixPresentationFinalizer::Create(
-        renderer_factory_.get(), loudness_calculator_factory_.get(),
+        layout_renderer_factory_.get(), loudness_calculator_factory_.get(),
         audio_elements_, sample_processor_factory_, obus_to_finalize_);
     EXPECT_THAT(finalizer, IsOk());
     return *std::move(finalizer);
@@ -303,7 +230,8 @@ class FinalizerTest : public ::testing::Test {
   iamf_tools_cli_proto::OutputAudioFormat output_audio_format_ =
       iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC;
   bool validate_loudness_ = kDontValidateLoudness;
-  std::unique_ptr<RendererFactoryBase> renderer_factory_;
+  std::unique_ptr<LayoutRendererFactory> layout_renderer_factory_ =
+      std::make_unique<LayoutRendererFactory>(TrimmingSettings{});
   std::unique_ptr<LoudnessCalculatorFactoryBase> loudness_calculator_factory_;
   // Custom `Finalize` arguments.
   RenderingMixPresentationFinalizer::SampleProcessorFactory
@@ -316,24 +244,14 @@ class FinalizerTest : public ::testing::Test {
 };
 
 // =Tests that the create function does not crash with various modes disabled.=
-
-TEST_F(FinalizerTest, CreateDoesNotCrashWithMockFactories) {
-  renderer_factory_ = std::make_unique<MockRendererFactory>();
-  loudness_calculator_factory_ =
-      std::make_unique<MockLoudnessCalculatorFactory>();
-
-  CreateFinalizerExpectOk();
-}
-
-TEST_F(FinalizerTest, CreateDoesNotCrashWhenRendererFactoryIsNullptr) {
-  renderer_factory_ = nullptr;
+TEST_F(FinalizerTest, CreateDoesNotCrashWhenLayoutRendererFactoryIsNullptr) {
+  layout_renderer_factory_ = nullptr;
 
   CreateFinalizerExpectOk();
 }
 
 TEST_F(FinalizerTest,
        CreateDoesNotCrashWhenLoudnessCalculatorFactoryIsNullptr) {
-  renderer_factory_ = std::make_unique<AlwaysNullRendererFactory>();
   loudness_calculator_factory_ = nullptr;
 
   CreateFinalizerExpectOk();
@@ -341,7 +259,6 @@ TEST_F(FinalizerTest,
 
 TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
   // The first audio element references an LPCM codec config.
-  renderer_factory_ = std::make_unique<AlwaysNullRendererFactory>();
   CodecConfigObuMetadatas metadata;
   metadata.Add(CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
       kCodecConfigId, 960));
@@ -368,52 +285,9 @@ TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
 
   EXPECT_THAT(
       RenderingMixPresentationFinalizer::Create(
-          renderer_factory_.get(), loudness_calculator_factory_.get(),
+          layout_renderer_factory_.get(), loudness_calculator_factory_.get(),
           audio_elements_, sample_processor_factory_, obus_to_finalize_),
       Not(IsOk()));
-}
-
-// =========== Tests that work is delegated to the renderer factory. ===========
-TEST_F(FinalizerTest, ForwardsLayoutToRenderer) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
-
-  // We expect arguments to be forwarded from the OBUs to the renderer factory.
-  auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
-  const auto& forwarded_sub_mix = obus_to_finalize_.front().sub_mixes_[0];
-  const auto& forwarded_layout = forwarded_sub_mix.layouts[0].loudness_layout;
-  EXPECT_CALL(*mock_renderer_factory,
-              CreateRendererForLayout(_, _, _, _, _, forwarded_layout, _, _));
-  renderer_factory_ = std::move(mock_renderer_factory);
-
-  CreateFinalizerExpectOk();
-}
-
-TEST_F(FinalizerTest, ForwardsOrderedSamplesToRenderer) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0, 1}}, {kR2, {2, 3}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
-
-  // We expect arguments to be forwarded from the OBUs to the renderer.
-  auto mock_renderer = std::make_unique<MockRenderer>(kStereoLabels, 2);
-  const std::vector<std::vector<InternalSampleType>>
-      kExpectedChannelTimeOrderedSamples = {{0, 1}, {2, 3}};
-  EXPECT_CALL(
-      *mock_renderer,
-      RenderSamples(MakeSpanOfConstSpans(kExpectedChannelTimeOrderedSamples)));
-  auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
-  ASSERT_NE(mock_renderer_factory, nullptr);
-  EXPECT_CALL(*mock_renderer_factory,
-              CreateRendererForLayout(_, _, _, _, _, _, _, _))
-      .WillOnce(Return(std::move(mock_renderer)));
-  renderer_factory_ = std::move(mock_renderer_factory);
-  std::list<ParameterBlockWithData> parameter_blocks;
-
-  auto finalizer = CreateFinalizerExpectOk();
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 }
 
 TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
@@ -422,13 +296,6 @@ TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
   const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  auto mock_renderer = std::make_unique<MockRenderer>(kStereoLabels, 2);
-  EXPECT_CALL(*mock_renderer, RenderSamples(_));
-  auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
-  EXPECT_CALL(*mock_renderer_factory,
-              CreateRendererForLayout(_, _, _, _, _, _, _, _))
-      .WillOnce(Return(std::move(mock_renderer)));
-  renderer_factory_ = std::move(mock_renderer_factory);
   std::list<ParameterBlockWithData> parameter_blocks;
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -437,31 +304,14 @@ TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
   EXPECT_TRUE(std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
 }
 
-TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingFactoryIsNullptr) {
+TEST_F(FinalizerTest, DoesNotCreateFilesWhenLayoutRenderingFactoryIsNullptr) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
   const std::filesystem::path output_directory =
       GetAndCreateOutputDirectory("");
-  renderer_factory_ = nullptr;
-  std::list<ParameterBlockWithData> parameter_blocks;
-
-  auto finalizer = CreateFinalizerExpectOk();
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
-
-  EXPECT_TRUE(std::filesystem::is_empty(output_directory));
-}
-
-TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingFactoryReturnsNullptr) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
-  const std::filesystem::path output_directory =
-      GetAndCreateOutputDirectory("");
-  ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  renderer_factory_ = std::make_unique<AlwaysNullRendererFactory>();
+  layout_renderer_factory_ = nullptr;
   std::list<ParameterBlockWithData> parameter_blocks;
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -477,7 +327,6 @@ TEST_F(FinalizerTest, UsesCodecConfigBitDepthWhenOverrideIsNotSet) {
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
   const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
@@ -494,7 +343,6 @@ TEST_F(FinalizerTest, OverridesBitDepthWhenRequested) {
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
   const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   output_audio_format_ =
       iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO;
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
@@ -515,7 +363,6 @@ TEST_F(FinalizerTest, InvalidWhenFrameIsLargerThanNumSamplesPerFrame) {
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
   AddLabeledFrame(kAudioElementId, kInvalidLabelToSamplesWithTooManySamples);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -530,7 +377,6 @@ TEST_F(FinalizerTest, WavFileHasExpectedProperties) {
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
   const LabelSamplesMap kLabelToSamples = {{kMono, kFourSamples}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
@@ -555,7 +401,6 @@ TEST_F(FinalizerTest, SamplesAreTrimmedFromWavFile) {
   const LabelSamplesMap kLabelToSamples = {{kMono, kFourSamples}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kNumSamplesToTrimFromStart,
                   kNumSamplesToTrimFromEnd);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
@@ -586,7 +431,6 @@ TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
   PrepareObusForOneSamplePassThroughMono();
 
   // A factory can be used to omit generating wav files.
-  renderer_factory_ = std::make_unique<RendererFactory>();
   sample_processor_factory_ =
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
   auto finalizer_without_post_processors = CreateFinalizerExpectOk();
@@ -596,7 +440,6 @@ TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
       std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
 
   // Or a factory can be used to create wav files.
-  renderer_factory_ = std::make_unique<RendererFactory>();
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   auto finalizer_with_wav_writers = CreateFinalizerExpectOk();
   EXPECT_THAT(finalizer_with_wav_writers.FinalizePushingTemporalUnits(),
@@ -607,7 +450,6 @@ TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
 TEST_F(FinalizerTest, ForwardsArgumentsToSampleProcessorFactory) {
   PrepareObusForOneSamplePassThroughMono();
   // Rendering needs to be initialized to create wav files.
-  renderer_factory_ = std::make_unique<RendererFactory>();
   // We expect arguments to be forwarded from the OBUs to the wav writer
   // factory.
   const auto& forwarded_layout =
@@ -630,8 +472,6 @@ TEST_F(FinalizerTest, ForwardsArgumentsToSampleProcessorFactory) {
 }
 
 TEST_F(FinalizerTest, PushTemporalUnitDelegatesToSampleProcessor) {
-  // Post-processing is only possible if rendering is enabled.
-  renderer_factory_ = std::make_unique<RendererFactory>();
   const std::vector<std::vector<InternalSampleType>>
       kExpectedPassthroughSamples = {{0.0, 1.0}};
   const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
@@ -661,8 +501,6 @@ TEST_F(FinalizerTest, PushTemporalUnitDelegatesToSampleProcessor) {
 
 TEST_F(FinalizerTest,
        FinalizePushingTemporalUnitsDelegatesToSampleProcessorFlush) {
-  // Post-processing is only possible if rendering is enabled.
-  renderer_factory_ = std::make_unique<RendererFactory>();
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
   constexpr auto kNoOutputSamples = 0;
@@ -698,7 +536,6 @@ TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
               CreateLoudnessCalculator(forwarded_layout,
                                        forwarded_num_samples_per_frame,
                                        forwarded_sample_rate));
-  renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -731,7 +568,6 @@ TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   EXPECT_CALL(*mock_loudness_calculator_factory,
               CreateLoudnessCalculator(_, _, _))
       .WillOnce(Return(std::move(mock_loudness_calculator)));
-  renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -764,7 +600,6 @@ TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kMismatchingUserLoudness;
   validate_loudness_ = kValidateLoudness;
-  renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
@@ -783,7 +618,7 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderFactoryIsNullptr) {
   PrepareObusForOneSamplePassThroughMono();
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
-  renderer_factory_ = nullptr;
+  layout_renderer_factory_ = nullptr;
   auto finalizer = CreateFinalizerExpectOk();
 
   validate_loudness_ = kDontValidateLoudness;
@@ -797,7 +632,7 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderingIsNotSupported) {
   PrepareObusForOneSamplePassThroughMono();
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
-  renderer_factory_ = std::make_unique<AlwaysNullRendererFactory>();
+  layout_renderer_factory_ = nullptr;
   loudness_calculator_factory_ =
       std::make_unique<AlwaysNullLoudnessCalculatorFactory>();
   auto finalizer = CreateFinalizerExpectOk();
@@ -813,7 +648,6 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryIsNullPtr) {
   PrepareObusForOneSamplePassThroughMono();
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
-  renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = nullptr;
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -828,7 +662,6 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryReturnsNullPtr) {
   PrepareObusForOneSamplePassThroughMono();
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
-  renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ =
       std::make_unique<AlwaysNullLoudnessCalculatorFactory>();
   auto finalizer = CreateFinalizerExpectOk();
@@ -844,7 +677,6 @@ TEST_F(FinalizerTest, CreateSucceedsWithValidInput) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  renderer_factory_ = std::make_unique<RendererFactory>();
 
   auto finalizer = CreateFinalizerExpectOk();
 }
@@ -898,7 +730,6 @@ TEST_F(
     GetPostProcessedSamplesAsSpanCanBeUsedBeforeOrAfterGetFinalizedMixPresentationObus) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
 
@@ -958,7 +789,6 @@ TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
 
   ASSERT_EQ(ordered_labeled_frames_.size(), 1);
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  renderer_factory_ = std::make_unique<RendererFactory>();
   auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(finalizer.PushTemporalUnit(ordered_labeled_frames_[0], kStartTime,
                                          kEndTime,
@@ -973,7 +803,6 @@ TEST_F(FinalizerTest, FullIterativeRenderingSucceedsWithValidInput) {
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
 
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  renderer_factory_ = std::make_unique<RendererFactory>();
 
   // Prepare a mock loudness calculator that will return arbitrary loudness
   // information.
@@ -1003,7 +832,6 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
 
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  renderer_factory_ = std::make_unique<RendererFactory>();
 
   // Prepare a mock loudness calculator that will return arbitrary loudness
   // information.
@@ -1036,7 +864,6 @@ TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanReturnsEmptySpanAfterCreate) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  renderer_factory_ = std::make_unique<RendererFactory>();
 
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -1050,7 +877,7 @@ TEST_F(FinalizerTest,
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   // Disable rendering.
-  renderer_factory_ = nullptr;
+  layout_renderer_factory_ = nullptr;
 
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -1065,7 +892,6 @@ TEST_F(FinalizerTest,
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   const DecodedUleb128 kUnknownMixPresentationId = kMixPresentationId + 1;
-  renderer_factory_ = std::make_unique<RendererFactory>();
 
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -1080,7 +906,6 @@ TEST_F(FinalizerTest,
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   const int kUnknownLayoutIndex = kFirstLayoutIndex + 1;
-  renderer_factory_ = std::make_unique<RendererFactory>();
 
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -1094,7 +919,6 @@ TEST_F(FinalizerTest,
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   const int kUnknownSubmixIndex = kFirstSubmixIndex + 1;
-  renderer_factory_ = std::make_unique<RendererFactory>();
 
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -1108,7 +932,6 @@ TEST_F(
     GetPostProcessedSamplesAsSpanReturnsEmptySpanWhenFinalizedWithNoPostProcessor) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   sample_processor_factory_ =
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
 
@@ -1128,7 +951,6 @@ TEST_F(FinalizerTest,
                                            {kR2, {0.2, 0.3}}};
 
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {{0.1},
                                                                          {0.3}};
   // We expect the post-processor to be called with the rendered samples.
@@ -1161,7 +983,6 @@ TEST_F(FinalizerTest,
   const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {
       {0.0, 0.1}, {0.2, 0.3}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   sample_processor_factory_ =
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
   auto finalizer = CreateFinalizerExpectOk();
@@ -1182,7 +1003,6 @@ TEST_F(FinalizerTest,
        DelayedSamplesAreAvailableAfterFinalizePushingTemporalUnits) {
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   sample_processor_factory_ =
       [](DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
          int /*layout_index*/, const Layout& /*layout*/, int num_channels,

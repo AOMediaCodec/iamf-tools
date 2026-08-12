@@ -29,6 +29,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"
+#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_streaming_iamf.h"
@@ -103,8 +104,8 @@ class IamfEncoder : public api::IamfEncoderInterface {
   /*!\brief Factory function to create an `IamfEncoder`.
    *
    * \param user_metadata Input user metadata describing the IAMF stream.
-   * \param renderer_factory Factory to create renderers for use in measuring
-   *        the loudness.
+   * \param layout_renderer_factory Factory to create layout renderers for use
+   *        in measuring the loudness.
    * \param loudness_calculator_factory Factory to create loudness calculators
    *        to measure the loudness of the output layouts.
    * \param sample_processor_factory Factory to create processors for use after
@@ -114,7 +115,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
    */
   static absl::StatusOr<std::unique_ptr<IamfEncoder>> Create(
       const iamf_tools_cli_proto::UserMetadata& user_metadata,
-      const RendererFactoryBase* absl_nullable renderer_factory,
+      const LayoutRendererFactory* absl_nullable layout_renderer_factory,
       const LoudnessCalculatorFactoryBase* absl_nullable
           loudness_calculator_factory,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&

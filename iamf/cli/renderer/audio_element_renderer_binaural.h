@@ -62,7 +62,8 @@ class AudioElementRendererBinaural : public AudioElementRendererBase {
   static std::unique_ptr<AudioElementRendererBinaural>
   CreateFromScalableChannelLayoutConfig(
       const ScalableChannelLayoutConfig& scalable_channel_layout_config,
-      size_t num_samples_per_frame, size_t sample_rate);
+      size_t num_samples_per_frame, size_t sample_rate,
+      const TrimmingSettings trimming_settings = {});
 
   /*!\brief Creates an ambisonics to binaural renderer.
    *
@@ -80,7 +81,8 @@ class AudioElementRendererBinaural : public AudioElementRendererBase {
       const AmbisonicsConfig& ambisonics_config,
       const std::vector<DecodedUleb128>& audio_substream_ids,
       const SubstreamIdLabelsMap& substream_id_to_labels,
-      size_t num_samples_per_frame, size_t sample_rate);
+      size_t num_samples_per_frame, size_t sample_rate,
+      const TrimmingSettings trimming_settings = {});
 
   /*!\brief Destructor. */
   ~AudioElementRendererBinaural() override = default;
@@ -105,7 +107,8 @@ class AudioElementRendererBinaural : public AudioElementRendererBase {
   AudioElementRendererBinaural(
       const std::vector<ChannelLabel::Label>& ordered_labels,
       std::optional<absl::Span<const int16_t>> demixing_matrix,
-      std::unique_ptr<obr::ObrImpl> obr, size_t num_samples_per_frame);
+      std::unique_ptr<obr::ObrImpl> obr, size_t num_samples_per_frame,
+      const TrimmingSettings trimming_settings);
 
   /*!\brief Renders samples.
    *

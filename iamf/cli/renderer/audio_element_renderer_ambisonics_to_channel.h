@@ -60,7 +60,8 @@ class AudioElementRendererAmbisonicsToChannel
       const AmbisonicsConfig& ambisonics_config,
       const std::vector<DecodedUleb128>& audio_substream_ids,
       const SubstreamIdLabelsMap& substream_id_to_labels,
-      const Layout& playback_layout, size_t num_samples_per_frame);
+      const Layout& playback_layout, size_t num_samples_per_frame,
+      const TrimmingSettings trimming_settings = {});
 
   /*!\brief Destructor. */
   ~AudioElementRendererAmbisonicsToChannel() override = default;
@@ -78,9 +79,10 @@ class AudioElementRendererAmbisonicsToChannel
   AudioElementRendererAmbisonicsToChannel(
       size_t num_output_channels, size_t num_samples_per_frame,
       const std::vector<ChannelLabel::Label>& ordered_labels,
-      const std::vector<std::vector<double>>& gains)
+      const std::vector<std::vector<double>>& gains,
+      const TrimmingSettings trimming_settings)
       : AudioElementRendererBase(ordered_labels, num_samples_per_frame,
-                                 num_output_channels),
+                                 num_output_channels, trimming_settings),
         gains_(gains) {}
 
   /*!\brief Renders samples.

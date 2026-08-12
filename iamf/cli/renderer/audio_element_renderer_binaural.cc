@@ -166,7 +166,8 @@ absl::Status ValidateObrArguments(size_t num_samples_per_frame,
 std::unique_ptr<AudioElementRendererBinaural>
 AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
     const ScalableChannelLayoutConfig& scalable_channel_layout_config,
-    size_t num_samples_per_frame, size_t sample_rate) {
+    size_t num_samples_per_frame, size_t sample_rate,
+    const TrimmingSettings trimming_settings) {
   if (const auto status =
           ValidateObrArguments(num_samples_per_frame, sample_rate);
       !status.ok()) {
@@ -204,7 +205,7 @@ AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
   }
   return absl::WrapUnique(new AudioElementRendererBinaural(
       *ordered_labels, /*demixing_matrix=*/std::nullopt, std::move(obr),
-      num_samples_per_frame));
+      num_samples_per_frame, trimming_settings));
 }
 
 std::unique_ptr<AudioElementRendererBinaural>
@@ -212,7 +213,8 @@ AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<DecodedUleb128>& audio_substream_ids,
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    size_t num_samples_per_frame, size_t sample_rate) {
+    size_t num_samples_per_frame, size_t sample_rate,
+    const TrimmingSettings trimming_settings) {
   if (const auto status =
           ValidateObrArguments(num_samples_per_frame, sample_rate);
       !status.ok()) {
@@ -248,15 +250,17 @@ AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
 
   return absl::WrapUnique(new AudioElementRendererBinaural(
       ordered_labels, ambisonics_config.GetDemixingMatrix(), std::move(obr),
-      num_samples_per_frame));
+      num_samples_per_frame, trimming_settings));
 }
 
 AudioElementRendererBinaural::AudioElementRendererBinaural(
     const std::vector<ChannelLabel::Label>& ordered_labels,
     std::optional<absl::Span<const int16_t>> demixing_matrix,
-    std::unique_ptr<obr::ObrImpl> obr, size_t num_samples_per_frame)
+    std::unique_ptr<obr::ObrImpl> obr, size_t num_samples_per_frame,
+    const TrimmingSettings trimming_settings)
     : AudioElementRendererBase(ordered_labels, num_samples_per_frame,
-                               /*num_output_channels=*/kNumBinauralChannels),
+                               /*num_output_channels=*/kNumBinauralChannels,
+                               trimming_settings),
       obr_(std::move(obr)),
       input_buffer_(
           // Input may be projected using the demixing matrix.

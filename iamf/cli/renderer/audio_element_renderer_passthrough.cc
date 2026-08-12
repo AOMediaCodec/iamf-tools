@@ -172,7 +172,8 @@ absl::StatusOr<ChannelAudioLayerConfig> FindEquivalentLayer(
 std::unique_ptr<AudioElementRendererPassThrough>
 AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
     const ScalableChannelLayoutConfig& scalable_channel_layout_config,
-    const Layout& playback_layout, size_t num_samples_per_frame) {
+    const Layout& playback_layout, size_t num_samples_per_frame,
+    const TrimmingSettings trimming_settings) {
   const auto& equivalent_layer =
       FindEquivalentLayer(scalable_channel_layout_config, playback_layout);
   if (!equivalent_layer.ok()) {
@@ -187,7 +188,7 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
   }
 
   return absl::WrapUnique(new AudioElementRendererPassThrough(
-      *ordered_labels, num_samples_per_frame));
+      *ordered_labels, num_samples_per_frame, trimming_settings));
 }
 
 absl::Status AudioElementRendererPassThrough::RenderSamples(

@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/iamf_components.h"
+#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
@@ -41,7 +42,6 @@
 #include "iamf/cli/proto/output_audio_format.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
@@ -284,7 +284,7 @@ class IamfEncoderTest : public ::testing::Test {
 
   IamfEncoder CreateExpectOk() {
     auto iamf_encoder =
-        IamfEncoder::Create(user_metadata_, renderer_factory_.get(),
+        IamfEncoder::Create(user_metadata_, layout_renderer_factory_.get(),
                             loudness_calculator_factory_.get(),
                             sample_processor_factory_, obu_sequencer_factory_);
     EXPECT_THAT(iamf_encoder, IsOkAndHolds(NotNull()));
@@ -297,8 +297,8 @@ class IamfEncoderTest : public ::testing::Test {
   // Default some dependencies to be based on the real `IamfComponents`
   // implementations. And generally disable wav writing since it is not needed
   // for most tests.
-  std::unique_ptr<RendererFactoryBase> renderer_factory_ =
-      CreateRendererFactory();
+  std::unique_ptr<LayoutRendererFactory> layout_renderer_factory_ =
+      CreateLayoutRendererFactory();
   std::unique_ptr<LoudnessCalculatorFactoryBase> loudness_calculator_factory_ =
       CreateLoudnessCalculatorFactory();
   RenderingMixPresentationFinalizer::SampleProcessorFactory
@@ -311,7 +311,7 @@ TEST_F(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
   user_metadata_.Clear();
 
   EXPECT_THAT(
-      IamfEncoder::Create(user_metadata_, renderer_factory_.get(),
+      IamfEncoder::Create(user_metadata_, layout_renderer_factory_.get(),
                           loudness_calculator_factory_.get(),
                           sample_processor_factory_, obu_sequencer_factory_),
       Not(IsOk()));
@@ -572,7 +572,7 @@ TEST_F(
   SetupDescriptorObus();
   // Configuring the encoder with null factories is permitted, which disables
   // rendering and loudness measurements.
-  renderer_factory_ = nullptr;
+  layout_renderer_factory_ = nullptr;
   loudness_calculator_factory_ = nullptr;
   auto iamf_encoder = CreateExpectOk();
   bool obus_are_finalized = false;
@@ -629,7 +629,6 @@ void ExpectFirstLayoutIntegratedLoudnessIs(
 
 TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterTrivialIaSequence) {
   SetupDescriptorObus();
-  renderer_factory_ = std::make_unique<RendererFactory>();
   constexpr int16_t kIntegratedLoudness = 999;
   loudness_calculator_factory_ =
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
@@ -650,7 +649,6 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterTrivialIaSequence) {
 TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterAlignedIaSequence) {
   SetupDescriptorObus();
   AddAudioFrame(user_metadata_);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   constexpr int16_t kIntegratedLoudness = 999;
   loudness_calculator_factory_ =
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
@@ -679,7 +677,6 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterAlignedIaSequence) {
 TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterFinalOutputTemporalUnit) {
   SetupDescriptorObus();
   AddAudioFrame(user_metadata_);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   constexpr int16_t kIntegratedLoudness = 999;
   loudness_calculator_factory_ =
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
@@ -714,7 +711,6 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterArbitraryDataObus) {
   SetupDescriptorObus();
   AddArbitraryObuForFirstTick(user_metadata_, kInvalidatesBitstream);
   AddAudioFrame(user_metadata_);
-  renderer_factory_ = std::make_unique<RendererFactory>();
   constexpr int16_t kIntegratedLoudness = 999;
   loudness_calculator_factory_ =
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
@@ -748,7 +744,6 @@ TEST_F(IamfEncoderTest, GetDescriptorObusHasFilledInLoudness) {
   SetupDescriptorObus();
   // Loudness measurement is done only when the signal can be rendered, and
   // based on the resultant loudness calculators.
-  renderer_factory_ = std::make_unique<RendererFactory>();
   auto mock_loudness_calculator_factory =
       std::make_unique<MockLoudnessCalculatorFactory>();
   auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
@@ -791,7 +786,6 @@ TEST_F(IamfEncoderTest, OutputSampleProcessorFactoryIgnoresBitDepthOverride) {
           iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO);
   // Wav file writing is done only when the signal can be rendered, based on the
   // resultant wav writers.
-  renderer_factory_ = std::make_unique<RendererFactory>();
   MockSampleProcessorFactory mock_sample_processor_factory;
   EXPECT_CALL(
       mock_sample_processor_factory,

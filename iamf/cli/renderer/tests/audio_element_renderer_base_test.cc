@@ -46,7 +46,8 @@ class MockAudioElementRenderer : public AudioElementRendererBase {
  public:
   MockAudioElementRenderer()
       : AudioElementRendererBase(
-            /*ordered_labels=*/{}, kFourSamplesPerFrame, kOneChannel) {};
+            /*ordered_labels=*/{}, kFourSamplesPerFrame, kOneChannel,
+            TrimmingSettings{}) {};
 
   absl::Status RenderSamples(
       absl::Span<const absl::Span<const InternalSampleType>>)

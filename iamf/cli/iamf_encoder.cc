@@ -38,6 +38,7 @@
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"
+#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_streaming_iamf.h"
@@ -247,7 +248,7 @@ IamfEncoder::CreateNoObuSequencers() {
 
 absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const RendererFactoryBase* absl_nullable renderer_factory,
+    const LayoutRendererFactory* absl_nullable layout_renderer_factory,
     const LoudnessCalculatorFactoryBase* absl_nullable
         loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
@@ -301,7 +302,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   // Initialize a mix presentation mix presentation finalizer. Requires
   // rendering data for every submix to accurately compute loudness.
   auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(
-      renderer_factory, loudness_calculator_factory, *audio_elements,
+      layout_renderer_factory, loudness_calculator_factory, *audio_elements,
       sample_processor_factory, mix_presentation_obus);
   if (!mix_presentation_finalizer.ok()) {
     return mix_presentation_finalizer.status();

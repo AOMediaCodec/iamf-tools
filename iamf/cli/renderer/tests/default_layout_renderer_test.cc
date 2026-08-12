@@ -69,7 +69,7 @@ class MockRenderer : public AudioElementRendererBase {
   MockRenderer(absl::Span<const ChannelLabel::Label> ordered_labels,
                size_t num_output_channels)
       : AudioElementRendererBase(ordered_labels, kNumSamplesPerFrame,
-                                 num_output_channels),
+                                 num_output_channels, TrimmingSettings{}),
         kAllZeroRenderedSamples(
             num_output_channels,
             std::vector<InternalSampleType>(kNumSamplesPerFrame, 0.0)) {

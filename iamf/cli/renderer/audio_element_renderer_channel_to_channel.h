@@ -57,7 +57,8 @@ class AudioElementRendererChannelToChannel : public AudioElementRendererBase {
   static std::unique_ptr<AudioElementRendererChannelToChannel>
   CreateFromScalableChannelLayoutConfig(
       const ScalableChannelLayoutConfig& scalable_channel_layout_config,
-      const Layout& playback_layout, size_t num_samples_per_frame);
+      const Layout& playback_layout, size_t num_samples_per_frame,
+      const TrimmingSettings trimming_settings = {});
 
   /*!\brief Destructor. */
   ~AudioElementRendererChannelToChannel() override = default;
@@ -76,10 +77,11 @@ class AudioElementRendererChannelToChannel : public AudioElementRendererBase {
   AudioElementRendererChannelToChannel(
       absl::string_view input_key, absl::string_view output_key,
       size_t num_output_channels, size_t num_samples_per_frame,
+      const TrimmingSettings trimming_settings,
       const std::vector<ChannelLabel::Label>& ordered_labels,
       const std::vector<std::vector<double>>& gains)
       : AudioElementRendererBase(ordered_labels, num_samples_per_frame,
-                                 num_output_channels),
+                                 num_output_channels, trimming_settings),
         input_key_(input_key),
         output_key_(output_key),
         gains_(gains) {}

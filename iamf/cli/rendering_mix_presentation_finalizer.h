@@ -14,7 +14,6 @@
 #define CLI_RENDERING_MIX_PRESENTATION_FINALIZER_H_
 
 #include <cstddef>
-#include <cstdint>
 #include <list>
 #include <memory>
 #include <utility>
@@ -28,14 +27,13 @@
 #include "absl/types/span.h"
 #include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/renderer/layout_renderer_base.h"
-#include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -103,8 +101,8 @@ class RenderingMixPresentationFinalizer {
    * select relevant layouts and mix presentations to create a `WavWriter` for.
    *
    * \param mix_presentation_id Mix presentation ID.
-   * \param sub_mix_index Index of the sub mix within the mix presentation.
-   * \param layout_index Index of the layout within the sub mix.
+   * \param sub_mix_index Index of the sub-mix within the mix presentation.
+   * \param layout_index Index of the layout within the sub-mix.
    * \param layout Associated layout.
    * \param prefix Prefix for the output file.
    * \param num_channels Number of channels.
@@ -137,18 +135,19 @@ class RenderingMixPresentationFinalizer {
    * Rendering metadata is extracted from the mix presentation OBUs, which will
    * be used to render the mix presentations in PushTemporalUnit.
    *
-   * \param renderer_factory Factory to create renderers, or `nullptr` to
-   *        disable rendering.
+   * \param layout_renderer_factory Factory to create layout renderers, or
+   *        `nullptr` to disable rendering.
    * \param loudness_calculator_factory Factory to create loudness calculators
    *        or `nullptr` to disable loudness calculation.
    * \param audio_elements Audio elements with data.
    * \param sample_processor_factory Factory to create sample processors for use
    *        after rendering.
    * \param mix_presentation_obus OBUs to render and measure the loudness of.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
+   * \return Instance of `RenderingMixPresentationFinalizer` on success. A
+   *         specific status on failure.
    */
   static absl::StatusOr<RenderingMixPresentationFinalizer> Create(
-      const RendererFactoryBase* absl_nullable renderer_factory,
+      const LayoutRendererFactory* absl_nullable layout_renderer_factory,
       const LoudnessCalculatorFactoryBase* absl_nullable
           loudness_calculator_factory,
       const DescriptorObus::AudioElementsById& audio_elements,
@@ -246,7 +245,7 @@ class RenderingMixPresentationFinalizer {
    * Used only by the factory method.
    *
    * \param mix_presentation_id_to_sub_mix_rendering_metadata Mix presentation
-   *        ID to rendering metadata for each sub mix.
+   *        ID to rendering metadata for each sub-mix.
    * \param mix_presentation_obus Mix presentation OBUs to render and measure
    *        the loudness of.
    */

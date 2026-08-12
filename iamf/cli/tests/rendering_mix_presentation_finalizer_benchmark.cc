@@ -25,10 +25,10 @@
 #include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/labeled_frame.h"
+#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
@@ -100,9 +100,10 @@ CreateRenderingMixPresentationFinalizer(
       kMixPresentationId, {kAudioElementId}, kCommonParameterId,
       kCommonParameterRate, {sound_system_layout}, mix_presentation_obus);
 
-  auto renderer_factory = std::make_unique<RendererFactory>();
+  auto layout_renderer_factory =
+      std::make_unique<LayoutRendererFactory>(TrimmingSettings{});
   auto finalizer = RenderingMixPresentationFinalizer::Create(
-      renderer_factory.get(),
+      layout_renderer_factory.get(),
       /*loudness_calculator_factory=*/nullptr, audio_elements,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       mix_presentation_obus);

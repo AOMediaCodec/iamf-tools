@@ -132,7 +132,8 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<DecodedUleb128>& audio_substream_ids,
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    const Layout& playback_layout, size_t num_samples_per_frame) {
+    const Layout& playback_layout, size_t num_samples_per_frame,
+    const TrimmingSettings trimming_settings) {
   // Exclude unsupported modes first, and deal with only mono or projection
   // in the rest of the code.
   const auto mode = ambisonics_config.GetAmbisonicsMode();
@@ -203,7 +204,7 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
 
     return absl::WrapUnique(new AudioElementRendererAmbisonicsToChannel(
         static_cast<size_t>(num_output_channels), num_samples_per_frame,
-        active_channel_labels, combined_gains));
+        active_channel_labels, combined_gains, trimming_settings));
   }
 
   // The top of the function guarantees this is now projection mode.
@@ -222,7 +223,7 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
 
   return absl::WrapUnique(new AudioElementRendererAmbisonicsToChannel(
       static_cast<size_t>(num_output_channels), num_samples_per_frame,
-      channel_labels, *combined_gains));
+      channel_labels, *combined_gains, trimming_settings));
 }
 
 absl::Status AudioElementRendererAmbisonicsToChannel::RenderSamples(
