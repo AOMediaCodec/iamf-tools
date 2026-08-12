@@ -122,6 +122,16 @@ TEST(PushFrame, InvalidIfInputSpanHasTooManyChannels) {
               Not(IsOk()));
 }
 
+TEST(PushFrame, InvalidIfChannelsHaveDifferentNumbersOfTicks) {
+  MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
+                                     kMaxOutputTicks);
+  const std::vector<std::vector<InternalSampleType>> unequal_channels = {
+      {0.1, 0.2}, {0.3}};
+
+  EXPECT_THAT(mock_resampler.PushFrame(MakeSpanOfConstSpans(unequal_channels)),
+              Not(IsOk()));
+}
+
 TEST(Flush, ReturnsFailedPreconditionWhenCalledTwice) {
   MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
                                      kMaxOutputTicks);

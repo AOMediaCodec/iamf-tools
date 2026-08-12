@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -256,10 +257,32 @@ IamfStatus WriteFrameToSpan(
     const std::vector<absl::Span<const InternalSampleType>>& frame,
     OutputSampleType sample_type, absl::Span<uint8_t> output_bytes,
     size_t& bytes_written) {
+  if (frame.empty()) {
+    return IamfStatus::ErrorStatus(
+        "Invalid Argument: Frame must contain at least one channel.");
+  }
   const size_t bytes_per_sample = BytesPerSample(sample_type);
+  if (bytes_per_sample == 0) {
+    return IamfStatus::ErrorStatus("Invalid Argument: Unknown sample type.");
+  }
   const size_t bits_per_sample = bytes_per_sample * 8;
-  const size_t required_size =
-      frame.size() * frame[0].size() * bytes_per_sample;
+  const size_t num_ticks = frame[0].size();
+  for (const auto& channel : frame) {
+    if (channel.size() != num_ticks) {
+      return IamfStatus::ErrorStatus(
+          "Invalid Argument: All frame channels must have the same number of "
+          "samples.");
+    }
+  }
+  const bool is_overflow =
+      num_ticks != 0 && frame.size() > std::numeric_limits<size_t>::max() /
+                                           num_ticks / bytes_per_sample;
+
+  if (is_overflow) {
+    return IamfStatus::ErrorStatus(
+        "Invalid Argument: Output frame size overflows size_t.");
+  }
+  const size_t required_size = frame.size() * num_ticks * bytes_per_sample;
   if (output_bytes.size() < required_size) {
     return IamfStatus::ErrorStatus(
         "Invalid Argument: Span does not have enough space to write output "
@@ -268,7 +291,7 @@ IamfStatus WriteFrameToSpan(
   const bool big_endian = false;
   size_t write_position = 0;
   uint8_t* data = output_bytes.data();
-  for (size_t t = 0; t < frame[0].size(); t++) {
+  for (size_t t = 0; t < num_ticks; t++) {
     for (size_t c = 0; c < frame.size(); ++c) {
       int32_t sample;
       absl::Status absl_status =
