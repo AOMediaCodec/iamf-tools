@@ -38,6 +38,7 @@ static const int32_t kExtraOffset = 8;
 static const int32_t kRiffHeaderLength = 12;
 static const uint16_t kBitDepthForDolby = 24;
 static constexpr std::array<uint32_t, 2> kSampleRatesForDolby = {48000, 96000};
+static constexpr std::array<uint16_t, 3> kSupportedBitDepths = {16, 24, 32};
 
 // Reads and validates the RIFF chunk data of WAV file.
 absl::Status ReadRiffChunk(std::istream& buffer) {
@@ -117,11 +118,32 @@ absl::StatusOr<FormatInfoChunk> ReadFmtChunk(
     return fmt_chunk_info.status();
   }
 
+  if (fmt_chunk_info->size < sizeof(FormatInfoChunk)) {
+    return absl::InvalidArgumentError("The `fmt ` chunk is truncated.");
+  }
+
   buffer.clear();
   buffer.seekg(fmt_chunk_info->offset + Bw64Reader::kChunkHeaderOffset);
 
-  FormatInfoChunk format_info;
-  buffer.read(reinterpret_cast<char*>(&format_info), sizeof(format_info));
+  FormatInfoChunk format_info = {};
+  if (!buffer.read(reinterpret_cast<char*>(&format_info),
+                   sizeof(format_info))) {
+    return absl::OutOfRangeError(
+        "Reached end of stream while reading the `fmt ` chunk.");
+  }
+  if (format_info.num_channels == 0) {
+    return absl::InvalidArgumentError(
+        "The `fmt ` chunk must declare at least one channel.");
+  }
+  if (format_info.samples_per_sec == 0) {
+    return absl::InvalidArgumentError(
+        "The `fmt ` chunk must declare a non-zero sample rate.");
+  }
+  if (std::find(kSupportedBitDepths.begin(), kSupportedBitDepths.end(),
+                format_info.bits_per_sample) == kSupportedBitDepths.end()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Unsupported bits_per_sample= ", format_info.bits_per_sample, "."));
+  }
   return format_info;
 }
 

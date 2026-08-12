@@ -21,6 +21,7 @@
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/adm_to_user_metadata/adm/format_info_chunk.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -102,6 +103,47 @@ void ValidateGetChunkInfo(const Bw64Reader& reader,
 TEST(BuildFromStream, FailsOnEmptyStream) {
   std::istringstream ss("");
 
+  EXPECT_THAT(Bw64Reader::BuildFromStream(kImportanceThreshold, ss),
+              Not(IsOk()));
+}
+
+TEST(BuildFromStream, FailsOnTruncatedFormatInfoChunk) {
+  std::string wav_bytes(kValidWav);
+  wav_bytes[16] = sizeof(FormatInfoChunk) - 1;
+
+  std::istringstream ss(wav_bytes);
+  EXPECT_THAT(Bw64Reader::BuildFromStream(kImportanceThreshold, ss),
+              Not(IsOk()));
+}
+
+TEST(BuildFromStream, FailsWhenFormatInfoDeclaresZeroChannels) {
+  std::string wav_bytes(kValidWav);
+  wav_bytes[22] = 0;
+  wav_bytes[23] = 0;
+
+  std::istringstream ss(wav_bytes);
+  EXPECT_THAT(Bw64Reader::BuildFromStream(kImportanceThreshold, ss),
+              Not(IsOk()));
+}
+
+TEST(BuildFromStream, FailsWhenFormatInfoDeclaresZeroSampleRate) {
+  std::string wav_bytes(kValidWav);
+  wav_bytes[24] = 0;
+  wav_bytes[25] = 0;
+  wav_bytes[26] = 0;
+  wav_bytes[27] = 0;
+
+  std::istringstream ss(wav_bytes);
+  EXPECT_THAT(Bw64Reader::BuildFromStream(kImportanceThreshold, ss),
+              Not(IsOk()));
+}
+
+TEST(BuildFromStream, FailsWhenFormatInfoDeclaresUnsupportedBitDepth) {
+  std::string wav_bytes(kValidWav);
+  wav_bytes[34] = 8;
+  wav_bytes[35] = 0;
+
+  std::istringstream ss(wav_bytes);
   EXPECT_THAT(Bw64Reader::BuildFromStream(kImportanceThreshold, ss),
               Not(IsOk()));
 }

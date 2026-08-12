@@ -6,6 +6,7 @@ cc_test(
     srcs = ["bw64_reader_test.cc"],
     deps = [
         "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
+        "//iamf/cli/adm_to_user_metadata/adm:format_info_chunk",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
         "@googletest//:gtest_main",
