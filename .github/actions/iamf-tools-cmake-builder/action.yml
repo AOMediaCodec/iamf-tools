@@ -1,0 +1,53 @@
+name: iamf-tools-cmake-builder
+
+description: Build the IAMF Tools CLIs via the optional CMake path and smoke-test them.
+
+inputs:
+  platform:
+    description: "The platform to build for."
+    type: string
+    default: linux
+
+runs:
+  using: composite
+  steps:
+    - name: Install system packages
+      shell: bash
+      run: |
+        if [[ "${{inputs.platform}}" == "macos" ]]; then
+          # expat comes from the Xcode Command Line Tools SDK; macOS has no
+          # /usr/include, so build_cmake.sh discovers each header (see S2 there).
+          brew install cmake opus flac eigen
+        else
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config g++ \
+            libopus-dev libflac-dev libexpat1-dev libeigen3-dev
+        fi
+    - name: Build (CMake path)
+      shell: bash
+      run: ./build_cmake.sh "$RUNNER_TEMP/cmake-build"
+    - name: Smoke test (probe, decode, encode round-trip on in-tree data)
+      shell: bash
+      run: |
+        set -eux
+        BIN="$RUNNER_TEMP/cmake-build/src/build-iamf"
+        # Probe: parse descriptors of two in-tree IAMF files.
+        "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/noise_1024samp_5p1_opus.iamf
+        "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/tones_100ms_3OA_stereo_opus.iamf
+        # Decode: render an in-tree 5.1 Opus file; output must be non-empty.
+        "$BIN/decoder_main" \
+          --input_filename=iamf/cli/testdata/iamf/noise_1024samp_5p1_opus.iamf \
+          --output_filename="$RUNNER_TEMP/smoke_dec.wav"
+        test -s "$RUNNER_TEMP/smoke_dec.wav"
+        # Encode round-trip: encode an in-tree test vector, then probe and
+        # decode the result with the same freshly built tools.
+        mkdir -p "$RUNNER_TEMP/smoke_enc"
+        "$BIN/encoder_main" \
+          --user_metadata_filename=iamf/cli/testdata/test_000002.textproto \
+          --input_wav_directory=iamf/cli/testdata \
+          --output_iamf_directory="$RUNNER_TEMP/smoke_enc"
+        "$BIN/probe_main" --input_filename="$RUNNER_TEMP/smoke_enc/test_000002.iamf"
+        "$BIN/decoder_main" \
+          --input_filename="$RUNNER_TEMP/smoke_enc/test_000002.iamf" \
+          --output_filename="$RUNNER_TEMP/smoke_enc_dec.wav"
+        test -s "$RUNNER_TEMP/smoke_enc_dec.wav"
