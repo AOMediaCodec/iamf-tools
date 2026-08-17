@@ -549,7 +549,6 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
   RETURN_IF_NOT_OK(ValidateNumParameters(num_parameters));
 
   // Loop to read the parameter portion of the obu.
-  audio_element_params_.reserve(num_parameters);
   for (DecodedUleb128 i = 0; i < num_parameters; ++i) {
     AudioElementParam audio_element_param;
     RETURN_IF_NOT_OK(
