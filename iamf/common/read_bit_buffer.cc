@@ -418,6 +418,11 @@ MemoryBasedReadBitBuffer::CreateFromSpan(absl::Span<const uint8_t> source) {
 
 absl::Status MemoryBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
                                                          int64_t num_bytes) {
+  if (starting_byte < 0 || num_bytes < 0 ||
+      static_cast<uint64_t>(num_bytes) > bit_buffer_.size()) {
+    return absl::InvalidArgumentError(
+        "Invalid source position or destination buffer size");
+  }
   if (static_cast<uint64_t>(starting_byte) > source_vector_.size() ||
       (static_cast<uint64_t>(starting_byte) + num_bytes) >
           source_vector_.size()) {
@@ -465,6 +470,11 @@ FileBasedReadBitBuffer::CreateFromFilePath(
 
 absl::Status FileBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
                                                        int64_t num_bytes) {
+  if (starting_byte < 0 || num_bytes < 0 ||
+      static_cast<uint64_t>(num_bytes) > bit_buffer_.size()) {
+    return absl::InvalidArgumentError(
+        "Invalid source position or destination buffer size");
+  }
   source_ifs_.seekg(starting_byte);
   source_ifs_.read(reinterpret_cast<char*>(bit_buffer_.data()), num_bytes);
   if (!source_ifs_.good()) {

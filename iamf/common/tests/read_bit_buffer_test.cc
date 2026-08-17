@@ -46,6 +46,33 @@ constexpr int kMaxUint32 = std::numeric_limits<uint32_t>::max();
 
 constexpr std::array<uint8_t, 3> kThreeBytes = {0x01, 0x23, 0x45};
 
+struct MemoryPeer : MemoryBasedReadBitBuffer {
+  MemoryPeer(size_t c, absl::Span<const uint8_t> s)
+      : MemoryBasedReadBitBuffer(c, s) {}
+  using MemoryBasedReadBitBuffer::LoadBytesToBuffer;
+};
+
+struct FilePeer : FileBasedReadBitBuffer {
+  FilePeer(size_t c, int64_t s, std::ifstream&& f)
+      : FileBasedReadBitBuffer(c, s, std::move(f)) {}
+  using FileBasedReadBitBuffer::LoadBytesToBuffer;
+};
+
+TEST(MemoryBasedReadBitBufferTest, LoadBytesToBufferFailsOnOversizedBuffer) {
+  EXPECT_THAT(MemoryPeer(4, kThreeBytes).LoadBytesToBuffer(0, 5),
+              StatusIs(kInvalidArgument));
+}
+
+TEST(FileBasedReadBitBufferTest, LoadBytesToBufferFailsOnOversizedBuffer) {
+  const auto file = GetAndCleanupOutputFileName(".bin");
+  std::ofstream(file, std::ios::binary)
+      .write(reinterpret_cast<const char*>(kThreeBytes.data()),
+             kThreeBytes.size());
+  EXPECT_THAT(FilePeer(4, 24, std::ifstream(file, std::ios::binary))
+                  .LoadBytesToBuffer(0, 5),
+              StatusIs(kInvalidArgument));
+}
+
 TEST(FileBasedReadBitBufferTest, CreateFromFilePathFailsWithNegativeCapacity) {
   const auto file_path = GetAndCleanupOutputFileName(".iamf");
   EXPECT_THAT(FileBasedReadBitBuffer::CreateFromFilePath(-1, file_path),

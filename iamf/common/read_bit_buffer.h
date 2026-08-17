@@ -368,8 +368,8 @@ class FileBasedReadBitBuffer : public ReadBitBuffer {
   /*!\brief Destructor.*/
   ~FileBasedReadBitBuffer() override = default;
 
- private:
-  /*!\brief Private constructor. Called by the factory method only.
+ protected:
+  /*!\brief Protected constructor. Called by the factory method or subclasses.
    *
    * \param capacity_bytes Capacity of the internal buffer in bytes.
    * \param source_size Total size of the file in bits.
@@ -390,6 +390,7 @@ class FileBasedReadBitBuffer : public ReadBitBuffer {
   absl::Status LoadBytesToBuffer(int64_t starting_byte,
                                  int64_t num_bytes) override;
 
+ private:
   // Source data stored in a file stream.
   std::ifstream source_ifs_;
 };
