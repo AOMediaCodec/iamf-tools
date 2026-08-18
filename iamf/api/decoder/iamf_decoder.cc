@@ -253,10 +253,9 @@ size_t BytesPerSample(OutputSampleType sample_type) {
   }
 }
 
-IamfStatus WriteFrameToSpan(
+IamfStatus ValidateWriteFrameToSpan(
     const std::vector<absl::Span<const InternalSampleType>>& frame,
-    OutputSampleType sample_type, absl::Span<uint8_t> output_bytes,
-    size_t& bytes_written) {
+    OutputSampleType sample_type, absl::Span<uint8_t> output_bytes) {
   if (frame.empty()) {
     return IamfStatus::ErrorStatus(
         "Invalid Argument: Frame must contain at least one channel.");
@@ -265,7 +264,6 @@ IamfStatus WriteFrameToSpan(
   if (bytes_per_sample == 0) {
     return IamfStatus::ErrorStatus("Invalid Argument: Unknown sample type.");
   }
-  const size_t bits_per_sample = bytes_per_sample * 8;
   const size_t num_ticks = frame[0].size();
   for (const auto& channel : frame) {
     if (channel.size() != num_ticks) {
@@ -288,6 +286,21 @@ IamfStatus WriteFrameToSpan(
         "Invalid Argument: Span does not have enough space to write output "
         "bytes.");
   }
+  return IamfStatus::OkStatus();
+}
+
+IamfStatus WriteFrameToSpan(
+    const std::vector<absl::Span<const InternalSampleType>>& frame,
+    OutputSampleType sample_type, absl::Span<uint8_t> output_bytes,
+    size_t& bytes_written) {
+  if (const auto status =
+          ValidateWriteFrameToSpan(frame, sample_type, output_bytes);
+      !status.ok()) {
+    return status;
+  }
+  const size_t bytes_per_sample = BytesPerSample(sample_type);
+  const size_t bits_per_sample = bytes_per_sample * 8;
+  const size_t num_ticks = frame[0].size();
   const bool big_endian = false;
   size_t write_position = 0;
   uint8_t* data = output_bytes.data();
