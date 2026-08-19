@@ -12,8 +12,9 @@
 
 #include "iamf/cli/renderer/renderer_utils.h"
 
+#include <cstddef>
 #include <cstdint>
-#include <limits>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
@@ -34,11 +35,9 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::Not;
 using enum ChannelLabel::Label;
-using testing::DoubleEq;
 using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Not;
-using testing::Pointwise;
 
 TEST(LookupOutputKeyFromPlaybackLayout, SucceedsForChannelBasedLayout) {
   EXPECT_THAT(
@@ -307,11 +306,25 @@ TEST(GetChannelLabelsForAmbisonicsTest, MixedFirstOrderAmbisonicsProjection) {
   EXPECT_THAT(channel_labels, ElementsAre(kA0, /*missing kA1, */ kA2, kA3));
 }
 
+std::pair<std::vector<std::vector<InternalSampleType>>,
+          std::vector<absl::Span<InternalSampleType>>>
+AllocateProjectedSamplesAndSpans(size_t num_channels, size_t num_samples) {
+  std::vector<std::vector<InternalSampleType>> projected_samples(
+      num_channels, std::vector<InternalSampleType>(num_samples));
+  std::vector<absl::Span<InternalSampleType>> projected_samples_spans;
+  for (auto& projected_samples_for_channel : projected_samples) {
+    projected_samples_for_channel.assign(num_samples, 0);
+    projected_samples_spans.emplace_back(
+        absl::MakeSpan(projected_samples_for_channel));
+  }
+  return {std::move(projected_samples), std::move(projected_samples_spans)};
+}
+
 TEST(ProjectSamplesToRender, ProjectionReordersChannelsAndHalvesValues) {
   // Create a demixing matrix that reorders channels to indices {3, 2, 1, 0},
   // with a gain values corresponding to 0.5.
-  const int16_t kHalfGain = std::numeric_limits<int16_t>::max() / 2 + 1;
-  const std::vector<int16_t> demixing_matrix = {
+  const InternalSampleType kHalfGain = 0.5;
+  const std::vector<InternalSampleType> demixing_matrix = {
       // clang-format off
       /*       Output channel: 0,         1,         2,         3*/
       /* Input channel 0: */         0,         0,         0, kHalfGain,
@@ -322,9 +335,11 @@ TEST(ProjectSamplesToRender, ProjectionReordersChannelsAndHalvesValues) {
   };
   const std::vector<std::vector<InternalSampleType>> input_samples = {
       {0.8}, {0.6}, {0.4}, {0.2}};
-  std::vector<std::vector<InternalSampleType>> projected_samples;
+  auto [projected_samples, projected_samples_spans] =
+      AllocateProjectedSamplesAndSpans(4, input_samples[0].size());
   EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
-                                     demixing_matrix, projected_samples),
+                                     absl::MakeConstSpan(demixing_matrix),
+                                     absl::MakeSpan(projected_samples_spans)),
               IsOk());
 
   // Expect the output have the channels reversed and values halved.
@@ -337,8 +352,8 @@ TEST(ProjectSamplesToRender, ProjectionReordersChannelsAndHalvesValues) {
 TEST(ProjectSamplesToRender, ProjectionAveragesEveryTwoChannels) {
   // Create a demixing matrix that outputs 2 channels, which are averages
   // of input channels {0, 1} and {2, 3} respectively.
-  const int16_t kHalfGain = std::numeric_limits<int16_t>::max() / 2 + 1;
-  const std::vector<int16_t> demixing_matrix = {
+  const InternalSampleType kHalfGain = 0.5;
+  const std::vector<InternalSampleType> demixing_matrix = {
       // clang-format off
       /*             Output channel: 0,         1*/
       /* Input channel 0: */ kHalfGain, 0,
@@ -349,11 +364,12 @@ TEST(ProjectSamplesToRender, ProjectionAveragesEveryTwoChannels) {
   };
   const std::vector<std::vector<InternalSampleType>> input_samples = {
       {0.8}, {0.6}, {0.4}, {0.2}};
-  std::vector<std::vector<InternalSampleType>> projected_samples;
+  auto [projected_samples, projected_samples_spans] =
+      AllocateProjectedSamplesAndSpans(2, input_samples[0].size());
   EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
-                                     demixing_matrix, projected_samples),
+                                     absl::MakeConstSpan(demixing_matrix),
+                                     absl::MakeSpan(projected_samples_spans)),
               IsOk());
-
   // Expect the output have the channels reversed and values halved.
   const std::vector<std::vector<InternalSampleType>>
       expected_projected_samples = {{0.7}, {0.3}};
@@ -369,31 +385,37 @@ TEST(ProjectSamplesToRender, FailsOnIncompatibleMatrices) {
   const std::vector<std::vector<InternalSampleType>> input_samples(4, {0});
 
   // 17 % 4 != 0.
-  const std::vector<int16_t> demixing_matrix(17, 0);
+  const std::vector<InternalSampleType> demixing_matrix(17, 0);
 
-  std::vector<std::vector<InternalSampleType>> projected_samples;
+  auto [projected_samples, projected_samples_spans] =
+      AllocateProjectedSamplesAndSpans(4, input_samples[0].size());
   EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
-                                     demixing_matrix, projected_samples),
+                                     absl::MakeConstSpan(demixing_matrix),
+                                     absl::MakeSpan(projected_samples_spans)),
               Not(IsOk()));
 }
 
 TEST(ProjectSamplesToRender, FailsOnZeroInputChannels) {
   const std::vector<std::vector<InternalSampleType>> empty_input_samples;
-  const std::vector<int16_t> demixing_matrix(1, 0);
+  const std::vector<InternalSampleType> demixing_matrix(1, 0);
 
-  std::vector<std::vector<InternalSampleType>> projected_samples;
+  auto [projected_samples, projected_samples_spans] =
+      AllocateProjectedSamplesAndSpans(1, 0);
   EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(empty_input_samples),
-                                     demixing_matrix, projected_samples),
+                                     absl::MakeConstSpan(demixing_matrix),
+                                     absl::MakeSpan(projected_samples_spans)),
               Not(IsOk()));
 }
 
 TEST(ProjectSamplesToRender, FailsOnEmptyDemixingMatrix) {
   const std::vector<std::vector<InternalSampleType>> input_samples(1, {0});
-  const std::vector<int16_t> empty_demixing_matrix;
+  const std::vector<InternalSampleType> empty_demixing_matrix;
 
-  std::vector<std::vector<InternalSampleType>> projected_samples;
+  auto [projected_samples, projected_samples_spans] =
+      AllocateProjectedSamplesAndSpans(1, 0);
   EXPECT_THAT(ProjectSamplesToRender(MakeSpanOfConstSpans(input_samples),
-                                     empty_demixing_matrix, projected_samples),
+                                     absl::MakeConstSpan(empty_demixing_matrix),
+                                     absl::MakeSpan(projected_samples_spans)),
               Not(IsOk()));
 }
 

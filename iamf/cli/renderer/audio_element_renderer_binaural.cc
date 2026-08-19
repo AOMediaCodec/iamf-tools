@@ -13,6 +13,7 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_binaural.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -50,6 +51,10 @@ namespace {
 constexpr size_t kNumBinauralChannels = 2;
 constexpr size_t kObrMinFftSize = 32;
 constexpr size_t kObrMaxSupportedNumFrames = 16384;
+
+InternalSampleType Q15ToSignedDouble(const int16_t input) {
+  return static_cast<double>(input) / 32768.0;
+}
 
 absl::StatusOr<obr::AudioElementType>
 LookupObrAudioElementTypeFromLoudspeakerLayout(
@@ -248,14 +253,24 @@ AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
     return nullptr;
   }
 
+  const auto& demixing_matrix_q15 = ambisonics_config.GetDemixingMatrix();
+  OptionalDemixingMatrix demixing_matrix;
+  if (demixing_matrix_q15.has_value()) {
+    demixing_matrix =
+        std::vector<InternalSampleType>(demixing_matrix_q15->size());
+    std::transform(demixing_matrix_q15->begin(), demixing_matrix_q15->end(),
+                   demixing_matrix->begin(), Q15ToSignedDouble);
+  } else {
+    demixing_matrix = std::nullopt;
+  }
   return absl::WrapUnique(new AudioElementRendererBinaural(
-      ordered_labels, ambisonics_config.GetDemixingMatrix(), std::move(obr),
-      num_samples_per_frame, trimming_settings));
+      ordered_labels, demixing_matrix, std::move(obr), num_samples_per_frame,
+      trimming_settings));
 }
 
 AudioElementRendererBinaural::AudioElementRendererBinaural(
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    std::optional<absl::Span<const int16_t>> demixing_matrix,
+    const OptionalDemixingMatrix& demixing_matrix,
     std::unique_ptr<obr::ObrImpl> obr, size_t num_samples_per_frame,
     const TrimmingSettings trimming_settings)
     : AudioElementRendererBase(ordered_labels, num_samples_per_frame,
@@ -269,11 +284,20 @@ AudioElementRendererBinaural::AudioElementRendererBinaural(
               : ordered_labels.size(),
           num_samples_per_frame_),
       output_buffer_(num_output_channels_, num_samples_per_frame_),
-      demixing_matrix_(
-          demixing_matrix.has_value()
-              ? std::make_optional(std::vector<int16_t>(
-                    demixing_matrix->begin(), demixing_matrix->end()))
-              : std::nullopt) {}
+      demixing_matrix_(demixing_matrix) {
+  if (!demixing_matrix_.has_value()) {
+    // No projection needed; skip the initialization of `projected_samples_`
+    // and `projected_samples_span_`.
+    return;
+  }
+  projected_samples_ = std::vector<std::vector<InternalSampleType>>(
+      input_buffer_.num_channels());
+  for (auto& projected_samples_for_channel : projected_samples_) {
+    projected_samples_for_channel.assign(num_samples_per_frame_, 0.0);
+    projected_samples_spans_.emplace_back(
+        absl::MakeSpan(projected_samples_for_channel));
+  }
+}
 
 absl::Status AudioElementRendererBinaural::RenderSamples(
     absl::Span<const absl::Span<const InternalSampleType>> samples_to_render) {
@@ -283,8 +307,9 @@ absl::Status AudioElementRendererBinaural::RenderSamples(
   // Copy samples to the input audio buffer; optionally project the input
   // samples first.
   if (demixing_matrix_.has_value()) {
-    RETURN_IF_NOT_OK(ProjectSamplesToRender(
-        samples_to_render, *demixing_matrix_, projected_samples_));
+    RETURN_IF_NOT_OK(
+        ProjectSamplesToRender(samples_to_render, *demixing_matrix_,
+                               absl::MakeSpan(projected_samples_spans_)));
 
     // Check that the input shape to OBR is as expected.
     ABSL_DCHECK_EQ(projected_samples_.size(), obr_->GetNumberOfInputChannels());

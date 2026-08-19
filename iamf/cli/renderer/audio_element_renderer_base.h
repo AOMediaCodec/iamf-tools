@@ -93,7 +93,7 @@ class AudioElementRendererBase {
   AudioElementRendererBase(absl::Span<const ChannelLabel::Label> ordered_labels,
                            size_t num_samples_per_frame,
                            size_t num_output_channels,
-                           const TrimmingSettings trimming_settings);
+                           TrimmingSettings trimming_settings);
 
   /*!\brief Renders samples.
    *
