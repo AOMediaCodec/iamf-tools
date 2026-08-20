@@ -63,6 +63,20 @@ class AnimatedParameterData {
                                  std::nullopt);
   }
 
+  /*!\brief Creates an AnimatedParameterData object with bezier animation.
+   *
+   * \param start_val Start value of the parameter.
+   * \param end_val End value of the parameter.
+   * \param control_val Control point value of the parameter.
+   * \param rel_time Relative time of the control point.
+   * \return AnimatedParameterData with bezier animation.
+   */
+  static AnimatedParameterData MakeBezier(T start_val, T end_val, T control_val,
+                                          uint8_t rel_time) {
+    return AnimatedParameterData(kBezier, start_val, end_val, control_val,
+                                 rel_time);
+  }
+
   /*!\brief Creates an AnimatedParameterData from a ReadBitBuffer.
    *
    * \param rb Buffer to read from.
@@ -90,7 +104,15 @@ class AnimatedParameterData {
         RETURN_IF_NOT_OK(read_value_func(rb, end_val));
         return MakeLinear(start_val, end_val);
       }
-      case kBezier:
+      case kBezier: {
+        T start_val, end_val, control_val;
+        uint8_t rel_time;
+        RETURN_IF_NOT_OK(read_value_func(rb, start_val));
+        RETURN_IF_NOT_OK(read_value_func(rb, end_val));
+        RETURN_IF_NOT_OK(read_value_func(rb, control_val));
+        RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, rel_time));
+        return MakeBezier(start_val, end_val, control_val, rel_time);
+      }
       case kInterLinear:
       case kInterBezier:
         return absl::UnimplementedError(absl::StrCat(

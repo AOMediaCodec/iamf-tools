@@ -59,6 +59,23 @@ TEST(MakeLinear, SetsFieldsCorrectly) {
   EXPECT_FALSE(data.control_point_relative_time().has_value());
 }
 
+TEST(MakeBezier, SetsFieldsCorrectly) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  constexpr int16_t kEndPointValue = 0x0403;
+  constexpr int16_t kControlPointValue = 0x0605;
+  constexpr uint8_t kControlPointRelativeTime = 0x80;
+
+  const auto data = AnimatedParameterData<int16_t>::MakeBezier(
+      kStartPointValue, kEndPointValue, kControlPointValue,
+      kControlPointRelativeTime);
+
+  EXPECT_EQ(data.animation_type(), kBezier);
+  EXPECT_EQ(data.start_point_value(), kStartPointValue);
+  EXPECT_EQ(data.end_point_value(), kEndPointValue);
+  EXPECT_EQ(data.control_point_value(), kControlPointValue);
+  EXPECT_EQ(data.control_point_relative_time(), kControlPointRelativeTime);
+}
+
 TEST(CreateFromBuffer, ParsesStep) {
   constexpr uint8_t kAnimationTypeStep = 0x00;
   constexpr int16_t kStartPointValue = 0x0201;
@@ -101,12 +118,40 @@ TEST(CreateFromBuffer, ParsesLinear) {
   EXPECT_EQ(data->end_point_value(), kEndPointValue);
 }
 
-TEST(CreateFromBuffer, FailsForUnimplementedType) {
+TEST(CreateFromBuffer, ParsesBezier) {
   constexpr uint8_t kAnimationTypeBezier = 0x02;
+  constexpr int16_t kStartPointValue = 0x0201;
+  constexpr int16_t kEndPointValue = 0x0403;
+  constexpr int16_t kControlPointValue = 0x0605;
+  constexpr uint8_t kControlPointRelativeTime = 0x80;
   const std::vector<uint8_t> source_data = {
       kAnimationTypeBezier,
       0x02,
-      0x01,  // start_val (0x0201)
+      0x01,  // start_point_value (0x0201)
+      0x04,
+      0x03,  // end_point_value (0x0403)
+      0x06,
+      0x05,  // control_point_value (0x0605)
+      kControlPointRelativeTime,
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data =
+      AnimatedParameterData<int16_t>::CreateFromBuffer(*buffer, ReadInt16);
+
+  ASSERT_THAT(data.status(), IsOk());
+  EXPECT_EQ(data->animation_type(), kBezier);
+  EXPECT_EQ(data->start_point_value(), kStartPointValue);
+  EXPECT_EQ(data->end_point_value(), kEndPointValue);
+  EXPECT_EQ(data->control_point_value(), kControlPointValue);
+  EXPECT_EQ(data->control_point_relative_time(), kControlPointRelativeTime);
+}
+
+TEST(CreateFromBuffer, FailsForUnimplementedType) {
+  constexpr uint8_t kAnimationTypeInterLinear = 0x03;
+  const std::vector<uint8_t> source_data = {
+      kAnimationTypeInterLinear,
       0x04,
       0x03,  // end_val (0x0403)
   };
