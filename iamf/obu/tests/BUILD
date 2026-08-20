@@ -59,6 +59,20 @@ cc_test(
 )
 
 cc_test(
+    name = "animated_parameter_data_test",
+    size = "small",
+    srcs = ["animated_parameter_data_test.cc"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/obu:animated_parameter_data",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "arbitrary_obu_test",
     srcs = ["arbitrary_obu_test.cc"],
     deps = [

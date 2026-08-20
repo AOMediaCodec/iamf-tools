@@ -26,6 +26,19 @@ cc_library(
 )
 
 cc_library(
+    name = "animated_parameter_data",
+    hdrs = ["animated_parameter_data.h"],
+    deps = [
+        ":types",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common/utils:macros",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
     name = "arbitrary_obu",
     srcs = [
         "arbitrary_obu.cc",
