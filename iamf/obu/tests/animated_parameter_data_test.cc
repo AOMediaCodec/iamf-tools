@@ -45,6 +45,20 @@ TEST(MakeStep, SetsFieldsCorrectly) {
   EXPECT_FALSE(data.control_point_relative_time().has_value());
 }
 
+TEST(MakeLinear, SetsFieldsCorrectly) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  constexpr int16_t kEndPointValue = 0x0403;
+
+  const auto data = AnimatedParameterData<int16_t>::MakeLinear(kStartPointValue,
+                                                               kEndPointValue);
+
+  EXPECT_EQ(data.animation_type(), kLinear);
+  EXPECT_EQ(data.start_point_value(), kStartPointValue);
+  EXPECT_EQ(data.end_point_value(), kEndPointValue);
+  EXPECT_FALSE(data.control_point_value().has_value());
+  EXPECT_FALSE(data.control_point_relative_time().has_value());
+}
+
 TEST(CreateFromBuffer, ParsesStep) {
   constexpr uint8_t kAnimationTypeStep = 0x00;
   constexpr int16_t kStartPointValue = 0x0201;
@@ -64,10 +78,33 @@ TEST(CreateFromBuffer, ParsesStep) {
   EXPECT_EQ(data->start_point_value(), kStartPointValue);
 }
 
-TEST(CreateFromBuffer, FailsForUnimplementedType) {
+TEST(CreateFromBuffer, ParsesLinear) {
   constexpr uint8_t kAnimationTypeLinear = 0x01;
+  constexpr int16_t kStartPointValue = 0x0201;
+  constexpr int16_t kEndPointValue = 0x0403;
   const std::vector<uint8_t> source_data = {
       kAnimationTypeLinear,
+      0x02,
+      0x01,  // start_point_value (0x0201)
+      0x04,
+      0x03,  // end_point_value (0x0403)
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data =
+      AnimatedParameterData<int16_t>::CreateFromBuffer(*buffer, ReadInt16);
+
+  ASSERT_THAT(data.status(), IsOk());
+  EXPECT_EQ(data->animation_type(), kLinear);
+  EXPECT_EQ(data->start_point_value(), kStartPointValue);
+  EXPECT_EQ(data->end_point_value(), kEndPointValue);
+}
+
+TEST(CreateFromBuffer, FailsForUnimplementedType) {
+  constexpr uint8_t kAnimationTypeBezier = 0x02;
+  const std::vector<uint8_t> source_data = {
+      kAnimationTypeBezier,
       0x02,
       0x01,  // start_val (0x0201)
       0x04,

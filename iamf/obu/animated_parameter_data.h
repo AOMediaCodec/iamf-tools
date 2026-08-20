@@ -52,6 +52,17 @@ class AnimatedParameterData {
                                  std::nullopt, std::nullopt);
   }
 
+  /*!\brief Creates an AnimatedParameterData object with linear animation.
+   *
+   * \param start_val Start value of the parameter.
+   * \param end_val End value of the parameter.
+   * \return AnimatedParameterData with linear animation.
+   */
+  static AnimatedParameterData MakeLinear(T start_val, T end_val) {
+    return AnimatedParameterData(kLinear, start_val, end_val, std::nullopt,
+                                 std::nullopt);
+  }
+
   /*!\brief Creates an AnimatedParameterData from a ReadBitBuffer.
    *
    * \param rb Buffer to read from.
@@ -73,7 +84,12 @@ class AnimatedParameterData {
         RETURN_IF_NOT_OK(read_value_func(rb, start_val));
         return MakeStep(start_val);
       }
-      case kLinear:
+      case kLinear: {
+        T start_val, end_val;
+        RETURN_IF_NOT_OK(read_value_func(rb, start_val));
+        RETURN_IF_NOT_OK(read_value_func(rb, end_val));
+        return MakeLinear(start_val, end_val);
+      }
       case kBezier:
       case kInterLinear:
       case kInterBezier:
