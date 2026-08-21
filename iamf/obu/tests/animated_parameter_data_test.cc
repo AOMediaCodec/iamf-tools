@@ -76,6 +76,19 @@ TEST(MakeBezier, SetsFieldsCorrectly) {
   EXPECT_EQ(data.control_point_relative_time(), kControlPointRelativeTime);
 }
 
+TEST(MakeInterLinear, SetsFieldsCorrectly) {
+  constexpr int16_t kEndPointValue = 0x0403;
+
+  const auto data =
+      AnimatedParameterData<int16_t>::MakeInterLinear(kEndPointValue);
+
+  EXPECT_EQ(data.animation_type(), kInterLinear);
+  EXPECT_FALSE(data.start_point_value().has_value());
+  EXPECT_EQ(data.end_point_value(), kEndPointValue);
+  EXPECT_FALSE(data.control_point_value().has_value());
+  EXPECT_FALSE(data.control_point_relative_time().has_value());
+}
+
 TEST(CreateFromBuffer, ParsesStep) {
   constexpr uint8_t kAnimationTypeStep = 0x00;
   constexpr int16_t kStartPointValue = 0x0201;
@@ -148,12 +161,35 @@ TEST(CreateFromBuffer, ParsesBezier) {
   EXPECT_EQ(data->control_point_relative_time(), kControlPointRelativeTime);
 }
 
-TEST(CreateFromBuffer, FailsForUnimplementedType) {
+TEST(CreateFromBuffer, ParsesInterLinear) {
   constexpr uint8_t kAnimationTypeInterLinear = 0x03;
+  constexpr int16_t kEndPointValue = 0x0403;
   const std::vector<uint8_t> source_data = {
       kAnimationTypeInterLinear,
       0x04,
+      0x03,  // end_point_value (0x0403)
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data =
+      AnimatedParameterData<int16_t>::CreateFromBuffer(*buffer, ReadInt16);
+
+  ASSERT_THAT(data.status(), IsOk());
+  EXPECT_EQ(data->animation_type(), kInterLinear);
+  EXPECT_FALSE(data->start_point_value().has_value());
+  EXPECT_EQ(data->end_point_value(), kEndPointValue);
+}
+
+TEST(CreateFromBuffer, FailsForUnimplementedType) {
+  constexpr uint8_t kAnimationTypeInterBezier = 0x04;
+  const std::vector<uint8_t> source_data = {
+      kAnimationTypeInterBezier,
+      0x04,
       0x03,  // end_val (0x0403)
+      0x06,
+      0x05,  // control_val (0x0605)
+      0x80,  // relative_time (0x80)
   };
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));

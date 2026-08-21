@@ -77,6 +77,16 @@ class AnimatedParameterData {
                                  rel_time);
   }
 
+  /*!\brief Creates an AnimatedParameterData object with inter-linear animation.
+   *
+   * \param end_val End value of the parameter.
+   * \return AnimatedParameterData with inter-linear animation.
+   */
+  static AnimatedParameterData MakeInterLinear(T end_val) {
+    return AnimatedParameterData(kInterLinear, std::nullopt, end_val,
+                                 std::nullopt, std::nullopt);
+  }
+
   /*!\brief Creates an AnimatedParameterData from a ReadBitBuffer.
    *
    * \param rb Buffer to read from.
@@ -113,7 +123,11 @@ class AnimatedParameterData {
         RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, rel_time));
         return MakeBezier(start_val, end_val, control_val, rel_time);
       }
-      case kInterLinear:
+      case kInterLinear: {
+        T end_val;
+        RETURN_IF_NOT_OK(read_value_func(rb, end_val));
+        return MakeInterLinear(end_val);
+      }
       case kInterBezier:
         return absl::UnimplementedError(absl::StrCat(
             "Animation type ", animation_type, " is not implemented yet."));
