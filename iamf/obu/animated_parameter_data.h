@@ -87,6 +87,19 @@ class AnimatedParameterData {
                                  std::nullopt, std::nullopt);
   }
 
+  /*!\brief Creates an AnimatedParameterData object with inter-bezier animation.
+   *
+   * \param end_val End value of the parameter.
+   * \param control_val Control point value of the parameter.
+   * \param rel_time Relative time of the control point.
+   * \return AnimatedParameterData with inter-bezier animation.
+   */
+  static AnimatedParameterData MakeInterBezier(T end_val, T control_val,
+                                               uint8_t rel_time) {
+    return AnimatedParameterData(kInterBezier, std::nullopt, end_val,
+                                 control_val, rel_time);
+  }
+
   /*!\brief Creates an AnimatedParameterData from a ReadBitBuffer.
    *
    * \param rb Buffer to read from.
@@ -128,9 +141,14 @@ class AnimatedParameterData {
         RETURN_IF_NOT_OK(read_value_func(rb, end_val));
         return MakeInterLinear(end_val);
       }
-      case kInterBezier:
-        return absl::UnimplementedError(absl::StrCat(
-            "Animation type ", animation_type, " is not implemented yet."));
+      case kInterBezier: {
+        T end_val, control_val;
+        uint8_t rel_time;
+        RETURN_IF_NOT_OK(read_value_func(rb, end_val));
+        RETURN_IF_NOT_OK(read_value_func(rb, control_val));
+        RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, rel_time));
+        return MakeInterBezier(end_val, control_val, rel_time);
+      }
       default:
         return absl::InvalidArgumentError(
             absl::StrCat("Invalid animation type: ", animation_type));
