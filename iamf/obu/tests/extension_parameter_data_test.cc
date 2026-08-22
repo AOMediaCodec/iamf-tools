@@ -28,6 +28,8 @@ namespace {
 using absl_testing::IsOk;
 using ::testing::Not;
 
+// TODO(b/549854166): Remove these tests once migration to `CreateFromBuffer` is
+//                     complete.
 TEST(ExtensionParameterDataReadTest, NineBytes) {
   std::vector<uint8_t> source_data = {// `parameter_data_size`.
                                       9,
@@ -54,6 +56,35 @@ TEST(ExtensionParameterDataReadTest, FailsWithParameterDataSizeTooLarge) {
   ExtensionParameterData extension_parameter_data;
 
   EXPECT_THAT(extension_parameter_data.ReadAndValidate(*rb), Not(IsOk()));
+}
+
+TEST(ExtensionParameterDataCreateTest, NineBytes) {
+  std::vector<uint8_t> source_data = {// `parameter_data_size`.
+                                      9,
+                                      // `parameter_data_bytes`.
+                                      'a', 'r', 'b', 'i', 't', 'r', 'a', 'r',
+                                      'y'};
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data = ExtensionParameterData::CreateFromBuffer(*buffer);
+
+  ASSERT_THAT(data, IsOk());
+  EXPECT_EQ((*data)->parameter_data_bytes.size(), 9);
+  const std::vector<uint8_t> expected_parameter_data_bytes = {
+      'a', 'r', 'b', 'i', 't', 'r', 'a', 'r', 'y'};
+  EXPECT_EQ((*data)->parameter_data_bytes, expected_parameter_data_bytes);
+}
+
+TEST(ExtensionParameterDataCreateTest, FailsWithParameterDataSizeTooLarge) {
+  WriteBitBuffer wb(8);
+  EXPECT_THAT(wb.WriteUleb128(kEntireObuSizeMaxTwoMegabytes + 1), IsOk());
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(wb.bit_buffer()));
+
+  auto data = ExtensionParameterData::CreateFromBuffer(*rb);
+
+  EXPECT_THAT(data, Not(IsOk()));
 }
 
 }  // namespace

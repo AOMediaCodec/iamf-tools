@@ -13,9 +13,11 @@
 #define OBU_EXTNESION_PARAMETER_DATA_H_
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -33,17 +35,32 @@ struct ExtensionParameterData : public ParameterData {
       : ParameterData(),
         parameter_data_bytes(input_parameter_data_bytes.begin(),
                              input_parameter_data_bytes.end()) {}
+
   ExtensionParameterData() = default;
 
   /*!\brief Overridden destructor.*/
   ~ExtensionParameterData() override = default;
 
-  /*!\brief Reads and validates the `ExtensionParameterData` from a buffer.
+  /*!\brief Reads and validates the `ExtensionParameterData` from a buffer. */
+  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
+  //                     complete.
+  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
+
+  /*!\brief Creates an `ExtensionParameterData` from a buffer.
    *
    * \param rb Buffer to read from.
-   * \return `absl::OkStatus()`. A specific error code on failure.
+   * \return Deserialized `ExtensionParameterData` or error.
    */
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
+  static absl::StatusOr<std::unique_ptr<ExtensionParameterData>>
+  CreateFromBuffer(ReadBitBuffer& rb);
+
+  /*!\brief Creates an `ExtensionParameterData` with validation.
+   *
+   * \param input_parameter_data_bytes Input bytes of the parameter data.
+   * \return Validated `ExtensionParameterData` or error.
+   */
+  static absl::StatusOr<std::unique_ptr<ExtensionParameterData>> Create(
+      absl::Span<const uint8_t> input_parameter_data_bytes);
 
   /*!\brief Validates and writes to a buffer.
    *
