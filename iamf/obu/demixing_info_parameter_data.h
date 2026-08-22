@@ -13,8 +13,10 @@
 #define OBU_DEMIXING_INFO_PARAMETER_DATA_H_
 
 #include <cstdint>
+#include <memory>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/parameter_data.h"
@@ -94,7 +96,26 @@ struct DemixingInfoParameterData : public ParameterData {
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
+  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
+  //                     complete.
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
+
+  /*!\brief Creates a `DemixingInfoParameterData` from a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return Deserialized `DemixingInfoParameterData` or error.
+   */
+  static absl::StatusOr<std::unique_ptr<DemixingInfoParameterData>>
+  CreateFromBuffer(ReadBitBuffer& rb);
+
+  /*!\brief Creates a `DemixingInfoParameterData`.
+   *
+   * \param input_dmixp_mode Demixing mode.
+   * \param input_reserved Reserved 5 bits.
+   * \return Validated `DemixingInfoParameterData` object or error.
+   */
+  static absl::StatusOr<std::unique_ptr<DemixingInfoParameterData>> Create(
+      DMixPMode input_dmixp_mode, uint8_t input_reserved);
 
   /*!\brief Validates and writes to a buffer.
    *
@@ -137,7 +158,29 @@ struct DefaultDemixingInfoParameterData : public DemixingInfoParameterData {
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
+  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
+  //                     complete.
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
+
+  /*!\brief Creates a `DefaultDemixingInfoParameterData` from a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return Deserialized `DefaultDemixingInfoParameterData` or error.
+   */
+  static absl::StatusOr<std::unique_ptr<DefaultDemixingInfoParameterData>>
+  CreateFromBuffer(ReadBitBuffer& rb);
+
+  /*!\brief Creates a `DefaultDemixingInfoParameterData` with validation.
+   *
+   * \param input_dmixp_mode Demixing mode.
+   * \param input_reserved Reserved 5 bits.
+   * \param input_default_w Default weight.
+   * \param input_reserved_for_future_use Reserved 4 bits.
+   * \return Validated `DefaultDemixingInfoParameterData` object or error.
+   */
+  static absl::StatusOr<std::unique_ptr<DefaultDemixingInfoParameterData>>
+  Create(DMixPMode input_dmixp_mode, uint8_t input_reserved,
+         uint8_t input_default_w, uint8_t input_reserved_for_future_use);
 
   /*!\brief Validates and writes to a buffer.
    *
