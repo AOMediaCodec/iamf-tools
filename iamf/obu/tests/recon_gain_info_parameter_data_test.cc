@@ -20,15 +20,14 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
-#include "iamf/obu/recon_gain_info_parameter_data.h"
 
 namespace iamf_tools {
 namespace {
 
 using absl_testing::IsOk;
 
-constexpr uint32_t kAudioElementId = 0;
-
+// TODO(b/549854166): Remove these tests once migration to `CreateFromBuffer` is
+//                     complete.
 TEST(ReconGainInfoParameterDataReadTest, TwoLayerParamDefinition) {
   const std::vector<bool> recon_gain_is_present_flags = {false, true};
 
@@ -148,6 +147,102 @@ TEST(ReconGainInfoParameterDataReadTest, MaxLayer7_1_4) {
   std::array<uint8_t, 12> expected_recon_gain_layer_5 = {0, 0, 0, 0, 0, 0,
                                                          0, 0, 0, 8, 9, 0};
   EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements[5]->recon_gain,
+            expected_recon_gain_layer_5);
+}
+
+TEST(ReconGainInfoParameterDataCreateTest, TwoLayerParamDefinition) {
+  const std::vector<bool> recon_gain_is_present_flags = {false, true};
+  std::vector<uint8_t> source_data = {ReconGainElement::kReconGainFlagR, 1};
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data = ReconGainInfoParameterData::CreateFromBuffer(
+      *buffer, recon_gain_is_present_flags);
+
+  ASSERT_THAT(data, IsOk());
+  EXPECT_EQ((*data)->recon_gain_elements.size(), 2);
+  ASSERT_TRUE((*data)->recon_gain_elements[1].has_value());
+  EXPECT_EQ((*data)->recon_gain_elements[1]->recon_gain_flag,
+            ReconGainElement::kReconGainFlagR);
+  std::array<uint8_t, 12> expected_recon_gain = {0, 0, 1, 0, 0, 0,
+                                                 0, 0, 0, 0, 0, 0};
+  EXPECT_EQ((*data)->recon_gain_elements[1]->recon_gain, expected_recon_gain);
+}
+
+TEST(ReconGainInfoParameterDataCreateTest, MaxLayer7_1_4) {
+  const std::vector<bool> recon_gain_is_present_flags = {false, true, true,
+                                                         true,  true, true};
+  std::vector<uint8_t> source_data = {
+      ReconGainElement::kReconGainFlagR,
+      1,
+      ReconGainElement::kReconGainFlagRss | ReconGainElement::kReconGainFlagLss,
+      2,
+      3,
+      0x80,
+      (ReconGainElement::kReconGainFlagLrs >> 7) |
+          (ReconGainElement::kReconGainFlagRrs >> 7),
+      4,
+      5,
+      ReconGainElement::kReconGainFlagLtf | ReconGainElement::kReconGainFlagRtf,
+      6,
+      7,
+      0x80,
+      (ReconGainElement::kReconGainFlagLtb >> 7) |
+          (ReconGainElement::kReconGainFlagRtb >> 7),
+      8,
+      9};
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data = ReconGainInfoParameterData::CreateFromBuffer(
+      *buffer, recon_gain_is_present_flags);
+
+  ASSERT_THAT(data, IsOk());
+  EXPECT_EQ((*data)->recon_gain_elements.size(), 6);
+  EXPECT_FALSE((*data)->recon_gain_elements[0].has_value());
+
+  ASSERT_TRUE((*data)->recon_gain_elements[1].has_value());
+  EXPECT_EQ((*data)->recon_gain_elements[1]->recon_gain_flag,
+            ReconGainElement::kReconGainFlagR);
+  std::array<uint8_t, 12> expected_recon_gain_layer_1 = {0, 0, 1, 0, 0, 0,
+                                                         0, 0, 0, 0, 0, 0};
+  EXPECT_EQ((*data)->recon_gain_elements[1]->recon_gain,
+            expected_recon_gain_layer_1);
+
+  ASSERT_TRUE((*data)->recon_gain_elements[2].has_value());
+  EXPECT_EQ((*data)->recon_gain_elements[2]->recon_gain_flag,
+            ReconGainElement::kReconGainFlagRss |
+                ReconGainElement::kReconGainFlagLss);
+  std::array<uint8_t, 12> expected_recon_gain_layer_2 = {0, 0, 0, 2, 3, 0,
+                                                         0, 0, 0, 0, 0, 0};
+  EXPECT_EQ((*data)->recon_gain_elements[2]->recon_gain,
+            expected_recon_gain_layer_2);
+
+  ASSERT_TRUE((*data)->recon_gain_elements[3].has_value());
+  EXPECT_EQ((*data)->recon_gain_elements[3]->recon_gain_flag,
+            ReconGainElement::kReconGainFlagLrs |
+                ReconGainElement::kReconGainFlagRrs);
+  std::array<uint8_t, 12> expected_recon_gain_layer_3 = {
+      {0, 0, 0, 0, 0, 0, 0, 4, 5, 0, 0, 0}};
+  EXPECT_EQ((*data)->recon_gain_elements[3]->recon_gain,
+            expected_recon_gain_layer_3);
+
+  ASSERT_TRUE((*data)->recon_gain_elements[4].has_value());
+  EXPECT_EQ((*data)->recon_gain_elements[4]->recon_gain_flag,
+            ReconGainElement::kReconGainFlagLtf |
+                ReconGainElement::kReconGainFlagRtf);
+  std::array<uint8_t, 12> expected_recon_gain_layer_4 = {0, 0, 0, 0, 0, 6,
+                                                         7, 0, 0, 0, 0, 0};
+  EXPECT_EQ((*data)->recon_gain_elements[4]->recon_gain,
+            expected_recon_gain_layer_4);
+
+  ASSERT_TRUE((*data)->recon_gain_elements[5].has_value());
+  EXPECT_EQ((*data)->recon_gain_elements[5]->recon_gain_flag,
+            ReconGainElement::kReconGainFlagLtb |
+                ReconGainElement::kReconGainFlagRtb);
+  std::array<uint8_t, 12> expected_recon_gain_layer_5 = {0, 0, 0, 0, 0, 0,
+                                                         0, 0, 0, 8, 9, 0};
+  EXPECT_EQ((*data)->recon_gain_elements[5]->recon_gain,
             expected_recon_gain_layer_5);
 }
 
