@@ -787,6 +787,23 @@ TEST(ObuHeader, ReadAndValidateFailsWithExtensionSizeTooLarge) {
               Not(IsOk()));
 }
 
+TEST_F(ObuHeaderTest,
+       ReadAndValidate_returnsErrorWhenExtensionHeaderSizeCausesOverflow) {
+  // `obu_type` = 2 (Mix Presentation), `obu_redundant_copy` = 1,
+  // `type_specific_flag` = 1, `obu_extension_flag` = 1.
+  // `obu_size` = 8.
+  // `extension_header_size` = 0xFFFFFFFF (5 bytes: 0xff, 0xff, 0xff, 0xff,
+  // 0x0f).
+  std::vector<uint8_t> source_data = {0b00010111, 8,    0xff, 0xff, 0xff,
+                                      0xff,       0x0f, 0x00, 0x00, 0x00};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      Not(IsOk()));
+}
+
 TEST_F(ObuHeaderTest, MaxObuSizeWithMinimalLeb128) {
   // When the size field is encoded using three bytes, the maximum value it can
   // represent is (2 megabytes - 4 bytes).
@@ -1124,6 +1141,22 @@ TEST(PeekObuTypeAndTotalObuSize, ReturnsResourceExhaustedForPartialObuSize) {
   EXPECT_THAT(header_metadata, Not(IsOk()));
   EXPECT_THAT(header_metadata,
               absl_testing::StatusIs(absl::StatusCode::kResourceExhausted));
+  EXPECT_EQ(read_bit_buffer->Tell(), start_position);
+}
+
+TEST(PeekObuTypeAndTotalObuSize, ReturnsErrorWhenObuSizeExceedsTwoMegabytes) {
+  std::vector<uint8_t> source_data = {
+      kAudioFrameId0WithTrim,
+      // `obu_size` = 2 MB (exceeds maximum allowed OBU size).
+      0x80, 0x80, 0x80, 0x01};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+  const auto start_position = read_bit_buffer->Tell();
+
+  auto header_metadata =
+      ObuHeader::PeekObuTypeAndTotalObuSize(*read_bit_buffer);
+
+  EXPECT_THAT(header_metadata, Not(IsOk()));
   EXPECT_EQ(read_bit_buffer->Tell(), start_position);
 }
 

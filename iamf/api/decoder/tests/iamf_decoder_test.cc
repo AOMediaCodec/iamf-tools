@@ -1359,5 +1359,39 @@ TEST(ResetWithNewMix, ResetWithNewMixClearsStaleChannelReorderer) {
   EXPECT_TRUE(decoder->Decode(temporal_unit.data(), temporal_unit.size()).ok());
 }
 
+TEST(Decode, GracefullyHandlesMalformedExtensionHeaderSize) {
+  // Construct an OBU where `obu_extension_flag` is set and
+  // `extension_header_size` is UINT32_MAX (4,294,967,295).
+  // In `GetObuPayloadSize`, adding the 5-byte ULEB128 size of
+  // `extension_header_size` to UINT32_MAX causes a 32-bit integer wrap-around
+  // (5 + 4,294,967,295 = 4 in uint32_t). If not computed with 64-bit integers,
+  // `obu_size - 4` (10 - 4 = 6) appears positive, causing an attempted ~4.3 GB
+  // vector allocation.
+  const std::vector<uint8_t> bitstream = {
+      // First byte: obu_type = 1 (Audio Element), obu_redundant_copy = 1,
+      // type_specific_flag = 1, obu_extension_flag = 1.
+      // Note: Because this is an Audio Element (not Audio Frame), trimming
+      // fields are not present.
+      0b00001111,
+      // `obu_size` = 10.
+      10,
+      // `extension_header_size` = UINT32_MAX (5-byte ULEB128).
+      0xff, 0xff, 0xff, 0xff, 0x0f,
+      // Trailing payload extension bytes (10 bytes total for `obu_size =
+      // 10`).
+      0x00, 0x86, 0x86, 0x86, 0xef, 0x06, 0x00, 0x00, 0xaa, 0xb1};
+
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kStereoLayoutSettings = {
+      .requested_mix = {.output_layout =
+                            api::OutputLayout::kItu2051_SoundSystemA_0_2_0}};
+  ASSERT_TRUE(
+      api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
+
+  auto decode_status = decoder->Decode(bitstream.data(), bitstream.size());
+
+  EXPECT_FALSE(decode_status.ok());
+}
+
 }  // namespace
 }  // namespace iamf_tools
