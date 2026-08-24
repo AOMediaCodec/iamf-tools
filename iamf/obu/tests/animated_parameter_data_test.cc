@@ -20,6 +20,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
 namespace {
@@ -31,6 +32,10 @@ using enum AnimationType;
 
 auto ReadInt16 = [](ReadBitBuffer& rb, int16_t& val) {
   return rb.ReadSigned16(val);
+};
+
+auto WriteInt16 = [](WriteBitBuffer& wb, int16_t val) {
+  return wb.WriteSigned16(val);
 };
 
 TEST(MakeStep, SetsFieldsCorrectly) {
@@ -250,6 +255,100 @@ TEST(CreateFromBuffer, FailsWhenValueIsMissing) {
       AnimatedParameterData<int16_t>::CreateFromBuffer(*buffer, ReadInt16);
 
   EXPECT_THAT(data.status(), Not(IsOk()));
+}
+
+TEST(Write, Step) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  const auto data = AnimatedParameterData<int16_t>::MakeStep(kStartPointValue);
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(data.Write(wb, WriteInt16), IsOk());
+
+  const std::vector<uint8_t> expected_data = {
+      0x00,  // animation_type = kStep
+      0x02,
+      0x01,  // start_point_value
+  };
+  EXPECT_EQ(wb.bit_buffer(), expected_data);
+}
+
+TEST(Write, Linear) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  constexpr int16_t kEndPointValue = 0x0403;
+  const auto data = AnimatedParameterData<int16_t>::MakeLinear(kStartPointValue,
+                                                               kEndPointValue);
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(data.Write(wb, WriteInt16), IsOk());
+
+  const std::vector<uint8_t> expected_data = {
+      0x01,        // animation_type = kLinear
+      0x02, 0x01,  // start_point_value
+      0x04, 0x03,  // end_point_value
+  };
+  EXPECT_EQ(wb.bit_buffer(), expected_data);
+}
+
+TEST(Write, Bezier) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  constexpr int16_t kEndPointValue = 0x0403;
+  constexpr int16_t kControlPointValue = 0x0605;
+  constexpr uint8_t kControlPointRelativeTime = 0x80;
+  const auto data = AnimatedParameterData<int16_t>::MakeBezier(
+      kStartPointValue, kEndPointValue, kControlPointValue,
+      kControlPointRelativeTime);
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(data.Write(wb, WriteInt16), IsOk());
+
+  const std::vector<uint8_t> expected_data = {
+      0x02,  // animation_type = kBezier
+      0x02,
+      0x01,  // start_point_value
+      0x04,
+      0x03,  // end_point_value
+      0x06,
+      0x05,  // control_point_value
+      kControlPointRelativeTime,
+  };
+  EXPECT_EQ(wb.bit_buffer(), expected_data);
+}
+
+TEST(Write, InterLinear) {
+  constexpr int16_t kEndPointValue = 0x0403;
+  const auto data =
+      AnimatedParameterData<int16_t>::MakeInterLinear(kEndPointValue);
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(data.Write(wb, WriteInt16), IsOk());
+
+  const std::vector<uint8_t> expected_data = {
+      0x03,  // animation_type = kInterLinear
+      0x04,
+      0x03,  // end_point_value
+  };
+  EXPECT_EQ(wb.bit_buffer(), expected_data);
+}
+
+TEST(Write, InterBezier) {
+  constexpr int16_t kEndPointValue = 0x0403;
+  constexpr int16_t kControlPointValue = 0x0605;
+  constexpr uint8_t kControlPointRelativeTime = 0x80;
+  const auto data = AnimatedParameterData<int16_t>::MakeInterBezier(
+      kEndPointValue, kControlPointValue, kControlPointRelativeTime);
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(data.Write(wb, WriteInt16), IsOk());
+
+  const std::vector<uint8_t> expected_data = {
+      0x04,  // animation_type = kInterBezier
+      0x04,
+      0x03,  // end_point_value
+      0x06,
+      0x05,  // control_point_value
+      kControlPointRelativeTime,
+  };
+  EXPECT_EQ(wb.bit_buffer(), expected_data);
 }
 
 }  // namespace

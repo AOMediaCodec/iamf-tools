@@ -31,6 +31,7 @@ cc_library(
     deps = [
         ":types",
         "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",

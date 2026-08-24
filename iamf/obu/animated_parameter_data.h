@@ -21,6 +21,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -153,6 +154,42 @@ class AnimatedParameterData {
         return absl::InvalidArgumentError(
             absl::StrCat("Invalid animation type: ", animation_type));
     }
+  }
+
+  /*!\brief Writes the animated parameter data to a WriteBitBuffer.
+   *
+   * \param wb Buffer to write to.
+   * \param write_value_func Callable to write the parameterized values of
+   *        type `T` into the buffer. `write_value_func` must be callable with
+   *        signature `absl::Status(WriteBitBuffer&, const T&)` or
+   *        `absl::Status(WriteBitBuffer&, T)`.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  template <typename WriteValueFunc>
+  absl::Status Write(WriteBitBuffer& wb,
+                     WriteValueFunc write_value_func) const {
+    RETURN_IF_NOT_OK(
+        wb.WriteUleb128(static_cast<DecodedUleb128>(animation_type_)));
+
+    switch (animation_type_) {
+      case kStep:
+        return write_value_func(wb, *start_point_value_);
+      case kLinear:
+        RETURN_IF_NOT_OK(write_value_func(wb, *start_point_value_));
+        return write_value_func(wb, *end_point_value_);
+      case kBezier:
+        RETURN_IF_NOT_OK(write_value_func(wb, *start_point_value_));
+        RETURN_IF_NOT_OK(write_value_func(wb, *end_point_value_));
+        RETURN_IF_NOT_OK(write_value_func(wb, *control_point_value_));
+        return wb.WriteUnsignedLiteral(*control_point_relative_time_, 8);
+      case kInterLinear:
+        return write_value_func(wb, *end_point_value_);
+      case kInterBezier:
+        RETURN_IF_NOT_OK(write_value_func(wb, *end_point_value_));
+        RETURN_IF_NOT_OK(write_value_func(wb, *control_point_value_));
+        return wb.WriteUnsignedLiteral(*control_point_relative_time_, 8);
+    }
+    return absl::InvalidArgumentError("Unknown animation type");
   }
 
   /*!\brief Gets the animation type.

@@ -64,6 +64,7 @@ cc_test(
     srcs = ["animated_parameter_data_test.cc"],
     deps = [
         "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
         "//iamf/obu:animated_parameter_data",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
