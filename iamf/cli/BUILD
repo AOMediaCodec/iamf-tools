@@ -710,6 +710,7 @@ cc_library(
         ":descriptor_obus",
         "//iamf/common:read_bit_buffer",
         "//iamf/obu:ambisonics_config",
+        "//iamf/obu:animated_parameter_data",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",

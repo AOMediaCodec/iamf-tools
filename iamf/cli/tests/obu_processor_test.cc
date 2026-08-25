@@ -37,6 +37,7 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/numeric_utils.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -668,7 +669,7 @@ TEST(ProcessTemporalUnit, SkipsStrayParameterBlocks) {
       ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
   ASSERT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0] = std::make_unique<MixGainParameterData>(
-      AnimationStepInt16{.start_point_value = 99});
+      AnimatedParameterData<int16_t>::MakeStep(99));
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 kArbitraryAudioFrame);
   auto temporal_unit_obus =
@@ -1550,7 +1551,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
       *schedule);
   EXPECT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0] = std::make_unique<MixGainParameterData>(
-      AnimationStepInt16{.start_point_value = 99});
+      AnimatedParameterData<int16_t>::MakeStep(99));
   parameter_blocks_with_data.push_back(ParameterBlockWithData{
       .obu = std::move(parameter_block),
       .start_timestamp = 0,

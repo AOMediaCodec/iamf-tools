@@ -32,6 +32,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -330,7 +331,8 @@ MixGainParamDefinition MakeMixGainParamDefinitionMode1(
 // Builds a Parameter Block OBU with a single mix-gain subblock.
 std::unique_ptr<ParameterBlockObu> MakeMixGainBlock(
     const MixGainParamDefinition& def, DecodedUleb128 duration,
-    std::variant<AnimationStepInt16, AnimationLinearInt16, AnimationBezierInt16>
+    std::variant<AnimationLinearInt16, AnimationBezierInt16,
+                 AnimatedParameterData<int16_t>>
         anim_data) {
   auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
       /*duration=*/duration, /*constant_subblock_duration=*/duration);
@@ -394,7 +396,7 @@ TEST(Probe, TemporalUnitScanWithoutDetailsKeepsCountsAndDuration) {
   const auto mix_gain_def =
       MakeMixGainParamDefinitionMode1(kParameterId, kParameterRate);
   auto block = MakeMixGainBlock(mix_gain_def, /*duration=*/64,
-                                AnimationStepInt16{.start_point_value = 256});
+                                AnimatedParameterData<int16_t>::MakeStep(256));
 
   size_t descriptor_size = 0;
   auto data = SerializeMinimalIaSequence(&descriptor_size);
@@ -434,7 +436,7 @@ TEST(Probe, TemporalUnitScanExtractsMixGainStepLinearAndBezier) {
   // Step.
   auto step_block =
       MakeMixGainBlock(mix_gain_def, /*duration=*/64,
-                       AnimationStepInt16{.start_point_value = 256});
+                       AnimatedParameterData<int16_t>::MakeStep(256));
   // Linear.
   auto linear_block = MakeMixGainBlock(
       mix_gain_def, /*duration=*/64,
@@ -574,7 +576,7 @@ TEST(Probe, TemporalUnitScanCountsUnknownParameterIdAsParseError) {
   const auto stray_def =
       MakeMixGainParamDefinitionMode1(kUnknownParameterId, kParameterRate);
   auto stray_block = MakeMixGainBlock(
-      stray_def, /*duration=*/64, AnimationStepInt16{.start_point_value = 0});
+      stray_def, /*duration=*/64, AnimatedParameterData<int16_t>::MakeStep(0));
 
   size_t descriptor_size = 0;
   auto data = SerializeMinimalIaSequence(&descriptor_size);

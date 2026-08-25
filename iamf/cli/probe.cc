@@ -35,6 +35,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/obu/ambisonics_config.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
@@ -808,14 +809,18 @@ std::string DMixPModeToString(DemixingInfoParameterData::DMixPMode m) {
   return absl::StrCat("reserved(", static_cast<int>(m), ")");
 }
 
-std::string AnimationTypeToString(MixGainParameterData::AnimationType t) {
+std::string AnimationTypeToString(AnimationType t) {
   switch (t) {
-    case MixGainParameterData::kAnimateStep:
+    case AnimationType::kStep:
       return "step";
-    case MixGainParameterData::kAnimateLinear:
+    case AnimationType::kLinear:
       return "linear";
-    case MixGainParameterData::kAnimateBezier:
+    case AnimationType::kBezier:
       return "bezier";
+    case AnimationType::kInterLinear:
+      return "inter_linear";
+    case AnimationType::kInterBezier:
+      return "inter_bezier";
   }
   return absl::StrCat("reserved(", static_cast<int>(t), ")");
 }
@@ -833,8 +838,11 @@ MixGainAnimationReport BuildMixGainAnimationReport(
     r.end_point_value_q7_8 = v;
     r.end_point_value = Q7_8ToFloat(v);
   };
-  if (const auto* step = std::get_if<AnimationStepInt16>(&data.param_data)) {
-    set_start(step->start_point_value);
+  if (data.GetAnimationType() == AnimationType::kStep) {
+    if (const auto* step =
+            std::get_if<AnimatedParameterData<int16_t>>(&data.param_data)) {
+      set_start(*step->start_point_value());
+    }
   } else if (const auto* linear =
                  std::get_if<AnimationLinearInt16>(&data.param_data)) {
     set_start(linear->start_point_value);

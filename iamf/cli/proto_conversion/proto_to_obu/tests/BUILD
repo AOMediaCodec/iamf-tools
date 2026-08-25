@@ -216,6 +216,7 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common:q_format_or_floating_point",
+        "//iamf/obu:animated_parameter_data",
         "//iamf/obu:audio_element",
         "//iamf/obu:obu_header",
         "//iamf/obu:parameter_block",

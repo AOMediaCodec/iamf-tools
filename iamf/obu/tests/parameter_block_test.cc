@@ -27,6 +27,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
@@ -54,9 +55,13 @@ using ::testing::NotNull;
 using ::testing::Pointwise;
 
 using absl::MakeConstSpan;
-using enum MixGainParameterData::AnimationType;
+using enum AnimationType;
 using enum DemixingInfoParameterData::DMixPMode;
 using enum DemixingInfoParameterData::WIdxUpdateRule;
+
+constexpr uint8_t kAnimateStep = static_cast<uint8_t>(AnimationType::kStep);
+constexpr uint8_t kAnimateLinear = static_cast<uint8_t>(AnimationType::kLinear);
+constexpr uint8_t kAnimateBezier = static_cast<uint8_t>(AnimationType::kBezier);
 
 constexpr DecodedUleb128 kAudioElementId = 0;
 constexpr DecodedUleb128 kParameterId = 0x07;
@@ -672,8 +677,8 @@ class MixGainParameterBlockTest : public ParameterBlockObuTestBase,
  public:
   MixGainParameterBlockTest()
       : ParameterBlockObuTestBase(),
-        mix_gain_parameter_data_(
-            {MixGainParameterData(AnimationStepInt16{1})}) {}
+        mix_gain_parameter_data_({MixGainParameterData(
+            AnimatedParameterData<int16_t>::MakeStep(1))}) {}
 
  protected:
   void CreateParamDefinition(const ParamDefinition::BaseArgs& args) override {
@@ -769,7 +774,7 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
   schedule_ = *temp_schedule;
 
   mix_gain_parameter_data_ = {
-      MixGainParameterData(AnimationStepInt16{9}),
+      MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(9)),
       MixGainParameterData(AnimationLinearInt16{10, 11}),
       MixGainParameterData(AnimationBezierInt16{12, 13, 14, 15})};
 
@@ -807,7 +812,7 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode0) {
   schedule_ = *temp_schedule;
 
   mix_gain_parameter_data_ = {
-      MixGainParameterData(AnimationStepInt16{9}),
+      MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(9)),
       MixGainParameterData(AnimationLinearInt16{10, 11}),
       MixGainParameterData(AnimationBezierInt16{12, 13, 14, 15})};
 
@@ -836,8 +841,9 @@ TEST_F(MixGainParameterBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   metadata_args_.param_definition_mode =
       ParamDefinition::kModeScheduleInParameterBlock;
 
-  mix_gain_parameter_data_ = {MixGainParameterData(AnimationStepInt16{9}),
-                              MixGainParameterData(AnimationStepInt16{10})};
+  mix_gain_parameter_data_ = {
+      MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(9)),
+      MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(10))};
 
   // Configure the `LebGenerator`.
   leb_generator_ =
@@ -1334,22 +1340,22 @@ TEST_P(InterpolateMixGainParameter, InterpolateMixGainParameter) {
 INSTANTIATE_TEST_SUITE_P(
     Step, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
-        {.mix_gain_parameter_data = MixGainParameterData(AnimationStepInt16{
-             .start_point_value = 0}),
+        {.mix_gain_parameter_data =
+             MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(0)),
          .start_time = 0,
          .end_time = 100,
          .target_time = 0,
          .expected_target_mix_gain = 0,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data = MixGainParameterData(AnimationStepInt16{
-             .start_point_value = 55}),
+        {.mix_gain_parameter_data =
+             MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(55)),
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
          .expected_target_mix_gain = 55,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data = MixGainParameterData(AnimationStepInt16{
-             .start_point_value = 55}),
+        {.mix_gain_parameter_data =
+             MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(55)),
          .start_time = 0,
          .end_time = 100,
          .target_time = 100,

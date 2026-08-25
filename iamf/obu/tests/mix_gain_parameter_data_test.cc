@@ -20,32 +20,14 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
-#include "iamf/obu/mix_gain_parameter_data.h"
+#include "iamf/obu/animated_parameter_data.h"
 
 namespace iamf_tools {
 namespace {
 
 using absl_testing::IsOk;
-using MixGainParameterData::kAnimateBezier;
-using MixGainParameterData::kAnimateLinear;
-using MixGainParameterData::kAnimateStep;
+using enum AnimationType;
 using ::testing::Not;
-
-constexpr uint32_t kAudioElementId = 0;
-
-TEST(AnimationStepInt16, ReadAndValidate) {
-  std::vector<uint8_t> source_data = {
-      // Start point value.
-      0x02,
-      0x01,
-  };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      absl::MakeConstSpan(source_data));
-
-  AnimationStepInt16 step_animation;
-  EXPECT_THAT(step_animation.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(step_animation.start_point_value, 0x0201);
-}
 
 TEST(AnimationLinearInt16, ReadAndValidate) {
   std::vector<uint8_t> source_data = {
@@ -98,9 +80,13 @@ TEST(MixGainParameterData, ReadAndValidateStep) {
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kAnimateStep);
-  EXPECT_TRUE(std::holds_alternative<AnimationStepInt16>(
+  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kStep);
+  EXPECT_TRUE(std::holds_alternative<AnimatedParameterData<int16_t>>(
       mix_gain_parameter_data.param_data));
+  EXPECT_EQ(std::get<AnimatedParameterData<int16_t>>(
+                mix_gain_parameter_data.param_data)
+                .animation_type(),
+            kStep);
 }
 
 TEST(MixGainParameterData, ReadAndValidateLinear) {
@@ -119,7 +105,7 @@ TEST(MixGainParameterData, ReadAndValidateLinear) {
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kAnimateLinear);
+  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kLinear);
   EXPECT_TRUE(std::holds_alternative<AnimationLinearInt16>(
       mix_gain_parameter_data.param_data));
 }
@@ -145,7 +131,7 @@ TEST(MixGainParameterData, ReadAndValidateBezier) {
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kAnimateBezier);
+  EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kBezier);
   EXPECT_TRUE(std::holds_alternative<AnimationBezierInt16>(
       mix_gain_parameter_data.param_data));
 }

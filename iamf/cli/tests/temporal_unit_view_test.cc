@@ -29,6 +29,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
@@ -109,7 +110,7 @@ void AddMixGainParameterBlock(
     InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
     std::list<ParameterBlockWithData>& parameter_blocks) {
   auto data = std::make_unique<MixGainParameterData>();
-  data->param_data = AnimationStepInt16{.start_point_value = 1};
+  data->param_data = AnimatedParameterData<int16_t>::MakeStep(1);
   auto parameter_block =
       ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
   ASSERT_THAT(parameter_block, NotNull());

@@ -224,6 +224,7 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
+        "//iamf/obu:animated_parameter_data",
         "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",

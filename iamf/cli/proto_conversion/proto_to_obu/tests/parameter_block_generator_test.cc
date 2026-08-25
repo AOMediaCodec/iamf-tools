@@ -37,6 +37,7 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/q_format_or_floating_point.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
@@ -324,9 +325,10 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
     auto mix_gain_parameter_data = static_cast<MixGainParameterData*>(
         parameter_block.obu->subblocks_[0].get());
     EXPECT_EQ(mix_gain_parameter_data->GetAnimationType(),
-              MixGainParameterData::kAnimateStep);
-    EXPECT_EQ(std::get<AnimationStepInt16>(mix_gain_parameter_data->param_data)
-                  .start_point_value,
+              AnimationType::kStep);
+    EXPECT_EQ(*std::get<AnimatedParameterData<int16_t>>(
+                   mix_gain_parameter_data->param_data)
+                   .start_point_value(),
               0);
   }
 }
@@ -658,8 +660,7 @@ TEST(GenerateMixGainParameterBlocks, IgnoresMismatchedAnimationType) {
   const auto* mix_gain_parameter_data =
       static_cast<const MixGainParameterData*>(
           parameter_block.obu->subblocks_[0].get());
-  EXPECT_EQ(mix_gain_parameter_data->GetAnimationType(),
-            MixGainParameterData::AnimationType::kAnimateStep);
+  EXPECT_EQ(mix_gain_parameter_data->GetAnimationType(), AnimationType::kStep);
 }
 
 }  // namespace

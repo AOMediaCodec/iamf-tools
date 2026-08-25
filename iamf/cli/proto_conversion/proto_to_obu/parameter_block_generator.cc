@@ -40,6 +40,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
@@ -88,12 +89,12 @@ absl::Status GenerateMixGainSubblock(
     case kStep: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().step();
-      AnimationStepInt16 obu_animation;
+      int16_t start_point_value;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationStepInt16.start_point_value",
-          metadata_animation.start_point_value(),
-          obu_animation.start_point_value));
-      mix_gain_parameter_data->param_data = obu_animation;
+          metadata_animation.start_point_value(), start_point_value));
+      mix_gain_parameter_data->param_data =
+          AnimatedParameterData<int16_t>::MakeStep(start_point_value);
       break;
     }
     case kLinear: {

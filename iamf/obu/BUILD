@@ -322,6 +322,7 @@ cc_library(
     srcs = ["parameter_block.cc"],
     hdrs = ["parameter_block.h"],
     deps = [
+        ":animated_parameter_data",
         ":obu_base",
         ":obu_header",
         ":parameter_data",
@@ -333,6 +334,7 @@ cc_library(
         "//iamf/common/utils:validation_utils",
         "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:subblock_schedule",
+        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/status",
@@ -357,6 +359,7 @@ cc_library(
         "recon_gain_info_parameter_data.h",
     ],
     deps = [
+        ":animated_parameter_data",
         ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",

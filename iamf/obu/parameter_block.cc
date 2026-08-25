@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
@@ -29,6 +30,7 @@
 #include "iamf/common/utils/obu_util.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
@@ -105,12 +107,13 @@ absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
     InternalTimestamp start_time, InternalTimestamp end_time,
     InternalTimestamp target_time, float& target_mix_gain_db) {
   return InterpolateMixGainValue(
-      mix_gain_parameter_data->GetAnimationType(),
-      MixGainParameterData::kAnimateStep, MixGainParameterData::kAnimateLinear,
-      MixGainParameterData::kAnimateBezier,
+      mix_gain_parameter_data->GetAnimationType(), AnimationType::kStep,
+      AnimationType::kLinear, AnimationType::kBezier,
       [&mix_gain_parameter_data]() {
-        return std::get<AnimationStepInt16>(mix_gain_parameter_data->param_data)
-            .start_point_value;
+        const auto& anim = std::get<AnimatedParameterData<int16_t>>(
+            mix_gain_parameter_data->param_data);
+        ABSL_CHECK(anim.start_point_value().has_value());
+        return *anim.start_point_value();
       },
       [&mix_gain_parameter_data]() {
         return std::get<AnimationLinearInt16>(

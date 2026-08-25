@@ -22,6 +22,7 @@
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
@@ -42,14 +43,13 @@ constexpr int16_t kEndPointValue = 200;
 constexpr int16_t kControlPointValue = 300;
 constexpr int16_t kControlPointRelativeTime = 68;
 
-using enum MixGainParameterData::AnimationType;
 using enum iamf_tools_cli_proto::AnimationType;
 using enum ParamDefinition::ParameterDefinitionType;
 
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForStepMixGainParameterSubblock) {
   const MixGainParameterData kStepMixGainSubblock(
-      AnimationStepInt16{kStartPointValue});
+      AnimatedParameterData<int16_t>::MakeStep(kStartPointValue));
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
           kParameterDefinitionMixGain, kSubblockDuration, kStepMixGainSubblock);

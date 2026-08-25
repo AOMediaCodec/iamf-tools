@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/proto_conversion/obu_to_proto/parameter_block_metadata_generator.h"
 
+#include <cstdint>
 #include <optional>
 #include <utility>
 #include <variant>
@@ -20,6 +21,7 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
@@ -34,13 +36,14 @@ namespace {
 
 using ParameterSubblockMetadata = iamf_tools_cli_proto::ParameterSubblock;
 
-// Returns a proto representation of the input `AnimationStepInt16`.
+// Returns a proto representation of the input `AnimatedParameterData<int16_t>`.
 absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
-AnimatedParameterDataInt16ToMetadata(const AnimationStepInt16& step) {
+AnimatedParameterDataInt16ToMetadata(
+    const AnimatedParameterData<int16_t>& step) {
   iamf_tools_cli_proto::MixGainParameterData result;
 
   result.mutable_param_data()->mutable_step()->set_start_point_value(
-      step.start_point_value);
+      step.start_point_value().has_value() ? *step.start_point_value() : 0);
   return result;
 }
 
