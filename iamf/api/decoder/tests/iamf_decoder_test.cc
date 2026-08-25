@@ -1359,6 +1359,51 @@ TEST(ResetWithNewMix, ResetWithNewMixClearsStaleChannelReorderer) {
   EXPECT_TRUE(decoder->Decode(temporal_unit.data(), temporal_unit.size()).ok());
 }
 
+// TODO(b/552018947): Update this test once validation for codec configs is
+// updated.
+TEST(InvalidRenderedSamples, FailsWhenRenderedSamplesExceedExpectedFrameSize) {
+  std::unique_ptr<api::IamfDecoder> decoder;
+  ASSERT_TRUE(
+      api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
+  // Generate descriptors manually with two codec configs.
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  CodecConfigsById codec_configs;
+  // Add the first and second codec configurations.
+  AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
+                     kSampleRate, codec_configs);
+  AddLpcmCodecConfig(/*codec_config_id=*/99, kNumSamplesPerFrame, kBitDepth,
+                     kSampleRate, codec_configs);
+  AudioElementsById audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
+      codec_configs, audio_elements);
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  std::vector<uint8_t> source_data = SerializeObusExpectOk(
+      {&ia_sequence_header, &codec_configs.at(kFirstCodecConfigId),
+       &codec_configs.at(99), &audio_elements.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+
+  ASSERT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
+  // Execute decoding on the remaining buffer (temporal units), which fails
+  // because the frame size exceeds the expected frame size.
+  EXPECT_FALSE(decoder->Decode({}, 0).ok());
+
+  // Since there are two codec configs, the expected frame size is not uniquely
+  // determined (remains 0). Thus, num_ticks (8) > expected_frame_size (0),
+  // which makes IsTemporalUnitAvailable() return false.
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
 TEST(Decode, GracefullyHandlesMalformedExtensionHeaderSize) {
   // Construct an OBU where `obu_extension_flag` is set and
   // `extension_header_size` is UINT32_MAX (4,294,967,295).

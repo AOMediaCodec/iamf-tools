@@ -46,6 +46,7 @@
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/profile_filter.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
+#include "iamf/cli/sample_processing_utils.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
@@ -714,6 +715,10 @@ ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
   if (!rendered_samples.ok()) {
     return rendered_samples.status();
   }
+
+  RETURN_IF_NOT_OK(ValidateRenderedSamples(
+      *rendered_samples,
+      output_frame_size_.has_value() ? *output_frame_size_ : 0));
 
   // TODO(b/379122580): Add a call to `FinalizePushingTemporalUnits`, then a
   //                    final call to `GetPostProcessedSamplesAsSpan` when there

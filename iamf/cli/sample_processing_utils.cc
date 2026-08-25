@@ -155,6 +155,25 @@ absl::StatusOr<size_t> CheckPresenceAndGetCommonNumTicks(
   return expected_size;
 }
 
+absl::Status ValidateRenderedSamples(
+    absl::Span<const absl::Span<const InternalSampleType>> rendered_samples,
+    uint32_t expected_frame_size) {
+  if (rendered_samples.empty()) {
+    return absl::InvalidArgumentError("Rendered samples are empty.");
+  }
+  auto common_num_ticks = GetCommonNumTicks(rendered_samples);
+  if (!common_num_ticks.ok()) {
+    return common_num_ticks.status();
+  }
+  const size_t num_ticks = *common_num_ticks;
+  if (num_ticks > expected_frame_size) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Sample count (", num_ticks, ") exceeds expected frame size (",
+        expected_frame_size, ")."));
+  }
+  return absl::OkStatus();
+}
+
 absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
                             bool big_endian, uint8_t* const buffer,
                             size_t& write_position) {

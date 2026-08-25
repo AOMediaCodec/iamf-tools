@@ -669,5 +669,43 @@ TEST(ConvertChannelTimeToInterleaved, AppliesTransform) {
   EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
 }
 
+TEST(ValidateRenderedSamples, Succeeds) {
+  constexpr size_t kNumTicks = 8;
+  std::vector<std::vector<InternalSampleType>> samples = {
+      std::vector<InternalSampleType>(kNumTicks, 0.0),
+      std::vector<InternalSampleType>(kNumTicks, 0.0)};
+
+  EXPECT_THAT(ValidateRenderedSamples(MakeSpanOfConstSpans(samples), kNumTicks),
+              IsOk());
+}
+
+TEST(ValidateRenderedSamples, FailsWhenEmpty) {
+  const std::vector<std::vector<InternalSampleType>> empty_samples = {};
+
+  EXPECT_THAT(ValidateRenderedSamples(MakeSpanOfConstSpans(empty_samples), 8),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ValidateRenderedSamples, FailsWhenJagged) {
+  constexpr size_t kNumTicks = 8;
+  std::vector<std::vector<InternalSampleType>> samples = {
+      std::vector<InternalSampleType>(kNumTicks, 0.0),
+      std::vector<InternalSampleType>(kNumTicks - 1, 0.0)};
+
+  EXPECT_THAT(ValidateRenderedSamples(MakeSpanOfConstSpans(samples), kNumTicks),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ValidateRenderedSamples, FailsWhenExceedsExpectedFrameSize) {
+  constexpr size_t kNumTicks = 9;
+  std::vector<std::vector<InternalSampleType>> samples = {
+      std::vector<InternalSampleType>(kNumTicks, 0.0),
+      std::vector<InternalSampleType>(kNumTicks, 0.0)};
+
+  EXPECT_THAT(
+      ValidateRenderedSamples(MakeSpanOfConstSpans(samples), kNumTicks - 1),
+      StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
 }  // namespace
 }  // namespace iamf_tools

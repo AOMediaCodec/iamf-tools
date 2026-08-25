@@ -81,6 +81,21 @@ struct IamfDecoder::DecoderState {
   /*!\brief Creates an ObuProcessor and maintains related bookkeeping. */
   absl::Status CreateObuProcessor();
 
+  // TODO(b/552011003): Replace with AudioBuffer instance once available.
+  /*!\brief Returns true iff the current rendered_samples are valid. */
+  bool IsRenderedSamplesValid() const {
+    uint32_t expected_frame_size = 0;
+    if (obu_processor != nullptr) {
+      auto output_frame_size = obu_processor->GetOutputFrameSize();
+      if (output_frame_size.ok()) {
+        expected_frame_size = *output_frame_size;
+      }
+    }
+    return ValidateRenderedSamples(absl::MakeConstSpan(rendered_samples),
+                                   expected_frame_size)
+        .ok();
+  }
+
   // Current status of the decoder.
   DecoderStatus status = DecoderStatus::kAcceptingData;
 
@@ -444,14 +459,20 @@ IamfStatus IamfDecoder::GetOutputTemporalUnit(uint8_t* output_buffer,
   if (state_->rendered_samples.empty()) {
     return IamfStatus::OkStatus();
   }
+  if (!state_->IsRenderedSamplesValid()) {
+    state_->rendered_samples.clear();
+    return IamfStatus::ErrorStatus(
+        "Invalid Argument: Decoded frame has mismatched or invalid sizes.");
+  }
   // Write decoded temporal unit to output buffer.
   OutputSampleType output_sample_type = GetOutputSampleType();
   IamfStatus status = WriteFrameToSpan(
       state_->rendered_samples, output_sample_type,
       absl::MakeSpan(output_buffer, output_buffer_size), bytes_written);
-  if (status.ok()) {
-    state_->rendered_samples.clear();
+  if (!status.ok()) {
+    return status;
   }
+  state_->rendered_samples.clear();
 
   // Refill the rendered samples with the next temporal unit.
   auto decode_status = DecodeOneTemporalUnit(
@@ -466,7 +487,7 @@ IamfStatus IamfDecoder::GetOutputTemporalUnit(uint8_t* output_buffer,
 }
 
 bool IamfDecoder::IsTemporalUnitAvailable() const {
-  return !state_->rendered_samples.empty();
+  return state_->IsRenderedSamplesValid();
 }
 
 bool IamfDecoder::IsDescriptorProcessingComplete() const {

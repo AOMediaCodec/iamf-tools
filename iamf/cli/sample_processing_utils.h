@@ -80,6 +80,18 @@ absl::StatusOr<size_t> CheckPresenceAndGetCommonNumTicks(
     const LabelSamplesMap& label_to_samples,
     absl::Span<const ChannelLabel::Label> labels);
 
+/*!\brief Validates that the rendered samples are valid (not empty, not jagged,
+ *         and does not exceed the expected frame size).
+ *
+ * \param rendered_samples The rendered samples to validate.
+ * \param expected_frame_size The expected frame size.
+ * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+ *         validation fails.
+ */
+absl::Status ValidateRenderedSamples(
+    absl::Span<const absl::Span<const InternalSampleType>> rendered_samples,
+    uint32_t expected_frame_size);
+
 /*!\brief Writes the input PCM sample to a buffer.
  *
  * Writes the most significant `sample_size` bits of `sample` starting at
