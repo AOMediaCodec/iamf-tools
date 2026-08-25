@@ -16,7 +16,9 @@
 #include <utility>
 #include <variant>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
@@ -39,23 +41,22 @@ using ParameterSubblockMetadata = iamf_tools_cli_proto::ParameterSubblock;
 // Returns a proto representation of the input `AnimatedParameterData<int16_t>`.
 absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
 AnimatedParameterDataInt16ToMetadata(
-    const AnimatedParameterData<int16_t>& step) {
+    const AnimatedParameterData<int16_t>& animation) {
   iamf_tools_cli_proto::MixGainParameterData result;
 
-  result.mutable_param_data()->mutable_step()->set_start_point_value(
-      step.start_point_value().has_value() ? *step.start_point_value() : 0);
-  return result;
-}
-
-// Returns a proto representation of the input `AnimationLinearInt16`.
-absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
-AnimatedParameterDataInt16ToMetadata(const AnimationLinearInt16& linear) {
-  iamf_tools_cli_proto::MixGainParameterData result;
-
-  result.mutable_param_data()->mutable_linear()->set_start_point_value(
-      linear.start_point_value);
-  result.mutable_param_data()->mutable_linear()->set_end_point_value(
-      linear.end_point_value);
+  if (animation.animation_type() == AnimationType::kStep) {
+    result.mutable_param_data()->mutable_step()->set_start_point_value(
+        animation.start_point_value().value_or(0));
+  } else if (animation.animation_type() == AnimationType::kLinear) {
+    result.mutable_param_data()->mutable_linear()->set_start_point_value(
+        animation.start_point_value().value_or(0));
+    result.mutable_param_data()->mutable_linear()->set_end_point_value(
+        animation.end_point_value().value_or(0));
+  } else {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unsupported animation type for metadata: ",
+                     static_cast<int>(animation.animation_type())));
+  }
   return result;
 }
 

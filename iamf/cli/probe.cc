@@ -838,15 +838,14 @@ MixGainAnimationReport BuildMixGainAnimationReport(
     r.end_point_value_q7_8 = v;
     r.end_point_value = Q7_8ToFloat(v);
   };
-  if (data.GetAnimationType() == AnimationType::kStep) {
-    if (const auto* step =
-            std::get_if<AnimatedParameterData<int16_t>>(&data.param_data)) {
-      set_start(*step->start_point_value());
+  if (const auto* anim =
+          std::get_if<AnimatedParameterData<int16_t>>(&data.param_data)) {
+    if (anim->animation_type() == AnimationType::kStep) {
+      set_start(*anim->start_point_value());
+    } else if (anim->animation_type() == AnimationType::kLinear) {
+      set_start(*anim->start_point_value());
+      set_end(*anim->end_point_value());
     }
-  } else if (const auto* linear =
-                 std::get_if<AnimationLinearInt16>(&data.param_data)) {
-    set_start(linear->start_point_value);
-    set_end(linear->end_point_value);
   } else if (const auto* bezier =
                  std::get_if<AnimationBezierInt16>(&data.param_data)) {
     set_start(bezier->start_point_value);

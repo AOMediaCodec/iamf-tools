@@ -101,15 +101,17 @@ absl::Status GenerateMixGainSubblock(
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().linear();
 
-      AnimationLinearInt16 obu_animation;
+      int16_t start_point_value;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationLinearInt16.start_point_value",
-          metadata_animation.start_point_value(),
-          obu_animation.start_point_value));
+          metadata_animation.start_point_value(), start_point_value));
+      int16_t end_point_value;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationLinearInt16.end_point_value",
-          metadata_animation.end_point_value(), obu_animation.end_point_value));
-      mix_gain_parameter_data->param_data = obu_animation;
+          metadata_animation.end_point_value(), end_point_value));
+      mix_gain_parameter_data->param_data =
+          AnimatedParameterData<int16_t>::MakeLinear(start_point_value,
+                                                     end_point_value);
       break;
     }
     case kBezier: {

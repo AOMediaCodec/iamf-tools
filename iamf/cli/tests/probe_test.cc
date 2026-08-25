@@ -331,8 +331,7 @@ MixGainParamDefinition MakeMixGainParamDefinitionMode1(
 // Builds a Parameter Block OBU with a single mix-gain subblock.
 std::unique_ptr<ParameterBlockObu> MakeMixGainBlock(
     const MixGainParamDefinition& def, DecodedUleb128 duration,
-    std::variant<AnimationLinearInt16, AnimationBezierInt16,
-                 AnimatedParameterData<int16_t>>
+    std::variant<AnimationBezierInt16, AnimatedParameterData<int16_t>>
         anim_data) {
   auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
       /*duration=*/duration, /*constant_subblock_duration=*/duration);
@@ -438,9 +437,9 @@ TEST(Probe, TemporalUnitScanExtractsMixGainStepLinearAndBezier) {
       MakeMixGainBlock(mix_gain_def, /*duration=*/64,
                        AnimatedParameterData<int16_t>::MakeStep(256));
   // Linear.
-  auto linear_block = MakeMixGainBlock(
-      mix_gain_def, /*duration=*/64,
-      AnimationLinearInt16{.start_point_value = 10, .end_point_value = 20});
+  auto linear_block =
+      MakeMixGainBlock(mix_gain_def, /*duration=*/64,
+                       AnimatedParameterData<int16_t>::MakeLinear(10, 20));
   // Bezier.
   auto bezier_block = MakeMixGainBlock(
       mix_gain_def, /*duration=*/64,

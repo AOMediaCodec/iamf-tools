@@ -35,7 +35,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
-using ::testing::Not;
 
 constexpr DecodedUleb128 kSubblockDuration = 99;
 constexpr int16_t kStartPointValue = 100;
@@ -69,7 +68,8 @@ TEST(GenerateParameterSubblockMetadata,
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForLinearMixGainParameterSubblock) {
   const MixGainParameterData kLinearMixGainSubblock(
-      AnimationLinearInt16{kStartPointValue, kEndPointValue});
+      AnimatedParameterData<int16_t>::MakeLinear(kStartPointValue,
+                                                 kEndPointValue));
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
           kParameterDefinitionMixGain, kSubblockDuration,

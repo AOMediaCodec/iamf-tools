@@ -29,24 +29,6 @@ using absl_testing::IsOk;
 using enum AnimationType;
 using ::testing::Not;
 
-TEST(AnimationLinearInt16, ReadAndValidate) {
-  std::vector<uint8_t> source_data = {
-      // Start point value.
-      0x04,
-      0x03,
-      // End point value.
-      0x02,
-      0x01,
-  };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      absl::MakeConstSpan(source_data));
-
-  AnimationLinearInt16 linear_animation;
-  EXPECT_THAT(linear_animation.ReadAndValidate(*buffer), IsOk());
-  EXPECT_EQ(linear_animation.start_point_value, 0x0403);
-  EXPECT_EQ(linear_animation.end_point_value, 0x0201);
-}
-
 TEST(AnimationBezierInt16, ReadAndValidate) {
   std::vector<uint8_t> source_data = {// Start point value.
                                       0x07, 0x06,
@@ -106,7 +88,7 @@ TEST(MixGainParameterData, ReadAndValidateLinear) {
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(mix_gain_parameter_data.GetAnimationType(), kLinear);
-  EXPECT_TRUE(std::holds_alternative<AnimationLinearInt16>(
+  EXPECT_TRUE(std::holds_alternative<AnimatedParameterData<int16_t>>(
       mix_gain_parameter_data.param_data));
 }
 

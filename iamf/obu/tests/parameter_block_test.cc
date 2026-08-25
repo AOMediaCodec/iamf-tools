@@ -775,7 +775,7 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
 
   mix_gain_parameter_data_ = {
       MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(9)),
-      MixGainParameterData(AnimationLinearInt16{10, 11}),
+      MixGainParameterData(AnimatedParameterData<int16_t>::MakeLinear(10, 11)),
       MixGainParameterData(AnimationBezierInt16{12, 13, 14, 15})};
 
   expected_header_ = {kObuIaParameterBlock << 3, 23};
@@ -813,7 +813,7 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode0) {
 
   mix_gain_parameter_data_ = {
       MixGainParameterData(AnimatedParameterData<int16_t>::MakeStep(9)),
-      MixGainParameterData(AnimationLinearInt16{10, 11}),
+      MixGainParameterData(AnimatedParameterData<int16_t>::MakeLinear(10, 11)),
       MixGainParameterData(AnimationBezierInt16{12, 13, 14, 15})};
 
   expected_header_ = {kObuIaParameterBlock << 3, 17};
@@ -1366,36 +1366,36 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     Linear, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
-        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
-             .start_point_value = 0, .end_point_value = 1000}),
+        {.mix_gain_parameter_data = MixGainParameterData(
+             AnimatedParameterData<int16_t>::MakeLinear(0, 1000)),
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
          .expected_target_mix_gain = 500,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
-             .start_point_value = 0, .end_point_value = 768}),
+        {.mix_gain_parameter_data = MixGainParameterData(
+             AnimatedParameterData<int16_t>::MakeLinear(0, 768)),
          .start_time = 0,
          .end_time = 240640,
          .target_time = 0,
          .expected_target_mix_gain = 0,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
-             .start_point_value = 0, .end_point_value = 768}),
+        {.mix_gain_parameter_data = MixGainParameterData(
+             AnimatedParameterData<int16_t>::MakeLinear(0, 768)),
          .start_time = 0,
          .end_time = 240640,
          .target_time = 1024,
          .expected_target_mix_gain = 3,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
-             .start_point_value = 0, .end_point_value = 768}),
+        {.mix_gain_parameter_data = MixGainParameterData(
+             AnimatedParameterData<int16_t>::MakeLinear(0, 768)),
          .start_time = 0,
          .end_time = 240640,
          .target_time = 3076,
          .expected_target_mix_gain = 9,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data = MixGainParameterData(AnimationLinearInt16{
-             .start_point_value = 0, .end_point_value = 768}),
+        {.mix_gain_parameter_data = MixGainParameterData(
+             AnimatedParameterData<int16_t>::MakeLinear(0, 768)),
          .start_time = 0,
          .end_time = 240640,
          .target_time = 4096,

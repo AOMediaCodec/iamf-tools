@@ -28,24 +28,6 @@ namespace iamf_tools {
 
 using enum AnimationType;
 
-void AnimationLinearInt16::Print() const {
-  ABSL_LOG(INFO) << "     // Linear";
-  ABSL_LOG(INFO) << "     start_point_value= " << start_point_value;
-  ABSL_LOG(INFO) << "     end_point_value= " << end_point_value;
-}
-
-absl::Status AnimationLinearInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(wb.WriteSigned16(start_point_value));
-  RETURN_IF_NOT_OK(wb.WriteSigned16(end_point_value));
-  return absl::OkStatus();
-}
-
-absl::Status AnimationLinearInt16::ReadAndValidate(ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(rb.ReadSigned16(start_point_value));
-  RETURN_IF_NOT_OK(rb.ReadSigned16(end_point_value));
-  return absl::OkStatus();
-}
-
 void AnimationBezierInt16::Print() const {
   ABSL_LOG(INFO) << "     // Bezier";
   ABSL_LOG(INFO) << "     start_point_value= " << start_point_value;
@@ -84,9 +66,12 @@ absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
       return absl::OkStatus();
     }
     case kLinear: {
-      AnimationLinearInt16 linear_param_data;
-      RETURN_IF_NOT_OK(linear_param_data.ReadAndValidate(rb));
-      param_data = linear_param_data;
+      int16_t start_val;
+      RETURN_IF_NOT_OK(rb.ReadSigned16(start_val));
+      int16_t end_val;
+      RETURN_IF_NOT_OK(rb.ReadSigned16(end_val));
+      param_data =
+          AnimatedParameterData<int16_t>::MakeLinear(start_val, end_val);
       return absl::OkStatus();
     }
     case kBezier: {
@@ -120,19 +105,27 @@ absl::Status MixGainParameterData::Write(WriteBitBuffer& wb) const {
 
 AnimationType MixGainParameterData::GetAnimationType() const {
   return std::visit(
-      absl::Overload{
-          [](const AnimatedParameterData<int16_t>&) { return kStep; },
-          [](const AnimationLinearInt16&) { return kLinear; },
-          [](const AnimationBezierInt16&) { return kBezier; }},
+      absl::Overload{[](const AnimatedParameterData<int16_t>& arg) {
+                       return arg.animation_type();
+                     },
+                     [](const AnimationBezierInt16&) { return kBezier; }},
       param_data);
 }
 
 void MixGainParameterData::Print() const {
   ABSL_LOG(INFO) << "    animation_type= " << absl::StrCat(GetAnimationType());
   std::visit(absl::Overload{[](const AnimatedParameterData<int16_t>& arg) {
-                              ABSL_LOG(INFO) << "     // Step";
-                              ABSL_LOG(INFO) << "     start_point_value= "
-                                             << *arg.start_point_value();
+                              if (arg.animation_type() == kStep) {
+                                ABSL_LOG(INFO) << "     // Step";
+                                ABSL_LOG(INFO) << "     start_point_value= "
+                                               << *arg.start_point_value();
+                              } else if (arg.animation_type() == kLinear) {
+                                ABSL_LOG(INFO) << "     // Linear";
+                                ABSL_LOG(INFO) << "     start_point_value= "
+                                               << *arg.start_point_value();
+                                ABSL_LOG(INFO) << "     end_point_value= "
+                                               << *arg.end_point_value();
+                              }
                             },
                             [](const auto& arg) { arg.Print(); }},
              param_data);

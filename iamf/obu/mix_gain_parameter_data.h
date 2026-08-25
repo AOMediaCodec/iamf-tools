@@ -23,33 +23,6 @@
 
 namespace iamf_tools {
 
-/*!\brief The metadata to describe animation of type `kAnimateLinear`. */
-struct AnimationLinearInt16 {
-  friend bool operator==(const AnimationLinearInt16& lhs,
-                         const AnimationLinearInt16& rhs) = default;
-
-  /*!\brief Prints the `AnimationLinearInt16`.
-   */
-  void Print() const;
-
-  /*!\brief Validates and writes to a buffer.
-   *
-   * \param wb Buffer to write to.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
-
-  /*!\brief Reads and validates the `AnimationLinearInt16` from a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` unless the buffer is exhausted during reading.
-   */
-  absl::Status ReadAndValidate(ReadBitBuffer& rb);
-
-  int16_t start_point_value;
-  int16_t end_point_value;
-};
-
 /*!\brief The metadata to describe animation of type `kAnimateBezier`. */
 struct AnimationBezierInt16 {
   friend bool operator==(const AnimationBezierInt16& lhs,
@@ -85,8 +58,8 @@ struct MixGainParameterData : public ParameterData {
    * \param input_param_data Input metadata describing the animation type.
    */
   explicit MixGainParameterData(
-      const std::variant<AnimationLinearInt16, AnimationBezierInt16,
-                         AnimatedParameterData<int16_t>>& input_param_data)
+      const std::variant<AnimationBezierInt16, AnimatedParameterData<int16_t>>&
+          input_param_data)
       : ParameterData(), param_data(input_param_data) {}
   MixGainParameterData() = default;
 
@@ -118,9 +91,7 @@ struct MixGainParameterData : public ParameterData {
   void Print() const override;
 
   // The animation type is serialized base on the active field of the variant.
-  std::variant<AnimationLinearInt16, AnimationBezierInt16,
-               AnimatedParameterData<int16_t>>
-      param_data;
+  std::variant<AnimationBezierInt16, AnimatedParameterData<int16_t>> param_data;
 };
 
 }  // namespace iamf_tools

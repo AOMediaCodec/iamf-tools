@@ -116,14 +116,16 @@ absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
         return *anim.start_point_value();
       },
       [&mix_gain_parameter_data]() {
-        return std::get<AnimationLinearInt16>(
-                   mix_gain_parameter_data->param_data)
-            .start_point_value;
+        const auto& anim = std::get<AnimatedParameterData<int16_t>>(
+            mix_gain_parameter_data->param_data);
+        ABSL_CHECK(anim.start_point_value().has_value());
+        return *anim.start_point_value();
       },
       [&mix_gain_parameter_data]() {
-        return std::get<AnimationLinearInt16>(
-                   mix_gain_parameter_data->param_data)
-            .end_point_value;
+        const auto& anim = std::get<AnimatedParameterData<int16_t>>(
+            mix_gain_parameter_data->param_data);
+        ABSL_CHECK(anim.end_point_value().has_value());
+        return *anim.end_point_value();
       },
       [&mix_gain_parameter_data]() {
         return std::get<AnimationBezierInt16>(

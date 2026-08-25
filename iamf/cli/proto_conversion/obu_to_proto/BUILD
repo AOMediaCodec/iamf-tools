@@ -51,7 +51,9 @@ cc_library(
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:param_definition_base",
+        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
