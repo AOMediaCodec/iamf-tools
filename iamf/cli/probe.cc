@@ -838,21 +838,18 @@ MixGainAnimationReport BuildMixGainAnimationReport(
     r.end_point_value_q7_8 = v;
     r.end_point_value = Q7_8ToFloat(v);
   };
-  if (const auto* anim =
-          std::get_if<AnimatedParameterData<int16_t>>(&data.param_data)) {
-    if (anim->animation_type() == AnimationType::kStep) {
-      set_start(*anim->start_point_value());
-    } else if (anim->animation_type() == AnimationType::kLinear) {
-      set_start(*anim->start_point_value());
-      set_end(*anim->end_point_value());
-    }
-  } else if (const auto* bezier =
-                 std::get_if<AnimationBezierInt16>(&data.param_data)) {
-    set_start(bezier->start_point_value);
-    set_end(bezier->end_point_value);
-    r.control_point_value_q7_8 = bezier->control_point_value;
-    r.control_point_value = Q7_8ToFloat(bezier->control_point_value);
-    r.control_point_relative_time = bezier->control_point_relative_time;
+  const auto& anim = data.param_data;
+  if (anim.animation_type() == AnimationType::kStep) {
+    set_start(*anim.start_point_value());
+  } else if (anim.animation_type() == AnimationType::kLinear) {
+    set_start(*anim.start_point_value());
+    set_end(*anim.end_point_value());
+  } else if (anim.animation_type() == AnimationType::kBezier) {
+    set_start(*anim.start_point_value());
+    set_end(*anim.end_point_value());
+    r.control_point_value_q7_8 = *anim.control_point_value();
+    r.control_point_value = Q7_8ToFloat(*anim.control_point_value());
+    r.control_point_relative_time = *anim.control_point_relative_time();
   }
   return r;
 }

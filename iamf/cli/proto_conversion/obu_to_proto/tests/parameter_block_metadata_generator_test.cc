@@ -88,8 +88,9 @@ TEST(GenerateParameterSubblockMetadata,
 TEST(GenerateParameterSubblockMetadata,
      GetsSubblockMetadataForBezierMixGainParameterSubblock) {
   const MixGainParameterData kBezierMixGainParameterData(
-      AnimationBezierInt16{kStartPointValue, kEndPointValue, kControlPointValue,
-                           kControlPointRelativeTime});
+      AnimatedParameterData<int16_t>::MakeBezier(
+          kStartPointValue, kEndPointValue, kControlPointValue,
+          kControlPointRelativeTime));
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
           kParameterDefinitionMixGain, kSubblockDuration,

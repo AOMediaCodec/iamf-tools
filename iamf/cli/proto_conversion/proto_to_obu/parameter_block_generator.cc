@@ -117,23 +117,27 @@ absl::Status GenerateMixGainSubblock(
     case kBezier: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().bezier();
-      AnimationBezierInt16 obu_animation;
+      int16_t start_point_value;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationBezierInt16.start_point_value",
-          metadata_animation.start_point_value(),
-          obu_animation.start_point_value));
+          metadata_animation.start_point_value(), start_point_value));
+      int16_t end_point_value;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationBezierInt16.end_point_value",
-          metadata_animation.end_point_value(), obu_animation.end_point_value));
+          metadata_animation.end_point_value(), end_point_value));
+      int16_t control_point_value;
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationBezierInt16.control_point_value",
-          metadata_animation.control_point_value(),
-          obu_animation.control_point_value));
+          metadata_animation.control_point_value(), control_point_value));
+      uint8_t control_point_relative_time;
       RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
           "AnimationBezierInt16.control_point_relative_time",
           metadata_animation.control_point_relative_time(),
-          obu_animation.control_point_relative_time));
-      mix_gain_parameter_data->param_data = obu_animation;
+          control_point_relative_time));
+      mix_gain_parameter_data->param_data =
+          AnimatedParameterData<int16_t>::MakeBezier(
+              start_point_value, end_point_value, control_point_value,
+              control_point_relative_time);
       break;
     }
     default:

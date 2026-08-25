@@ -14,7 +14,6 @@
 #include <cstdint>
 #include <optional>
 #include <utility>
-#include <variant>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -52,6 +51,17 @@ AnimatedParameterDataInt16ToMetadata(
         animation.start_point_value().value_or(0));
     result.mutable_param_data()->mutable_linear()->set_end_point_value(
         animation.end_point_value().value_or(0));
+  } else if (animation.animation_type() == AnimationType::kBezier) {
+    result.mutable_param_data()->mutable_bezier()->set_start_point_value(
+        animation.start_point_value().value_or(0));
+    result.mutable_param_data()->mutable_bezier()->set_end_point_value(
+        animation.end_point_value().value_or(0));
+    result.mutable_param_data()->mutable_bezier()->set_control_point_value(
+        animation.control_point_value().value_or(0));
+    result.mutable_param_data()
+        ->mutable_bezier()
+        ->set_control_point_relative_time(
+            animation.control_point_relative_time().value_or(0));
   } else {
     return absl::InvalidArgumentError(
         absl::StrCat("Unsupported animation type for metadata: ",
@@ -60,33 +70,13 @@ AnimatedParameterDataInt16ToMetadata(
   return result;
 }
 
-// Returns a proto representation of the input `AnimationBezierInt16`.
-absl::StatusOr<iamf_tools_cli_proto::MixGainParameterData>
-AnimatedParameterDataInt16ToMetadata(const AnimationBezierInt16& bezier) {
-  iamf_tools_cli_proto::MixGainParameterData result;
-
-  result.mutable_param_data()->mutable_bezier()->set_start_point_value(
-      bezier.start_point_value);
-  result.mutable_param_data()->mutable_bezier()->set_end_point_value(
-      bezier.end_point_value);
-  result.mutable_param_data()->mutable_bezier()->set_control_point_value(
-      bezier.control_point_value);
-  result.mutable_param_data()
-      ->mutable_bezier()
-      ->set_control_point_relative_time(bezier.control_point_relative_time);
-  return result;
-}
-
 // Gets the proto representation of the input `mix_gain_parameter_data`.
 absl::StatusOr<ParameterSubblockMetadata> ParamDataToMetadata(
     const MixGainParameterData& mix_gain_parameter_data) {
   ParameterSubblockMetadata result;
 
-  auto mix_gain_parameter_data_metadata = std::visit(
-      [](const auto& param_data) {
-        return AnimatedParameterDataInt16ToMetadata(param_data);
-      },
-      mix_gain_parameter_data.param_data);
+  auto mix_gain_parameter_data_metadata =
+      AnimatedParameterDataInt16ToMetadata(mix_gain_parameter_data.param_data);
   if (!mix_gain_parameter_data_metadata.ok()) {
     return mix_gain_parameter_data_metadata.status();
   }

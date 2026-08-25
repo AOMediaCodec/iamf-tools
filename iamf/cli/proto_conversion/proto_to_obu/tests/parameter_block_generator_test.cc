@@ -326,10 +326,7 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
         parameter_block.obu->subblocks_[0].get());
     EXPECT_EQ(mix_gain_parameter_data->GetAnimationType(),
               AnimationType::kStep);
-    EXPECT_EQ(*std::get<AnimatedParameterData<int16_t>>(
-                   mix_gain_parameter_data->param_data)
-                   .start_point_value(),
-              0);
+    EXPECT_EQ(*mix_gain_parameter_data->param_data.start_point_value(), 0);
   }
 }
 

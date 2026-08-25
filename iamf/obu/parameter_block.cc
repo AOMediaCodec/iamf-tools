@@ -106,46 +106,37 @@ absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
     const MixGainParameterData* mix_gain_parameter_data,
     InternalTimestamp start_time, InternalTimestamp end_time,
     InternalTimestamp target_time, float& target_mix_gain_db) {
+  const auto& anim = mix_gain_parameter_data->param_data;
   return InterpolateMixGainValue(
       mix_gain_parameter_data->GetAnimationType(), AnimationType::kStep,
       AnimationType::kLinear, AnimationType::kBezier,
-      [&mix_gain_parameter_data]() {
-        const auto& anim = std::get<AnimatedParameterData<int16_t>>(
-            mix_gain_parameter_data->param_data);
+      [&anim]() {
         ABSL_CHECK(anim.start_point_value().has_value());
         return *anim.start_point_value();
       },
-      [&mix_gain_parameter_data]() {
-        const auto& anim = std::get<AnimatedParameterData<int16_t>>(
-            mix_gain_parameter_data->param_data);
+      [&anim]() {
         ABSL_CHECK(anim.start_point_value().has_value());
         return *anim.start_point_value();
       },
-      [&mix_gain_parameter_data]() {
-        const auto& anim = std::get<AnimatedParameterData<int16_t>>(
-            mix_gain_parameter_data->param_data);
+      [&anim]() {
         ABSL_CHECK(anim.end_point_value().has_value());
         return *anim.end_point_value();
       },
-      [&mix_gain_parameter_data]() {
-        return std::get<AnimationBezierInt16>(
-                   mix_gain_parameter_data->param_data)
-            .start_point_value;
+      [&anim]() {
+        ABSL_CHECK(anim.start_point_value().has_value());
+        return *anim.start_point_value();
       },
-      [&mix_gain_parameter_data]() {
-        return std::get<AnimationBezierInt16>(
-                   mix_gain_parameter_data->param_data)
-            .end_point_value;
+      [&anim]() {
+        ABSL_CHECK(anim.end_point_value().has_value());
+        return *anim.end_point_value();
       },
-      [&mix_gain_parameter_data]() {
-        return std::get<AnimationBezierInt16>(
-                   mix_gain_parameter_data->param_data)
-            .control_point_value;
+      [&anim]() {
+        ABSL_CHECK(anim.control_point_value().has_value());
+        return *anim.control_point_value();
       },
-      [&mix_gain_parameter_data]() {
-        return std::get<AnimationBezierInt16>(
-                   mix_gain_parameter_data->param_data)
-            .control_point_relative_time;
+      [&anim]() {
+        ABSL_CHECK(anim.control_point_relative_time().has_value());
+        return *anim.control_point_relative_time();
       },
       start_time, end_time, target_time, target_mix_gain_db);
 }
