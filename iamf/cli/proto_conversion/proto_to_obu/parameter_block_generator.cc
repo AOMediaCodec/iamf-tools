@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <memory>
@@ -80,9 +81,7 @@ absl::Status GenerateMixGainSubblock(
         metadata_mix_gain_parameter_data,
     const MixGainParamDefinition* param_definition,
     std::unique_ptr<ParameterData>& parameter_data) {
-  parameter_data = param_definition->CreateParameterData();
-  auto* mix_gain_parameter_data =
-      static_cast<MixGainParameterData*>(parameter_data.get());
+  std::optional<AnimatedParameterData<int16_t>> anim_data;
   switch (metadata_mix_gain_parameter_data.param_data().parameter_data_case()) {
     using enum iamf_tools_cli_proto::AnimatedParameterDataInt16::
         ParameterDataCase;
@@ -93,8 +92,7 @@ absl::Status GenerateMixGainSubblock(
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationStepInt16.start_point_value",
           metadata_animation.start_point_value(), start_point_value));
-      mix_gain_parameter_data->param_data =
-          AnimatedParameterData<int16_t>::MakeStep(start_point_value);
+      anim_data = AnimatedParameterData<int16_t>::MakeStep(start_point_value);
       break;
     }
     case kLinear: {
@@ -109,9 +107,8 @@ absl::Status GenerateMixGainSubblock(
       RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
           "AnimationLinearInt16.end_point_value",
           metadata_animation.end_point_value(), end_point_value));
-      mix_gain_parameter_data->param_data =
-          AnimatedParameterData<int16_t>::MakeLinear(start_point_value,
-                                                     end_point_value);
+      anim_data = AnimatedParameterData<int16_t>::MakeLinear(start_point_value,
+                                                             end_point_value);
       break;
     }
     case kBezier: {
@@ -134,10 +131,9 @@ absl::Status GenerateMixGainSubblock(
           "AnimationBezierInt16.control_point_relative_time",
           metadata_animation.control_point_relative_time(),
           control_point_relative_time));
-      mix_gain_parameter_data->param_data =
-          AnimatedParameterData<int16_t>::MakeBezier(
-              start_point_value, end_point_value, control_point_value,
-              control_point_relative_time);
+      anim_data = AnimatedParameterData<int16_t>::MakeBezier(
+          start_point_value, end_point_value, control_point_value,
+          control_point_relative_time);
       break;
     }
     default:
@@ -145,6 +141,9 @@ absl::Status GenerateMixGainSubblock(
           "Unrecognized parameter data case= ",
           metadata_mix_gain_parameter_data.param_data().parameter_data_case()));
   }
+
+  parameter_data = std::make_unique<MixGainParameterData>(
+      MixGainParameterData::Make(*std::move(anim_data)));
 
   return absl::OkStatus();
 }
@@ -315,9 +314,6 @@ absl::Status GenerateReconGainSubblock(
         metadata_recon_gain_info_parameter_data,
     const ReconGainParamDefinition* param_definition,
     std::unique_ptr<ParameterData>& parameter_data) {
-  parameter_data = param_definition->CreateParameterData();
-  auto* recon_gain_info_parameter_data =
-      static_cast<ReconGainInfoParameterData*>(parameter_data.get());
   const auto num_layers = param_definition->aux_data_.size();
   const auto& user_recon_gains_layers =
       metadata_recon_gain_info_parameter_data.recon_gains_for_layer();
@@ -327,16 +323,18 @@ absl::Status GenerateReconGainSubblock(
                      "audio element, but the user only specifies ",
                      user_recon_gains_layers.size(), " layers."));
   }
-  recon_gain_info_parameter_data->recon_gain_elements.resize(num_layers);
+  std::vector<std::optional<ReconGainElement>> recon_gain_elements(num_layers);
 
-  const std::vector<bool>& recon_gain_is_present_flags =
-      recon_gain_info_parameter_data->recon_gain_is_present_flags;
+  std::vector<bool> recon_gain_is_present_flags(num_layers);
+  for (size_t i = 0; i < num_layers; ++i) {
+    recon_gain_is_present_flags[i] =
+        param_definition->aux_data_[i].recon_gain_is_present_flag;
+  }
   for (int layer_index = 0; layer_index < num_layers; layer_index++) {
     // Write out the user supplied gains. Depending on the mode these either
     // match the computed recon gains or are used as an override. Write to
     // output.
-    auto& output_recon_gain_element =
-        recon_gain_info_parameter_data->recon_gain_elements[layer_index];
+    auto& output_recon_gain_element = recon_gain_elements[layer_index];
     if (!param_definition->aux_data_[layer_index].recon_gain_is_present_flag) {
       // Skip computation and store no value in the output.
       output_recon_gain_element.reset();
@@ -406,13 +404,18 @@ absl::Status GenerateReconGainSubblock(
                         << "] different from what user specified: "
                         << absl::StrCat(computed_recon_gains[i]) << " vs "
                         << absl::StrCat(user_recon_gains[i]);
-        recon_gains_match = false;
       }
     }
     if (!recon_gains_match) {
       return absl::InvalidArgumentError("Recon gains mismatch");
     }
-  }  // End of for (int layer_index ...)
+  }
+  auto recon_gain_info_parameter_data = ReconGainInfoParameterData::Create(
+      recon_gain_elements, recon_gain_is_present_flags);
+  if (!recon_gain_info_parameter_data.ok()) {
+    return recon_gain_info_parameter_data.status();
+  }
+  parameter_data = std::move(*recon_gain_info_parameter_data);
 
   return absl::OkStatus();
 }
@@ -453,10 +456,17 @@ absl::Status GenerateParameterBlockSubblock(
           std::get_if<DemixingParamDefinition>(&param_definition_variant);
       RETURN_IF_NOT_OK(ValidateNotNull(demixing_param_definition,
                                        "DemixingParamDefinition"));
-      parameter_data = demixing_param_definition->CreateParameterData();
+      DemixingInfoParameterData temp_obu_demixing_param_data;
       RETURN_IF_NOT_OK(CopyDemixingInfoParameterData(
           metadata_subblock.demixing_info_parameter_data(),
-          *static_cast<DemixingInfoParameterData*>(parameter_data.get())));
+          temp_obu_demixing_param_data));
+      auto demixing_parameter_data = DemixingInfoParameterData::Create(
+          temp_obu_demixing_param_data.dmixp_mode,
+          temp_obu_demixing_param_data.reserved);
+      if (!demixing_parameter_data.ok()) {
+        return demixing_parameter_data.status();
+      }
+      parameter_data = std::move(*demixing_parameter_data);
       break;
     }
     case kParameterDefinitionReconGain: {
