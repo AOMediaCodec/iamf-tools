@@ -72,6 +72,14 @@ std::unique_ptr<ParameterData> DualPolarParamDefinition::CreateParameterData()
   return std::make_unique<DualPolarParameterData>();
 }
 
+absl::StatusOr<std::unique_ptr<ParameterData>>
+DualPolarParamDefinition::CreateParameterDataFromBuffer(
+    ReadBitBuffer& rb) const {
+  return absl::UnimplementedError(
+      "CreateParameterDataFromBuffer for DualPolarParamDefinition is not "
+      "implemented yet.");
+}
+
 void DualPolarParamDefinition::Print() const {
   ABSL_LOG(INFO) << "DualPolarParamDefinition:";
   ParamDefinition::Print();

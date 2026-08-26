@@ -30,6 +30,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr int32_t kDefaultBufferSize = 64;
 constexpr DecodedUleb128 kParameterId = 0;
@@ -158,6 +159,50 @@ TEST(ExtendedParamDefinitionEqualityOperator, NotEqualsWhenPayloadIsDifferent) {
   rhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   EXPECT_NE(lhs, rhs);
+}
+
+TEST(CreateParameterDataFromBuffer, Succeeds) {
+  ExtendedParamDefinition param_definition(
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
+  std::vector<uint8_t> source = {// `parameter_data_size`.
+                                 3,
+                                 // `parameter_data_bytes`.
+                                 'e', 'x', 't'};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  ASSERT_THAT(parameter_data, IsOk());
+  EXPECT_NE(*parameter_data, nullptr);
+}
+
+TEST(CreateParameterDataFromBuffer, FailsWhenBufferIsEmpty) {
+  ExtendedParamDefinition param_definition(
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
+  std::vector<uint8_t> source = {};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
+TEST(CreateParameterDataFromBuffer, FailsForParameterDataSizeTooLarge) {
+  ExtendedParamDefinition param_definition(
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
+  WriteBitBuffer wb(8);
+  EXPECT_THAT(wb.WriteUleb128(kEntireObuSizeMaxTwoMegabytes + 1), IsOk());
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(wb.bit_buffer()));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
+
+  EXPECT_THAT(parameter_data, Not(IsOk()));
 }
 
 }  // namespace

@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -51,6 +52,16 @@ absl::Status MixGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 std::unique_ptr<ParameterData> MixGainParamDefinition::CreateParameterData()
     const {
   return std::make_unique<MixGainParameterData>();
+}
+
+absl::StatusOr<std::unique_ptr<ParameterData>>
+MixGainParamDefinition::CreateParameterDataFromBuffer(ReadBitBuffer& rb) const {
+  auto parameter_data = MixGainParameterData::CreateFromBuffer(rb);
+  if (!parameter_data.ok()) {
+    return parameter_data.status();
+  }
+  return std::make_unique<MixGainParameterData>(
+      std::move(parameter_data.value()));
 }
 
 void MixGainParamDefinition::Print() const {

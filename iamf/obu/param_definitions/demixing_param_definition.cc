@@ -12,6 +12,7 @@
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 
 #include <memory>
+#include <utility>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -48,6 +49,16 @@ absl::Status DemixingParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 std::unique_ptr<ParameterData> DemixingParamDefinition::CreateParameterData()
     const {
   return std::make_unique<DemixingInfoParameterData>();
+}
+
+absl::StatusOr<std::unique_ptr<ParameterData>>
+DemixingParamDefinition::CreateParameterDataFromBuffer(
+    ReadBitBuffer& rb) const {
+  auto parameter_data = DemixingInfoParameterData::CreateFromBuffer(rb);
+  if (!parameter_data.ok()) {
+    return parameter_data.status();
+  }
+  return std::move(parameter_data.value());
 }
 
 void DemixingParamDefinition::Print() const {

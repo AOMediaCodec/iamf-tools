@@ -59,6 +59,14 @@ std::unique_ptr<ParameterData> DualCart8ParamDefinition::CreateParameterData()
   return std::make_unique<DualCart8ParameterData>();
 }
 
+absl::StatusOr<std::unique_ptr<ParameterData>>
+DualCart8ParamDefinition::CreateParameterDataFromBuffer(
+    ReadBitBuffer& rb) const {
+  return absl::UnimplementedError(
+      "CreateParameterDataFromBuffer for DualCart8ParamDefinition is not "
+      "implemented yet.");
+}
+
 void DualCart8ParamDefinition::Print() const {
   ABSL_LOG(INFO) << "DualCart8ParamDefinition:";
   ParamDefinition::Print();

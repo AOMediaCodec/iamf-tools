@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/log/absl_log.h"
@@ -58,6 +59,21 @@ std::unique_ptr<ParameterData> ReconGainParamDefinition::CreateParameterData()
   }
   recon_gain_parameter_data->recon_gain_elements.resize(aux_data_.size());
   return recon_gain_parameter_data;
+}
+
+absl::StatusOr<std::unique_ptr<ParameterData>>
+ReconGainParamDefinition::CreateParameterDataFromBuffer(
+    ReadBitBuffer& rb) const {
+  std::vector<bool> recon_gain_is_present_flags(aux_data_.size());
+  for (size_t i = 0; i < aux_data_.size(); ++i) {
+    recon_gain_is_present_flags[i] = aux_data_[i].recon_gain_is_present_flag;
+  }
+  auto parameter_data = ReconGainInfoParameterData::CreateFromBuffer(
+      rb, recon_gain_is_present_flags);
+  if (!parameter_data.ok()) {
+    return parameter_data.status();
+  }
+  return std::move(parameter_data.value());
 }
 
 void ReconGainParamDefinition::Print() const {

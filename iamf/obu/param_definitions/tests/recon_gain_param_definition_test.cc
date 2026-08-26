@@ -295,5 +295,60 @@ TEST(ReadReconGainParamDefinitionTest, Mode0SubblockArray) {
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 }
 
+TEST(CreateParameterDataFromBuffer, Succeeds) {
+  ReconGainParamDefinition param_definition(ParamDefinition::BaseArgs{}, 0);
+  param_definition.aux_data_ = {
+      ReconGainParamDefinition::ReconGainAuxiliaryData{
+          .recon_gain_is_present_flag = true,
+      }};
+  std::vector<uint8_t> source = {
+      // recon_gain_flag (R is 0x01)
+      0x01,
+      // recon_gain[2] (e.g. 5)
+      5,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  ASSERT_THAT(parameter_data, IsOk());
+  EXPECT_NE(*parameter_data, nullptr);
+}
+
+TEST(CreateParameterDataFromBuffer, FailsWhenBufferIsEmpty) {
+  ReconGainParamDefinition param_definition(ParamDefinition::BaseArgs{}, 0);
+  param_definition.aux_data_ = {
+      ReconGainParamDefinition::ReconGainAuxiliaryData{
+          .recon_gain_is_present_flag = true,
+      }};
+  std::vector<uint8_t> source = {};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
+TEST(CreateParameterDataFromBuffer, FailsForTruncatedReconGainFlagElements) {
+  ReconGainParamDefinition param_definition(ParamDefinition::BaseArgs{}, 0);
+  param_definition.aux_data_ = {
+      ReconGainParamDefinition::ReconGainAuxiliaryData{
+          .recon_gain_is_present_flag = true,
+      }};
+  std::vector<uint8_t> source = {
+      // recon_gain_flag highlights that some elements are present (e.g. 0x01)
+      0x01,
+      // But we provide no trailing data, so reading those elements fails
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
 }  // namespace
 }  // namespace iamf_tools

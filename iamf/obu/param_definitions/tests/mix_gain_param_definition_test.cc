@@ -262,5 +262,48 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
   EXPECT_EQ(param_definition.default_mix_gain_.GetQ7_8(), 3);
 }
 
+TEST(CreateParameterDataFromBuffer, Succeeds) {
+  MixGainParamDefinition param_definition(ParamDefinition::BaseArgs{});
+  std::vector<uint8_t> source = {
+      // Step animation type.
+      0x00,
+      // Start point value.
+      0x02,
+      0x01,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  ASSERT_THAT(parameter_data, IsOk());
+  EXPECT_NE(*parameter_data, nullptr);
+}
+
+TEST(CreateParameterDataFromBuffer, FailsWhenBufferIsEmpty) {
+  MixGainParamDefinition param_definition(ParamDefinition::BaseArgs{});
+  std::vector<uint8_t> source = {};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
+TEST(CreateParameterDataFromBuffer, FailsForInvalidAnimationType) {
+  MixGainParamDefinition param_definition(ParamDefinition::BaseArgs{});
+  std::vector<uint8_t> source = {
+      // Invalid animation type (5).
+      0x05,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
 }  // namespace
 }  // namespace iamf_tools

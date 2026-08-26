@@ -52,6 +52,13 @@ std::unique_ptr<ParameterData> Cart8ParamDefinition::CreateParameterData()
   return std::make_unique<Cart8ParameterData>();
 }
 
+absl::StatusOr<std::unique_ptr<ParameterData>>
+Cart8ParamDefinition::CreateParameterDataFromBuffer(ReadBitBuffer& rb) const {
+  return absl::UnimplementedError(
+      "CreateParameterDataFromBuffer for Cart8ParamDefinition is not "
+      "implemented yet.");
+}
+
 void Cart8ParamDefinition::Print() const {
   ABSL_LOG(INFO) << "Cart8ParamDefinition:";
   ParamDefinition::Print();

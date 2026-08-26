@@ -290,5 +290,45 @@ TEST(ReadDemixingParamDefinitionTest, ReadsDefaultW) {
             1);
 }
 
+TEST(CreateParameterDataFromBuffer, Succeeds) {
+  DemixingParamDefinition param_definition(ParamDefinition::BaseArgs{});
+  std::vector<uint8_t> source = {
+      // `dmixp_mode` (kDMixPMode1 << 5)
+      DemixingInfoParameterData::kDMixPMode1 << 5,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  ASSERT_THAT(parameter_data, IsOk());
+  EXPECT_NE(*parameter_data, nullptr);
+}
+
+TEST(CreateParameterDataFromBuffer, FailsWhenBufferIsEmpty) {
+  DemixingParamDefinition param_definition(ParamDefinition::BaseArgs{});
+  std::vector<uint8_t> source = {};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
+TEST(CreateParameterDataFromBuffer, FailsForReservedDMixPMode) {
+  DemixingParamDefinition param_definition(ParamDefinition::BaseArgs{});
+  std::vector<uint8_t> source = {
+      // Reserved dmixp_mode (kDMixPModeReserved1 << 5)
+      DemixingInfoParameterData::kDMixPModeReserved1 << 5,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
+
+  EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
 }  // namespace
 }  // namespace iamf_tools

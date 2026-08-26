@@ -78,6 +78,9 @@ class MockParamDefinition : public ParamDefinition {
 
   MOCK_METHOD(std::unique_ptr<ParameterData>, CreateParameterData, (),
               (const, override));
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<ParameterData>>,
+              CreateParameterDataFromBuffer, (ReadBitBuffer & rb),
+              (const, override));
   MOCK_METHOD(void, Print, (), (const, override));
 };
 

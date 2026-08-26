@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
@@ -62,6 +63,17 @@ class DualCart8ParamDefinition : public ParamDefinition {
    * \return Unique pointer to the created parameter data.
    */
   std::unique_ptr<ParameterData> CreateParameterData() const override;
+
+  /*!\brief Creates parameter data from a buffer.
+   *
+   * The created instance will be of type `DualCart8ParameterData`.
+   *
+   * \param rb Buffer to read from.
+   * \return Unique pointer to created parameter data, or specific error
+   *         on failure.
+   */
+  absl::StatusOr<std::unique_ptr<ParameterData>> CreateParameterDataFromBuffer(
+      ReadBitBuffer& rb) const override;
 
   /*!\brief Prints the parameter definition.
    */
