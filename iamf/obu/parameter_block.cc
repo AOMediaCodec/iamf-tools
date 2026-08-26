@@ -271,9 +271,11 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
     subblocks_.clear();
     subblocks_.reserve(static_cast<size_t>(num_subblocks));
     for (DecodedUleb128 i = 0; i < num_subblocks; ++i) {
-      auto param_data = param_definition_.CreateParameterData();
-      RETURN_IF_NOT_OK(param_data->ReadAndValidate(rb));
-      subblocks_.push_back(std::move(param_data));
+      auto param_data = param_definition_.CreateParameterDataFromBuffer(rb);
+      if (!param_data.ok()) {
+        return param_data.status();
+      }
+      subblocks_.push_back(std::move(*param_data));
     }
     return absl::OkStatus();
   }
@@ -281,7 +283,10 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
   // Mode 1 in the spec. Portions of the schedule are interlaced with the
   // parameter data in the block.
   auto schedule_and_data = SubblockSchedule::CreateFromBufferWithParameterData(
-      [this]() { return param_definition_.CreateParameterData(); }, rb);
+      [this](ReadBitBuffer& r) {
+        return param_definition_.CreateParameterDataFromBuffer(r);
+      },
+      rb);
   if (!schedule_and_data.ok()) {
     return schedule_and_data.status();
   }

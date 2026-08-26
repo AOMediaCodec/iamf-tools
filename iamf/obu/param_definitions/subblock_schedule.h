@@ -102,7 +102,9 @@ class SubblockSchedule {
    */
   static absl::StatusOr<ScheduleAndParameterData>
   CreateFromBufferWithParameterData(
-      absl::FunctionRef<std::unique_ptr<ParameterData>()> create_parameter_data,
+      absl::FunctionRef<
+          absl::StatusOr<std::unique_ptr<ParameterData>>(ReadBitBuffer&)>
+          create_parameter_data,
       ReadBitBuffer& rb);
 
   /*!\brief Writes the SubblockSchedule to a buffer.

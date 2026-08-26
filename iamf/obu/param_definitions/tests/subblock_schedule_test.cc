@@ -219,6 +219,15 @@ class DummyParameterData : public ParameterData {
     return std::make_unique<DummyParameterData>();
   }
 
+  static absl::StatusOr<std::unique_ptr<ParameterData>> CreateFromBuffer(
+      ReadBitBuffer& rb) {
+    auto data = std::make_unique<DummyParameterData>();
+    uint8_t val;
+    auto status = rb.ReadUnsignedLiteral(8, val);
+    if (!status.ok()) return status;
+    return data;
+  }
+
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override {
     // Read one byte as dummy data.
     uint8_t val;
@@ -246,7 +255,8 @@ TEST(Write, ConstantSubblockDurationWithParameterData) {
   auto read_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(buffer.bit_buffer()));
   auto result = SubblockSchedule::CreateFromBufferWithParameterData(
-      DummyParameterData::Create, *read_buffer);
+      [](ReadBitBuffer& r) { return DummyParameterData::CreateFromBuffer(r); },
+      *read_buffer);
 
   ASSERT_THAT(result, IsOk());
   EXPECT_EQ(result->schedule.GetDuration(), 64);
@@ -271,7 +281,8 @@ TEST(Write, VariableSubblockDurationWithParameterData) {
   auto read_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(buffer.bit_buffer()));
   auto result = SubblockSchedule::CreateFromBufferWithParameterData(
-      DummyParameterData::Create, *read_buffer);
+      [](ReadBitBuffer& r) { return DummyParameterData::CreateFromBuffer(r); },
+      *read_buffer);
 
   ASSERT_THAT(result, IsOk());
   EXPECT_EQ(result->schedule.GetDuration(), 64);
@@ -352,11 +363,9 @@ TEST(CreateFromBufferWithParameterData, ConstantSubblockDuration) {
   });
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
 
-  auto dummy_data_factory = []() {
-    return std::make_unique<DummyParameterData>();
-  };
   auto result = SubblockSchedule::CreateFromBufferWithParameterData(
-      dummy_data_factory, *buffer);
+      [](ReadBitBuffer& r) { return DummyParameterData::CreateFromBuffer(r); },
+      *buffer);
 
   ASSERT_THAT(result, IsOk());
   EXPECT_EQ(result->schedule.GetDuration(), 64);
@@ -379,11 +388,9 @@ TEST(CreateFromBufferWithParameterData, VariableSubblockDuration) {
   });
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
 
-  auto dummy_data_factory = []() {
-    return std::make_unique<DummyParameterData>();
-  };
   auto result = SubblockSchedule::CreateFromBufferWithParameterData(
-      dummy_data_factory, *buffer);
+      [](ReadBitBuffer& r) { return DummyParameterData::CreateFromBuffer(r); },
+      *buffer);
 
   ASSERT_THAT(result, IsOk());
   EXPECT_EQ(result->schedule.GetDuration(), 64);
