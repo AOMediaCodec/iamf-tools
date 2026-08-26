@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/animated_parameter_data.h"
@@ -27,6 +28,8 @@ struct MixGainParameterData : public ParameterData {
    *
    * \param input_param_data Input metadata describing the animation type.
    */
+  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
+  //                     complete.
   explicit MixGainParameterData(AnimatedParameterData<int16_t> input_param_data)
       : ParameterData(), param_data(input_param_data) {}
   MixGainParameterData()
@@ -40,7 +43,25 @@ struct MixGainParameterData : public ParameterData {
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()`. Or a specific error code on failure.
    */
+  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
+  //                     complete.
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
+
+  /*!\brief Creates a `MixGainParameterData` from a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return Deserialized `MixGainParameterData` or error.
+   */
+  static absl::StatusOr<MixGainParameterData> CreateFromBuffer(
+      ReadBitBuffer& rb);
+
+  /*!\brief Makes a `MixGainParameterData`.
+   *
+   * \param input_param_data Animated parameter data block.
+   * \return `MixGainParameterData` object.
+   */
+  static MixGainParameterData Make(
+      AnimatedParameterData<int16_t> input_param_data);
 
   /*!\brief Gets the animation type of the parameter data.
    *

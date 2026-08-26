@@ -110,6 +110,96 @@ TEST(MixGainParameterData,
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(mix_gain_parameter_data.ReadAndValidate(*buffer), Not(IsOk()));
 }
+TEST(Make, SucceedsWithStep) {
+  const auto anim_data = AnimatedParameterData<int16_t>::MakeStep(0x0201);
+
+  auto data = MixGainParameterData::Make(anim_data);
+
+  EXPECT_EQ(data.GetAnimationType(), kStep);
+  EXPECT_EQ(*data.param_data.start_point_value(), 0x0201);
+}
+
+TEST(CreateFromBuffer, FailsForInvalidAnimationType) {
+  std::vector<uint8_t> source_data = {
+      // Animation type.
+      0x05,
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data = MixGainParameterData::CreateFromBuffer(*buffer);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+TEST(CreateFromBuffer, ParsesValidStep) {
+  std::vector<uint8_t> source_data = {
+      // Animation type.
+      0x00,
+      // Start point value.
+      0x02,
+      0x01,
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data = MixGainParameterData::CreateFromBuffer(*buffer);
+
+  ASSERT_THAT(data, IsOk());
+  EXPECT_EQ(data->param_data.animation_type(), kStep);
+  EXPECT_EQ(*data->param_data.start_point_value(), 0x0201);
+}
+
+TEST(CreateFromBuffer, ParsesValidLinear) {
+  std::vector<uint8_t> source_data = {
+      // Animation type.
+      0x01,
+      // Start point value.
+      0x04,
+      0x03,
+      // End point value.
+      0x02,
+      0x01,
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data = MixGainParameterData::CreateFromBuffer(*buffer);
+
+  ASSERT_THAT(data, IsOk());
+  EXPECT_EQ(data->param_data.animation_type(), kLinear);
+  EXPECT_EQ(*data->param_data.start_point_value(), 0x0403);
+  EXPECT_EQ(*data->param_data.end_point_value(), 0x0201);
+}
+
+TEST(CreateFromBuffer, ParsesValidBezier) {
+  std::vector<uint8_t> source_data = {
+      // Animation type.
+      0x02,
+      // Start point value.
+      0x07,
+      0x06,
+      // End point value.
+      0x05,
+      0x04,
+      // Control point value.
+      0x03,
+      0x02,
+      // Control point relative time.
+      0x01,
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data = MixGainParameterData::CreateFromBuffer(*buffer);
+
+  ASSERT_THAT(data, IsOk());
+  EXPECT_EQ(data->param_data.animation_type(), kBezier);
+  EXPECT_EQ(*data->param_data.start_point_value(), 0x0706);
+  EXPECT_EQ(*data->param_data.end_point_value(), 0x0504);
+  EXPECT_EQ(*data->param_data.control_point_value(), 0x0302);
+  EXPECT_EQ(*data->param_data.control_point_relative_time(), 0x01);
+}
 
 }  // namespace
 }  // namespace iamf_tools

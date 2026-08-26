@@ -12,6 +12,7 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 
 #include <cstdint>
+#include <utility>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -98,6 +99,19 @@ void MixGainParameterData::Print() const {
     ABSL_LOG(INFO) << "     control_point_relative_time= "
                    << absl::StrCat(*param_data.control_point_relative_time());
   }
+}
+
+absl::StatusOr<MixGainParameterData> MixGainParameterData::CreateFromBuffer(
+    ReadBitBuffer& rb) {
+  auto anim_data = AnimatedParameterData<int16_t>::CreateFromBuffer(
+      rb, [](ReadBitBuffer& r, int16_t& val) { return r.ReadSigned16(val); });
+  if (!anim_data.ok()) return anim_data.status();
+  return Make(*std::move(anim_data));
+}
+
+MixGainParameterData MixGainParameterData::Make(
+    AnimatedParameterData<int16_t> input_param_data) {
+  return MixGainParameterData(input_param_data);
 }
 
 }  // namespace iamf_tools
