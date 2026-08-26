@@ -181,7 +181,8 @@ absl::Status ParameterBlockObu::GetLinearMixGains(
   InternalTimestamp current_subblock_start = 0;
   InternalTimestamp current_subblock_end = subblock_duration.value();
 
-  for (InternalTimestamp offset = 0; offset < gains_size; ++offset) {
+  for (InternalTimestamp offset = 0;
+       offset < static_cast<InternalTimestamp>(gains_size); ++offset) {
     while (offset >= current_subblock_end) {
       // Get the next block if available.
       ++subblock_i;
