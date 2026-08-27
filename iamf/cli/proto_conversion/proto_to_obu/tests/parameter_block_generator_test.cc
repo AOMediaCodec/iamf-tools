@@ -489,7 +489,6 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
                                 /*expected_end_timestamps=*/{8, 16});
 
   // Validate `ReconGainInfoParameterData` parts.
-  int block_index = 0;
   for (const auto& parameter_block : output_parameter_blocks) {
     auto recon_gain_info_parameter_data =
         static_cast<ReconGainInfoParameterData*>(
@@ -510,7 +509,6 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
     EXPECT_THAT(recon_gain_element_1->recon_gain,
                 testing::ElementsAreArray(
                     {255, 0, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0}));
-    block_index++;
   }
 }
 

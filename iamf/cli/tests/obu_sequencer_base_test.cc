@@ -485,21 +485,6 @@ class ObuSequencerTest : public ::testing::Test {
     ASSERT_FALSE(mix_presentation_obus_.empty());
   }
 
-  void InitObusForOneFrameIaSequence() {
-    ia_sequence_header_obu_.emplace(ObuHeader(),
-                                    ProfileVersion::kIamfSimpleProfile,
-                                    ProfileVersion::kIamfSimpleProfile);
-    param_definition_ =
-        CreateDemixingParamDefinition(kFirstDemixingParameterId);
-    InitializeOneParameterBlockAndOneAudioFrame(
-        param_definition_, parameter_blocks_, audio_frames_, codec_config_obus_,
-        audio_elements_);
-    AddMixPresentationObuWithAudioElementIds(
-        kFirstMixPresentationId, {audio_elements_.begin()->first},
-        kCommonMixGainParameterId, kCommonMixGainParameterRate,
-        mix_presentation_obus_);
-  }
-
   void ValidatePushDescriptorObus(
       const std::list<const ObuBase*>& expected_sequence) {
     MockObuSequencer mock_obu_sequencer(

@@ -36,8 +36,6 @@ using ::testing::Not;
 
 constexpr int32_t kDefaultBufferSize = 64;
 constexpr DecodedUleb128 kParameterId = 0;
-constexpr DecodedUleb128 kParameterRate = 48000;
-constexpr DecodedUleb128 kDuration = 64;
 
 ParamDefinition::BaseArgs GetParamDefinitionMode1Args() {
   return MakeScheduleInParameterBlockBaseArgs(kParameterId,

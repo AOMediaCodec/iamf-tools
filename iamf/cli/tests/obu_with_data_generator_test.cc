@@ -69,7 +69,6 @@ using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using enum ChannelLabel::Label;
 
 constexpr DecodedUleb128 kFirstAudioElementId = 1;
-constexpr DecodedUleb128 kSecondAudioElementId = 2;
 constexpr DecodedUleb128 kFirstCodecConfigId = 11;
 constexpr DecodedUleb128 kSecondCodecConfigId = 12;
 constexpr DecodedUleb128 kFirstSubstreamId = 21;

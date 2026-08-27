@@ -49,7 +49,6 @@ using absl::MakeConstSpan;
 constexpr int kDestinationAlignmentBytes = 4;
 constexpr int kAmbisonicOrder = 3;
 constexpr int kBufferSize = 256;
-constexpr int kBitsPerByte = 8;
 constexpr int kBitDepth16 = 16;
 constexpr int kBitDepth24 = 24;
 constexpr int kBitDepth32 = 32;
