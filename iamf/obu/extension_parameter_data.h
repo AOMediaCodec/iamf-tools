@@ -41,10 +41,6 @@ struct ExtensionParameterData : public ParameterData {
   /*!\brief Overridden destructor.*/
   ~ExtensionParameterData() override = default;
 
-  /*!\brief Reads and validates the `ExtensionParameterData` from a buffer. */
-  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-  //                     complete.
-
   /*!\brief Creates an `ExtensionParameterData` from a buffer.
    *
    * \param rb Buffer to read from.

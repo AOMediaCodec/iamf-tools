@@ -144,14 +144,6 @@ struct DefaultDemixingInfoParameterData : public DemixingInfoParameterData {
   /*!\brief Overridden destructor.*/
   ~DefaultDemixingInfoParameterData() override = default;
 
-  /*!\brief Reads and validates a `DefaultDemixingInfoParameterData`.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-  //                     complete.
-
   /*!\brief Creates a `DefaultDemixingInfoParameterData` from a buffer.
    *
    * \param rb Buffer to read from.

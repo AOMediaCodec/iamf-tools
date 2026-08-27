@@ -36,10 +36,6 @@ absl::Status ValidateSize(DecodedUleb128 size) {
 }
 
 }  // namespace
-
-// TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-//                     complete.
-
 absl::StatusOr<std::unique_ptr<ExtensionParameterData>>
 ExtensionParameterData::CreateFromBuffer(ReadBitBuffer& rb) {
   DecodedUleb128 parameter_data_size;

@@ -69,14 +69,6 @@ struct ReconGainInfoParameterData : public ParameterData {
   /*!\brief Overridden destructor.*/
   ~ReconGainInfoParameterData() override = default;
 
-  /*!\brief Reads and validates a `ReconGainInfoParameterData` from a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()`. A specific error code on failure.
-   */
-  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-  //                     complete.
-
   /*!\brief Creates a `ReconGainInfoParameterData` from a buffer.
    *
    * \param rb Buffer to read from.
