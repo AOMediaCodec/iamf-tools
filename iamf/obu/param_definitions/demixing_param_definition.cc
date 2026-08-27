@@ -46,11 +46,6 @@ absl::Status DemixingParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-std::unique_ptr<ParameterData> DemixingParamDefinition::CreateParameterData()
-    const {
-  return std::make_unique<DemixingInfoParameterData>();
-}
-
 absl::StatusOr<std::unique_ptr<ParameterData>>
 DemixingParamDefinition::CreateParameterDataFromBuffer(
     ReadBitBuffer& rb) const {

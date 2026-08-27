@@ -54,11 +54,6 @@ absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-std::unique_ptr<ParameterData> ExtendedParamDefinition::CreateParameterData()
-    const {
-  return std::make_unique<ExtensionParameterData>();
-}
-
 absl::StatusOr<std::unique_ptr<ParameterData>>
 ExtendedParamDefinition::CreateParameterDataFromBuffer(
     ReadBitBuffer& rb) const {

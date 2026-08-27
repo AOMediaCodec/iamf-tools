@@ -47,11 +47,6 @@ absl::Status Cart16ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-std::unique_ptr<ParameterData> Cart16ParamDefinition::CreateParameterData()
-    const {
-  return std::make_unique<Cart16ParameterData>();
-}
-
 absl::StatusOr<std::unique_ptr<ParameterData>>
 Cart16ParamDefinition::CreateParameterDataFromBuffer(ReadBitBuffer& rb) const {
   return absl::UnimplementedError(

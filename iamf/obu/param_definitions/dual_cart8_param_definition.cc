@@ -54,11 +54,6 @@ absl::Status DualCart8ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-std::unique_ptr<ParameterData> DualCart8ParamDefinition::CreateParameterData()
-    const {
-  return std::make_unique<DualCart8ParameterData>();
-}
-
 absl::StatusOr<std::unique_ptr<ParameterData>>
 DualCart8ParamDefinition::CreateParameterDataFromBuffer(
     ReadBitBuffer& rb) const {

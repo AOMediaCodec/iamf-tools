@@ -49,11 +49,6 @@ absl::Status MixGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-std::unique_ptr<ParameterData> MixGainParamDefinition::CreateParameterData()
-    const {
-  return std::make_unique<MixGainParameterData>();
-}
-
 absl::StatusOr<std::unique_ptr<ParameterData>>
 MixGainParamDefinition::CreateParameterDataFromBuffer(ReadBitBuffer& rb) const {
   auto parameter_data = MixGainParameterData::CreateFromBuffer(rb);

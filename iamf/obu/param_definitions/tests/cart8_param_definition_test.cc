@@ -88,10 +88,5 @@ TEST(Cart8ParamDefinitionTest, WriteAndValidateSucceeds) {
   ValidateWriteResults(wb, expected_data);
 }
 
-TEST(Cart8ParamDefinitionTest, CreateParameterDataReturnsNonNull) {
-  Cart8ParamDefinition param_definition(ParamDefinition::BaseArgs{});
-  EXPECT_NE(param_definition.CreateParameterData(), nullptr);
-}
-
 }  // namespace
 }  // namespace iamf_tools

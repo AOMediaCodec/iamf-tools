@@ -83,14 +83,6 @@ class ReconGainParamDefinition : public ParamDefinition {
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
-  /*!\brief Creates a parameter data.
-   *
-   * The created instance will be of type `ReconGainInfoParameterData`.
-   *
-   * \return Unique pointer to the created parameter data.
-   */
-  std::unique_ptr<ParameterData> CreateParameterData() const override;
-
   /*!\brief Creates parameter data from a buffer.
    *
    * The created instance will be of type `ReconGainInfoParameterData`.

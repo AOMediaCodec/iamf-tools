@@ -91,10 +91,5 @@ TEST(Cart16ParamDefinitionTest, WriteAndValidateSucceeds) {
   ValidateWriteResults(wb, expected_data);
 }
 
-TEST(Cart16ParamDefinitionTest, CreateParameterDataReturnsNonNull) {
-  Cart16ParamDefinition param_definition(ParamDefinition::BaseArgs{});
-  EXPECT_NE(param_definition.CreateParameterData(), nullptr);
-}
-
 }  // namespace
 }  // namespace iamf_tools

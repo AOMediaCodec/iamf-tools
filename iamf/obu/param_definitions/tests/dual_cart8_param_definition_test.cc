@@ -97,10 +97,5 @@ TEST(DualCart8ParamDefinitionTest, WriteAndValidateSucceeds) {
   ValidateWriteResults(wb, expected_data);
 }
 
-TEST(DualCart8ParamDefinitionTest, CreateParameterDataReturnsNonNull) {
-  DualCart8ParamDefinition param_definition(ParamDefinition::BaseArgs{});
-  EXPECT_NE(param_definition.CreateParameterData(), nullptr);
-}
-
 }  // namespace
 }  // namespace iamf_tools

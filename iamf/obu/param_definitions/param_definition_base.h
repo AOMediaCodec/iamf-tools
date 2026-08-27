@@ -169,15 +169,6 @@ class ParamDefinition {
    */
   const std::optional<SubblockSchedule>& GetSchedule() const;
 
-  /*!\brief Creates a parameter data.
-   *
-   * The created instance will one of the subclassees of `ParameterData`,
-   * depending on the specific subclass implementing this function.
-   *
-   * \return Unique pointer to the created parameter data.
-   */
-  virtual std::unique_ptr<ParameterData> CreateParameterData() const = 0;
-
   /*!\brief Creates parameter data from a buffer.
    *
    * The created instance will be one of the subclasses of `ParameterData`,

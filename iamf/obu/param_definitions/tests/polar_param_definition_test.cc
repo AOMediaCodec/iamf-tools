@@ -166,10 +166,5 @@ TEST(PolarParamDefinitionTest,
   ValidateWriteResults(wb, expected_data);
 }
 
-TEST(PolarParamDefinitionTest, CreateParameterDataReturnsNonNull) {
-  PolarParamDefinition param_definition(ParamDefinition::BaseArgs{});
-  EXPECT_NE(param_definition.CreateParameterData(), nullptr);
-}
-
 }  // namespace
 }  // namespace iamf_tools

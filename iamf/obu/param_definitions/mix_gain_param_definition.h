@@ -52,13 +52,6 @@ class MixGainParamDefinition : public ParamDefinition {
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
-  /*!\brief Creates a parameter data.
-   *
-   * The created instance will be of type `MixGainParameterData`.
-   *
-   * \return Unique pointer to the created parameter data.
-   */
-  std::unique_ptr<ParameterData> CreateParameterData() const override;
 
   /*!\brief Creates parameter data from a buffer.
    *

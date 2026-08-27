@@ -199,10 +199,5 @@ TEST(DualPolarParamDefinitionTest,
   ValidateWriteResults(wb, expected_data);
 }
 
-TEST(DualPolarParamDefinitionTest, CreateParameterDataReturnsNonNull) {
-  DualPolarParamDefinition param_definition(ParamDefinition::BaseArgs{});
-  EXPECT_NE(param_definition.CreateParameterData(), nullptr);
-}
-
 }  // namespace
 }  // namespace iamf_tools

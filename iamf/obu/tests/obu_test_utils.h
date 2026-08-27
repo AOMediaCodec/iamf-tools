@@ -52,7 +52,6 @@ class MockObu : public ObuBase {
 
   MOCK_METHOD(absl::Status, ValidateAndWritePayload, (WriteBitBuffer & wb),
               (const, override));
-
   MOCK_METHOD(absl::Status, ReadAndValidatePayloadDerived,
               (int64_t payload_size, ReadBitBuffer& rb), (override));
 };
@@ -76,8 +75,6 @@ class MockParamDefinition : public ParamDefinition {
               (const, override));
   MOCK_METHOD(absl::Status, ReadAndValidate, (ReadBitBuffer & rb), (override));
 
-  MOCK_METHOD(std::unique_ptr<ParameterData>, CreateParameterData, (),
-              (const, override));
   MOCK_METHOD(absl::StatusOr<std::unique_ptr<ParameterData>>,
               CreateParameterDataFromBuffer, (ReadBitBuffer & rb),
               (const, override));
