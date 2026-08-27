@@ -253,6 +253,9 @@ absl::Status SpliceWavSegment(std::istream& input_stream,
 
 absl::StatusOr<size_t> CalculateTotalSamplesPerChannel(
     size_t data_chunk_size, size_t total_channel_size) {
+  if (total_channel_size == 0) {
+    return absl::InvalidArgumentError("Total channel size must be non-zero.");
+  }
   if (data_chunk_size % total_channel_size != 0) {
     return absl::InvalidArgumentError(
         "Data chunk size is not a multiple of the total channel size.");
