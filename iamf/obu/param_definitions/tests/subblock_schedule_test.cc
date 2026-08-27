@@ -228,11 +228,6 @@ class DummyParameterData : public ParameterData {
     return data;
   }
 
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override {
-    // Read one byte as dummy data.
-    uint8_t val;
-    return rb.ReadUnsignedLiteral(8, val);
-  }
   absl::Status Write(WriteBitBuffer& wb) const override {
     return wb.WriteUnsignedLiteral(0, 8);
   }

@@ -76,7 +76,6 @@ struct ReconGainInfoParameterData : public ParameterData {
    */
   // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
   //                     complete.
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
   /*!\brief Creates a `ReconGainInfoParameterData` from a buffer.
    *

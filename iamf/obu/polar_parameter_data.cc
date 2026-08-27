@@ -7,10 +7,6 @@
 
 namespace iamf_tools {
 
-absl::Status PolarParameterData::ReadAndValidate(ReadBitBuffer& rb) {
-  return absl::UnimplementedError("ReadAndValidate is not implemented yet.");
-}
-
 absl::Status PolarParameterData::Write(WriteBitBuffer& wb) const {
   return absl::UnimplementedError("Write is not implemented yet.");
 }

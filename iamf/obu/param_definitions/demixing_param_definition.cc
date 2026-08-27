@@ -41,7 +41,13 @@ absl::Status DemixingParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
 
   // The sub-class specific part.
-  RETURN_IF_NOT_OK(default_demixing_info_parameter_data_.ReadAndValidate(rb));
+  auto default_demixing_param_data =
+      DefaultDemixingInfoParameterData::CreateFromBuffer(rb);
+  if (!default_demixing_param_data.ok()) {
+    return default_demixing_param_data.status();
+  }
+  default_demixing_info_parameter_data_ =
+      std::move(**default_demixing_param_data);
 
   return absl::OkStatus();
 }

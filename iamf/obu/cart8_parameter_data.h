@@ -29,13 +29,6 @@ struct Cart8ParameterData : public ParameterData {
   bool friend operator==(const Cart8ParameterData& lhs,
                          const Cart8ParameterData& rhs) = default;
 
-  /*!\brief Reads and validates a `Cart8ParameterData` from a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
-
   /*!\brief Validates and writes to a buffer.
    *
    * \param wb Buffer to write to.

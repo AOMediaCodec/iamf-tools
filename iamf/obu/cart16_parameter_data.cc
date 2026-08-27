@@ -7,10 +7,6 @@
 
 namespace iamf_tools {
 
-absl::Status Cart16ParameterData::ReadAndValidate(ReadBitBuffer& rb) {
-  return absl::UnimplementedError("ReadAndValidate is not implemented yet.");
-}
-
 absl::Status Cart16ParameterData::Write(WriteBitBuffer& wb) const {
   return absl::UnimplementedError("Write is not implemented yet.");
 }

@@ -27,45 +27,6 @@ namespace iamf_tools {
 
 using enum AnimationType;
 
-absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
-  DecodedUleb128 animation_type_uleb;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(animation_type_uleb));
-  const auto animation_type = static_cast<AnimationType>(animation_type_uleb);
-  switch (animation_type) {
-    case kStep: {
-      int16_t start_val;
-      RETURN_IF_NOT_OK(rb.ReadSigned16(start_val));
-      param_data = AnimatedParameterData<int16_t>::MakeStep(start_val);
-      return absl::OkStatus();
-    }
-    case kLinear: {
-      int16_t start_val;
-      RETURN_IF_NOT_OK(rb.ReadSigned16(start_val));
-      int16_t end_val;
-      RETURN_IF_NOT_OK(rb.ReadSigned16(end_val));
-      param_data =
-          AnimatedParameterData<int16_t>::MakeLinear(start_val, end_val);
-      return absl::OkStatus();
-    }
-    case kBezier: {
-      int16_t start_val;
-      RETURN_IF_NOT_OK(rb.ReadSigned16(start_val));
-      int16_t end_val;
-      RETURN_IF_NOT_OK(rb.ReadSigned16(end_val));
-      int16_t control_val;
-      RETURN_IF_NOT_OK(rb.ReadSigned16(control_val));
-      uint8_t rel_time;
-      RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, rel_time));
-      param_data = AnimatedParameterData<int16_t>::MakeBezier(
-          start_val, end_val, control_val, rel_time);
-      return absl::OkStatus();
-    }
-    default:
-      return absl::UnimplementedError(
-          absl::StrCat("Unknown animation type= ", animation_type_uleb));
-  }
-}
-
 absl::Status MixGainParameterData::Write(WriteBitBuffer& wb) const {
   auto write_int16 = [](WriteBitBuffer& w, int16_t val) {
     return w.WriteSigned16(val);

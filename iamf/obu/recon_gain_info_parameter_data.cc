@@ -27,45 +27,6 @@
 
 namespace iamf_tools {
 
-// TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-//                     complete.
-absl::Status ReconGainInfoParameterData::ReadAndValidate(ReadBitBuffer& rb) {
-  recon_gain_elements.resize(recon_gain_is_present_flags.size());
-  for (size_t i = 0; i < recon_gain_is_present_flags.size(); i++) {
-    auto& recon_gain_element = recon_gain_elements[i];
-
-    // Each layer depends on the `recon_gain_is_present_flags` within the
-    // associated Audio Element OBU. The size of `recon_gain_is_present_flags`
-    // is equal to the number of layers.
-    if (!recon_gain_is_present_flags[i]) {
-      recon_gain_element = std::nullopt;
-      continue;
-    }
-    recon_gain_element = ReconGainElement();
-    RETURN_IF_NOT_OK(rb.ReadULeb128(recon_gain_element->recon_gain_flag));
-
-    const DecodedUleb128 recon_gain_flag = recon_gain_element->recon_gain_flag;
-    DecodedUleb128 mask = 1;
-
-    // Apply bitmask to examine each bit in the flag. Only read elements with
-    // the flag implying they should be read.
-    for (size_t j = 0; j < recon_gain_element->recon_gain.size(); j++) {
-      if (recon_gain_flag & mask) {
-        RETURN_IF_NOT_OK(
-            rb.ReadUnsignedLiteral(8, recon_gain_element->recon_gain[j]));
-      } else {
-        recon_gain_element->recon_gain[j] = 0;
-      }
-      mask <<= 1;
-    }
-  }
-  RETURN_IF_NOT_OK(ValidateEqual(recon_gain_elements.size(),
-                                 recon_gain_is_present_flags.size(),
-                                 "size of `recon_gain_elements`"));
-
-  return absl::OkStatus();
-}
-
 absl::StatusOr<std::unique_ptr<ReconGainInfoParameterData>>
 ReconGainInfoParameterData::CreateFromBuffer(
     ReadBitBuffer& rb,

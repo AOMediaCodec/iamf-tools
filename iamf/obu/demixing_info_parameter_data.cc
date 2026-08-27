@@ -108,29 +108,6 @@ absl::Status DemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
   }
 }
 
-// TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-//                     complete.
-absl::Status DemixingInfoParameterData::ReadAndValidate(ReadBitBuffer& rb) {
-  uint8_t dmixp_mode_int;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, dmixp_mode_int));
-  dmixp_mode = static_cast<DMixPMode>(dmixp_mode_int);
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, reserved));
-
-  // Validate that no reserved enums are used.
-  switch (dmixp_mode) {
-    case kDMixPMode1:
-    case kDMixPMode2:
-    case kDMixPMode3:
-    case kDMixPMode1_n:
-    case kDMixPMode2_n:
-    case kDMixPMode3_n:
-      return absl::OkStatus();
-    default:
-      return absl::UnimplementedError(
-          absl::StrCat("Unsupported dmixp_mode= ", dmixp_mode));
-  }
-}
-
 absl::StatusOr<std::unique_ptr<DemixingInfoParameterData>>
 DemixingInfoParameterData::CreateFromBuffer(ReadBitBuffer& rb) {
   uint8_t dmixp_mode_int;
@@ -171,18 +148,6 @@ absl::Status DefaultDemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
 
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(default_w, 4));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_for_future_use, 4));
-
-  return absl::OkStatus();
-}
-
-// TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-//                     complete.
-absl::Status DefaultDemixingInfoParameterData::ReadAndValidate(
-    ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(DemixingInfoParameterData::ReadAndValidate(rb));
-
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, default_w));
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, reserved_for_future_use));
 
   return absl::OkStatus();
 }

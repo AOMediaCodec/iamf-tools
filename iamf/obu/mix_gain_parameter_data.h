@@ -38,15 +38,6 @@ struct MixGainParameterData : public ParameterData {
   /*!\brief Overridden destructor.*/
   ~MixGainParameterData() override = default;
 
-  /*!\brief Reads and validates a `MixGainParameterData` from a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()`. Or a specific error code on failure.
-   */
-  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-  //                     complete.
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
-
   /*!\brief Creates a `MixGainParameterData` from a buffer.
    *
    * \param rb Buffer to read from.

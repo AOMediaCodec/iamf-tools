@@ -91,15 +91,6 @@ struct DemixingInfoParameterData : public ParameterData {
   bool friend operator==(const DemixingInfoParameterData& lhs,
                          const DemixingInfoParameterData& rhs) = default;
 
-  /*!\brief Reads and validates a `DemixingInfoParameterData` from a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
-  //                     complete.
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
-
   /*!\brief Creates a `DemixingInfoParameterData` from a buffer.
    *
    * \param rb Buffer to read from.
@@ -160,7 +151,6 @@ struct DefaultDemixingInfoParameterData : public DemixingInfoParameterData {
    */
   // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
   //                     complete.
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
   /*!\brief Creates a `DefaultDemixingInfoParameterData` from a buffer.
    *

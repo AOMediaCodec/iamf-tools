@@ -44,7 +44,6 @@ struct ExtensionParameterData : public ParameterData {
   /*!\brief Reads and validates the `ExtensionParameterData` from a buffer. */
   // TODO(b/549854166): Remove this once migration to `CreateFromBuffer` is
   //                     complete.
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
   /*!\brief Creates an `ExtensionParameterData` from a buffer.
    *
