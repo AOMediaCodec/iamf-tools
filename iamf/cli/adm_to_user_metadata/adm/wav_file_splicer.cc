@@ -375,6 +375,9 @@ absl::Status ConvertFromObjectsTo3OA(
   auto output_wav_writer = WavWriter::Create(
       output_file.string(), kOutputWavChannels, wav_file_fmt.samples_per_sec,
       wav_file_fmt.bits_per_sample, kMaxNumSamplesPerFrame);
+  if (output_wav_writer == nullptr) {
+    return absl::InvalidArgumentError("Failed to create output WAV writer.");
+  }
 
   // Calculate number of bytes per sample based on bits per sample.
   const int32_t bytes_per_sample =
@@ -456,6 +459,10 @@ absl::Status ConvertFromObjectsTo3OA(
           input_file.string(), wav_file_fmt.num_channels,
           wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample,
           kMaxNumSamplesPerFrame);
+      if (wav_writer == nullptr) {
+        return absl::InvalidArgumentError(
+            "Failed to create temporary WAV writer.");
+      }
       // Compute the length of audio samples corresponding to the current
       // segment duration. The samples excluded due the rounding error at each
       // segment is accounted in the next segment.
@@ -563,6 +570,10 @@ absl::Status SeparateLfeChannels(const std::filesystem::path& output_file_path,
          absl::StrCat(file_prefix, "_converted", lfe_index + 1, ".wav"))
             .string(),
         1, samples_per_sec, bits_per_sample, kMaxNumSamplesPerFrame));
+  }
+  if (std::any_of(nonlfe_lfe_wav_writer.begin(), nonlfe_lfe_wav_writer.end(),
+                  [](const auto& writer) { return writer == nullptr; })) {
+    return absl::InvalidArgumentError("Failed to create channel WAV writer.");
   }
 
   // The samples in the input wav are packed in a channel-interleaved fashion.
@@ -720,6 +731,11 @@ absl::Status SpliceWavFilesFromAdm(
           audio_tracks_for_audio_objects[audio_object_index].size(),
           wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample,
           kMaxNumSamplesPerFrame));
+    }
+    if (std::any_of(audio_object_index_to_wav_writer.begin(),
+                    audio_object_index_to_wav_writer.end(),
+                    [](const auto& writer) { return writer == nullptr; })) {
+      return absl::InvalidArgumentError("Failed to create output WAV writer.");
     }
 
     // Write audio samples into the corresponding output wav file(s).
