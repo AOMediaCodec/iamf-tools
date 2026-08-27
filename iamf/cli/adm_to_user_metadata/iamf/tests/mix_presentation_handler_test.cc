@@ -72,7 +72,9 @@ TEST(Constructor, DoesNotCrash) {
 
 iamf_tools_cli_proto::MixPresentationObuMetadata GetMixObuMetataExpectOk(
     const std::vector<AudioObject>& audio_objects = {GetStereoAudioObject()},
-    LoudnessMetadata loudness_metadata = LoudnessMetadata()) {
+    LoudnessMetadata loudness_metadata = LoudnessMetadata(),
+    absl::string_view audio_programme_name = "",
+    absl::string_view audio_programme_label = "") {
   std::map<std::string, uint32_t> audio_object_id_to_audio_element_id;
   // Assign audio element IDs sequentially.
   uint32_t audio_element_id = 0;
@@ -84,10 +86,11 @@ iamf_tools_cli_proto::MixPresentationObuMetadata GetMixObuMetataExpectOk(
                                  audio_object_id_to_audio_element_id);
 
   iamf_tools_cli_proto::MixPresentationObuMetadata mix_presentation_metadata;
-  EXPECT_THAT(handler.PopulateMixPresentation(kMixPresentationId, audio_objects,
-                                              loudness_metadata,
-                                              mix_presentation_metadata),
-              IsOk());
+  EXPECT_THAT(
+      handler.PopulateMixPresentation(
+          kMixPresentationId, audio_programme_name, audio_programme_label,
+          audio_objects, loudness_metadata, mix_presentation_metadata),
+      IsOk());
 
   return mix_presentation_metadata;
 }
@@ -103,6 +106,68 @@ TEST(PopulateMixPresentation, PopulatesLabels) {
   EXPECT_FALSE(mix_presentation_metadata.annotations_language(0).empty());
   EXPECT_FALSE(
       mix_presentation_metadata.localized_presentation_annotations(0).empty());
+}
+
+TEST(PopulateMixPresentation,
+     UsesTheAudioProgrammeNameForThePresentationAnnotation) {
+  const auto& mix_presentation_metadata = GetMixObuMetataExpectOk(
+      {GetStereoAudioObject()}, LoudnessMetadata(), "MainMix");
+
+  EXPECT_EQ(mix_presentation_metadata.localized_presentation_annotations(0),
+            "MainMix");
+}
+
+TEST(PopulateMixPresentation,
+     PrefersTheAudioProgrammeLabelOverTheAudioProgrammeName) {
+  const auto& mix_presentation_metadata = GetMixObuMetataExpectOk(
+      {GetStereoAudioObject()}, LoudnessMetadata(), "MainMix", "Main Mix (EN)");
+
+  EXPECT_EQ(mix_presentation_metadata.localized_presentation_annotations(0),
+            "Main Mix (EN)");
+}
+
+TEST(PopulateMixPresentation,
+     FallsBackToADefaultPresentationAnnotationWhenTheAdmHasNoName) {
+  const auto& mix_presentation_metadata = GetMixObuMetataExpectOk();
+
+  EXPECT_FALSE(
+      mix_presentation_metadata.localized_presentation_annotations(0).empty());
+}
+
+TEST(PopulateMixPresentation, UsesTheAudioObjectNameForTheElementAnnotation) {
+  AudioObject audio_object = GetStereoAudioObject();
+  audio_object.name = "Dialogue";
+  const auto& mix_presentation_metadata =
+      GetMixObuMetataExpectOk({audio_object});
+
+  EXPECT_EQ(mix_presentation_metadata.sub_mixes(0)
+                .audio_elements(0)
+                .localized_element_annotations(0),
+            "Dialogue");
+}
+
+TEST(PopulateMixPresentation,
+     PrefersTheAudioObjectLabelOverTheAudioObjectName) {
+  AudioObject audio_object = GetStereoAudioObject();
+  audio_object.name = "Dialogue";
+  audio_object.audio_object_label = "Dialogue (EN)";
+  const auto& mix_presentation_metadata =
+      GetMixObuMetataExpectOk({audio_object});
+
+  EXPECT_EQ(mix_presentation_metadata.sub_mixes(0)
+                .audio_elements(0)
+                .localized_element_annotations(0),
+            "Dialogue (EN)");
+}
+
+TEST(PopulateMixPresentation,
+     FallsBackToADefaultElementAnnotationWhenTheAdmHasNoName) {
+  const auto& mix_presentation_metadata = GetMixObuMetataExpectOk();
+
+  EXPECT_FALSE(mix_presentation_metadata.sub_mixes(0)
+                   .audio_elements(0)
+                   .localized_element_annotations(0)
+                   .empty());
 }
 
 TEST(PopulateMixPresentation, PopulatesStereoSubmix) {

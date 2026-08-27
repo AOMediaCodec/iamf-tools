@@ -133,7 +133,8 @@ UserMetadataGenerator::GenerateUserMetadata(
 
     if (const auto& status =
             iamf->mix_presentation_handler_.PopulateMixPresentation(
-                kFirstMixPresentationId, audio_objects, LoudnessMetadata(),
+                kFirstMixPresentationId, /*audio_programme_name=*/"",
+                /*audio_programme_label=*/"", audio_objects, LoudnessMetadata(),
                 *user_metadata.add_mix_presentation_metadata());
         !status.ok()) {
       return status;
@@ -143,7 +144,14 @@ UserMetadataGenerator::GenerateUserMetadata(
          iamf->mix_presentation_id_to_audio_objects_and_metadata_) {
       if (const auto& status =
               iamf->mix_presentation_handler_.PopulateMixPresentation(
-                  mix_presentation_id, audio_objects_and_metadata.audio_objects,
+                  mix_presentation_id,
+                  adm_.audio_programmes[audio_objects_and_metadata
+                                            .original_audio_programme_index]
+                      .name,
+                  adm_.audio_programmes[audio_objects_and_metadata
+                                            .original_audio_programme_index]
+                      .audio_programme_label,
+                  audio_objects_and_metadata.audio_objects,
                   adm_.audio_programmes[audio_objects_and_metadata
                                             .original_audio_programme_index]
                       .loudness_metadata,

@@ -35,6 +35,11 @@ namespace adm_to_user_metadata {
 
 namespace {
 
+// Used when the source ADM carried neither an `audioProgrammeLabel` nor an
+// `audioProgrammeName` for this mix presentation.
+constexpr absl::string_view kDefaultLocalizedPresentationAnnotations =
+    "test_mix_pres";
+
 absl::StatusOr<iamf_tools_cli_proto::SoundSystem>
 LookupSoundSystemFromInputLayout(IamfInputLayout layout) {
   // Map which holds the valid loudspeaker layout and the reference sound system
@@ -122,6 +127,22 @@ absl::Status SetDefaultLoudnessLayout(
   return CopyLoudness(loudness_metadata, *layout->mutable_loudness());
 }
 
+// Returns the first non-empty of the authored label and the authored name,
+// falling back to `default_annotation` when the source ADM carried neither.
+// IAMF's annotations are localized strings, so an authored `*Label` is
+// preferred over the corresponding `*Name`.
+absl::string_view LocalizedAnnotationOrDefault(
+    absl::string_view authored_label, absl::string_view authored_name,
+    absl::string_view default_annotation) {
+  if (!authored_label.empty()) {
+    return authored_label;
+  }
+  if (!authored_name.empty()) {
+    return authored_name;
+  }
+  return default_annotation;
+}
+
 absl::Status SubMixAudioElementMetadataBuilder(
     const AudioObject& audio_object, uint32_t audio_element_id,
     uint32_t common_parameter_rate,
@@ -129,7 +150,9 @@ absl::Status SubMixAudioElementMetadataBuilder(
   sub_mix_audio_element.set_audio_element_id(audio_element_id);
 
   sub_mix_audio_element.add_localized_element_annotations(
-      audio_object.audio_object_label);
+      std::string(LocalizedAnnotationOrDefault(
+          audio_object.audio_object_label, audio_object.name,
+          AudioObject::kDefaultLocalizedElementAnnotations)));
 
   auto* rendering_config = sub_mix_audio_element.mutable_rendering_config();
 
@@ -215,14 +238,18 @@ bool IsChannelBasedAndNotStereo(IamfInputLayout input_layout) {
 
 // Sets the required textproto fields for mix_presentation_metadata.
 absl::Status MixPresentationHandler::PopulateMixPresentation(
-    int32_t mix_presentation_id, const std::vector<AudioObject>& audio_objects,
+    int32_t mix_presentation_id, absl::string_view audio_programme_name,
+    absl::string_view audio_programme_label,
+    const std::vector<AudioObject>& audio_objects,
     const LoudnessMetadata& loudness_metadata,
     iamf_tools_cli_proto::MixPresentationObuMetadata&
         mix_presentation_obu_metadata) {
   mix_presentation_obu_metadata.set_mix_presentation_id(mix_presentation_id);
   mix_presentation_obu_metadata.add_annotations_language("en-us");
   mix_presentation_obu_metadata.add_localized_presentation_annotations(
-      "test_mix_pres");
+      std::string(LocalizedAnnotationOrDefault(
+          audio_programme_label, audio_programme_name,
+          kDefaultLocalizedPresentationAnnotations)));
 
   auto& mix_presentation_sub_mix =
       *mix_presentation_obu_metadata.add_sub_mixes();

@@ -87,8 +87,9 @@ struct AudioObject {
 
   std::string id;
   std::string name;
-  std::string audio_object_label =
-      std::string(kDefaultLocalizedElementAnnotations);
+  // Empty unless the source ADM carried an `audioObjectLabel`. Consumers fall
+  // back to `name`, and then to `kDefaultLocalizedElementAnnotations`.
+  std::string audio_object_label;
   int32_t importance = kDefaultADMImportance;
   float gain = kDefaultADMGain;
   std::vector<std::string> audio_pack_format_id_refs;

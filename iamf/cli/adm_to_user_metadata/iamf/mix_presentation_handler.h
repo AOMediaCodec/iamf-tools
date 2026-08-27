@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 
@@ -52,13 +53,19 @@ class MixPresentationHandler {
   /*!\brief Populates a `MixPresentationObuMetadata` proto.
    *
    * \param mix_presentation_id Mix presentation ID to generate.
+   * \param audio_programme_name `audioProgrammeName` of the source programme,
+   *        or empty when there was none.
+   * \param audio_programme_label `audioProgrammeLabel` of the source
+   *        programme, or empty when there was none. Preferred over
+   *        `audio_programme_name` for the localized annotation.
    * \param audio_objects Audio objects for this mix presentation.
    * \param loudness_metadata Loudness metadata.
    * \param mix_presentation_obu_metadata Metadata to populate.
    * \return `absl::OkStatus()` on success. A specific error on failure.
    */
   absl::Status PopulateMixPresentation(
-      int32_t mix_presentation_id,
+      int32_t mix_presentation_id, absl::string_view audio_programme_name,
+      absl::string_view audio_programme_label,
       const std::vector<AudioObject>& audio_objects,
       const LoudnessMetadata& loudness_metadata,
       iamf_tools_cli_proto::MixPresentationObuMetadata&
