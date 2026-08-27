@@ -109,8 +109,18 @@ absl::Status FlushToWavWriter(std::vector<uint8_t>& samples_to_flush,
 //
 // The segmentation required:[L3, R3, Centre]; [LFE]; [Ltf3, Rtf3]
 // Segment layout obtained: <3,0>, <1,1>, <2,0>
-std::vector<std::pair<int, int>> GenerateSegmentLayout(
+absl::StatusOr<std::vector<std::pair<int, int>>> GenerateSegmentLayout(
     const std::vector<int>& lfe_ids, const int num_channels) {
+  int previous_lfe_id = 0;
+  for (const int lfe_id : lfe_ids) {
+    if (lfe_id <= previous_lfe_id || lfe_id > num_channels) {
+      return absl::InvalidArgumentError(
+          "LFE channel IDs must be ordered, unique, and within the WAV "
+          "channel count.");
+    }
+    previous_lfe_id = lfe_id;
+  }
+
   std::vector<std::pair<int, int>> segment_layout;
   for (size_t lfe_index = 0; lfe_index <= lfe_ids.size(); ++lfe_index) {
     const int start_index = (lfe_index == 0) ? 0 : lfe_ids[lfe_index - 1];
@@ -130,6 +140,36 @@ std::vector<std::pair<int, int>> GenerateSegmentLayout(
   return segment_layout;
 }
 
+absl::Status ValidateFlushParameters(
+    const std::vector<char>& buffer, const size_t bytes_to_read,
+    const int num_channels, const int32_t bytes_per_sample,
+    const std::vector<std::pair<int, int>>& segment_layout,
+    const std::vector<std::unique_ptr<WavWriter>>& writers) {
+  if (bytes_per_sample <= 0 || num_channels <= 0) {
+    return absl::InvalidArgumentError(
+        "Bytes per sample and channel count must be positive.");
+  }
+  const size_t bytes_per_frame =
+      static_cast<size_t>(bytes_per_sample) * num_channels;
+  if (bytes_to_read > buffer.size() || bytes_to_read % bytes_per_frame != 0) {
+    return absl::InvalidArgumentError(
+        "Input buffer does not contain a whole number of audio frames.");
+  }
+  int channels_in_layout = 0;
+  for (const auto& [segment_size, writer_index] : segment_layout) {
+    if (segment_size < 0 || writer_index < 0 ||
+        static_cast<size_t>(writer_index) >= writers.size()) {
+      return absl::InvalidArgumentError("Invalid channel segment layout.");
+    }
+    channels_in_layout += segment_size;
+  }
+  if (channels_in_layout != num_channels) {
+    return absl::InvalidArgumentError(
+        "Channel segment layout does not match the WAV channel count.");
+  }
+  return absl::OkStatus();
+}
+
 // Distributes audio samples from the input buffer to WavWriter objects,
 // segmenting them by LFE and non-LFE channels based on the provided layout.
 // Samples are transformed and periodically flushed to each WavWriter upon
@@ -139,6 +179,10 @@ absl::Status FlushLfeNonLfeWavs(
     const int num_channels, const int32_t bytes_per_sample,
     const std::vector<std::pair<int, int>>& segment_layout,
     std::vector<std::unique_ptr<WavWriter>>& writers) {
+  RETURN_IF_NOT_OK(ValidateFlushParameters(buffer, bytes_to_read, num_channels,
+                                           bytes_per_sample, segment_layout,
+                                           writers));
+
   // A vector of buffers to store the samples corresponding to non-LFE and LFE
   // channels respectively.
   std::vector<std::vector<uint8_t>> nonlfe_lfe_buffer(writers.size(),
@@ -521,8 +565,10 @@ absl::Status SeparateLfeChannels(const std::filesystem::path& output_file_path,
   // channels is 0 and LFE channels have a writer index starting from 1
   // (increasing in 1 increments). The channels are grouped together in
   // sequence if they are non-LFE.
-  std::vector<std::pair<int, int>> segment_layout =
-      GenerateSegmentLayout(lfe_ids, num_channels);
+  const auto segment_layout = GenerateSegmentLayout(lfe_ids, num_channels);
+  if (!segment_layout.ok()) {
+    return segment_layout.status();
+  }
 
   const std::streamoff audio_data_position =
       data_chunk_info.offset + Bw64Reader::kChunkHeaderOffset;
@@ -545,9 +591,9 @@ absl::Status SeparateLfeChannels(const std::filesystem::path& output_file_path,
           "chunk.");
     }
 
-    RETURN_IF_NOT_OK(FlushLfeNonLfeWavs(temp_buffer, bytes_to_read,
-                                        num_channels, bytes_per_sample,
-                                        segment_layout, nonlfe_lfe_wav_writer));
+    RETURN_IF_NOT_OK(FlushLfeNonLfeWavs(
+        temp_buffer, bytes_to_read, num_channels, bytes_per_sample,
+        *segment_layout, nonlfe_lfe_wav_writer));
     temp_buffer.clear();
   }
   return absl::OkStatus();
@@ -596,7 +642,7 @@ absl::Status SeparateLfeAndConvertTo3OA(
   ADM non_lfe_adm = reader.adm_;
   for (int index = lfe_count - 1; index >= 0; --index) {
     non_lfe_adm.audio_channels.erase(non_lfe_adm.audio_channels.begin() +
-                                     lfe_ids[index]);
+                                     (lfe_ids[index] - 1));
   }
 
   // Modify FormatInfoChunk with non-LFE channel count before invoking the
