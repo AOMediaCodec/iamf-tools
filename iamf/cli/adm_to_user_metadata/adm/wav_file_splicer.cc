@@ -277,7 +277,7 @@ double ConvertTimeToSeconds(const BlockTime& time) {
 double CalculateBlockDuration(const std::vector<AudioBlockFormat>& audio_block,
                               const int& block_index) {
   double seg_duration = 0.0;
-  if (static_cast<size_t>(block_index) < audio_block.size() - 1) {
+  if (static_cast<size_t>(block_index + 1) < audio_block.size()) {
     const auto block_rtime =
         ConvertTimeToSeconds(audio_block[block_index].rtime);
     const auto next_block_rtime =
@@ -347,6 +347,12 @@ absl::Status ConvertFromObjectsTo3OA(
     const FormatInfoChunk& wav_file_fmt, std::istream& input_stream,
     const iamf_tools::adm_to_user_metadata::Bw64Reader::ChunkInfo&
         data_chunk_info) {
+  for (const auto& audio_channel : input_adm.audio_channels) {
+    if (audio_channel.audio_blocks.empty()) {
+      return absl::InvalidArgumentError(
+          "Every ADM audio channel must contain an audioBlockFormat.");
+    }
+  }
   const std::streamoff audio_data_position =
       data_chunk_info.offset + Bw64Reader::kChunkHeaderOffset;
   input_stream.seekg(audio_data_position);
