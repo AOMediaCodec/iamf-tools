@@ -13,10 +13,12 @@
 #include "iamf/cli/adm_to_user_metadata/adm/xml_to_adm.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <ios>
 #include <iterator>
+#include <numbers>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -96,7 +98,10 @@ enum AdmBlockFormat {
   kY = 1,
   kZ = 2,
   kAudioBlockLabel = 3,
-  kBlockDefault = 4
+  kAzimuth = 4,
+  kElevation = 5,
+  kDistance = 6,
+  kBlockDefault = 7
 };
 
 // This class is used by xml parser to collect and store various attributes and
@@ -176,11 +181,50 @@ void SetHandlerTag(absl::string_view name, const char** atts,
         handler.audio_block_tag = kY;
       } else if (std::string(atts[i + 1]) == "Z") {
         handler.audio_block_tag = kZ;
+      } else if (std::string(atts[i + 1]) == "azimuth") {
+        handler.audio_block_tag = kAzimuth;
+      } else if (std::string(atts[i + 1]) == "elevation") {
+        handler.audio_block_tag = kElevation;
+      } else if (std::string(atts[i + 1]) == "distance") {
+        handler.audio_block_tag = kDistance;
       }
     }
   } else if (name == "audioBlockFormatID") {
     handler.audio_block_tag = kAudioBlockLabel;
   }
+}
+
+// Derives the cartesian `position` of a block from the spherical coordinates
+// authored for it.
+//
+// The convention is not invented here: `panner.cc` already performs the
+// inverse on every block it reads --
+//
+//   azimuth   = -atan2(x, y)
+//   elevation =  atan2(z, hypot(x, y))
+//   distance  =  |(x, y, z)|
+//
+// so azimuth is measured anticlockwise from front, with +Y front, +X right and
+// +Z up. This function is that mapping run forwards, which keeps a block
+// authored in spherical coordinates and its cartesian twin equivalent through
+// the rest of the pipeline.
+void SetPositionFromSphericalPosition(AudioBlockFormat& audio_block) {
+  constexpr double kDegreesToRadians = std::numbers::pi_v<double> / 180.0;
+  const double azimuth =
+      static_cast<double>(audio_block.spherical_position.azimuth) *
+      kDegreesToRadians;
+  const double elevation =
+      static_cast<double>(audio_block.spherical_position.elevation) *
+      kDegreesToRadians;
+  const double distance =
+      static_cast<double>(audio_block.spherical_position.distance);
+
+  const double horizontal_distance = distance * std::cos(elevation);
+  audio_block.position.x =
+      static_cast<float>(-horizontal_distance * std::sin(azimuth));
+  audio_block.position.y =
+      static_cast<float>(horizontal_distance * std::cos(azimuth));
+  audio_block.position.z = static_cast<float>(distance * std::sin(elevation));
 }
 
 // Sets the attributes of AudioProgramme.
@@ -743,6 +787,31 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
               absl::SimpleAtof(absl::string_view(text, len),
                                &audio_blocks.back().position.z),
               "position", handler);
+          break;
+        }
+        case kAzimuth:
+        case kElevation:
+        case kDistance: {
+          auto& audio_block = audio_blocks.back();
+          float* coordinate = nullptr;
+          switch (handler.audio_block_tag) {
+            case kAzimuth:
+              coordinate = &audio_block.spherical_position.azimuth;
+              break;
+            case kElevation:
+              coordinate = &audio_block.spherical_position.elevation;
+              break;
+            default:
+              coordinate = &audio_block.spherical_position.distance;
+              break;
+          }
+          const bool parsed =
+              absl::SimpleAtof(absl::string_view(text, len), coordinate);
+          UpdateErrorStatusIfFalse(parsed, "position", handler);
+          if (parsed) {
+            audio_block.has_spherical_position = true;
+            SetPositionFromSphericalPosition(audio_block);
+          }
           break;
         }
         case kAudioBlockLabel: {

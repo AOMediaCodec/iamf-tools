@@ -32,6 +32,7 @@ using testing::ElementsAreArray;
 constexpr absl::string_view kAudioPackFormatIdMono = "AP_00010001";
 
 constexpr int kImportanceThreshold = 0;
+constexpr float kPositionTolerance = 1e-5f;
 
 TEST(ParseXmlToAdm, InvalidXml) {
   EXPECT_THAT(ParseXmlToAdm(R"xml(<open_tag> </mismatching_close_tag>)xml",
@@ -78,6 +79,151 @@ TEST(ParseXmlToAdm, AudioBlockFormatWithoutParentChannelIsRejected) {
                   </audioBlockFormat>
                 </audioFormatExtended>)xml",
                             kImportanceThreshold, kAdmFileTypeDefault),
+              Not(IsOk()));
+}
+
+TEST(ParseXmlToAdm, LoadsCartesianBlockPosition) {
+  const auto adm = ParseXmlToAdm(
+      R"xml(
+        <audioChannelFormat audioChannelFormatID="AC_00031001">
+          <audioBlockFormat audioBlockFormatID="AB_00031001_00000001">
+            <position coordinate="X">-1.0</position>
+            <position coordinate="Y">0.0</position>
+            <position coordinate="Z">0.0</position>
+          </audioBlockFormat>
+        </audioChannelFormat>
+  )xml",
+      kImportanceThreshold, kAdmFileTypeDefault);
+  ASSERT_THAT(adm, IsOk());
+  ASSERT_FALSE(adm->audio_channels.empty());
+  ASSERT_FALSE(adm->audio_channels[0].audio_blocks.empty());
+
+  const auto& block = adm->audio_channels[0].audio_blocks[0];
+  EXPECT_FALSE(block.has_spherical_position);
+  EXPECT_NEAR(block.position.x, -1.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.y, 0.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.z, 0.0f, kPositionTolerance);
+}
+
+TEST(ParseXmlToAdm, BlockPositionDefaultsToTheOriginWhenAbsent) {
+  // A block with no readable position must be a determinate origin rather than
+  // whatever `CartesianPosition`'s members happened to contain.
+  const auto adm = ParseXmlToAdm(
+      R"xml(
+        <audioChannelFormat audioChannelFormatID="AC_00031001">
+          <audioBlockFormat audioBlockFormatID="AB_00031001_00000001">
+            <speakerLabel>M+030</speakerLabel>
+          </audioBlockFormat>
+        </audioChannelFormat>
+  )xml",
+      kImportanceThreshold, kAdmFileTypeDefault);
+  ASSERT_THAT(adm, IsOk());
+  ASSERT_FALSE(adm->audio_channels.empty());
+  ASSERT_FALSE(adm->audio_channels[0].audio_blocks.empty());
+
+  const auto& block = adm->audio_channels[0].audio_blocks[0];
+  EXPECT_EQ(block.position.x, 0.0f);
+  EXPECT_EQ(block.position.y, 0.0f);
+  EXPECT_EQ(block.position.z, 0.0f);
+}
+
+TEST(ParseXmlToAdm, LoadsSphericalBlockPositionAsCartesian) {
+  // `azimuth`/`elevation`/`distance` is equally valid BS.2076 and is what the
+  // EAR/BBC tooling emits by default. Azimuth is measured anticlockwise from
+  // front, so azimuth 90 is the listener's left: (-1, 0, 0).
+  const auto adm = ParseXmlToAdm(
+      R"xml(
+        <audioChannelFormat audioChannelFormatID="AC_00031001">
+          <audioBlockFormat audioBlockFormatID="AB_00031001_00000001">
+            <position coordinate="azimuth">90.0</position>
+            <position coordinate="elevation">0.0</position>
+            <position coordinate="distance">1.0</position>
+          </audioBlockFormat>
+        </audioChannelFormat>
+  )xml",
+      kImportanceThreshold, kAdmFileTypeDefault);
+  ASSERT_THAT(adm, IsOk());
+  ASSERT_FALSE(adm->audio_channels.empty());
+  ASSERT_FALSE(adm->audio_channels[0].audio_blocks.empty());
+
+  const auto& block = adm->audio_channels[0].audio_blocks[0];
+  EXPECT_TRUE(block.has_spherical_position);
+  EXPECT_NEAR(block.position.x, -1.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.y, 0.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.z, 0.0f, kPositionTolerance);
+}
+
+TEST(ParseXmlToAdm, SphericalBlockPositionAtTheFrontMatchesItsCartesianTwin) {
+  // azimuth 0 / elevation 0 / distance 1 is the same point as (0, 1, 0).
+  const auto adm = ParseXmlToAdm(
+      R"xml(
+        <audioChannelFormat audioChannelFormatID="AC_00031001">
+          <audioBlockFormat audioBlockFormatID="AB_00031001_00000001">
+            <position coordinate="azimuth">0.0</position>
+            <position coordinate="elevation">0.0</position>
+            <position coordinate="distance">1.0</position>
+          </audioBlockFormat>
+        </audioChannelFormat>
+  )xml",
+      kImportanceThreshold, kAdmFileTypeDefault);
+  ASSERT_THAT(adm, IsOk());
+
+  const auto& block = adm->audio_channels[0].audio_blocks[0];
+  EXPECT_NEAR(block.position.x, 0.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.y, 1.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.z, 0.0f, kPositionTolerance);
+}
+
+TEST(ParseXmlToAdm, SphericalBlockPositionHonoursElevationAndDistance) {
+  const auto adm = ParseXmlToAdm(
+      R"xml(
+        <audioChannelFormat audioChannelFormatID="AC_00031001">
+          <audioBlockFormat audioBlockFormatID="AB_00031001_00000001">
+            <position coordinate="azimuth">0.0</position>
+            <position coordinate="elevation">90.0</position>
+            <position coordinate="distance">2.0</position>
+          </audioBlockFormat>
+        </audioChannelFormat>
+  )xml",
+      kImportanceThreshold, kAdmFileTypeDefault);
+  ASSERT_THAT(adm, IsOk());
+
+  const auto& block = adm->audio_channels[0].audio_blocks[0];
+  EXPECT_NEAR(block.position.x, 0.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.y, 0.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.z, 2.0f, kPositionTolerance);
+}
+
+TEST(ParseXmlToAdm,
+     SphericalBlockPositionUsesBs2076DefaultsForOmittedCoordinates) {
+  // Only azimuth is authored; distance defaults to 1 and elevation to 0.
+  const auto adm = ParseXmlToAdm(
+      R"xml(
+        <audioChannelFormat audioChannelFormatID="AC_00031001">
+          <audioBlockFormat audioBlockFormatID="AB_00031001_00000001">
+            <position coordinate="azimuth">-90.0</position>
+          </audioBlockFormat>
+        </audioChannelFormat>
+  )xml",
+      kImportanceThreshold, kAdmFileTypeDefault);
+  ASSERT_THAT(adm, IsOk());
+
+  const auto& block = adm->audio_channels[0].audio_blocks[0];
+  EXPECT_NEAR(block.position.x, 1.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.y, 0.0f, kPositionTolerance);
+  EXPECT_NEAR(block.position.z, 0.0f, kPositionTolerance);
+}
+
+TEST(ParseXmlToAdm, InvalidWhenSphericalCoordinateCannotBeParsed) {
+  EXPECT_THAT(ParseXmlToAdm(
+                  R"xml(
+        <audioChannelFormat audioChannelFormatID="AC_00031001">
+          <audioBlockFormat audioBlockFormatID="AB_00031001_00000001">
+            <position coordinate="azimuth">not_a_float</position>
+          </audioBlockFormat>
+        </audioChannelFormat>
+  )xml",
+                  kImportanceThreshold, kAdmFileTypeDefault),
               Not(IsOk()));
 }
 
