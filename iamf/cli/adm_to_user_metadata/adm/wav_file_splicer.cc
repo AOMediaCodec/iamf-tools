@@ -631,7 +631,10 @@ absl::Status SeparateLfeAndConvertTo3OA(
                                    data_chunk_info);
   }
 
-  ABSL_CHECK_LT(lfe_count, num_channels);
+  if (lfe_count >= num_channels) {
+    return absl::InvalidArgumentError(
+        "The number of LFE channels must be less than the WAV channel count.");
+  }
   const int non_lfe_count = num_channels - lfe_count;
   const auto& non_lfe_file_path =
       (output_file_path / non_lfe_file_name).string();
