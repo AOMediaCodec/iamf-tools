@@ -86,7 +86,7 @@ class MockParamDefinition : public ParamDefinition {
  * \param parameter_id The parameter ID.
  * \param parameter_rate The parameter rate.
  * \return `ParamDefinition::BaseArgs` configured for Mode 1
- *     (`kModeScheduleInParameterBlock`).
+ *         (`kModeScheduleInParameterBlock`).
  */
 ParamDefinition::BaseArgs MakeScheduleInParameterBlockBaseArgs(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate);
@@ -110,7 +110,7 @@ ParamDefinition::BaseArgs MakeOneSubblockParamDefinitionBaseArgs(
  * \param constant_subblock_duration The constant subblock duration.
  * \param reserved The reserved field.
  * \return `ParamDefinition::BaseArgs` configured with the constant duration
- *     subblocks.
+ *         subblocks.
  */
 ParamDefinition::BaseArgs MakeConstantSubblocksParamDefinitionBaseArgs(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,

@@ -61,7 +61,7 @@ class DemixingManager {
   /*!\brief Creates a map of ID to `ReconstructionConfig`.
    *
    * \param audio_elements Audio Elements to source `AudioElementObu`,
-   *       `substream_id_to_labels` and `label_to_output_gain` from.
+   *        `substream_id_to_labels` and `label_to_output_gain` from.
    * \return Map of Audio Element ID to `ReconstructionConfig`.
    */
   static absl::flat_hash_map<DecodedUleb128, ReconstructionConfig>

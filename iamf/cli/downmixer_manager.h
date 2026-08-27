@@ -116,7 +116,8 @@ class DownmixerManager {
    *
    * \param audio_element_id Audio Element ID.
    * \return `true` if there are down-mixers for an audio element, `false` if
-   *     there are no associated down-mixers or the audio element ID is unknown.
+   *         there are no associated down-mixers or the audio element ID is
+   *         unknown.
    */
   bool HasDownMixers(DecodedUleb128 audio_element_id) const;
 

@@ -98,8 +98,8 @@ class AudioElementRendererBinaural : public AudioElementRendererBase {
    *
    * \param ordered_labels Ordered list of channel labels to render.
    * \param demixing_matrix Demixing matrix used to project input samples.
-   *     Only active when rendering inputs in ambisonics projection mode. Pass
-   *     in `std::nullopt` otherwise.
+   *        Only active when rendering inputs in ambisonics projection mode.
+   *        Pass in `std::nullopt` otherwise.
    * \param obr Instance of an OBR renderer.
    * \param num_samples_per_frame Number of samples per frame.
    */

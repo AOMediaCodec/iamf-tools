@@ -25,7 +25,7 @@
 
 namespace iamf_tools {
 
-/* !\brief Parameter definition for polar info. */
+/*!\brief Parameter definition for polar info. */
 class PolarParamDefinition : public ParamDefinition {
  public:
   /*!\brief Constructor.

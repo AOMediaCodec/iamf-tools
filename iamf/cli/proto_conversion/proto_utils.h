@@ -38,7 +38,7 @@ namespace iamf_tools {
  *
  * \param q_format_or_floating_point Input protocol buffer.
  * \return Internal representation of a `QFormatOrFloatingPoint` on success. A
- *     specific status on failure.
+ *         specific status on failure.
  */
 absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
     const iamf_tools_cli_proto::QFormatOrFloatingPoint&
@@ -48,7 +48,7 @@ absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
  *
  * \param input_ambisonics_preset Input protocol buffer.
  * \return Internal representation of `AmbisonicsMixer::Preset` on success. A
- *     specific status on failure.
+ *         specific status on failure.
  */
 absl::StatusOr<AmbisonicsMixer::Preset> ProtoToAmbisonicsPreset(
     const iamf_tools_cli_proto::AmbisonicsPreset& input_ambisonics_preset);

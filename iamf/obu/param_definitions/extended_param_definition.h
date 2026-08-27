@@ -25,7 +25,7 @@
 
 namespace iamf_tools {
 
-/* !\brief Parameter definition reserved for future use; should be ignored.
+/*!\brief Parameter definition reserved for future use; should be ignored.
  */
 class ExtendedParamDefinition : public ParamDefinition {
  public:

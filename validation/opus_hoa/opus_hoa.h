@@ -42,7 +42,7 @@ struct AudioElementVerificationResult {
  *
  * \param file_path Path to the standalone `.iamf` file.
  * \return A list of verification results for each Opus Ambisonics Audio
- * Element, or a specific absl::Status on failure.
+ *         Element, or a specific absl::Status on failure.
  */
 absl::StatusOr<std::vector<AudioElementVerificationResult>>
 VerifyOpusAmbisonics(const std::string& file_path);

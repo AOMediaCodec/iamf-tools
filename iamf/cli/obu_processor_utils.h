@@ -38,7 +38,7 @@ struct SelectedMixPresentation {
  * \param supported_mix_presentations All usable MixPresentations.
  * \param desired_layout If specified, the decoding target Layout.
  * \param desired_mix_presentation_id The target Mix if specified.
- * \returns If no error, returns Mix Presentation, ID, and Layout.
+ * \return If no error, returns Mix Presentation, ID, and Layout.
  */
 absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
     const DescriptorObus::AudioElementsById& audio_elements,

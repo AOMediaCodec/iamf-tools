@@ -53,8 +53,8 @@ class ParameterBlockObu : public ObuBase {
    *
    * \param rb Buffer to read from.
    * \return Parameter ID if successful. Returns `absl::ResourceExhaustedError`
-   *        if there is not enough data to read a parameter ID. Returns other
-   *        errors if the bitstream is invalid.
+   *         if there is not enough data to read a parameter ID. Returns other
+   *         errors if the bitstream is invalid.
    */
   static absl::StatusOr<DecodedUleb128> PeekParameterId(ReadBitBuffer& rb);
 
@@ -148,7 +148,7 @@ class ParameterBlockObu : public ObuBase {
    * the OBU.
    *
    * \param linear_mix_gain_per_tick Output linear mix gain converted from a dB
-   * value stored as Q7.8.
+   *        value stored as Q7.8.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` on
    *         failure.
    */
@@ -188,7 +188,7 @@ class ParameterBlockObu : public ObuBase {
    * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *        failure.
+   *         failure.
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;

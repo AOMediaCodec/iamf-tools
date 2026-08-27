@@ -82,10 +82,10 @@ double Q15ToSignedDouble(const int16_t input) {
  *
  *
  * \param projection_config Config for the Ambisonics projection. Contains D (N
- *     x M).
+ *        x M).
  * \param gains Precomputed gains matrix G (N x K).
  * \return The combined gains matrix C (M x K) on success, or a specific status
- *     on failure.
+ *         on failure.
  */
 absl::StatusOr<std::vector<std::vector<double>>> GetCombinedGains(
     const AmbisonicsProjectionConfig& projection_config,

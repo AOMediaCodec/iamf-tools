@@ -421,13 +421,13 @@ std::vector<std::vector<InternalSampleType>> Int32ToInternalSampleType2D(
 /*!\brief Returns samples representing a sine wave.
  *
  * \param start_tick Tick to start sampling at. I.e. each tick represents
- *                   `1.0 / sample_rate_hz` seconds.
+ *        `1.0 / sample_rate_hz` seconds.
  * \param num_samples Number of samples to generate.
  * \param sample_rate_hz Sample rate of the generated samples in Hz.
  * \param frequency_hz Frequency of the sine wave in Hz.
  * \param amplitude Amplitude of the sine wave. Recommended to be in [-1.0,
- *                  1.0] to agree with the canonical `InternalSampleType`
- *                  convention.
+ *        1.0] to agree with the canonical `InternalSampleType`
+ *        convention.
  * \return Output vector of `InternalSampleType`s.
  */
 std::vector<InternalSampleType> GenerateSineWav(uint64_t start_tick,

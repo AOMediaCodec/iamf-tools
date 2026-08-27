@@ -20,7 +20,7 @@
 
 namespace iamf_tools {
 
-/*\brief Static functions to get `CodecConfigObuMetadata`s.
+/*!\brief Static functions to get `CodecConfigObuMetadata`s.
  *
  * Useful for generating `CodecConfigObuMetadata` with reasonable defaults.
  */

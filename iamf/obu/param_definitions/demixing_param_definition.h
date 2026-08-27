@@ -24,7 +24,7 @@
 
 namespace iamf_tools {
 
-/* !\brief Parameter definition for demixing info.
+/*!\brief Parameter definition for demixing info.
  */
 class DemixingParamDefinition : public ParamDefinition {
  public:

@@ -29,7 +29,7 @@ namespace iamf_tools {
 
 class OpusDecoder : public DecoderBase {
  public:
-  /*!brief Factory function.
+  /*!\brief Factory function.
    *
    * \param decoder_config Decoder config for this stream.
    * \param channel_count Number of channels for this substream.

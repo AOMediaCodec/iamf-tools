@@ -257,7 +257,7 @@ class ObuProcessor {
    *        insufficient to process all descriptor OBUs and there is no other
    *        error.
    * \return `absl::OkStatus()` if initialization is successful. A specific
-   *        status on failure.
+   *         status on failure.
    */
   absl::Status InitializeInternal(bool is_exhaustive_and_exact,
                                   bool& output_insufficient_data);

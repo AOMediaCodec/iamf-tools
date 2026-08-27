@@ -65,7 +65,7 @@ class SubblockSchedule {
    *
    * \param duration Total duration of the schedule.
    * \param constant_subblock_duration Constant subblock duration. Must not be
-   * 0.
+   *        0.
    * \return Validated SubblockSchedule or error status.
    */
   static absl::StatusOr<SubblockSchedule> CreateWithConstantSubblockDuration(
@@ -129,7 +129,7 @@ class SubblockSchedule {
   /*!\brief Returns the constant subblock duration of the schedule.
    *
    * \return Constant subblock duration of the schedule, or 0 if the schedule
-   *     has variable subblock durations.
+   *         has variable subblock durations.
    */
   DecodedUleb128 GetConstantSubblockDuration() const {
     return constant_subblock_duration_;

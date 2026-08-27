@@ -38,7 +38,7 @@ struct ChannelNumbers {
   int bottom = 0;
 };
 
-/* !\brief Parameter definition for recon gain.
+/*!\brief Parameter definition for recon gain.
  */
 class ReconGainParamDefinition : public ParamDefinition {
  public:
@@ -58,7 +58,7 @@ class ReconGainParamDefinition : public ParamDefinition {
    *
    * \param base_args Arguments for `ParamDefinitionBase`.
    * \param audio_element_id ID of the Audio Element OBU that uses this
-   * parameter.
+   *        parameter.
    */
   ReconGainParamDefinition(const ParamDefinition::BaseArgs& base_args,
                            uint32_t audio_element_id)

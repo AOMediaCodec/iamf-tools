@@ -269,7 +269,7 @@ class AudioElementObu : public ObuBase {
                        ObjectsConfig, ExtensionConfig>
       AudioElementConfig;
 
-  /*!brief Creates a `AudioElementObu` for a scalable channel layout.
+  /*!\brief Creates a `AudioElementObu` for a scalable channel layout.
    *
    * \param header `ObuHeader` of the OBU.
    * \param audio_element_id ID of the audio element.
@@ -285,7 +285,7 @@ class AudioElementObu : public ObuBase {
       absl::Span<const DecodedUleb128> audio_substream_ids,
       const ScalableChannelLayoutConfig& scalable_channel_layout_config);
 
-  /*!brief Creates a `AudioElementObu` for an Ambisonics layout.
+  /*!\brief Creates a `AudioElementObu` for an Ambisonics layout.
    *
    * \param header `ObuHeader` of the OBU.
    * \param audio_element_id ID of the audio element.
@@ -301,7 +301,7 @@ class AudioElementObu : public ObuBase {
       absl::Span<const DecodedUleb128> audio_substream_ids,
       const AmbisonicsConfig& ambisonics_config);
 
-  /*!brief Creates a `AudioElementObu` for objects.
+  /*!\brief Creates a `AudioElementObu` for objects.
    *
    * \param header `ObuHeader` of the OBU.
    * \param audio_element_id ID of the audio element.
@@ -316,7 +316,7 @@ class AudioElementObu : public ObuBase {
       uint8_t reserved, DecodedUleb128 codec_config_id,
       DecodedUleb128 audio_substream_id, const ObjectsConfig& objects_config);
 
-  /*!brief Creates a `AudioElementObu` for an extension.
+  /*!\brief Creates a `AudioElementObu` for an extension.
    *
    * \param header `ObuHeader` of the OBU.
    * \param audio_element_id ID of the audio element.

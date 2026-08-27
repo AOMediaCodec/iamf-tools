@@ -24,7 +24,7 @@
 
 namespace iamf_tools {
 
-/* !\brief Parameter definition of mix gains to be applied to a signal.
+/*!\brief Parameter definition of mix gains to be applied to a signal.
  */
 class MixGainParamDefinition : public ParamDefinition {
  public:

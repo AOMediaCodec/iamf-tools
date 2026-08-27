@@ -37,7 +37,7 @@ namespace iamf_tools {
 // TODO(b/277731089): Test sample accuracy of `DecodeAudioFrame`.
 class AacDecoder : public DecoderBase {
  public:
-  /*!brief Factory function.
+  /*!\brief Factory function.
    *
    * \param decoder_config Decoder config for this stream.
    * \param channel_count Channel count for this substream.
