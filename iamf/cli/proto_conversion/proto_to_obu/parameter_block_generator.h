@@ -155,4 +155,4 @@ class ParameterBlockGenerator {
 
 }  // namespace iamf_tools
 
-#endif  // PROTO_TO_OBU_CLI_PARAMETER_BLOCK_GENERATOR_H_
+#endif  // CLI_PROTO_CONVERSION_PROTO_TO_OBU_PARAMETER_BLOCK_GENERATOR_H_

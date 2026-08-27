@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef TESTS_OBU_TEST_BASE_H_
-#define TESTS_OBU_TEST_BASE_H_
+#ifndef OBU_TESTS_OBU_TEST_BASE_H_
+#define OBU_TESTS_OBU_TEST_BASE_H_
 
 #include <cstdint>
 #include <memory>
@@ -80,4 +80,4 @@ class ObuTestBase {
 
 }  // namespace iamf_tools
 
-#endif  // TESTS_OBU_TEST_BASE_H_
+#endif  // OBU_TESTS_OBU_TEST_BASE_H_

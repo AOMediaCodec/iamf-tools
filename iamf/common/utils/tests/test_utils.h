@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef COMMON_TESTS_TEST_UTILS_H_
-#define COMMON_TESTS_TEST_UTILS_H_
+#ifndef COMMON_UTILS_TESTS_TEST_UTILS_H_
+#define COMMON_UTILS_TESTS_TEST_UTILS_H_
 
 #include <cstdint>
 
@@ -41,4 +41,4 @@ void ValidateObuWriteResults(const WriteBitBuffer& wb,
 
 }  // namespace iamf_tools
 
-#endif  // COMMON_TESTS_TEST_UTILS_H_
+#endif  // COMMON_UTILS_TESTS_TEST_UTILS_H_

@@ -34,4 +34,4 @@ absl::StatusOr<OpusEncoder::Settings> CreateOpusEncoderSettings(
 
 }  // namespace iamf_tools
 
-#endif  // CLI_PROTO_CONVERSION_PROTO_UTILS_H_
+#endif  // CLI_PROTO_CONVERSION_CODEC_CONFIG_UTILS_H_

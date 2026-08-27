@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_RENDERER_LAYOUT_RENDERER_FACTORY_H_
-#define CLI_RENDERER_LAYOUT_RENDERER_FACTORY_H_
+#ifndef CLI_LAYOUT_RENDERER_FACTORY_H_
+#define CLI_LAYOUT_RENDERER_FACTORY_H_
 
 #include <cstdint>
 #include <memory>
@@ -64,4 +64,4 @@ class LayoutRendererFactory {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_RENDERER_LAYOUT_RENDERER_FACTORY_H_
+#endif  // CLI_LAYOUT_RENDERER_FACTORY_H_

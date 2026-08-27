@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef OBU_EXTNESION_PARAMETER_DATA_H_
-#define OBU_EXTNESION_PARAMETER_DATA_H_
+#ifndef OBU_EXTENSION_PARAMETER_DATA_H_
+#define OBU_EXTENSION_PARAMETER_DATA_H_
 
 #include <cstdint>
 #include <memory>
@@ -79,4 +79,4 @@ struct ExtensionParameterData : public ParameterData {
 
 }  // namespace iamf_tools
 
-#endif  // OBU_EXTNESION_PARAMETER_DATA_H_
+#endif  // OBU_EXTENSION_PARAMETER_DATA_H_

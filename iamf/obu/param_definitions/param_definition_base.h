@@ -215,4 +215,4 @@ class ParamDefinition {
 
 }  // namespace iamf_tools
 
-#endif  // OBU_PARAM_DEFINITIONS_H_
+#endif  // OBU_PARAM_DEFINITIONS_PARAM_DEFINITION_BASE_H_

@@ -10,6 +10,9 @@
  * www.aomedia.org/license/patent.
  */
 
+#ifndef CLI_ADM_TO_USER_METADATA_ADM_PANNER_H_
+#define CLI_ADM_TO_USER_METADATA_ADM_PANNER_H_
+
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -39,3 +42,5 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
 
 }  // namespace adm_to_user_metadata
 }  // namespace iamf_tools
+
+#endif  // CLI_ADM_TO_USER_METADATA_ADM_PANNER_H_

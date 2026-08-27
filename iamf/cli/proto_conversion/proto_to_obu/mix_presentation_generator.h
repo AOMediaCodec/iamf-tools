@@ -120,4 +120,4 @@ class MixPresentationGenerator {
 
 }  // namespace iamf_tools
 
-#endif  // PROTO_TO_OBU_CLI_MIX_PRESENTATION_GENERATOR_H_
+#endif  // CLI_PROTO_CONVERSION_PROTO_TO_OBU_MIX_PRESENTATION_GENERATOR_H_

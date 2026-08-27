@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef CLI_INTERNAL_RENDERER_AUDIO_ELEMENT_RENDERER_AMBISONICS_TO_CHANNEL_H_
-#define CLI_INTERNAL_RENDERER_AUDIO_ELEMENT_RENDERER_AMBISONICS_TO_CHANNEL_H_
+#ifndef CLI_RENDERER_AUDIO_ELEMENT_RENDERER_AMBISONICS_TO_CHANNEL_H_
+#define CLI_RENDERER_AUDIO_ELEMENT_RENDERER_AMBISONICS_TO_CHANNEL_H_
 #include <cstddef>
 #include <memory>
 #include <vector>
@@ -99,4 +99,4 @@ class AudioElementRendererAmbisonicsToChannel
 };
 
 }  // namespace iamf_tools
-#endif  // CLI_INTERNAL_RENDERER_AUDIO_ELEMENT_RENDERER_AMBISONICS_TO_CHANNEL_H_
+#endif  // CLI_RENDERER_AUDIO_ELEMENT_RENDERER_AMBISONICS_TO_CHANNEL_H_

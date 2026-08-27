@@ -112,4 +112,4 @@ class ReconGainParamDefinition : public ParamDefinition {
 
 }  // namespace iamf_tools
 
-#endif  // OBU_PARAM_DEFINITIONS_H_
+#endif  // OBU_PARAM_DEFINITIONS_RECON_GAIN_PARAM_DEFINITION_H_

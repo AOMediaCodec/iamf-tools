@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef CLI_TESTS_ENCODER_TEST_BASE_H_
-#define CLI_TESTS_ENCODER_TEST_BASE_H_
+#ifndef CLI_CODEC_TESTS_ENCODER_TEST_BASE_H_
+#define CLI_CODEC_TESTS_ENCODER_TEST_BASE_H_
 
 #include <cstdint>
 #include <list>
@@ -136,4 +136,4 @@ class EncoderTestBase {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_TESTS_ENCODER_TEST_BASE_H_
+#endif  // CLI_CODEC_TESTS_ENCODER_TEST_BASE_H_
