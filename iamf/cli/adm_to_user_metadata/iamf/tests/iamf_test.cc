@@ -12,9 +12,11 @@
 
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -253,6 +255,25 @@ TEST(Create, CreatesAudioProgrammesForComplementaryGroups) {
   EXPECT_EQ(second_mix_presentation_data.audio_objects.size(), 1);
   EXPECT_EQ(second_mix_presentation_data.audio_objects.at(0).id,
             kThirdOrderAmbisonicsAudioObjectId);
+}
+
+TEST(Create, RejectsTooManyMixPresentationsFromComplementaryGroups) {
+  constexpr size_t kNumComplementaryObjects = 1024;
+  ADM adm;
+  adm.audio_programmes.push_back(
+      {.id = "programme", .audio_content_id_refs = {"content"}});
+  adm.audio_contents.push_back(
+      {.id = "content", .audio_object_id_ref = {"primary"}});
+
+  AudioObject primary = GetStereoAudioObject("primary");
+  for (size_t i = 0; i < kNumComplementaryObjects; ++i) {
+    const std::string id = "complementary_" + std::to_string(i);
+    primary.audio_comple_object_id_ref.push_back(id);
+    adm.audio_objects.push_back(GetStereoAudioObject(id));
+  }
+  adm.audio_objects.push_back(std::move(primary));
+
+  EXPECT_THAT(IAMF::Create(adm, kFrameDurationMs, kSamplesPerSec), Not(IsOk()));
 }
 
 struct FrameDurationInfoTestCase {

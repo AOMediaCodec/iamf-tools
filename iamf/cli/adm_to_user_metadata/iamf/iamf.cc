@@ -12,10 +12,12 @@
 
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
@@ -32,6 +34,7 @@ namespace adm_to_user_metadata {
 namespace {
 
 constexpr uint64_t kMaxAudioElementPerMix = 2;
+constexpr size_t kMaxGeneratedMixPresentations = 1024;
 
 struct HasComplementaryObjectIdAndAudioObjectGroup {
   bool has_complementary_object_group;
@@ -42,50 +45,36 @@ struct HasComplementaryObjectIdAndAudioObjectGroup {
 // call. Each group represents a set of audio objects (one or two) that form a
 // mix. This function returns a 2D vector, where the first dimension represents
 // the audio object group.
-std::vector<std::vector<std::string>> GenerateAudioObjectGroups(
-    std::vector<HasComplementaryObjectIdAndAudioObjectGroup>&
+absl::StatusOr<std::vector<std::vector<std::string>>> GenerateAudioObjectGroups(
+    const std::vector<HasComplementaryObjectIdAndAudioObjectGroup>&
         audio_object_groups) {
-  std::vector<std::vector<std::string>> output = {};
+  std::vector<std::vector<std::string>> output(1);
+  for (const auto& audio_object_group : audio_object_groups) {
+    if (audio_object_group.audio_objects_ref_ids.empty()) {
+      return absl::InvalidArgumentError(
+          "An audio object group must contain at least one object.");
+    }
 
-  // All the audio_object_groups are mapped to audio programme.
-  if (audio_object_groups.empty()) {
-    std::vector<std::string> empty_entry = {};
-    output.push_back(empty_entry);
-    return output;
-  }
+    const size_t group_size =
+        audio_object_group.has_complementary_object_group
+            ? audio_object_group.audio_objects_ref_ids.size()
+            : 1;
+    if (group_size > kMaxGeneratedMixPresentations / output.size()) {
+      return absl::ResourceExhaustedError(
+          "Complementary audio object groups generate too many mix "
+          "presentations.");
+    }
 
-  // Remove one audio object group to process.
-  const auto audio_object_group = audio_object_groups.back();
-  audio_object_groups.pop_back();
-  if (audio_object_group.has_complementary_object_group) {
-    // The audio object group has audio objects with complementary objects.
-    for (const auto& audio_object_ref_id :
-         audio_object_group.audio_objects_ref_ids) {
-      // Get an audio programme to map the audio objects when the current group
-      // is not present in audio object groups.
-      const auto& audio_programme_to_audio_objects_list =
-          GenerateAudioObjectGroups(audio_object_groups);
-
-      // Append the current audio object group with audio object group list
-      // obtained before.
-      for (const auto& audio_programme_to_audio_object_ref_id :
-           audio_programme_to_audio_objects_list) {
-        output.push_back(audio_programme_to_audio_object_ref_id);
-        output.back().push_back(audio_object_ref_id);
+    std::vector<std::vector<std::string>> expanded_output;
+    expanded_output.reserve(output.size() * group_size);
+    for (size_t i = 0; i < group_size; ++i) {
+      for (const auto& existing_entry : output) {
+        expanded_output.push_back(existing_entry);
+        expanded_output.back().push_back(
+            audio_object_group.audio_objects_ref_ids[i]);
       }
     }
-  } else {
-    // The audio object group has an audio object.
-    const auto& audio_programme_to_audio_objects_list =
-        GenerateAudioObjectGroups(audio_object_groups);
-
-    // Append the current audio object with audio object group list obtained
-    // before.
-    for (const auto& audio_programme_to_audio_object_entry :
-         audio_programme_to_audio_objects_list) {
-      output.push_back(audio_programme_to_audio_object_entry);
-      output.back().push_back(audio_object_group.audio_objects_ref_ids[0]);
-    }
+    output = std::move(expanded_output);
   }
   return output;
 }
@@ -95,7 +84,7 @@ std::vector<std::vector<std::string>> GenerateAudioObjectGroups(
 // complementary audioObject, the complementary audioObject should be considered
 // as part of a new audioProgramme to facilitate its representation in IAMF as
 // two different mixes.
-void GenerateAudioObjectsMap(
+absl::Status GenerateAudioObjectsMap(
     const ADM& adm,
     std::map<int32_t, IAMF::AudioObjectsAndMetadata>&
         mix_presentation_id_to_audio_objects_and_metadata,
@@ -113,6 +102,8 @@ void GenerateAudioObjectsMap(
   for (uint64_t original_program_index = 0;
        original_program_index < adm.audio_programmes.size();
        ++original_program_index) {
+    audio_object_groups.clear();
+    audio_object_ids_to_ignore.clear();
     const auto& audio_programme = adm.audio_programmes[original_program_index];
 
     // Loop over the audioContent(s) within an audioProgramme.
@@ -171,13 +162,16 @@ void GenerateAudioObjectsMap(
       continue;
     }
     // Generate the audio object groups for the given audio programme.
-    const auto& audio_program_to_audio_object_ids_map =
+    const auto audio_program_to_audio_object_ids_map =
         GenerateAudioObjectGroups(audio_object_groups);
+    if (!audio_program_to_audio_object_ids_map.ok()) {
+      return audio_program_to_audio_object_ids_map.status();
+    }
 
     // Push the audio object in a audio programme to audio object map with the
     // help of audio object ids
     for (const auto& audio_object_ids_map :
-         audio_program_to_audio_object_ids_map) {
+         *audio_program_to_audio_object_ids_map) {
       std::vector<AudioObject> audio_objects_list;
       for (const auto& audio_object_id : audio_object_ids_map) {
         // Assign the IDs based on the order they were  were first found. It is
@@ -195,9 +189,8 @@ void GenerateAudioObjectsMap(
           [mix_presentation_id_to_audio_objects_and_metadata.size()] = {
               audio_objects_list, static_cast<int32_t>(original_program_index)};
     }
-    audio_object_ids_to_ignore.clear();
-    audio_object_groups.clear();
   }
+  return absl::OkStatus();
 }
 
 // Computes the number of samples per frame to correspond to a frame duration of
@@ -258,9 +251,12 @@ absl::StatusOr<IAMF> IAMF::Create(const ADM& adm, int32_t max_frame_duration_ms,
   std::map<int32_t, AudioObjectsAndMetadata>
       mix_presentation_id_to_audio_objects_and_metadata;
   std::map<std::string, uint32_t> audio_object_to_audio_element;
-  GenerateAudioObjectsMap(adm,
-                          mix_presentation_id_to_audio_objects_and_metadata,
-                          audio_object_to_audio_element);
+  if (const auto status = GenerateAudioObjectsMap(
+          adm, mix_presentation_id_to_audio_objects_and_metadata,
+          audio_object_to_audio_element);
+      !status.ok()) {
+    return status;
+  }
 
   return IAMF(mix_presentation_id_to_audio_objects_and_metadata,
               audio_object_to_audio_element, num_samples_per_frame,
