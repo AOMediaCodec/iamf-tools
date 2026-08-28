@@ -119,8 +119,8 @@ target_link_libraries(iamf_core PUBLIC
     ${OPUS_LIB} ${FLAC_LIB} ${EXPAT_LIB}
     absl::base absl::log absl::log_initialize absl::log_globals absl::check
     absl::flags absl::flags_parse absl::flags_usage
-    absl::status absl::statusor absl::strings absl::str_format
-    absl::flat_hash_map absl::flat_hash_set absl::node_hash_map
+    absl::status absl::status_macros absl::statusor absl::strings
+    absl::str_format absl::flat_hash_map absl::flat_hash_set absl::node_hash_map
     absl::span absl::optional absl::time absl::synchronization
     absl::memory absl::random_random absl::die_if_null absl::cleanup
     absl::no_destructor absl::overload absl::any_invocable)
