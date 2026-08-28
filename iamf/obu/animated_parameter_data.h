@@ -27,7 +27,7 @@
 namespace iamf_tools {
 
 /*!\brief The type of interpolation to use for the animation. */
-enum class AnimationType : uint32_t {
+enum class AnimationType : DecodedUleb128 {
   kStep = 0,
   kLinear = 1,
   kBezier = 2,
@@ -49,8 +49,8 @@ class AnimatedParameterData {
    * \return AnimatedParameterData with step animation.
    */
   static AnimatedParameterData MakeStep(T start_val) {
-    return AnimatedParameterData(AnimationType::kStep, start_val, std::nullopt,
-                                 std::nullopt, std::nullopt);
+    return AnimatedParameterData(kStep, start_val, std::nullopt, std::nullopt,
+                                 std::nullopt);
   }
 
   /*!\brief Creates an AnimatedParameterData object with linear animation.
