@@ -125,7 +125,7 @@ SubblockSchedule::CreateFromBufferWithParameterData(
     ReadBitBuffer& rb) {
   std::vector<std::unique_ptr<ParameterData> absl_nonnull> parameter_data;
 
-  const auto create_parameter_data_on_subblock = [&]() {
+  const auto create_parameter_data_on_subblock = [&]() -> absl::Status {
     auto param_data = create_parameter_data(rb);
     if (!param_data.ok()) {
       return param_data.status();

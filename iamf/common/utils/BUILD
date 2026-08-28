@@ -8,6 +8,7 @@ package(default_visibility = ["//iamf:__subpackages__"])
 cc_library(
     name = "macros",
     hdrs = ["macros.h"],
+    deps = ["@abseil-cpp//absl/status:status_macros"],
 )
 
 cc_library(
