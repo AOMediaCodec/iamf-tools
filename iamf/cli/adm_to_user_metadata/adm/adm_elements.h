@@ -20,8 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/strings/string_view.h"
-
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
@@ -80,15 +78,12 @@ struct AudioContent {
 
 // This structure holds the attributes of an audio object in ADM.
 struct AudioObject {
-  static constexpr absl::string_view kDefaultLocalizedElementAnnotations =
-      "test_sub_mix_0_audio_element_0";
   static constexpr int32_t kDefaultADMImportance = 10;
   static constexpr float kDefaultADMGain = 0.0;
 
   std::string id;
   std::string name;
-  std::string audio_object_label =
-      std::string(kDefaultLocalizedElementAnnotations);
+  std::string audio_object_label;
   int32_t importance = kDefaultADMImportance;
   float gain = kDefaultADMGain;
   std::vector<std::string> audio_pack_format_id_refs;
