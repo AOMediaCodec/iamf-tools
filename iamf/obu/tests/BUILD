@@ -295,6 +295,7 @@ cc_test(
     name = "parameter_data_test",
     size = "small",
     srcs = [
+        "cart16_parameter_data_test.cc",
         "cart8_parameter_data_test.cc",
         "demixing_info_parameter_data_test.cc",
         "extension_parameter_data_test.cc",
@@ -306,6 +307,7 @@ cc_test(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
         "//iamf/obu:animated_parameter_data",
+        "//iamf/obu:cart16_parameter_data",
         "//iamf/obu:cart8_parameter_data",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",

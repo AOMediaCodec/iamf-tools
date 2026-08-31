@@ -111,11 +111,16 @@ cc_library(
     srcs = ["cart16_parameter_data.cc"],
     hdrs = ["cart16_parameter_data.h"],
     deps = [
+        ":animated_parameter_data",
         ":parameter_data",
+        ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
