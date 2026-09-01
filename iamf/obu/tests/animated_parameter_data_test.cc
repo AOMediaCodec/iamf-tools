@@ -351,5 +351,77 @@ TEST(Write, InterBezier) {
   EXPECT_EQ(wb.bit_buffer(), expected_data);
 }
 
+TEST(CreateFromBufferGivenAnimationType, ParsesStep) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  const std::vector<uint8_t> source_data = {
+      0x02,
+      0x01,  // start_point_value (0x0201)
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data =
+      AnimatedParameterData<int16_t>::CreateFromBufferGivenAnimationType(
+          kStep, *buffer, ReadInt16);
+
+  ASSERT_THAT(data.status(), IsOk());
+  EXPECT_EQ(data->animation_type(), kStep);
+  EXPECT_EQ(data->start_point_value(), kStartPointValue);
+}
+
+TEST(CreateFromBufferGivenAnimationType, ParsesLinear) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  constexpr int16_t kEndPointValue = 0x0403;
+  const std::vector<uint8_t> source_data = {
+      0x02,
+      0x01,  // start_point_value (0x0201)
+      0x04,
+      0x03,  // end_point_value (0x0403)
+  };
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+
+  auto data =
+      AnimatedParameterData<int16_t>::CreateFromBufferGivenAnimationType(
+          kLinear, *buffer, ReadInt16);
+
+  ASSERT_THAT(data.status(), IsOk());
+  EXPECT_EQ(data->animation_type(), kLinear);
+  EXPECT_EQ(data->start_point_value(), kStartPointValue);
+  EXPECT_EQ(data->end_point_value(), kEndPointValue);
+}
+
+TEST(WritePayload, StepDoesNotWriteAnimationTypePrefix) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  const auto data = AnimatedParameterData<int16_t>::MakeStep(kStartPointValue);
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(data.WritePayload(wb, WriteInt16), IsOk());
+
+  const std::vector<uint8_t> expected_data = {
+      0x02,
+      0x01,  // start_point_value
+  };
+  EXPECT_EQ(wb.bit_buffer(), expected_data);
+}
+
+TEST(WritePayload, LinearDoesNotWriteAnimationTypePrefix) {
+  constexpr int16_t kStartPointValue = 0x0201;
+  constexpr int16_t kEndPointValue = 0x0403;
+  const auto data = AnimatedParameterData<int16_t>::MakeLinear(kStartPointValue,
+                                                               kEndPointValue);
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(data.WritePayload(wb, WriteInt16), IsOk());
+
+  const std::vector<uint8_t> expected_data = {
+      0x02,
+      0x01,  // start_point_value
+      0x04,
+      0x03,  // end_point_value
+  };
+  EXPECT_EQ(wb.bit_buffer(), expected_data);
+}
+
 }  // namespace
 }  // namespace iamf_tools

@@ -101,8 +101,10 @@ class AnimatedParameterData {
                                  control_val, rel_time);
   }
 
-  /*!\brief Creates an AnimatedParameterData from a ReadBitBuffer.
+  /*!\brief Creates an AnimatedParameterData from a ReadBitBuffer given an
+   *        animation type.
    *
+   * \param animation_type Pre-parsed animation type.
    * \param rb Buffer to read from.
    * \param read_value_func Callable with signature
    *        `absl::Status(ReadBitBuffer&, T&)` to read the start/end/control
@@ -111,12 +113,11 @@ class AnimatedParameterData {
    *         fails.
    */
   template <typename ReadValueFunc>
-  static absl::StatusOr<AnimatedParameterData> CreateFromBuffer(
-      ReadBitBuffer& rb, ReadValueFunc read_value_func) {
-    DecodedUleb128 animation_type;
-    RETURN_IF_NOT_OK(rb.ReadULeb128(animation_type));
-
-    switch (static_cast<AnimationType>(animation_type)) {
+  static absl::StatusOr<AnimatedParameterData>
+  CreateFromBufferGivenAnimationType(AnimationType animation_type,
+                                     ReadBitBuffer& rb,
+                                     ReadValueFunc read_value_func) {
+    switch (animation_type) {
       case kStep: {
         T start_val;
         RETURN_IF_NOT_OK(read_value_func(rb, start_val));
@@ -156,21 +157,34 @@ class AnimatedParameterData {
     }
   }
 
-  /*!\brief Writes the animated parameter data to a WriteBitBuffer.
+  /*!\brief Creates an AnimatedParameterData from a ReadBitBuffer.
+   *
+   * \param rb Buffer to read from.
+   * \param read_value_func Callable with signature
+   *        `absl::Status(ReadBitBuffer&, T&)` to read the start/end/control
+   *        values.
+   * \return Deserialized AnimatedParameterData, or an error status if reading
+   *         fails.
+   */
+  template <typename ReadValueFunc>
+  static absl::StatusOr<AnimatedParameterData> CreateFromBuffer(
+      ReadBitBuffer& rb, ReadValueFunc read_value_func) {
+    DecodedUleb128 animation_type_uleb;
+    RETURN_IF_NOT_OK(rb.ReadULeb128(animation_type_uleb));
+    return CreateFromBufferGivenAnimationType(
+        static_cast<AnimationType>(animation_type_uleb), rb, read_value_func);
+  }
+
+  /*!\brief Writes the animated parameter payload values to a WriteBitBuffer.
    *
    * \param wb Buffer to write to.
    * \param write_value_func Callable to write the parameterized values of
-   *        type `T` into the buffer. `write_value_func` must be callable with
-   *        signature `absl::Status(WriteBitBuffer&, const T&)` or
-   *        `absl::Status(WriteBitBuffer&, T)`.
+   *        type `T` into the buffer.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   template <typename WriteValueFunc>
-  absl::Status Write(WriteBitBuffer& wb,
-                     WriteValueFunc write_value_func) const {
-    RETURN_IF_NOT_OK(
-        wb.WriteUleb128(static_cast<DecodedUleb128>(animation_type_)));
-
+  absl::Status WritePayload(WriteBitBuffer& wb,
+                            WriteValueFunc write_value_func) const {
     switch (animation_type_) {
       case kStep:
         return write_value_func(wb, *start_point_value_);
@@ -190,6 +204,23 @@ class AnimatedParameterData {
         return wb.WriteUnsignedLiteral(*control_point_relative_time_, 8);
     }
     return absl::InvalidArgumentError("Unknown animation type");
+  }
+
+  /*!\brief Writes the animated parameter data to a WriteBitBuffer.
+   *
+   * \param wb Buffer to write to.
+   * \param write_value_func Callable to write the parameterized values of
+   *        type `T` into the buffer. `write_value_func` must be callable with
+   *        signature `absl::Status(WriteBitBuffer&, const T&)` or
+   *        `absl::Status(WriteBitBuffer&, T)`.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  template <typename WriteValueFunc>
+  absl::Status Write(WriteBitBuffer& wb,
+                     WriteValueFunc write_value_func) const {
+    RETURN_IF_NOT_OK(
+        wb.WriteUleb128(static_cast<DecodedUleb128>(animation_type_)));
+    return WritePayload(wb, write_value_func);
   }
 
   /*!\brief Gets the animation type.

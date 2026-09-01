@@ -300,6 +300,7 @@ cc_test(
         "demixing_info_parameter_data_test.cc",
         "extension_parameter_data_test.cc",
         "mix_gain_parameter_data_test.cc",
+        "polar_parameter_data_test.cc",
         "recon_gain_info_parameter_data_test.cc",
     ],
     deps = [
@@ -310,6 +311,7 @@ cc_test(
         "//iamf/obu:cart16_parameter_data",
         "//iamf/obu:cart8_parameter_data",
         "//iamf/obu:parameter_data",
+        "//iamf/obu:polar_parameter_data",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",

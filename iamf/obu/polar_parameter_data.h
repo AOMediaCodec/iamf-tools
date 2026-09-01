@@ -12,19 +12,44 @@
 #ifndef OBU_POLAR_PARAMETER_DATA_H_
 #define OBU_POLAR_PARAMETER_DATA_H_
 
+#include <cstdint>
+
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/parameter_data.h"
 
 namespace iamf_tools {
 
-struct PolarParameterData : public ParameterData {
+class PolarParameterData : public ParameterData {
+ public:
   PolarParameterData() = default;
 
   /*!\brief Overridden destructor.
    */
   ~PolarParameterData() override = default;
+
+  /*!\brief Creates a `PolarParameterData` from a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return Deserialized `PolarParameterData` or error.
+   */
+  static absl::StatusOr<PolarParameterData> CreateFromBuffer(ReadBitBuffer& rb);
+
+  /*!\brief Creates a `PolarParameterData`.
+   *
+   * \param animation_type Animation type.
+   * \param azimuth Animated azimuth parameter in range [-256, 255].
+   * \param elevation Animated elevation parameter in range [-128, 127].
+   * \param distance Animated distance parameter in range [0, 127].
+   * \return Deserialized `PolarParameterData` or error.
+   */
+  static absl::StatusOr<PolarParameterData> Create(
+      AnimationType animation_type, AnimatedParameterData<int16_t> azimuth,
+      AnimatedParameterData<int8_t> elevation,
+      AnimatedParameterData<uint8_t> distance);
 
   bool friend operator==(const PolarParameterData& lhs,
                          const PolarParameterData& rhs) = default;
@@ -39,6 +64,31 @@ struct PolarParameterData : public ParameterData {
   /*!\brief Prints the polar parameter data.
    */
   void Print() const override;
+
+  // Getters
+  AnimationType animation_type() const { return animation_type_; }
+  const AnimatedParameterData<int16_t>& azimuth() const { return azimuth_; }
+  const AnimatedParameterData<int8_t>& elevation() const { return elevation_; }
+  const AnimatedParameterData<uint8_t>& distance() const { return distance_; }
+
+ private:
+  PolarParameterData(AnimationType input_animation_type,
+                     AnimatedParameterData<int16_t> input_azimuth,
+                     AnimatedParameterData<int8_t> input_elevation,
+                     AnimatedParameterData<uint8_t> input_distance)
+      : ParameterData(),
+        animation_type_(input_animation_type),
+        azimuth_(input_azimuth),
+        elevation_(input_elevation),
+        distance_(input_distance) {}
+
+  AnimationType animation_type_ = AnimationType::kStep;
+  AnimatedParameterData<int16_t> azimuth_ =
+      AnimatedParameterData<int16_t>::MakeStep(0);
+  AnimatedParameterData<int8_t> elevation_ =
+      AnimatedParameterData<int8_t>::MakeStep(0);
+  AnimatedParameterData<uint8_t> distance_ =
+      AnimatedParameterData<uint8_t>::MakeStep(0);
 };
 }  // namespace iamf_tools
 

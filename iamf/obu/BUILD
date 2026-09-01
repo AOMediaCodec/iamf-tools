@@ -390,11 +390,18 @@ cc_library(
     srcs = ["polar_parameter_data.cc"],
     hdrs = ["polar_parameter_data.h"],
     deps = [
+        ":animated_parameter_data",
         ":parameter_data",
+        ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:string_view",
     ],
 )
 
