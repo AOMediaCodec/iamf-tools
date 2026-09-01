@@ -423,5 +423,31 @@ TEST(WritePayload, LinearDoesNotWriteAnimationTypePrefix) {
   EXPECT_EQ(wb.bit_buffer(), expected_data);
 }
 
+TEST(Print, StepAnimationDoesNotCrash) {
+  const auto data = AnimatedParameterData<int16_t>::MakeStep(10);
+  data.Print();
+}
+
+TEST(Print, LinearAnimationDoesNotCrash) {
+  const auto data = AnimatedParameterData<int16_t>::MakeLinear(10, 20);
+  data.Print();
+}
+
+TEST(Print, BezierAnimationDoesNotCrash) {
+  const auto data = AnimatedParameterData<int16_t>::MakeBezier(10, 20, 15, 128);
+  data.Print();
+}
+
+TEST(Print, InterLinearAnimationDoesNotCrash) {
+  const auto data = AnimatedParameterData<int16_t>::MakeInterLinear(20);
+  data.Print();
+}
+
+TEST(Print, InterBezierAnimationDoesNotCrash) {
+  const auto data =
+      AnimatedParameterData<int16_t>::MakeInterBezier(20, 15, 128);
+  data.Print();
+}
+
 }  // namespace
 }  // namespace iamf_tools
