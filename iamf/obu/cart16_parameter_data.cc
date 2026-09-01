@@ -16,7 +16,6 @@
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -37,61 +36,20 @@ absl::StatusOr<Cart16ParameterData> Cart16ParameterData::CreateFromBuffer(
     return r.ReadSigned16(val);
   };
 
-  auto parse_animated_fields = [&](AnimationType type)
-      -> absl::StatusOr<AnimatedParameterData<int16_t>> {
-    switch (type) {
-      case AnimationType::kStep: {
-        int16_t start_val;
-        RETURN_IF_NOT_OK(read_int16(rb, start_val));
-        return AnimatedParameterData<int16_t>::MakeStep(start_val);
-      }
-      case AnimationType::kLinear: {
-        int16_t start_val, end_val;
-        RETURN_IF_NOT_OK(read_int16(rb, start_val));
-        RETURN_IF_NOT_OK(read_int16(rb, end_val));
-        return AnimatedParameterData<int16_t>::MakeLinear(start_val, end_val);
-      }
-      case AnimationType::kBezier: {
-        int16_t start_val, end_val, control_val;
-        uint8_t rel_time;
-        RETURN_IF_NOT_OK(read_int16(rb, start_val));
-        RETURN_IF_NOT_OK(read_int16(rb, end_val));
-        RETURN_IF_NOT_OK(read_int16(rb, control_val));
-        RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, rel_time));
-        return AnimatedParameterData<int16_t>::MakeBezier(
-            start_val, end_val, control_val, rel_time);
-      }
-      case AnimationType::kInterLinear: {
-        int16_t end_val;
-        RETURN_IF_NOT_OK(read_int16(rb, end_val));
-        return AnimatedParameterData<int16_t>::MakeInterLinear(end_val);
-      }
-      case AnimationType::kInterBezier: {
-        int16_t end_val, control_val;
-        uint8_t rel_time;
-        RETURN_IF_NOT_OK(read_int16(rb, end_val));
-        RETURN_IF_NOT_OK(read_int16(rb, control_val));
-        RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, rel_time));
-        return AnimatedParameterData<int16_t>::MakeInterBezier(
-            end_val, control_val, rel_time);
-      }
-      default:
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Invalid animation type: ", static_cast<uint32_t>(type)));
-    }
-  };
-
-  auto x = parse_animated_fields(animation_type);
+  auto x = AnimatedParameterData<int16_t>::CreateFromBufferGivenAnimationType(
+      animation_type, rb, read_int16);
   if (!x.ok()) {
     return x.status();
   }
 
-  auto y = parse_animated_fields(animation_type);
+  auto y = AnimatedParameterData<int16_t>::CreateFromBufferGivenAnimationType(
+      animation_type, rb, read_int16);
   if (!y.ok()) {
     return y.status();
   }
 
-  auto z = parse_animated_fields(animation_type);
+  auto z = AnimatedParameterData<int16_t>::CreateFromBufferGivenAnimationType(
+      animation_type, rb, read_int16);
   if (!z.ok()) {
     return z.status();
   }
@@ -113,32 +71,9 @@ absl::Status Cart16ParameterData::Write(WriteBitBuffer& wb) const {
     return w.WriteSigned16(val);
   };
 
-  auto write_animated_data =
-      [&](const AnimatedParameterData<int16_t>& anim) -> absl::Status {
-    switch (anim.animation_type()) {
-      case AnimationType::kStep:
-        return write_int16(wb, *anim.start_point_value());
-      case AnimationType::kLinear:
-        RETURN_IF_NOT_OK(write_int16(wb, *anim.start_point_value()));
-        return write_int16(wb, *anim.end_point_value());
-      case AnimationType::kBezier:
-        RETURN_IF_NOT_OK(write_int16(wb, *anim.start_point_value()));
-        RETURN_IF_NOT_OK(write_int16(wb, *anim.end_point_value()));
-        RETURN_IF_NOT_OK(write_int16(wb, *anim.control_point_value()));
-        return wb.WriteUnsignedLiteral(*anim.control_point_relative_time(), 8);
-      case AnimationType::kInterLinear:
-        return write_int16(wb, *anim.end_point_value());
-      case AnimationType::kInterBezier:
-        RETURN_IF_NOT_OK(write_int16(wb, *anim.end_point_value()));
-        RETURN_IF_NOT_OK(write_int16(wb, *anim.control_point_value()));
-        return wb.WriteUnsignedLiteral(*anim.control_point_relative_time(), 8);
-    }
-    return absl::InvalidArgumentError("Unknown animation type");
-  };
-
-  RETURN_IF_NOT_OK(write_animated_data(x_));
-  RETURN_IF_NOT_OK(write_animated_data(y_));
-  RETURN_IF_NOT_OK(write_animated_data(z_));
+  RETURN_IF_NOT_OK(x_.WritePayload(wb, write_int16));
+  RETURN_IF_NOT_OK(y_.WritePayload(wb, write_int16));
+  RETURN_IF_NOT_OK(z_.WritePayload(wb, write_int16));
   return absl::OkStatus();
 }
 
