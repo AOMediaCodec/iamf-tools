@@ -103,9 +103,20 @@ struct AudioPackFormat {
 
 // This structure holds cartesian position associated with an audio block.
 struct CartesianPosition {
-  float x;
-  float y;
-  float z;
+  float x = 0.0f;
+  float y = 0.0f;
+  float z = 0.0f;
+};
+
+// This structure holds a spherical position as authored in BS.2076
+// (`azimuth`/`elevation`/`distance`). Blocks may be authored in either
+// convention; this is retained so the cartesian `position` can be derived from
+// it, and so a partially specified spherical position keeps the BS.2076
+// defaults for the coordinates that were omitted.
+struct SphericalPosition {
+  float azimuth = 0.0f;
+  float elevation = 0.0f;
+  float distance = 1.0f;
 };
 
 struct BlockTime {
@@ -123,6 +134,10 @@ struct AudioBlockFormat {
   BlockTime duration;
   float gain = kDefaultBlockGain;
   CartesianPosition position;
+  // Present when any of `azimuth`, `elevation` or `distance` was parsed for
+  // this block. `position` is then derived from `spherical_position` rather
+  // than read directly from `coordinate="X"/"Y"/"Z"`.
+  std::optional<SphericalPosition> spherical_position;
 };
 
 // This structure holds the attributes of an audio channel format in ADM.
