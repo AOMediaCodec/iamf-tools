@@ -21,6 +21,8 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/animated_parameter_data.h"
+#include "iamf/obu/dual_cart8_parameter_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
@@ -95,6 +97,39 @@ TEST(DualCart8ParamDefinitionTest, WriteAndValidateSucceeds) {
   WriteBitBuffer wb(kBufferSize);
   EXPECT_THAT(param_definition.ValidateAndWrite(wb), IsOk());
   ValidateWriteResults(wb, expected_data);
+}
+
+TEST(DualCart8ParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
+  DualCart8ParamDefinition param_definition(GetDualCart8ParamDefinitionArgs());
+  std::vector<uint8_t> payload = {
+      // `animation_type` (0 = kStep)
+      0x00,
+      // `first_x` start_value = 1
+      0x01,
+      // `first_y` start_value = 2
+      0x02,
+      // `first_z` start_value = 3
+      0x03,
+      // `second_x` start_value = 4
+      0x04,
+      // `second_y` start_value = 5
+      0x05,
+      // `second_z` start_value = 6
+      0x06,
+  };
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(payload);
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
+  ASSERT_THAT(parameter_data, IsOk());
+  auto* dual_cart8_data =
+      dynamic_cast<DualCart8ParameterData*>(parameter_data->get());
+  ASSERT_NE(dual_cart8_data, nullptr);
+  EXPECT_EQ(dual_cart8_data->animation_type(), AnimationType::kStep);
+  EXPECT_EQ(*dual_cart8_data->first_x().start_point_value(), 1);
+  EXPECT_EQ(*dual_cart8_data->first_y().start_point_value(), 2);
+  EXPECT_EQ(*dual_cart8_data->first_z().start_point_value(), 3);
+  EXPECT_EQ(*dual_cart8_data->second_x().start_point_value(), 4);
+  EXPECT_EQ(*dual_cart8_data->second_y().start_point_value(), 5);
+  EXPECT_EQ(*dual_cart8_data->second_z().start_point_value(), 6);
 }
 
 }  // namespace

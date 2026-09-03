@@ -12,6 +12,7 @@
 #include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
 
 #include <memory>
+#include <utility>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -57,9 +58,11 @@ absl::Status DualCart16ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 absl::StatusOr<std::unique_ptr<ParameterData>>
 DualCart16ParamDefinition::CreateParameterDataFromBuffer(
     ReadBitBuffer& rb) const {
-  return absl::UnimplementedError(
-      "CreateParameterDataFromBuffer for DualCart16ParamDefinition is not "
-      "implemented yet.");
+  auto data = DualCart16ParameterData::CreateFromBuffer(rb);
+  if (!data.ok()) {
+    return data.status();
+  }
+  return std::make_unique<DualCart16ParameterData>(*std::move(data));
 }
 
 void DualCart16ParamDefinition::Print() const {

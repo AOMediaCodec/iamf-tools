@@ -21,6 +21,8 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/animated_parameter_data.h"
+#include "iamf/obu/cart8_parameter_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
@@ -86,6 +88,30 @@ TEST(Cart8ParamDefinitionTest, WriteAndValidateSucceeds) {
   WriteBitBuffer wb(kBufferSize);
   EXPECT_THAT(param_definition.ValidateAndWrite(wb), IsOk());
   ValidateWriteResults(wb, expected_data);
+}
+
+TEST(Cart8ParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
+  Cart8ParamDefinition param_definition(GetCart8ParamDefinitionArgs());
+  // Expected values: x = 1, y = 2, z = 3
+  std::vector<uint8_t> payload = {
+      // `animation_type` (0 = kStep)
+      0x00,
+      // `x` start_value
+      0x01,
+      // `y` start_value
+      0x02,
+      // `z` start_value
+      0x03,
+  };
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(payload);
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
+  ASSERT_THAT(parameter_data, IsOk());
+  auto* cart8_data = dynamic_cast<Cart8ParameterData*>(parameter_data->get());
+  ASSERT_NE(cart8_data, nullptr);
+  EXPECT_EQ(cart8_data->animation_type(), AnimationType::kStep);
+  EXPECT_EQ(*cart8_data->x().start_point_value(), 1);
+  EXPECT_EQ(*cart8_data->y().start_point_value(), 2);
+  EXPECT_EQ(*cart8_data->z().start_point_value(), 3);
 }
 
 }  // namespace
