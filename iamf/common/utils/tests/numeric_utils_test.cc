@@ -515,17 +515,20 @@ TEST(StaticCastIfInRange, SucceedsForExtremeCharValues) {
   EXPECT_EQ(output, kExpectedOutput);
 }
 
-struct StaticCastIfInRangeUint32ToUint8TestCase {
-  uint32_t test_val;
-  uint8_t expected_val;
+template <typename InputType, typename OutputType>
+struct StaticCastIfInRangeTestCase {
+  InputType test_val;
+  OutputType expected_val;
   absl::StatusCode expected_status_code;
 };
 
+using StaticCastIfInRangeUint32ToUint8TestCase =
+    StaticCastIfInRangeTestCase<uint32_t, uint8_t>;
 using StaticCastIfInRangeUint32ToUint8Test =
     ::testing::TestWithParam<StaticCastIfInRangeUint32ToUint8TestCase>;
 
 TEST_P(StaticCastIfInRangeUint32ToUint8Test, TestUint32ToUint8) {
-  const StaticCastIfInRangeUint32ToUint8TestCase& test_case = GetParam();
+  const auto& test_case = GetParam();
 
   uint8_t result;
   EXPECT_EQ((StaticCastIfInRange<uint32_t, uint8_t>(kOmitContext,
@@ -551,12 +554,8 @@ INSTANTIATE_TEST_SUITE_P(
         {UINT32_MAX, 0, absl::StatusCode::kInvalidArgument},
     }));
 
-struct StaticCastIfInRangeUint32ToUint16TestCase {
-  uint32_t test_val;
-  uint16_t expected_val;
-  absl::StatusCode expected_status_code;
-};
-
+using StaticCastIfInRangeUint32ToUint16TestCase =
+    StaticCastIfInRangeTestCase<uint32_t, uint16_t>;
 using StaticCastIfInRangeUint32ToUint16Test =
     ::testing::TestWithParam<StaticCastIfInRangeUint32ToUint16TestCase>;
 
@@ -587,12 +586,8 @@ INSTANTIATE_TEST_SUITE_P(
         {UINT32_MAX, 0, absl::StatusCode::kInvalidArgument},
     }));
 
-struct StaticCastIfInRangeInt32ToInt16TestCase {
-  int32_t test_val;
-  int16_t expected_val;
-  absl::StatusCode expected_status_code;
-};
-
+using StaticCastIfInRangeInt32ToInt16TestCase =
+    StaticCastIfInRangeTestCase<int32_t, int16_t>;
 using StaticCastIfInRangeInt32ToInt16Test =
     ::testing::TestWithParam<StaticCastIfInRangeInt32ToInt16TestCase>;
 
@@ -625,6 +620,207 @@ INSTANTIATE_TEST_SUITE_P(
         {-32769, 0, absl::StatusCode::kInvalidArgument},
         {32768, 0, absl::StatusCode::kInvalidArgument},
         {INT32_MAX, 0, absl::StatusCode::kInvalidArgument},
+    }));
+
+using StaticCastIfInRangeUint32ToInt32TestCase =
+    StaticCastIfInRangeTestCase<uint32_t, int32_t>;
+using StaticCastIfInRangeUint32ToInt32Test =
+    ::testing::TestWithParam<StaticCastIfInRangeUint32ToInt32TestCase>;
+
+TEST_P(StaticCastIfInRangeUint32ToInt32Test, TestUint32ToInt32) {
+  const auto& test_case = GetParam();
+
+  int32_t result;
+  EXPECT_EQ((StaticCastIfInRange<uint32_t, int32_t>(kOmitContext,
+                                                    test_case.test_val, result)
+                 .code()),
+            test_case.expected_status_code);
+  if (test_case.expected_status_code == absl::StatusCode::kOk) {
+    EXPECT_EQ(result, test_case.expected_val);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeUint32ToInt32Test,
+    testing::ValuesIn<StaticCastIfInRangeUint32ToInt32TestCase>({
+        {0, 0, absl::StatusCode::kOk},
+        {2147483647, 2147483647, absl::StatusCode::kOk},
+    }));
+
+INSTANTIATE_TEST_SUITE_P(
+    Invalid, StaticCastIfInRangeUint32ToInt32Test,
+    testing::ValuesIn<StaticCastIfInRangeUint32ToInt32TestCase>({
+        {2147483648u, 0, absl::StatusCode::kInvalidArgument},
+        {4294967295U, 0, absl::StatusCode::kInvalidArgument},
+    }));
+
+using StaticCastIfInRangeInt32ToUint32TestCase =
+    StaticCastIfInRangeTestCase<int32_t, uint32_t>;
+using StaticCastIfInRangeInt32ToUint32Test =
+    ::testing::TestWithParam<StaticCastIfInRangeInt32ToUint32TestCase>;
+
+TEST_P(StaticCastIfInRangeInt32ToUint32Test, TestInt32ToUint32) {
+  const auto& test_case = GetParam();
+
+  uint32_t result;
+  EXPECT_EQ((StaticCastIfInRange<int32_t, uint32_t>(kOmitContext,
+                                                    test_case.test_val, result)
+                 .code()),
+            test_case.expected_status_code);
+  if (test_case.expected_status_code == absl::StatusCode::kOk) {
+    EXPECT_EQ(result, test_case.expected_val);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeInt32ToUint32Test,
+    testing::ValuesIn<StaticCastIfInRangeInt32ToUint32TestCase>({
+        {0, 0, absl::StatusCode::kOk},
+        {2147483647, 2147483647, absl::StatusCode::kOk},
+    }));
+
+INSTANTIATE_TEST_SUITE_P(
+    Invalid, StaticCastIfInRangeInt32ToUint32Test,
+    testing::ValuesIn<StaticCastIfInRangeInt32ToUint32TestCase>({
+        {-1, 0, absl::StatusCode::kInvalidArgument},
+        {-2147483648, 0, absl::StatusCode::kInvalidArgument},
+    }));
+
+using StaticCastIfInRangeDoubleToFloatTestCase =
+    StaticCastIfInRangeTestCase<double, float>;
+using StaticCastIfInRangeDoubleToFloatTest =
+    ::testing::TestWithParam<StaticCastIfInRangeDoubleToFloatTestCase>;
+
+TEST_P(StaticCastIfInRangeDoubleToFloatTest, TestDoubleToFloat) {
+  const auto& test_case = GetParam();
+
+  float result;
+  EXPECT_EQ((StaticCastIfInRange<double, float>(kOmitContext,
+                                                test_case.test_val, result)
+                 .code()),
+            test_case.expected_status_code);
+  if (test_case.expected_status_code == absl::StatusCode::kOk) {
+    EXPECT_EQ(result, test_case.expected_val);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeDoubleToFloatTest,
+    testing::ValuesIn<StaticCastIfInRangeDoubleToFloatTestCase>({
+        {0.0, 0.0f, absl::StatusCode::kOk},
+        {1.5, 1.5f, absl::StatusCode::kOk},
+        {static_cast<double>(std::numeric_limits<float>::max()),
+         std::numeric_limits<float>::max(), absl::StatusCode::kOk},
+        // The following negative value specifically catches the bug where
+        // `min()` was used instead of `lowest()` for the lower bound of
+        // floating points.
+        {-100.0, -100.0f, absl::StatusCode::kOk},
+        {static_cast<double>(std::numeric_limits<float>::lowest()),
+         std::numeric_limits<float>::lowest(), absl::StatusCode::kOk},
+    }));
+
+INSTANTIATE_TEST_SUITE_P(
+    Invalid, StaticCastIfInRangeDoubleToFloatTest,
+    testing::ValuesIn<StaticCastIfInRangeDoubleToFloatTestCase>({
+        {1e39, 0.0f, absl::StatusCode::kInvalidArgument},
+        {-1e39, 0.0f, absl::StatusCode::kInvalidArgument},
+    }));
+
+using StaticCastIfInRangeFloatToDoubleTestCase =
+    StaticCastIfInRangeTestCase<float, double>;
+using StaticCastIfInRangeFloatToDoubleTest =
+    ::testing::TestWithParam<StaticCastIfInRangeFloatToDoubleTestCase>;
+
+TEST_P(StaticCastIfInRangeFloatToDoubleTest, TestFloatToDouble) {
+  const auto& test_case = GetParam();
+
+  double result;
+  EXPECT_EQ((StaticCastIfInRange<float, double>(kOmitContext,
+                                                test_case.test_val, result)
+                 .code()),
+            test_case.expected_status_code);
+  if (test_case.expected_status_code == absl::StatusCode::kOk) {
+    EXPECT_EQ(result, test_case.expected_val);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeFloatToDoubleTest,
+    testing::ValuesIn<StaticCastIfInRangeFloatToDoubleTestCase>({
+        {0.0f, 0.0, absl::StatusCode::kOk},
+        {1.5f, 1.5, absl::StatusCode::kOk},
+        {-100.0f, -100.0, absl::StatusCode::kOk},
+        {std::numeric_limits<float>::max(),
+         static_cast<double>(std::numeric_limits<float>::max()),
+         absl::StatusCode::kOk},
+        {std::numeric_limits<float>::lowest(),
+         static_cast<double>(std::numeric_limits<float>::lowest()),
+         absl::StatusCode::kOk},
+    }));
+
+using StaticCastIfInRangeFloatToInt32TestCase =
+    StaticCastIfInRangeTestCase<float, int32_t>;
+using StaticCastIfInRangeFloatToInt32Test =
+    ::testing::TestWithParam<StaticCastIfInRangeFloatToInt32TestCase>;
+
+TEST_P(StaticCastIfInRangeFloatToInt32Test, TestFloatToInt32) {
+  const auto& test_case = GetParam();
+
+  int32_t result;
+  EXPECT_EQ((StaticCastIfInRange<float, int32_t>(kOmitContext,
+                                                 test_case.test_val, result)
+                 .code()),
+            test_case.expected_status_code);
+  if (test_case.expected_status_code == absl::StatusCode::kOk) {
+    EXPECT_EQ(result, test_case.expected_val);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeFloatToInt32Test,
+    testing::ValuesIn<StaticCastIfInRangeFloatToInt32TestCase>({
+        {0.0f, 0, absl::StatusCode::kOk},
+        {123.0f, 123, absl::StatusCode::kOk},
+        {-456.0f, -456, absl::StatusCode::kOk},
+        // 2147483392 is 0x7FFFFF00, the largest exact 24-bit int < the max
+        // value that `int32_t` can represent.
+        {2147483392.0f, 2147483392, absl::StatusCode::kOk},
+        {-2147483648.0f, -2147483648, absl::StatusCode::kOk},
+    }));
+
+INSTANTIATE_TEST_SUITE_P(
+    Invalid, StaticCastIfInRangeFloatToInt32Test,
+    testing::ValuesIn<StaticCastIfInRangeFloatToInt32TestCase>({
+        {3e9f, 0, absl::StatusCode::kInvalidArgument},
+        {-3e9f, 0, absl::StatusCode::kInvalidArgument},
+    }));
+
+using StaticCastIfInRangeInt32ToFloatTestCase =
+    StaticCastIfInRangeTestCase<int32_t, float>;
+using StaticCastIfInRangeInt32ToFloatTest =
+    ::testing::TestWithParam<StaticCastIfInRangeInt32ToFloatTestCase>;
+
+TEST_P(StaticCastIfInRangeInt32ToFloatTest, TestInt32ToFloat) {
+  const auto& test_case = GetParam();
+
+  float result;
+  EXPECT_EQ((StaticCastIfInRange<int32_t, float>(kOmitContext,
+                                                 test_case.test_val, result)
+                 .code()),
+            test_case.expected_status_code);
+  if (test_case.expected_status_code == absl::StatusCode::kOk) {
+    EXPECT_EQ(result, test_case.expected_val);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeInt32ToFloatTest,
+    testing::ValuesIn<StaticCastIfInRangeInt32ToFloatTestCase>({
+        {0, 0.0f, absl::StatusCode::kOk},
+        {123, 123.0f, absl::StatusCode::kOk},
+        {-456, -456.0f, absl::StatusCode::kOk},
+        {2147483647, static_cast<float>(2147483647), absl::StatusCode::kOk},
+        {-2147483648, static_cast<float>(-2147483648), absl::StatusCode::kOk},
     }));
 
 TEST(LittleEndianBytesToInt32Test, InvalidTooManyBytes) {
