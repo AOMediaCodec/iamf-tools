@@ -21,6 +21,8 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/animated_parameter_data.h"
+#include "iamf/obu/dual_polar_parameter_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
@@ -197,6 +199,50 @@ TEST(DualPolarParamDefinitionTest,
   WriteBitBuffer wb(kBufferSize);
   EXPECT_THAT(param_definition.ValidateAndWrite(wb), IsOk());
   ValidateWriteResults(wb, expected_data);
+}
+
+TEST(DualPolarParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
+  DualPolarParamDefinition param_definition(GetDualPolarParamDefinitionArgs());
+  // Expected values:
+  //   first_azimuth = 1
+  //   first_elevation = -2
+  //   first_distance = 127
+  //   second_azimuth = -1
+  //   second_elevation = 2
+  //   second_distance = 64
+  std::vector<uint8_t> payload = {
+      // Byte 0: animation_type (0 = kStep)
+      0b00000000,
+      // Byte 1: first_azimuth_start[8:1] (00000000)
+      0b00000000,
+      // Byte 2: first_azimuth_start[0] (1) | first_elevation_start[7:1]
+      // (1111111)
+      0b11111111,
+      // Byte 3: first_elevation_start[0] (0) | first_distance_start[6:0]
+      // (1111111)
+      0b01111111,
+      // Byte 4: second_azimuth_start[8:1] (11111111)
+      0b11111111,
+      // Byte 5: second_azimuth_start[0] (1) | second_elevation_start[7:1]
+      // (0000001)
+      0b10000001,
+      // Byte 6: second_elevation_start[0] (0) | second_distance_start[6:0]
+      // (1000000)
+      0b01000000,
+  };
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(payload);
+  auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
+  ASSERT_THAT(parameter_data, IsOk());
+  auto* dual_polar_data =
+      dynamic_cast<DualPolarParameterData*>(parameter_data->get());
+  ASSERT_NE(dual_polar_data, nullptr);
+  EXPECT_EQ(dual_polar_data->animation_type(), AnimationType::kStep);
+  EXPECT_EQ(*dual_polar_data->first_azimuth().start_point_value(), 1);
+  EXPECT_EQ(*dual_polar_data->first_elevation().start_point_value(), -2);
+  EXPECT_EQ(*dual_polar_data->first_distance().start_point_value(), 127);
+  EXPECT_EQ(*dual_polar_data->second_azimuth().start_point_value(), -1);
+  EXPECT_EQ(*dual_polar_data->second_elevation().start_point_value(), 2);
+  EXPECT_EQ(*dual_polar_data->second_distance().start_point_value(), 64);
 }
 
 }  // namespace

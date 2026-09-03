@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -70,9 +71,11 @@ absl::Status DualPolarParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 absl::StatusOr<std::unique_ptr<ParameterData>>
 DualPolarParamDefinition::CreateParameterDataFromBuffer(
     ReadBitBuffer& rb) const {
-  return absl::UnimplementedError(
-      "CreateParameterDataFromBuffer for DualPolarParamDefinition is not "
-      "implemented yet.");
+  auto data = DualPolarParameterData::CreateFromBuffer(rb);
+  if (!data.ok()) {
+    return data.status();
+  }
+  return std::make_unique<DualPolarParameterData>(*std::move(data));
 }
 
 void DualPolarParamDefinition::Print() const {

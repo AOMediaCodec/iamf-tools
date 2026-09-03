@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -60,9 +61,11 @@ absl::Status PolarParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 
 absl::StatusOr<std::unique_ptr<ParameterData>>
 PolarParamDefinition::CreateParameterDataFromBuffer(ReadBitBuffer& rb) const {
-  return absl::UnimplementedError(
-      "CreateParameterDataFromBuffer for PolarParamDefinition is not "
-      "implemented yet.");
+  auto data = PolarParameterData::CreateFromBuffer(rb);
+  if (!data.ok()) {
+    return data.status();
+  }
+  return std::make_unique<PolarParameterData>(*std::move(data));
 }
 
 void PolarParamDefinition::Print() const {
