@@ -54,9 +54,6 @@ absl::Status ValidatePayload(const OpusDecoderConfig& decoder_config) {
 
   // Various below fields are fixed. The real value is determined from the Audio
   // Element OBU.
-  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_channel_count_,
-                                 OpusDecoderConfig::kOutputChannelCount,
-                                 "output_channel_count"));
   RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_gain_,
                                  OpusDecoderConfig::kOutputGain,
                                  "output_gain"));
@@ -113,7 +110,9 @@ absl::Status OpusDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
       ValidateAudioRollDistance(num_samples_per_frame, audio_roll_distance));
   RETURN_IF_NOT_OK(ValidatePayload(*this));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(version_, 8));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(output_channel_count_, 8));
+  // For robust encoding, we follow the spec that `output_channel_count` SHALL
+  // be set to the IAMF default (2).
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(kOutputChannelCount, 8));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(pre_skip_, 16));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(input_sample_rate_, 32));
   RETURN_IF_NOT_OK(wb.WriteSigned16(output_gain_));
@@ -129,7 +128,9 @@ absl::Status OpusDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
       ValidateAudioRollDistance(num_samples_per_frame, audio_roll_distance));
 
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, version_));
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, output_channel_count_));
+  //  For robust decoding, we take the option to ignore invalid values,
+  uint8_t ignored_output_channel_count;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, ignored_output_channel_count));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(16, pre_skip_));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, input_sample_rate_));
   RETURN_IF_NOT_OK(rb.ReadSigned16(output_gain_));
@@ -143,7 +144,7 @@ void OpusDecoderConfig::Print() const {
   ABSL_VLOG(1) << "    decoder_config(opus):";
   ABSL_VLOG(1) << "      version= " << absl::StrCat(version_);
   ABSL_VLOG(1) << "      output_channel_count= "
-               << absl::StrCat(output_channel_count_);
+               << absl::StrCat(kOutputChannelCount);
   ABSL_VLOG(1) << "      pre_skip= " << pre_skip_;
   ABSL_VLOG(1) << "      input_sample_rate= " << input_sample_rate_;
   ABSL_VLOG(1) << "      output_gain= " << output_gain_;

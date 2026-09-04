@@ -391,7 +391,7 @@ float Q7_8ToFloat(int16_t v) { return static_cast<float>(v) / 256.0f; }
 OpusDecoderConfigReport BuildOpusReport(const OpusDecoderConfig& c) {
   return {
       .version = c.version_,
-      .output_channel_count = c.output_channel_count_,
+      .output_channel_count = OpusDecoderConfig::kOutputChannelCount,
       .pre_skip = c.pre_skip_,
       .input_sample_rate = c.input_sample_rate_,
       .output_gain_q7_8 = c.output_gain_,

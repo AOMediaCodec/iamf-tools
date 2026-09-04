@@ -63,7 +63,9 @@ message OpusEncoderMetadata {
 
 message OpusDecoderConfig {
   uint32 version = 1;
-  uint32 output_channel_count = 2 [default = 2];
+  // `output_channel_count` is ignored. The value in the bitstream is fixed
+  // to 2.
+  uint32 output_channel_count = 2 [default = 2, deprecated = true];
 
   uint32 pre_skip = 3;
   uint32 input_sample_rate = 4;

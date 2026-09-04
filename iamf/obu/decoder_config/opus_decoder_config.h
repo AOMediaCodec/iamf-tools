@@ -103,8 +103,6 @@ class OpusDecoderConfig {
   void Print() const;
 
   uint8_t version_;
-  // Must be set to 2. This field is ignored.
-  uint8_t output_channel_count_ = kOutputChannelCount;
   uint16_t pre_skip_;
   uint32_t input_sample_rate_;
   int16_t output_gain_ = kOutputGain;

@@ -498,24 +498,21 @@ TEST_F(CodecConfigGeneratorTest,
       kInvalidAudioRollDistance);
 }
 
-TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputChannelCount) {
-  // IAMF requires `output_channel_count` is fixed. The generator does not
-  // validate OBU requirements.
-  const uint8_t kInvalidOutputChannelCount = 99;
-  ASSERT_NE(kInvalidOutputChannelCount, OpusDecoderConfig::kOutputChannelCount);
+TEST_F(CodecConfigGeneratorTest, IgnoresOpusOutputChannelCount) {
+  // `output_channel_count` is deprecated and ignored; the generator always
+  // succeeds and the OBU always uses `OpusDecoderConfig::kOutputChannelCount`.
+  const uint8_t kArbitraryOutputChannelCount = 99;
   InitMetadataForOpus(codec_config_metadata_);
   codec_config_metadata_.at(0)
       .mutable_codec_config()
       ->mutable_decoder_config_opus()
-      ->set_output_channel_count(kInvalidOutputChannelCount);
+      ->set_output_channel_count(kArbitraryOutputChannelCount);
+  InitExpectedObuForOpus(expected_obus_);
 
   const auto output_obus = InitAndGenerate();
   ASSERT_THAT(output_obus, IsOk());
 
-  EXPECT_EQ(std::get<OpusDecoderConfig>(
-                output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
-                .output_channel_count_,
-            kInvalidOutputChannelCount);
+  EXPECT_EQ(*output_obus, expected_obus_);
 }
 
 TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputGain) {

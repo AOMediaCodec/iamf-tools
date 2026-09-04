@@ -607,8 +607,6 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
   const auto& opus_decoder_config =
       std::get<OpusDecoderConfig>(obu->GetCodecConfig().decoder_config);
   EXPECT_EQ(opus_decoder_config.version_, kVersion);
-  EXPECT_EQ(opus_decoder_config.output_channel_count_,
-            OpusDecoderConfig::kOutputChannelCount);
   EXPECT_EQ(opus_decoder_config.pre_skip_, kExpectedPreSkip);
   EXPECT_EQ(opus_decoder_config.input_sample_rate_, kExpectedInputSampleRate);
   EXPECT_EQ(opus_decoder_config.output_gain_, OpusDecoderConfig::kOutputGain);

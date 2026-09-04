@@ -58,6 +58,8 @@ and this project adheres to
     `HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED`.
 -   Deprecate the spelling of `HEADPHONES_RENDERING_MODE_RESERVED_2` in favor of
     `HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED`.
+-   Deprecate `OpusDecoderConfig::output_channel_count` field in favor of
+    always using the fixed value required by the IAMF specification (2).
 
 ### Fixed
 

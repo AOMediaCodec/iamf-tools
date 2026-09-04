@@ -129,10 +129,6 @@ absl::Status GenerateOpusDecoderConfig(
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "OpusDecoderConfig.version", opus_metadata.version(),
       obu_decoder_config.version_));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "OpusDecoderConfig.output_channel_count",
-      opus_metadata.output_channel_count(),
-      obu_decoder_config.output_channel_count_));
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint16_t>(
       "OpusDecoderConfig.pre_skip", opus_metadata.pre_skip(),
       obu_decoder_config.pre_skip_));

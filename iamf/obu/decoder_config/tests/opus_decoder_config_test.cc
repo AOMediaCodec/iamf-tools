@@ -65,8 +65,6 @@ TEST(OpusDecoderConfig, IamfFixedFieldsAreDefault) {
   OpusDecoderConfig decoder_config;
   // The IAMF spec REQUIRES fixed fields for all Opus Decoder Configs. Verify
   // the default constructor configures these to the fixed values.
-  EXPECT_EQ(decoder_config.output_channel_count_,
-            OpusDecoderConfig::kOutputChannelCount);
   EXPECT_EQ(decoder_config.output_gain_, OpusDecoderConfig::kOutputGain);
   EXPECT_EQ(decoder_config.mapping_family_, OpusDecoderConfig::kMappingFamily);
 }
@@ -155,24 +153,6 @@ TEST_F(OpusTest, IllegalVersionFuture) {
 TEST_F(OpusTest, IllegalVersionMax) {
   opus_decoder_config_.version_ = 255;
   expected_write_status_code_ = absl::StatusCode::kUnimplemented;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(OpusTest, IllegalChannelCountZero) {
-  opus_decoder_config_.output_channel_count_ = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(OpusTest, IllegalChannelCountEdgeBelow) {
-  opus_decoder_config_.output_channel_count_ = 1;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(OpusTest, IllegalChannelCountEdgeAbove) {
-  opus_decoder_config_.output_channel_count_ = 3;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
 }
 
@@ -424,12 +404,12 @@ TEST(ReadAndValidate, IllegalVersionmax) {
               Not(IsOk()));
 }
 
-TEST(ReadAndValidate, IllegalChannelCountZero) {
+TEST(ReadAndValidate, OutputChannelCountIsIgnored) {
   OpusDecoderConfig opus_decoder_config;
   uint32_t num_samples_per_frame = 960;
   int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
-                                 2,
+                                 1,
                                  // `output_channel_count`.
                                  0,
                                  // `pre_skip`.
@@ -444,7 +424,7 @@ TEST(ReadAndValidate, IllegalChannelCountZero) {
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   EXPECT_THAT(opus_decoder_config.ReadAndValidate(
                   num_samples_per_frame, audio_roll_distance, *read_buffer),
-              Not(IsOk()));
+              IsOk());
 }
 
 TEST(ReadAndValidate, ReadPreSkip312) {
