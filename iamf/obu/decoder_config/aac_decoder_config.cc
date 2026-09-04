@@ -238,7 +238,7 @@ absl::Status AudioSpecificConfig::Read(ReadBitBuffer& rb) {
 
 absl::Status AacDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
                                                 WriteBitBuffer& wb) const {
-  MAYBE_RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
+  RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
   RETURN_IF_NOT_OK(Validate());
 
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(decoder_config_descriptor_tag_, 8));

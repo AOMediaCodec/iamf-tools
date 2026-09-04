@@ -41,14 +41,42 @@ ia_sequence_header_metadata {
   additional_profile: PROFILE_VERSION_SIMPLE
 }
 
+# Insert a buggy Codec Config OBU with invalid `audio_roll_distance` = 0.
+arbitrary_obu_metadata {
+  invalidates_bitstream: true
+  insertion_hook: INSERTION_HOOK_AFTER_IA_SEQUENCE_HEADER
+  obu_type: OBU_IA_CODEC_CONFIG
+  obu_header {
+    obu_redundant_copy: false
+    obu_trimming_status_flag: false
+    obu_extension_flag: false
+  }
+  payload:
+    "\xc8\x01"  # `codec_config_id` (200).
+    "mp4a"  # `codec_id`.
+    "\x80\x08"  # `num_samples_per_frame` (1024).
+    "\x00\x00"  # `audio_roll_distance` (0). Invalid: must be -1 for AAC-LC.
+    # `decoder_config_aac`:
+    "\x04"  # `decoder_config_descriptor_tag` (4).
+    "\x11"  # Expandable size (17 bytes).
+    "\x40"  # `object_type_indication` (Audio ISO/IEC 14496-3).
+    "\x15"  # `stream_type` (5), `upstream` (0), `reserved` (1).
+    "\x00\x00\x00"  # `buffer_size_db` (0).
+    "\x00\x00\x00\x00"  # `max_bitrate` (0).
+    "\x00\x00\x00\x00"  # `average_bit_rate` (0).
+    # `decoder_specific_info`:
+    "\x05"  # `decoder_specific_info_tag` (5).
+    "\x02"  # Expandable size (2 bytes).
+    # AudioSpecificConfig (AAC-LC, 48000Hz, 2 channels).
+    "\x11\x90"
+}
+
 codec_config_metadata {
   codec_config_id: 200
   codec_config {
     codec_id: CODEC_ID_AAC_LC
     num_samples_per_frame: 1024
-    # Prevent encoder from overriding the invalid `audio_roll_distance` value.
-    automatically_override_audio_roll_distance: false
-    audio_roll_distance: 0
+    audio_roll_distance: -1
     decoder_config_aac: {
       buffer_size_db: 0
       max_bitrate: 0
@@ -62,6 +90,9 @@ codec_config_metadata {
         signaling_mode: 2  # Explicit hierarchical signaling.
       }
     }
+  }
+  obu_header {
+    obu_redundant_copy: true
   }
 }
 

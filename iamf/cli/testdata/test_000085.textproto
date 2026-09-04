@@ -42,19 +42,41 @@ ia_sequence_header_metadata {
   additional_profile: PROFILE_VERSION_SIMPLE
 }
 
+# Insert a buggy Codec Config OBU with invalid `audio_roll_distance` = -1.
+arbitrary_obu_metadata {
+  invalidates_bitstream: true
+  insertion_hook: INSERTION_HOOK_AFTER_IA_SEQUENCE_HEADER
+  obu_type: OBU_IA_CODEC_CONFIG
+  obu_header {
+    obu_redundant_copy: false
+    obu_trimming_status_flag: false
+    obu_extension_flag: false
+  }
+  payload:
+    "\xc8\x01"  # `codec_config_id` (200).
+    "ipcm"  # `codec_id`.
+    "\x40"  # `num_samples_per_frame` (64).
+    "\xff\xff"  # `audio_roll_distance` (-1). Invalid: must be 0 for LPCM.
+    # `decoder_config_lpcm`:
+    "\x01"  # `sample_format_flags` (LPCM_LITTLE_ENDIAN).
+    "\x10"  # `sample_size` (16).
+    "\x00\x00\x3e\x80"  # `sample_rate` (16000).
+}
+
 codec_config_metadata {
   codec_config_id: 200
   codec_config {
     codec_id: CODEC_ID_LPCM
     num_samples_per_frame: 64
-    # Prevent encoder from overriding the invalid `audio_roll_distance` value.
-    automatically_override_audio_roll_distance: false
-    audio_roll_distance: -1
+    audio_roll_distance: 0
     decoder_config_lpcm {
       sample_format_flags: LPCM_LITTLE_ENDIAN
       sample_size: 16
       sample_rate: 16000
     }
+  }
+  obu_header {
+    obu_redundant_copy: true
   }
 }
 

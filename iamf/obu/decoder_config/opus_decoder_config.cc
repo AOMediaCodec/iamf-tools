@@ -50,20 +50,19 @@ absl::Status ValidatePayload(const OpusDecoderConfig& decoder_config) {
   // compatibility and require software updates.
   const uint8_t decoder_config_major_version =
       (decoder_config.version_ & 0xf0) >> 4;
-  MAYBE_RETURN_IF_NOT_OK(
-      ValidateOpusMajorVersion(decoder_config_major_version));
+  RETURN_IF_NOT_OK(ValidateOpusMajorVersion(decoder_config_major_version));
 
   // Various below fields are fixed. The real value is determined from the Audio
   // Element OBU.
-  MAYBE_RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_channel_count_,
-                                       OpusDecoderConfig::kOutputChannelCount,
-                                       "output_channel_count"));
-  MAYBE_RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_gain_,
-                                       OpusDecoderConfig::kOutputGain,
-                                       "output_gain"));
-  MAYBE_RETURN_IF_NOT_OK(ValidateEqual(decoder_config.mapping_family_,
-                                       OpusDecoderConfig::kMappingFamily,
-                                       "mapping_family"));
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_channel_count_,
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 "output_channel_count"));
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_gain_,
+                                 OpusDecoderConfig::kOutputGain,
+                                 "output_gain"));
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.mapping_family_,
+                                 OpusDecoderConfig::kMappingFamily,
+                                 "mapping_family"));
 
   return absl::OkStatus();
 }
@@ -110,7 +109,7 @@ absl::StatusOr<int16_t> OpusDecoderConfig::GetRequiredAudioRollDistance(
 absl::Status OpusDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
                                                  int16_t audio_roll_distance,
                                                  WriteBitBuffer& wb) const {
-  MAYBE_RETURN_IF_NOT_OK(
+  RETURN_IF_NOT_OK(
       ValidateAudioRollDistance(num_samples_per_frame, audio_roll_distance));
   RETURN_IF_NOT_OK(ValidatePayload(*this));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(version_, 8));

@@ -85,7 +85,7 @@ bool LpcmDecoderConfig::IsLittleEndian() const {
 }
 
 absl::Status LpcmDecoderConfig::Validate(int16_t audio_roll_distance) const {
-  MAYBE_RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
+  RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
   RETURN_IF_NOT_OK(ValidatePayload(*this));
 
   return absl::OkStatus();

@@ -41,14 +41,43 @@ ia_sequence_header_metadata {
   additional_profile: PROFILE_VERSION_SIMPLE
 }
 
+# Insert a buggy Codec Config OBU with invalid `audio_roll_distance` = -1.
+arbitrary_obu_metadata {
+  invalidates_bitstream: true
+  insertion_hook: INSERTION_HOOK_AFTER_IA_SEQUENCE_HEADER
+  obu_type: OBU_IA_CODEC_CONFIG
+  obu_header {
+    obu_redundant_copy: false
+    obu_trimming_status_flag: false
+    obu_extension_flag: false
+  }
+  payload:
+    "\xc8\x01"  # `codec_config_id` (200).
+    "fLaC"  # `codec_id`.
+    "\x40"  # `num_samples_per_frame` (64).
+    "\xff\xff"  # `audio_roll_distance` (-1). Invalid: must be 0 for FLAC.
+    # `decoder_config_flac`:
+    # `last_metadata_block_flag` (1), `block_type` (0 = STREAMINFO).
+    "\x80"
+    # `metadata_data_block_length` (34 bytes).
+    "\x00\x00\x22"
+    # `minimum_block_size` (64), `maximum_block_size` (64).
+    "\x00\x40\x00\x40"
+    # `minimum_frame_size` (0), `maximum_frame_size` (0).
+    "\x00\x00\x00\x00\x00\x00"
+    # `sample_rate` (48000), `number_of_channels` (2 channels -> 1),
+    # `bits_per_sample` (16 bits -> 15), `total_samples_in_stream` (24000).
+    "\x0b\xb8\x02\xf0\x00\x00\x5d\xc0"
+    # MD5 signature (16 zeros).
+    "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+}
+
 codec_config_metadata {
   codec_config_id: 200
   codec_config {
     codec_id: CODEC_ID_FLAC
     num_samples_per_frame: 64
-    # Prevent encoder from overriding the invalid `audio_roll_distance` value.
-    automatically_override_audio_roll_distance: false
-    audio_roll_distance: -1
+    audio_roll_distance: 0
     decoder_config_flac: {
       metadata_blocks: {
         header: {
@@ -66,6 +95,9 @@ codec_config_metadata {
         compression_level: 0
       }
     }
+  }
+  obu_header {
+    obu_redundant_copy: true
   }
 }
 

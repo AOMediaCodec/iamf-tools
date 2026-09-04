@@ -41,17 +41,38 @@ ia_sequence_header_metadata {
   additional_profile: PROFILE_VERSION_SIMPLE
 }
 
+# Insert a buggy Codec Config OBU with invalid `pre_skip` = 0.
+arbitrary_obu_metadata {
+  invalidates_bitstream: true
+  insertion_hook: INSERTION_HOOK_AFTER_IA_SEQUENCE_HEADER
+  obu_type: OBU_IA_CODEC_CONFIG
+  obu_header {
+    obu_redundant_copy: false
+    obu_trimming_status_flag: false
+    obu_extension_flag: false
+  }
+  payload:
+    "\xc8\x01"  # `codec_config_id` (200).
+    "Opus"  # `codec_id`.
+    "\x78"  # `num_samples_per_frame` (120).
+    "\xff\xe0"  # `audio_roll_distance` (-32).
+    # `decoder_config_opus`:
+    "\x01"  # `version` (1).
+    "\x02"  # `output_channel_count` (2).
+    "\x00\x00"  # `pre_skip` (0). Invalid: does not match lookahead (312).
+    "\x00\x00\xbb\x80"  # `input_sample_rate` (48000).
+    "\x00\x00"  # `output_gain` (0).
+    "\x00"  # `mapping_family` (0).
+}
+
 codec_config_metadata {
   codec_config_id: 200
   codec_config {
     codec_id: CODEC_ID_OPUS
     num_samples_per_frame: 120
     audio_roll_distance: -32
-    # Prevent encoder from overriding the invalid `pre_skip` value.
-    automatically_override_codec_delay: false
     decoder_config_opus {
       version: 1
-      pre_skip: 0  # Intentionally set to an invalid value.
       input_sample_rate: 48000
       opus_encoder_metadata {
         target_bitrate_per_channel: 48000
@@ -59,6 +80,9 @@ codec_config_metadata {
         use_float_api: false
       }
     }
+  }
+  obu_header {
+    obu_redundant_copy: true
   }
 }
 
