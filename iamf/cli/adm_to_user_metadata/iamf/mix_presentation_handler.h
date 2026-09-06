@@ -83,6 +83,10 @@ class MixPresentationHandler {
  private:
   const uint32_t common_parameter_rate_;
   std::map<std::string, uint32_t> audio_object_id_to_audio_element_id_;
+  // Parameter IDs are unique across the whole IA sequence, not just within a
+  // mix presentation, so this counter is shared by every call to
+  // `PopulateMixPresentation()`.
+  uint32_t next_parameter_id_ = 0;
 };
 
 }  // namespace adm_to_user_metadata

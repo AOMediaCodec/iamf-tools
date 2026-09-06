@@ -137,7 +137,7 @@ absl::string_view LocalizedAnnotationOrDefault(
 
 absl::Status SubMixAudioElementMetadataBuilder(
     const AudioObject& audio_object, uint32_t audio_element_id,
-    uint32_t common_parameter_rate,
+    uint32_t common_parameter_rate, uint32_t parameter_id,
     iamf_tools_cli_proto::SubMixAudioElement& sub_mix_audio_element) {
   sub_mix_audio_element.set_audio_element_id(audio_element_id);
 
@@ -171,7 +171,7 @@ absl::Status SubMixAudioElementMetadataBuilder(
 
   auto* param_definition =
       mix_gain_param_definition->mutable_param_definition();
-  param_definition->set_parameter_id(0);
+  param_definition->set_parameter_id(parameter_id);
   param_definition->set_parameter_rate(common_parameter_rate);
   param_definition->set_param_definition_mode(1);
 
@@ -245,9 +245,16 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
   auto& mix_presentation_sub_mix =
       *mix_presentation_obu_metadata.add_sub_mixes();
   for (const auto& audio_object : audio_objects) {
+    // Each `element_mix_gain` is a distinct parameter: it carries that audio
+    // element's own `default_mix_gain`, taken from the audioObject's authored
+    // `<gain>`. Sharing one parameter ID between them, or with the sub-mix's
+    // `output_mix_gain` below, describes one parameter with conflicting
+    // definitions and is rejected downstream by
+    // `CollectAndValidateParamDefinitions`.
     const auto status = SubMixAudioElementMetadataBuilder(
         audio_object, audio_object_id_to_audio_element_id_[audio_object.id],
-        common_parameter_rate_, *mix_presentation_sub_mix.add_audio_elements());
+        common_parameter_rate_, next_parameter_id_++,
+        *mix_presentation_sub_mix.add_audio_elements());
     if (!status.ok()) {
       return status;
     }
@@ -258,7 +265,7 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
   auto* param_definition =
       mix_gain_param_definition->mutable_param_definition();
 
-  param_definition->set_parameter_id(0);
+  param_definition->set_parameter_id(next_parameter_id_++);
   param_definition->set_parameter_rate(common_parameter_rate_);
   param_definition->set_param_definition_mode(1);
   mix_gain_param_definition->set_default_mix_gain(0);
