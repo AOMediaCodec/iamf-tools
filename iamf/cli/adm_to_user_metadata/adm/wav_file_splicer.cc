@@ -69,17 +69,33 @@ constexpr int kMaxLfeChannelsAllowed =
     kMaxChannelsPerMixBaseEnhanced - kOutputWavChannels;
 
 // Creates a map for the audioObject(s) and the audioTrack(s) present within.
+//
+// The returned indices are positions in the *original* (pre-importance/
+// validity-filtering) wav channel layout -- i.e. `audio_object`s here may be
+// a strict subset of the file's declared audioObjects, with some removed by
+// `RemoveLowImportanceAndInvalidAudioObjects()`. Deriving the indices from
+// `first_audio_track_index` (stamped before that removal; see
+// `AssignOriginalTrackIndices()` in xml_to_adm.cc) rather than by counting
+// tracks sequentially over whatever objects happen to remain is required:
+// removing an object does not relocate any other object's samples within
+// the input wav, so a surviving object must keep the channel position it
+// always had, gap and all, even when that leaves it non-adjacent to the
+// previous surviving object.
 std::vector<std::vector<int32_t>> GetAudioTracksForAudioObjects(
     const std::vector<struct AudioObject>& audio_objects) {
   std::vector<std::vector<int32_t>> audio_tracks_for_audio_objects(
       audio_objects.size(), std::vector<int32_t>());
   int32_t audio_object_index = -1;
-  int32_t audio_track_index = -1;
   for (const auto& audio_object : audio_objects) {
     auto& audio_tracks_for_audio_object =
         audio_tracks_for_audio_objects[++audio_object_index];
-    for (auto unused_audio_track : audio_object.audio_track_uid_ref) {
-      audio_tracks_for_audio_object.push_back(++audio_track_index);
+    ABSL_CHECK_GE(audio_object.first_audio_track_index, 0)
+        << "first_audio_track_index for audio_object_id=" << audio_object.id
+        << " was never assigned. AssignOriginalTrackIndices() must run "
+           "before any audio objects are removed from the ADM.";
+    int32_t audio_track_index = audio_object.first_audio_track_index;
+    for (size_t i = 0; i < audio_object.audio_track_uid_ref.size(); ++i) {
+      audio_tracks_for_audio_object.push_back(audio_track_index++);
     }
   }
   return audio_tracks_for_audio_objects;
@@ -753,32 +769,46 @@ absl::Status SpliceWavFilesFromAdm(
     // audio tracks, based on the mapping specified in
     // 'audio_tracks_for_audio_objects'. Write the audio track data to
     // corresponding `WavWriter`s.
+    //
+    // Each iteration reads one full interleaved frame of the *original*
+    // wav -- every input channel, including any that belong to an object
+    // filtered out of `audio_tracks_for_audio_objects` -- and then scatters
+    // each surviving object's own track(s) out of that frame by their
+    // recorded (pre-filtering) channel index. Always advancing the stream by
+    // a whole original frame keeps every subsequent frame boundary aligned
+    // regardless of how many objects were filtered; indexing by recorded
+    // position, rather than by arrival order in the (already-filtered)
+    // `audio_tracks_for_audio_objects`, keeps a surviving object reading its
+    // own channel(s) instead of a filtered-out neighbor's.
     const int32_t bytes_per_sample =
         static_cast<int32_t>(wav_file_fmt.bits_per_sample) / kBitsPerByte;
     const int32_t channels = wav_file_fmt.num_channels;
+    const size_t bytes_per_frame =
+        static_cast<size_t>(bytes_per_sample) * channels;
+    std::vector<char> frame(bytes_per_frame);
     for (size_t data_chunk_pos = 0; data_chunk_pos < data_chunk_info->size;
-         data_chunk_pos += static_cast<size_t>(bytes_per_sample) * channels) {
+         data_chunk_pos += bytes_per_frame) {
+      if (!input_stream.read(frame.data(), frame.size())) {
+        AbortAllWavWriters(audio_object_index_to_wav_writer);
+        return absl::OutOfRangeError(
+            "Reached end of stream before the implied end of the `data` "
+            "chunk.");
+      }
+
       for (size_t audio_object_index = 0;
            audio_object_index < audio_tracks_for_audio_objects.size();
            ++audio_object_index) {
-        // Read in the samples for the current audio object.
-        std::vector<char> sample(
-            static_cast<size_t>(bytes_per_sample) *
-            audio_tracks_for_audio_objects[audio_object_index].size());
-
-        if (!input_stream.read(sample.data(), sample.size())) {
-          AbortAllWavWriters(audio_object_index_to_wav_writer);
-          return absl::OutOfRangeError(
-              "Reached end of stream before the implied end of the `data` "
-              "chunk.");
-        }
-
-        // Store the samples in the buffer.
         auto& samples_for_audio_object =
             interlaced_samples_for_audio_objects[audio_object_index];
-        std::transform(sample.begin(), sample.end(),
-                       std::back_inserter(samples_for_audio_object),
-                       [](char c) { return static_cast<uint8_t>(c); });
+        for (const int32_t track_index :
+             audio_tracks_for_audio_objects[audio_object_index]) {
+          const size_t byte_offset =
+              static_cast<size_t>(track_index) * bytes_per_sample;
+          std::transform(frame.begin() + byte_offset,
+                         frame.begin() + byte_offset + bytes_per_sample,
+                         std::back_inserter(samples_for_audio_object),
+                         [](char c) { return static_cast<uint8_t>(c); });
+        }
 
         // Occasionally flush the buffer to the corresponding wav writer.
         if (samples_for_audio_object.size() >= kSizeToFlush) {

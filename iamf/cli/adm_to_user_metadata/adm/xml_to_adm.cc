@@ -323,6 +323,25 @@ absl::Status SetAudioBlockValue(absl::string_view key, absl::string_view value,
   return absl::OkStatus();
 }
 
+// Stamps every audioObject with the 0-based index of its first audioTrack in
+// the wav's original, physical channel order (i.e. counting every object's
+// audio_track_uid_ref in file order, with no objects removed). MUST run
+// before `RemoveLowImportanceAndInvalidAudioObjects()`, which subsequently
+// erases whole objects from `adm.audio_objects` -- erasing an object can
+// never change where the *remaining* objects' samples actually live in the
+// input wav, so their original offsets have to be captured first. Consumed
+// by wav_file_splicer.cc's `GetAudioTracksForAudioObjects()` so a surviving
+// object keeps reading its own channel(s) instead of sliding into whatever
+// position it happens to land on in the post-filtering list.
+void AssignOriginalTrackIndices(ADM& adm) {
+  int32_t next_track_index = 0;
+  for (auto& audio_object : adm.audio_objects) {
+    audio_object.first_audio_track_index = next_track_index;
+    next_track_index +=
+        static_cast<int32_t>(audio_object.audio_track_uid_ref.size());
+  }
+}
+
 // Removes objects from the ADM structure based on the given importance
 // threshold. Also, removes audio objects with IDs found in the set of invalid
 // audio objects.
@@ -1000,6 +1019,7 @@ absl::StatusOr<ADM> ParseXmlToAdm(absl::string_view xml_data,
                                             xml_data.length(), true)) {
     case XML_STATUS_OK:
       SetChannelIndices(handler.adm);
+      AssignOriginalTrackIndices(handler.adm);
       ValidateAudioObjects(handler.adm, handler);
       RemoveLowImportanceAndInvalidAudioObjects(importance_threshold, handler);
       if (!handler.status.ok()) {
