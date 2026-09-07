@@ -58,15 +58,50 @@ constexpr double kErrorTolerance = 1e-5;
 // Floating-point duration math can cause per-segment sample accumulation to
 // round down, leaving at most one unread sample.
 constexpr int64_t kMaxSpliceRoundingDriftSamples = 1;
-// Offset for data chunk within the extensible format wav file.
-constexpr int32_t kExtensibleOffset = 72;
-// Standard size for a wav header.
-constexpr int32_t kHeaderSize = 8;
 // Total number of channels allowed per mix for the IAMF base enhanced profile.
 constexpr int kMaxChannelsPerMixBaseEnhanced = 28;
 // Max LFE channels allowed per mix for the IAMF base enhanced profile.
 constexpr int kMaxLfeChannelsAllowed =
     kMaxChannelsPerMixBaseEnhanced - kOutputWavChannels;
+
+// Reads back the `data` chunk of a wav file this tool has just written.
+//
+// The geometry of that file is not something to assume. `WavWriter` emits an
+// extensible `fmt ` chunk plus a `fact` chunk whenever there is more than one
+// pair of channels or more than 16 bits per sample, and a plain 16-byte
+// `fmt ` chunk otherwise, which puts the `data` chunk header at offset 72 in
+// the first case and at offset 36 in the second. Index the chunks the way
+// `Bw64Reader` does instead of encoding either number here.
+absl::StatusOr<Bw64Reader::ChunkInfo> ReadBackDataChunkInfo(
+    std::istream& stream) {
+  stream.clear();
+  stream.seekg(0, std::ios::end);
+  const auto file_size = static_cast<size_t>(stream.tellg());
+  stream.clear();
+  // Skip the "RIFF" ID, the RIFF chunk size and the "WAVE" ID.
+  stream.seekg(Bw64Reader::kChunkHeaderOffset + Bw64Reader::kChunkNameSize);
+
+  while (true) {
+    std::vector<char> chunk_id(Bw64Reader::kChunkNameSize);
+    uint32_t chunk_size = 0;
+    if (!stream.read(chunk_id.data(), Bw64Reader::kChunkNameSize) ||
+        !stream.read(reinterpret_cast<char*>(&chunk_size),
+                     Bw64Reader::kChunkLengthSize)) {
+      return absl::NotFoundError("Could not find a `data` chunk.");
+    }
+    const auto chunk_data_offset = static_cast<size_t>(stream.tellg());
+    if (std::string(chunk_id.begin(), chunk_id.end()) == "data") {
+      if (chunk_data_offset + chunk_size > file_size) {
+        return absl::InvalidArgumentError(
+            "The `data` chunk runs past the end of the file.");
+      }
+      return Bw64Reader::ChunkInfo{
+          chunk_size, chunk_data_offset - Bw64Reader::kChunkHeaderOffset};
+    }
+    // Chunks are padded to an even number of bytes.
+    stream.seekg(chunk_size + (chunk_size & 1), std::ios::cur);
+  }
+}
 
 // Creates a map for the audioObject(s) and the audioTrack(s) present within.
 std::vector<std::vector<int32_t>> GetAudioTracksForAudioObjects(
@@ -323,7 +358,14 @@ void UpdateWavSplicingParams(
     const std::vector<AudioChannelFormat>& audio_channels,
     std::vector<double>& seg_duration,
     std::vector<size_t>& audio_block_indices) {
-  for (size_t ch = 0; ch < audio_channels.size(); ++ch) {
+  // `seg_duration` and `audio_block_indices` are sized from the wav file's
+  // channel count, while `audio_channels` comes from the ADM and may be
+  // longer -- an audioChannelFormat that no audioPackFormat references still
+  // lands in this vector. Only the channels the wav actually carries have
+  // splicing state to update.
+  const size_t num_channels_to_update = std::min(
+      {audio_channels.size(), seg_duration.size(), audio_block_indices.size()});
+  for (size_t ch = 0; ch < num_channels_to_update; ++ch) {
     if (seg_duration[ch] > kErrorTolerance)
       seg_duration[ch] -= this_seg_duration;
     if (seg_duration[ch] <= kErrorTolerance) {
@@ -355,6 +397,17 @@ absl::Status ConvertFromObjectsTo3OA(
       return absl::InvalidArgumentError(
           "Every ADM audio channel must contain an audioBlockFormat.");
     }
+  }
+  // The ADM's audioChannelFormats are consumed positionally against the wav
+  // file's channels, both here and in `PanObjectsToAmbisonics`. An ADM that
+  // describes fewer channels than the `fmt ` chunk declares would index past
+  // the end of `audio_channels`.
+  if (input_adm.audio_channels.size() <
+      static_cast<size_t>(wav_file_fmt.num_channels)) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "The ADM describes ", input_adm.audio_channels.size(),
+        " audioChannelFormat(s), fewer than the ", wav_file_fmt.num_channels,
+        " channel(s) declared by the wav file."));
   }
   const std::streamoff audio_data_position =
       data_chunk_info.offset + Bw64Reader::kChunkHeaderOffset;
@@ -673,15 +726,15 @@ absl::Status SeparateLfeAndConvertTo3OA(
   FormatInfoChunk non_lfe_format_info = reader.format_info_;
   non_lfe_format_info.num_channels = non_lfe_count;
 
-  // Calculate data chunk size and set data chunk info for the generated non-LFE
-  // file and invoke the panner for the non-LFE file.
-  const size_t file_size = std::filesystem::file_size(non_lfe_file_path);
-  const size_t data_chunk_size = file_size - kExtensibleOffset - kHeaderSize;
-  Bw64Reader::ChunkInfo non_lfe_data_chunk_info = {data_chunk_size,
-                                                   kExtensibleOffset};
+  // Read back the `data` chunk of the generated non-LFE file and invoke the
+  // panner for it.
+  const auto non_lfe_data_chunk_info = ReadBackDataChunkInfo(non_lfe_file);
+  if (!non_lfe_data_chunk_info.ok()) {
+    return non_lfe_data_chunk_info.status();
+  }
   RETURN_IF_NOT_OK(ConvertFromObjectsTo3OA(
       output_file_path, file_prefix, non_lfe_adm, non_lfe_format_info,
-      non_lfe_file, non_lfe_data_chunk_info));
+      non_lfe_file, *non_lfe_data_chunk_info));
   non_lfe_file.close();
 
   // Delete the temporary file.
