@@ -326,9 +326,30 @@ absl::Status SetAudioBlockValue(absl::string_view key, absl::string_view value,
 // Removes objects from the ADM structure based on the given importance
 // threshold. Also, removes audio objects with IDs found in the set of invalid
 // audio objects.
+//
+// The importance threshold affects the ADM structure, and through it the
+// generated IAMF metadata, only. It does not affect the rendered audio: the
+// wav splicer and the panner address the input file's channels by position
+// and carry no importance term, so a dropped object's samples are still
+// spliced and still panned into the output.
 void RemoveLowImportanceAndInvalidAudioObjects(int32_t importance_threshold,
                                                Handler& handler) {
   std::vector<AudioObject>& audio_object_list = handler.adm.audio_objects;
+  int num_removed_for_importance = 0;
+  for (const auto& audio_object : audio_object_list) {
+    if (audio_object.importance < importance_threshold &&
+        !handler.invalid_audio_objects.contains(audio_object.id)) {
+      ++num_removed_for_importance;
+    }
+  }
+  if (num_removed_for_importance > 0) {
+    ABSL_LOG(WARNING)
+        << "Removed " << num_removed_for_importance
+        << " audioObject(s) with an importance below " << importance_threshold
+        << " from the ADM metadata. Their audio is still rendered into the "
+           "output; the importance threshold does not remove channels from "
+           "the rendered wav file(s).";
+  }
   audio_object_list.erase(
       std::remove_if(audio_object_list.begin(), audio_object_list.end(),
                      [&](AudioObject value) {

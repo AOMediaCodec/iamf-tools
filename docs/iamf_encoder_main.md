@@ -50,7 +50,9 @@ Flags for ADM-BWF input:
 -   `--adm_filename` Required path to input ADM-BWF WAV file.
 -   `--output_iamf_directory` Directory to write IAMF files to (default: `.`).
 -   `--adm_importance_threshold` Threshold below which ADM `audioObject`s are
-    omitted (default: 0).
+    omitted from the generated IAMF metadata (default: 0). The audio of an
+    omitted object is still rendered into the output; the threshold does not
+    remove channels from the rendered wav file(s).
 -   `--adm_frame_duration_ms` Frame size of the output IAMF in milliseconds
     (default: 10).
 
