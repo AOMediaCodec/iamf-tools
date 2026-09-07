@@ -123,7 +123,21 @@ absl::Status ConfigureAacEncoder(
       absl::StrCat("Failed to configure encoder channel mode= ",
                    aac_channel_mode)));
 
-  // Let AACENC_BITRATE be configured automatically.
+  // Leave AACENC_BITRATE alone unless the user asked for a specific rate;
+  // `fdk_aac` picks a sensible default for the configured channel mode and
+  // sample rate when the parameter is never set.
+  if (encoder_metadata.bitrate() != 0) {
+    if (encoder_metadata.bitrate() < 0) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("AAC bitrate must not be negative. Got bitrate= ",
+                       encoder_metadata.bitrate()));
+    }
+    RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+        aacEncoder_SetParam(encoder, AACENC_BITRATE,
+                            static_cast<UINT>(encoder_metadata.bitrate())),
+        absl::StrCat("Failed to configure encoder bitrate= ",
+                     encoder_metadata.bitrate())));
+  }
 
   // Set some arguments configured by the user-provided `encoder_metadata_`.
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
@@ -192,6 +206,20 @@ absl::Status AacEncoder::InitializeEncoder() {
   // Validate the configuration matches expected results.
   RETURN_IF_NOT_OK(ValidateEncoderInfo(channel_count_.num_channels(),
                                        num_samples_per_frame_, encoder_));
+
+  // `fdk_aac` bounds the bitrate by the maximum AAC frame size and adjusts a
+  // request that falls outside that range without reporting an error, so read
+  // back what it settled on and say so rather than letting the user believe
+  // the requested rate was used.
+  if (encoder_metadata_.bitrate() != 0) {
+    const UINT effective_bitrate =
+        aacEncoder_GetParam(encoder_, AACENC_BITRATE);
+    if (effective_bitrate != static_cast<UINT>(encoder_metadata_.bitrate())) {
+      ABSL_LOG(WARNING) << "`fdk_aac` adjusted the requested AAC bitrate from "
+                        << encoder_metadata_.bitrate() << " to "
+                        << effective_bitrate << " bits per second.";
+    }
+  }
 
   return absl::OkStatus();
 }

@@ -100,6 +100,20 @@ message AacEncoderMetadata {
   bool enable_afterburner = 2 [default = true];
 
   int32 signaling_mode = 3 [default = 2];
+
+  // Target bitrate for the substream, in bits per second. IAMF restricts AAC
+  // to one or two channels, so this is the rate for the whole substream and
+  // not a per-channel rate.
+  //
+  // When this is left at 0, `fdk_aac` selects a bitrate itself, which for
+  // AAC-LC is 1.5 bits per sample -- 72000 bits per second for one channel at
+  // 48 kHz, and 144000 for two.
+  //
+  // `fdk_aac` bounds the usable range by the maximum AAC frame size and
+  // adjusts a request that falls outside it without reporting an error. The
+  // encoder reads the effective rate back after initialization and logs a
+  // warning when it differs from the requested one.
+  int32 bitrate = 4;
 }
 
 message AacDecoderSpecificInfo {
