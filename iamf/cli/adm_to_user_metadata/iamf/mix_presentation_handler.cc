@@ -12,6 +12,8 @@
 
 #include "iamf/cli/adm_to_user_metadata/iamf/mix_presentation_handler.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <map>
 #include <vector>
@@ -22,6 +24,7 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
@@ -135,6 +138,34 @@ absl::string_view LocalizedAnnotationOrDefault(
   return default_annotation;
 }
 
+// The most negative gain the Q7.8 `default_mix_gain` field can carry.
+constexpr float kMinMixGainDb = -128.0f;
+
+// Converts a gain authored in ADM to the dB value IAMF carries in
+// `default_mix_gain`.
+//
+// A BS.2076-2 `gain` is linear unless its `gainUnit` attribute says "dB",
+// while `default_mix_gain` is always in dB. A linear gain of 0.0 is how ADM
+// mutes an object and has no finite dB value, so it -- and anything else
+// which lands below the Q7.8 floor -- is clamped to `kMinMixGainDb`, which is
+// more than 100 dB below the least significant bit of a full-scale 24-bit
+// signal. Gains above the Q7.8 ceiling are deliberately not clamped; they are
+// left for `FloatToQ7_8` to reject, since a gain that large is an authoring
+// error rather than a value worth approximating.
+absl::StatusOr<float> AdmGainToDb(float gain, GainUnit gain_unit) {
+  if (gain_unit == kGainUnitDb) {
+    return gain;
+  }
+  if (gain < 0.0f) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "A negative linear ADM gain has no representation as a mix gain in "
+        "dB. gain= ",
+        gain));
+  }
+  return std::max(gain == 0.0f ? kMinMixGainDb : 20.0f * std::log10(gain),
+                  kMinMixGainDb);
+}
+
 absl::Status SubMixAudioElementMetadataBuilder(
     const AudioObject& audio_object, uint32_t audio_element_id,
     uint32_t common_parameter_rate, uint32_t parameter_id,
@@ -159,11 +190,17 @@ absl::Status SubMixAudioElementMetadataBuilder(
 
   auto* mix_gain_param_definition =
       sub_mix_audio_element.mutable_element_mix_gain();
-  // 'default_mix_gain' for each audio element in a mix presentation is
-  // initialized to 0. If the corresponding audioObject in ADM has the 'gain'
-  // parameter present, set it to the same.
+  // 'default_mix_gain' is in dB, while an ADM 'gain' is linear unless its
+  // 'gainUnit' attribute says otherwise, so convert before quantizing. An
+  // audioObject authored with a linear gain of 0.25 must attenuate by 12 dB,
+  // not boost by 0.25 dB.
+  const auto mix_gain_db =
+      AdmGainToDb(audio_object.gain, audio_object.gain_unit);
+  if (!mix_gain_db.ok()) {
+    return mix_gain_db.status();
+  }
   int16_t mix_gain_q7_8;
-  if (const auto& status = FloatToQ7_8(audio_object.gain, mix_gain_q7_8);
+  if (const auto& status = FloatToQ7_8(*mix_gain_db, mix_gain_q7_8);
       !status.ok()) {
     return status;
   }

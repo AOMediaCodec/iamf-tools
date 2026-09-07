@@ -55,6 +55,15 @@ constexpr int kBitDepth32 = 32;
 
 constexpr double kRadiansToDegrees = 180.0 / std::numbers::pi_v<double>;
 
+// Converts a gain authored in ADM to the linear multiplier `SetSource` takes.
+//
+// A BS.2076-2 `gain` is linear unless its `gainUnit` attribute says "dB", and
+// `AmbisonicEncoder::SetSource` takes a linear gain, so only a gain authored
+// in dB is converted here.
+float AdmGainToLinear(float gain, GainUnit gain_unit) {
+  return gain_unit == kGainUnitDb ? std::pow(10.0f, gain / 20.0f) : gain;
+}
+
 }  // namespace
 
 absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
@@ -123,7 +132,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
     auto x = audio_block.position.x;
     auto y = audio_block.position.y;
     auto z = audio_block.position.z;
-    auto gain = audio_block.gain;
+    const float gain = AdmGainToLinear(audio_block.gain, audio_block.gain_unit);
 
     Eigen::Vector3d position(x, y, z);
     auto azimuth = -((atan2(position[0], position[1])) * kRadiansToDegrees);

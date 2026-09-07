@@ -29,6 +29,19 @@ enum AdmFileType {
   kAdmFileTypeDolby,
 };
 
+/*!\brief Unit of an ADM `gain` element.
+ *
+ * BS.2076-2 gives the `gain` element of both `audioObject` and
+ * `audioBlockFormat` an optional `gainUnit` attribute, which is either
+ * "linear" or "dB". The attribute is optional, and when it is absent the value
+ * is linear; a bare `<gain>0.5</gain>` is an amplitude multiplier (-6 dB), not
+ * a gain of +0.5 dB.
+ */
+enum GainUnit {
+  kGainUnitLinear,
+  kGainUnitDb,
+};
+
 // This struct holds the Audio Definition Model (ADM) elements.
 struct ADM {
   std::vector<struct AudioProgramme> audio_programmes;
@@ -79,13 +92,17 @@ struct AudioContent {
 // This structure holds the attributes of an audio object in ADM.
 struct AudioObject {
   static constexpr int32_t kDefaultADMImportance = 10;
-  static constexpr float kDefaultADMGain = 0.0;
+  // BS.2076-2 gives an omitted `gain` element the value 1.0, in linear units.
+  static constexpr float kDefaultADMGain = 1.0f;
+  static constexpr GainUnit kDefaultADMGainUnit = kGainUnitLinear;
 
   std::string id;
   std::string name;
   std::string audio_object_label;
   int32_t importance = kDefaultADMImportance;
+  // Value of the `gain` element as authored, expressed in `gain_unit`.
   float gain = kDefaultADMGain;
+  GainUnit gain_unit = kDefaultADMGainUnit;
   std::vector<std::string> audio_pack_format_id_refs;
   std::vector<std::string> audio_comple_object_id_ref;
   std::vector<std::string> audio_track_uid_ref;
@@ -127,12 +144,17 @@ struct BlockTime {
 
 // This structure holds the attributes of an audio block format in ADM.
 struct AudioBlockFormat {
+  // BS.2076-2 gives an omitted `gain` element the value 1.0, in linear units.
   static constexpr float kDefaultBlockGain = 1.0f;
+  static constexpr GainUnit kDefaultBlockGainUnit = kGainUnitLinear;
+
   std::string id;
   std::string name;
   BlockTime rtime;
   BlockTime duration;
+  // Value of the `gain` element as authored, expressed in `gain_unit`.
   float gain = kDefaultBlockGain;
+  GainUnit gain_unit = kDefaultBlockGainUnit;
   CartesianPosition position;
   // Present when any of `azimuth`, `elevation` or `distance` was parsed for
   // this block. `position` is then derived from `spherical_position` rather

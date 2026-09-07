@@ -36,8 +36,11 @@ using ::absl_testing::IsOk;
 constexpr uint32_t kCommonParameterRate = 48000;
 constexpr uint32_t kMixPresentationId = 99;
 
+// An ADM `gain` with no `gainUnit` is linear (BS.2076-2), while IAMF carries
+// `default_mix_gain` in dB as Q7.8. A linear 3.0 / 256.0 is
+// 20 * log10(3.0 / 256.0) = -38.6224 dB, and -38.6224 * 256 truncates to -9887.
 constexpr float kStereoGain = 3.0f / 256.0f;
-constexpr int16_t kExpectedStereoGain = 3;
+constexpr int16_t kExpectedStereoGain = -9887;
 const AudioObject& GetStereoAudioObject() {
   constexpr absl::string_view kStereoAudioObjectId = "Stereo Audio Object";
   constexpr absl::string_view kStereoAudioPackFormatId = "AP_00010002";
@@ -187,6 +190,64 @@ TEST(PopulateMixPresentation, PopulatesStereoSubmix) {
             kExpectedStereoGain);
 
   EXPECT_EQ(submix.output_mix_gain().default_mix_gain(), 0);
+}
+
+AudioObject StereoAudioObjectWithGain(float gain, GainUnit gain_unit) {
+  return AudioObject({.id = "Stereo Audio Object",
+                      .gain = gain,
+                      .gain_unit = gain_unit,
+                      .audio_pack_format_id_refs = {"AP_00010002"}});
+}
+
+int16_t ElementMixGainExpectOk(const AudioObject& audio_object) {
+  return GetMixObuMetataExpectOk({audio_object})
+      .sub_mixes(0)
+      .audio_elements(0)
+      .element_mix_gain()
+      .default_mix_gain();
+}
+
+TEST(PopulateMixPresentation, ConvertsALinearAudioObjectGainToDecibels) {
+  // 20 * log10(0.5) = -6.0206 dB, and -6.0206 * 256 truncates to -1541.
+  EXPECT_EQ(
+      ElementMixGainExpectOk(StereoAudioObjectWithGain(0.5f, kGainUnitLinear)),
+      -1541);
+}
+
+TEST(PopulateMixPresentation, HonoursAnAudioObjectGainAuthoredInDecibels) {
+  // A gain authored in dB is already in the target unit: -6.0 * 256 = -1536.
+  EXPECT_EQ(
+      ElementMixGainExpectOk(StereoAudioObjectWithGain(-6.0f, kGainUnitDb)),
+      -1536);
+}
+
+TEST(PopulateMixPresentation, UsesUnityGainWhenTheAdmAuthorsNoGain) {
+  // BS.2076-2 gives an omitted `gain` the linear value 1.0, which is 0 dB.
+  EXPECT_EQ(ElementMixGainExpectOk(
+                AudioObject({.id = "Stereo Audio Object",
+                             .audio_pack_format_id_refs = {"AP_00010002"}})),
+            0);
+}
+
+TEST(PopulateMixPresentation, ClampsALinearGainOfZeroToTheMixGainFloor) {
+  // Silence has no finite dB value, so it is clamped to the Q7.8 floor of
+  // -128 dB: -128 * 256 = -32768.
+  EXPECT_EQ(
+      ElementMixGainExpectOk(StereoAudioObjectWithGain(0.0f, kGainUnitLinear)),
+      -32768);
+}
+
+TEST(PopulateMixPresentation, RejectsANegativeLinearGain) {
+  MixPresentationHandler handler(kCommonParameterRate,
+                                 {{"Stereo Audio Object", 0}});
+  iamf_tools_cli_proto::MixPresentationObuMetadata mix_presentation_metadata;
+
+  EXPECT_FALSE(handler
+                   .PopulateMixPresentation(
+                       kMixPresentationId, "", "",
+                       {StereoAudioObjectWithGain(-0.5f, kGainUnitLinear)},
+                       LoudnessMetadata(), mix_presentation_metadata)
+                   .ok());
 }
 
 TEST(PopulateMixPresentation,

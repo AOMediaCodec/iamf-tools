@@ -106,7 +106,8 @@ enum AdmBlockFormat {
   kAzimuth = 4,
   kElevation = 5,
   kDistance = 6,
-  kBlockDefault = 7
+  kBlockGain = 7,
+  kBlockDefault = 8
 };
 
 // This class is used by xml parser to collect and store various attributes and
@@ -116,6 +117,10 @@ struct Handler {
   absl::flat_hash_set<std::string> invalid_audio_objects;
   std::string audio_object_id;
 
+  // Unit of the `gain` element currently being parsed. Set from the element's
+  // `gainUnit` attribute when the element starts, and read when its character
+  // data arrives.
+  GainUnit gain_unit = kGainUnitLinear;
   AdmElement parent = kElementDefault;
   AdmProgrammeElement audio_programme_tag = kProgrammeDefault;
   AdmContentElement audio_content_tag = kContentDefault;
@@ -145,6 +150,42 @@ void UpdateErrorStatusIfFalse(bool status, absl::string_view field_name,
   }
 }
 
+// Resets the per-parent element tags.
+//
+// A tag is only meaningful while the element it was set from is being parsed.
+// Carrying one across a change of parent lets character data be stored into a
+// field of an unrelated element; a block's `gain`, for instance, used to leave
+// `kGain` set, so the next audioObject's character data was consumed as that
+// object's gain.
+void ResetTags(Handler& handler) {
+  handler.audio_programme_tag = kProgrammeDefault;
+  handler.audio_content_tag = kContentDefault;
+  handler.audio_object_tag = kObjectDefault;
+  handler.audio_pack_tag = kPackDefault;
+  handler.audio_channel_tag = kChannelDefault;
+  handler.audio_block_tag = kBlockDefault;
+}
+
+// Returns the unit of a `gain` element, taken from its optional `gainUnit`
+// attribute.
+//
+// BS.2076-2 defines only "linear" and "dB", and specifies that a `gain`
+// without the attribute is linear.
+GainUnit GetGainUnit(const char** atts, Handler& handler) {
+  for (int32_t i = 0; atts[i]; i += 2) {
+    if (absl::string_view(atts[i]) != "gainUnit") {
+      continue;
+    }
+    const absl::string_view gain_unit(atts[i + 1]);
+    if (gain_unit == "dB") {
+      return kGainUnitDb;
+    }
+    // Reject any other unit rather than silently treating it as linear.
+    UpdateErrorStatusIfFalse(gain_unit == "linear", "gainUnit", handler);
+  }
+  return kGainUnitLinear;
+}
+
 // This function sets the handler's tag for program, content, or object based
 // upon the name attribute.
 void SetHandlerTag(absl::string_view name, const char** atts,
@@ -170,7 +211,15 @@ void SetHandlerTag(absl::string_view name, const char** atts,
   } else if (name == "audioComplementaryObjectIDRef") {
     handler.audio_object_tag = kAudioComplementaryObjectIDRef;
   } else if (name == "gain") {
-    handler.audio_object_tag = kGain;
+    handler.gain_unit = GetGainUnit(atts, handler);
+    // BS.2076-2 defines a `gain` element on both `audioObject` and
+    // `audioBlockFormat`. Route it by its parent, so that a block's gain is
+    // not attributed to the enclosing object.
+    if (handler.parent == kAudioBlock) {
+      handler.audio_block_tag = kBlockGain;
+    } else {
+      handler.audio_object_tag = kGain;
+    }
   } else if (name == "audioObjectLabel") {
     handler.audio_object_tag = kAudioObjectLabel;
   } else if (name == "audioPackLabel") {
@@ -727,9 +776,11 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
           break;
         }
         case kGain: {
+          auto& audio_object = handler.adm.audio_objects[idx - 1];
+          audio_object.gain_unit = handler.gain_unit;
           UpdateErrorStatusIfFalse(
               absl::SimpleAtof(absl::string_view(text, len),
-                               &handler.adm.audio_objects[idx - 1].gain),
+                               &audio_object.gain),
               "gain", handler);
           break;
         }
@@ -853,6 +904,14 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
           }
           break;
         }
+        case kBlockGain: {
+          auto& audio_block = audio_blocks.back();
+          audio_block.gain_unit = handler.gain_unit;
+          UpdateErrorStatusIfFalse(
+              absl::SimpleAtof(absl::string_view(text, len), &audio_block.gain),
+              "gain", handler);
+          break;
+        }
         case kAudioBlockLabel: {
           audio_blocks.back().id = (std::string(text, len));
           break;
@@ -888,6 +947,7 @@ void XMLStartTagHandlerForExpat(void* parser_data, const char* name,
     // If the tag 'audioProgramme' is encountered while parsing the axml, create
     // an instance of AudioProgramme class, populate its attributes and add it
     // to ADM.
+    ResetTags(handler);
     handler.parent = kAudioProgramme;
     AudioProgramme audio_programme;
     LoudnessMetadata loudness_metadata;
@@ -903,6 +963,7 @@ void XMLStartTagHandlerForExpat(void* parser_data, const char* name,
     // If the tag 'audioContent' is encountered while parsing the axml, create
     // an instance of AudioContent class, populate its attributes and add it to
     // ADM.
+    ResetTags(handler);
     handler.parent = kAudioContent;
     AudioContent audio_content;
     for (int32_t i = 0; atts[i]; i += 2) {
@@ -913,6 +974,7 @@ void XMLStartTagHandlerForExpat(void* parser_data, const char* name,
   } else if (adm_element == "audioObject") {
     // If the tag 'audioObject' is encountered while parsing the axml, create an
     // instance of AudioObject class, populate its attributes and add it to ADM.
+    ResetTags(handler);
     handler.parent = kAudioObject;
     AudioObject audio_object;
     for (int32_t i = 0; atts[i]; i += 2) {
@@ -925,6 +987,7 @@ void XMLStartTagHandlerForExpat(void* parser_data, const char* name,
     // If the tag 'audioPackFormat' is encountered while parsing the axml,
     // create an instance of AudioPack class, populate its attributes and add it
     // to ADM.
+    ResetTags(handler);
     handler.parent = kAudioPack;
     AudioPackFormat audio_pack;
     for (int32_t i = 0; atts[i]; i += 2) {
@@ -936,6 +999,7 @@ void XMLStartTagHandlerForExpat(void* parser_data, const char* name,
     // If the tag 'audioChannelFormat' is encountered while parsing the axml,
     // create an instance of AudioChannel class, populate its attributes and add
     // it to ADM.
+    ResetTags(handler);
     handler.parent = kAudioChannel;
     AudioChannelFormat audio_channel;
     for (int32_t i = 0; atts[i]; i += 2) {
@@ -955,6 +1019,7 @@ void XMLStartTagHandlerForExpat(void* parser_data, const char* name,
           "Encountered audioBlockFormat without a parent audioChannelFormat.");
       return;
     }
+    ResetTags(handler);
     handler.parent = kAudioBlock;
     AudioBlockFormat audio_block;
     CartesianPosition position;
