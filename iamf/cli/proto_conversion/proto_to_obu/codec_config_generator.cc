@@ -129,9 +129,6 @@ absl::Status GenerateOpusDecoderConfig(
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "OpusDecoderConfig.version", opus_metadata.version(),
       obu_decoder_config.version_));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint16_t>(
-      "OpusDecoderConfig.pre_skip", opus_metadata.pre_skip(),
-      obu_decoder_config.pre_skip_));
   obu_decoder_config.input_sample_rate_ = opus_metadata.input_sample_rate();
   return absl::OkStatus();
 }
@@ -377,9 +374,7 @@ absl::Status CodecConfigGenerator::Generate(
     if (!obu.ok()) {
       return obu.status();
     }
-    if (input_codec_config.automatically_override_codec_delay()) {
-      RETURN_IF_NOT_OK(OverrideCodecDelay(input_codec_config, *obu));
-    }
+    RETURN_IF_NOT_OK(OverrideCodecDelay(input_codec_config, *obu));
 
     codec_config_obus.emplace(codec_config_metadata.codec_config_id(),
                               *std::move(obu));

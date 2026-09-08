@@ -57,7 +57,6 @@ CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
 
   codec_config.set_codec_id(iamf_tools_cli_proto::CODEC_ID_OPUS);
   codec_config.set_num_samples_per_frame(num_samples_per_frame);
-  codec_config.set_automatically_override_codec_delay(true);
   codec_config.mutable_decoder_config_opus()->set_version(kDefaultOpusVersion);
   codec_config.mutable_decoder_config_opus()->set_input_sample_rate(
       kDefaultOpusInputSampleRate);

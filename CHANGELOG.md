@@ -66,6 +66,9 @@ and this project adheres to
     fixed value required by the IAMF specification (0).
 -   Deprecate `OpusDecoderConfig::mapping_family` field in favor of always using
     the fixed value required by the IAMF specification (0).
+-   Deprecate `automatically_override_codec_delay` and
+    `OpusDecoderConfig::pre_skip` in favor of always automatically determining
+    the codec delay.
 
 ### Fixed
 

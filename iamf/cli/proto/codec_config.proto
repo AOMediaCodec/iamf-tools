@@ -67,7 +67,9 @@ message OpusDecoderConfig {
   // to 2.
   uint32 output_channel_count = 2 [default = 2, deprecated = true];
 
-  uint32 pre_skip = 3;
+  // `pre_skip` is deprecated and ignored. The codec delay is always
+  // automatically determined.
+  uint32 pre_skip = 3 [deprecated = true];
   uint32 input_sample_rate = 4;
   // `output_gain` is ignored. The value in the bitstream is fixed to 0.
   int32 output_gain = 5 [default = 0, deprecated = true];
@@ -228,11 +230,10 @@ message CodecConfig {
     FlacDecoderConfig decoder_config_flac = 8;
   }
 
-  // If true, the codec-delay related fields will be ignored and automatically
-  // determined. For example, the OpusDecoderConfig.pre_skip field will be
-  // ignored and set to the number of samples reported by the underlying encoder
-  // library.
-  bool automatically_override_codec_delay = 11 [default = true];
+  // `automatically_override_codec_delay` is deprecated and ignored. The codec
+  // delay is always automatically determined.
+  bool automatically_override_codec_delay = 11
+      [default = true, deprecated = true];
 
   // `automatically_override_audio_roll_distance` is deprecated and ignored. The
   // audio roll distance is always automatically determined.

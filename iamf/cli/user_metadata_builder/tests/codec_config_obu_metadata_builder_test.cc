@@ -35,8 +35,6 @@ constexpr uint32_t kLpcmSampleRate = 16000;
 constexpr uint8_t kLpcmSampleSize = 16;
 constexpr int64_t kLpcmNumSamplesPerFrame = 64;
 
-constexpr bool kAutomaticallyOverrideCodecDelay = true;
-
 void ExpectGeneratingCodecConfigsByIducceeds(
     const iamf_tools_cli_proto::CodecConfigObuMetadata&
         codec_config_obu_metadata) {
@@ -77,19 +75,6 @@ TEST(GetLpcmCodecConfigObuMetadata, OutputHasReasonableDefaults) {
             iamf_tools_cli_proto::LPCM_LITTLE_ENDIAN);
 }
 
-TEST(GetLpcmCodecConfigObuMetadata, UsesAutomaticOverrideFields) {
-  const auto codec_config_obu_metadata =
-      CodecConfigObuMetadataBuilder::GetLpcmCodecConfigObuMetadata(
-          kCodecConfigId, kLpcmNumSamplesPerFrame, kLpcmSampleSize,
-          kLpcmSampleRate);
-
-  // Ensure the automatic configuration fields are set, instead of having to
-  // consider specific required values based on the codec.
-  const auto& codec_config = codec_config_obu_metadata.codec_config();
-  EXPECT_EQ(codec_config.automatically_override_codec_delay(),
-            kAutomaticallyOverrideCodecDelay);
-}
-
 TEST(FillLpcmCodecConfigObuMetadata, IsCompatibleWithCodecConfigGenerator) {
   const auto codec_config_obu_metadata =
       CodecConfigObuMetadataBuilder::GetLpcmCodecConfigObuMetadata(
@@ -121,18 +106,6 @@ TEST(GetOpusCodecConfigObuMetadata, OutputHasReasonableDefaults) {
   EXPECT_EQ(codec_config.decoder_config_opus().version(), kOpusVersion);
   EXPECT_EQ(codec_config.decoder_config_opus().input_sample_rate(),
             kOpusInputSampleRate);
-}
-
-TEST(GetOpusCodecConfigObuMetadata, UsesAutomaticOverrideFields) {
-  const auto codec_config_obu_metadata =
-      CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
-          kCodecConfigId, kOpusNumSamplesPerFrame);
-
-  // Ensure the automatic configuration fields are set, instead of having to
-  // consider specific required values based on the codec.
-  const auto& codec_config = codec_config_obu_metadata.codec_config();
-  EXPECT_EQ(codec_config.automatically_override_codec_delay(),
-            kAutomaticallyOverrideCodecDelay);
 }
 
 TEST(GetOpusCodecConfigObuMetadata, IsCompatibleWithCodecConfigGenerator) {

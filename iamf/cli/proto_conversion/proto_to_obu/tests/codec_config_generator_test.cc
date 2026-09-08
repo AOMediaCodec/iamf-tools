@@ -91,11 +91,9 @@ void InitMetadataForOpus(
         codec_config {
           codec_id: CODEC_ID_OPUS
           num_samples_per_frame: 120
-          automatically_override_codec_delay: false
           decoder_config_opus {
             version: 1
             output_channel_count: 2
-            pre_skip: 0
             input_sample_rate: 48000
             output_gain: 0
             mapping_family: 0
@@ -116,7 +114,7 @@ void InitExpectedObuForOpus(CodecConfigsById& expected_obus) {
        .num_samples_per_frame = 120,
        .audio_roll_distance = -32,
        .decoder_config = OpusDecoderConfig{
-           .version_ = 1, .pre_skip_ = 0, .input_sample_rate_ = 48000}});
+           .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 48000}});
   ASSERT_THAT(codec_config, IsOk());
   expected_obus.emplace(kCodecConfigId, *std::move(codec_config));
 }
@@ -131,7 +129,6 @@ void InitMetadataForAac(
           codec_id: CODEC_ID_AAC_LC
           num_samples_per_frame: 1024
           audio_roll_distance: -1
-          automatically_override_codec_delay: false
           decoder_config_aac: {
             decoder_config_descriptor_tag: 0x04
             object_type_indication: 0x40
@@ -393,53 +390,28 @@ TEST_F(CodecConfigGeneratorTest,
   codec_config_metadata_.at(0)
       .mutable_codec_config()
       ->set_num_samples_per_frame(kInvalidNumSamplesPerFrame);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
-      ->set_automatically_override_codec_delay(true);
 
   EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
-TEST_F(CodecConfigGeneratorTest,
-       AutomaticallyOverrideCodecDelayOverridesPreSkip) {
+TEST_F(CodecConfigGeneratorTest, IgnoresOpusPreSkip) {
+  // `pre_skip` is deprecated and ignored; the generator always automatically
+  // determines the codec delay.
+  const uint16_t kArbitraryPreSkip = 9999;
   InitMetadataForOpus(codec_config_metadata_);
   codec_config_metadata_.at(0)
       .mutable_codec_config()
       ->mutable_decoder_config_opus()
-      ->clear_pre_skip();
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
-      ->set_automatically_override_codec_delay(true);
+      ->set_pre_skip(kArbitraryPreSkip);
 
   const auto output_obus = InitAndGenerate();
-  EXPECT_THAT(output_obus, IsOk());
-  const auto& decoder_config =
-      output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config;
-  ASSERT_TRUE(std::holds_alternative<OpusDecoderConfig>(decoder_config));
-
-  EXPECT_NE(std::get<OpusDecoderConfig>(decoder_config).pre_skip_, 0);
-}
-
-TEST_F(CodecConfigGeneratorTest,
-       AutomaticallyOverrideCodecDelayOverridesIgnoresInputPreSkip) {
-  const uint16_t kInvalidInputPreSkip = 9999;
-  InitMetadataForOpus(codec_config_metadata_);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
-      ->mutable_decoder_config_opus()
-      ->set_pre_skip(kInvalidInputPreSkip);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
-      ->set_automatically_override_codec_delay(true);
-
-  const auto output_obus = InitAndGenerate();
-  EXPECT_THAT(output_obus, IsOk());
+  ASSERT_THAT(output_obus, IsOk());
   const auto& decoder_config =
       output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config;
   ASSERT_TRUE(std::holds_alternative<OpusDecoderConfig>(decoder_config));
 
   EXPECT_NE(std::get<OpusDecoderConfig>(decoder_config).pre_skip_,
-            kInvalidInputPreSkip);
+            kArbitraryPreSkip);
 }
 
 TEST_F(CodecConfigGeneratorTest, IgnoresOpusOutputChannelCount) {
