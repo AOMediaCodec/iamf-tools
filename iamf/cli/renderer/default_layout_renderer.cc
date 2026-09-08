@@ -244,32 +244,35 @@ std::unique_ptr<DefaultLayoutRenderer> DefaultLayoutRenderer::Create(
       common_num_samples_per_frame));
 }
 
-absl::Status DefaultLayoutRenderer::Render(
+absl::Status DefaultLayoutRenderer::PrepareOperation(
     const IdLabeledFrameMap& id_to_labeled_frame,
+    const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+        id_to_parameter_block) {
+  // Nothing to do here.
+  return absl::OkStatus();
+}
+
+absl::Status DefaultLayoutRenderer::PerElementOperation(
+    size_t index, DecodedUleb128 audio_element_id,
+    const LabeledFrame& labeled_frame,
+    const MixGainParamDefinition& element_mix_gain,
+    const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+        id_to_parameter_block) {
+  RETURN_IF_NOT_OK(RenderLabeledFrameToLayout(
+      labeled_frame, common_num_samples_per_frame_, *renderers_[index],
+      rendered_audio_elements_[index]));
+  RETURN_IF_NOT_OK(GetAndApplyMixGain(common_sample_rate_,
+                                      id_to_parameter_block, element_mix_gain,
+                                      num_channels_, linear_mix_gain_per_tick_,
+                                      rendered_audio_elements_[index]));
+  return absl::OkStatus();
+}
+
+absl::Status DefaultLayoutRenderer::FinalizeOperation(
     const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
         id_to_parameter_block,
     std::vector<std::vector<InternalSampleType>>& rendered_samples,
     std::vector<absl::Span<const InternalSampleType>>& valid_rendered_samples) {
-  // Each audio element rendered individually with `element_mix_gain` applied.
-  const size_t num_audio_elements = audio_element_ids_.size();
-  for (size_t i = 0; i < num_audio_elements; i++) {
-    const auto& audio_element_id = audio_element_ids_[i];
-    const auto& element_mix_gain = element_mix_gains_[i];
-    if (id_to_labeled_frame.find(audio_element_id) !=
-        id_to_labeled_frame.end()) {
-      const auto& labeled_frame = id_to_labeled_frame.at(audio_element_id);
-      // Render the frame to the specified `loudness_layout` and apply element
-      // mix gain.
-      RETURN_IF_NOT_OK(RenderLabeledFrameToLayout(
-          labeled_frame, common_num_samples_per_frame_, *renderers_[i],
-          rendered_audio_elements_[i]));
-    }
-
-    RETURN_IF_NOT_OK(GetAndApplyMixGain(
-        common_sample_rate_, id_to_parameter_block, element_mix_gain,
-        num_channels_, linear_mix_gain_per_tick_, rendered_audio_elements_[i]));
-  }
-
   // Mix the audio elements.
   RETURN_IF_NOT_OK(
       MixAudioElements(rendered_audio_elements_, rendered_samples));

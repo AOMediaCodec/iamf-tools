@@ -12,9 +12,17 @@
 
 #include "iamf/cli/renderer/layout_renderer_base.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
+#include "absl/types/span.h"
+#include "iamf/cli/demixing_manager.h"
+#include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
@@ -31,5 +39,32 @@ LayoutRendererBase::LayoutRendererBase(
       num_channels_(num_channels),
       common_sample_rate_(common_sample_rate),
       common_num_samples_per_frame_(common_num_samples_per_frame) {}
+
+absl::Status LayoutRendererBase::Render(
+    const IdLabeledFrameMap& id_to_labeled_frame,
+    const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+        id_to_parameter_block,
+    std::vector<std::vector<InternalSampleType>>& rendered_samples,
+    std::vector<absl::Span<const InternalSampleType>>& valid_rendered_samples) {
+  RETURN_IF_NOT_OK(
+      PrepareOperation(id_to_labeled_frame, id_to_parameter_block));
+
+  for (size_t i = 0; i < audio_element_ids_.size(); ++i) {
+    const auto audio_element_id = audio_element_ids_[i];
+    const auto& element_mix_gain = element_mix_gains_[i];
+    const auto& labeled_frame =
+        LookupInMap(id_to_labeled_frame, audio_element_id,
+                    "Labeled frame for audio element ID");
+    if (!labeled_frame.ok()) {
+      return labeled_frame.status();
+    }
+    RETURN_IF_NOT_OK(PerElementOperation(i, audio_element_id, *labeled_frame,
+                                         element_mix_gain,
+                                         id_to_parameter_block));
+  }
+
+  return FinalizeOperation(id_to_parameter_block, rendered_samples,
+                           valid_rendered_samples);
+}
 
 }  // namespace iamf_tools

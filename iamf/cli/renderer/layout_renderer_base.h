@@ -49,13 +49,13 @@ class LayoutRendererBase {
    *        samples.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  virtual absl::Status Render(
+  absl::Status Render(
       const IdLabeledFrameMap& id_to_labeled_frame,
       const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
           id_to_parameter_block,
       std::vector<std::vector<InternalSampleType>>& rendered_samples,
       std::vector<absl::Span<const InternalSampleType>>&
-          valid_rendered_samples) = 0;
+          valid_rendered_samples);
 
  protected:
   /*!\brief Constructor.
@@ -73,6 +73,49 @@ class LayoutRendererBase {
       const std::vector<MixGainParamDefinition>& element_mix_gains,
       const MixGainParamDefinition& output_mix_gain, int32_t num_channels,
       uint32_t common_sample_rate, uint32_t common_num_samples_per_frame);
+
+  /*!\brief Hook called before starting loop over audio elements.
+   *
+   * \param id_to_labeled_frame Map from audio element ID to labeled frame.
+   * \param id_to_parameter_block Map from parameter ID to parameter block.
+   * \return `absl::OkStatus()` on success, or specific status on failure.
+   */
+  virtual absl::Status PrepareOperation(
+      const IdLabeledFrameMap& id_to_labeled_frame,
+      const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+          id_to_parameter_block) = 0;
+
+  /*!\brief Hook called to process single audio element inside loop.
+   *
+   * \param index Index of audio element in sub-mix list.
+   * \param audio_element_id ID of audio element.
+   * \param labeled_frame Labeled frame of audio element.
+   * \param element_mix_gain Mix gain parameter definition for audio
+   *        element.
+   * \param id_to_parameter_block Map from parameter ID to parameter block.
+   * \return `absl::OkStatus()` on success, or specific status on failure.
+   */
+  virtual absl::Status PerElementOperation(
+      size_t index, DecodedUleb128 audio_element_id,
+      const LabeledFrame& labeled_frame,
+      const MixGainParamDefinition& element_mix_gain,
+      const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+          id_to_parameter_block) = 0;
+
+  /*!\brief Hook called to finalize rendering after loop over elements.
+   *
+   * \param id_to_parameter_block Map from parameter ID to parameter block.
+   * \param rendered_samples Output buffer for mixed and rendered samples.
+   * \param valid_rendered_samples Output span view of valid rendered
+   *        samples.
+   * \return `absl::OkStatus()` on success, or specific status on failure.
+   */
+  virtual absl::Status FinalizeOperation(
+      const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+          id_to_parameter_block,
+      std::vector<std::vector<InternalSampleType>>& rendered_samples,
+      std::vector<absl::Span<const InternalSampleType>>&
+          valid_rendered_samples) = 0;
 
   const std::vector<DecodedUleb128> audio_element_ids_;
   const std::vector<MixGainParamDefinition> element_mix_gains_;
