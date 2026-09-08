@@ -78,8 +78,54 @@ audio_element_metadata {
   }
 }
 
+# Insert a buggy Mix Presentation OBU with duplicate anchor elements.
+arbitrary_obu_metadata {
+  invalidates_bitstream: true
+  insertion_hook: INSERTION_HOOK_AFTER_AUDIO_ELEMENTS
+  obu_type: OBU_IA_MIX_PRESENTATION
+  obu_header {
+    obu_redundant_copy: false
+    obu_trimming_status_flag: false
+    obu_extension_flag: false
+  }
+  payload:
+    "\x2a"  # `mix_presentation_id` (42).
+    "\x01"  # `count_label` (1).
+    "en-us\x00"  # `annotations_language`.
+    "test_mix_pres\x00"  # `localized_presentation_annotations`.
+    "\x01"  # `num_sub_mixes` (1).
+    # Sub-mix 0:
+    "\x01"  # `num_audio_elements` (1).
+    "\xac\x02"  # `audio_element_id` (300).
+    "test_sub_mix_0_audio_element_0\x00"  # `localized_element_annotations`.
+    "\x00"  # `headphones_rendering_mode` (0 = stereo), `reserved` (0).
+    "\x00"  # `rendering_config_extension_size` (0).
+    # `element_mix_gain`:
+    "\x64"  # `parameter_id` (100).
+    "\x80\x7d"  # `parameter_rate` (16000).
+    "\x80"  # `param_definition_mode` (1), `reserved` (0).
+    "\x00\x00"  # `default_mix_gain` (0).
+    # `output_mix_gain`:
+    "\x64"  # `parameter_id` (100).
+    "\x80\x7d"  # `parameter_rate` (16000).
+    "\x80"  # `param_definition_mode` (1), `reserved` (0).
+    "\x00\x00"  # `default_mix_gain` (0).
+    "\x01"  # `num_layouts` (1).
+    # Layout 0:
+    "\x80"  # `layout_type` (2 = loudspeakers_ss_convention), `sound_system` (0 = 0.2.0), `reserved` (0).
+    "\x02"  # `info_type` (2 = `kAnchoredLoudness`).
+    "\xca\x5b"  # `integrated_loudness` (-13733).
+    "\xcd\xb1"  # `digital_peak` (-12879).
+    "\x02"  # `num_anchored_loudness` (2).
+    "\x01"  # `anchor_element` (1 = `ANCHOR_TYPE_DIALOGUE`).
+    "\x03\xe8"  # `anchored_loudness` (1000).
+    "\x01"  # `anchor_element` (1 = `ANCHOR_TYPE_DIALOGUE`). Invalid: duplicate anchor element.
+    "\x03\xe9"  # `anchored_loudness` (1001).
+}
+
+# Usually the encoder needs a real Mix Presentation, insert a valid one.
 mix_presentation_metadata {
-  mix_presentation_id: 42
+  mix_presentation_id: 43
   annotations_language: ["en-us"]
   localized_presentation_annotations: ["test_mix_pres"]
   sub_mixes {
@@ -123,7 +169,7 @@ mix_presentation_metadata {
         anchored_loudness {
           anchor_elements: [
             { anchor_element: ANCHOR_TYPE_DIALOGUE anchored_loudness: 1000 },
-            { anchor_element: ANCHOR_TYPE_DIALOGUE anchored_loudness: 1001 }
+            { anchor_element: ANCHOR_TYPE_ALBUM anchored_loudness: 1001 }
           ]
         }
       }

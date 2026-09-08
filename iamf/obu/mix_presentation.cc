@@ -140,7 +140,7 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
   }
   // Conditionally write `anchored_loudness` based on `info_type`.
   if ((layout.loudness.info_type & LoudnessInfo::kAnchoredLoudness) != 0) {
-    MAYBE_RETURN_IF_NOT_OK(ValidateUniqueAnchorElements(
+    RETURN_IF_NOT_OK(ValidateUniqueAnchorElements(
         layout.loudness.anchored_loudness.anchor_elements));
     const AnchoredLoudness& anchored_loudness =
         layout.loudness.anchored_loudness;
@@ -200,7 +200,7 @@ absl::Status ValidateAndWriteSubMix(DecodedUleb128 count_label,
 }
 
 absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
-  MAYBE_RETURN_IF_NOT_OK(
+  RETURN_IF_NOT_OK(
       ValidateNotEqual(DecodedUleb128{0}, num_sub_mixes, "num_sub_mixes"));
   return absl::OkStatus();
 }
