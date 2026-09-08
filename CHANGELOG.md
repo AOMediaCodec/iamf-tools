@@ -62,6 +62,10 @@ and this project adheres to
     `HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED`.
 -   Deprecate `OpusDecoderConfig::output_channel_count` field in favor of
     always using the fixed value required by the IAMF specification (2).
+-   Deprecate `OpusDecoderConfig::output_gain` field in favor of always using the
+    fixed value required by the IAMF specification (0).
+-   Deprecate `OpusDecoderConfig::mapping_family` field in favor of always using
+    the fixed value required by the IAMF specification (0).
 
 ### Fixed
 

@@ -133,12 +133,6 @@ absl::Status GenerateOpusDecoderConfig(
       "OpusDecoderConfig.pre_skip", opus_metadata.pre_skip(),
       obu_decoder_config.pre_skip_));
   obu_decoder_config.input_sample_rate_ = opus_metadata.input_sample_rate();
-  RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
-      "OpusDecoderConfig.output_gain", opus_metadata.output_gain(),
-      obu_decoder_config.output_gain_));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "OpusDecoderConfig.mapping_family", opus_metadata.mapping_family(),
-      obu_decoder_config.mapping_family_));
   return absl::OkStatus();
 }
 

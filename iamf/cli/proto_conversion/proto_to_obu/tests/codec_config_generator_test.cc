@@ -42,7 +42,9 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Field;
 using ::testing::Not;
+using ::testing::Pointee;
 using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
 using iamf_tools_cli_proto::CodecConfigObuMetadata;
@@ -457,44 +459,42 @@ TEST_F(CodecConfigGeneratorTest, IgnoresOpusOutputChannelCount) {
   EXPECT_EQ(*output_obus, expected_obus_);
 }
 
-TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputGain) {
-  // IAMF requires `output_gain` is fixed. The generator does not validate OBU
-  // requirements.
-  const uint8_t kInvalidOutputGain = 99;
-  ASSERT_NE(kInvalidOutputGain, OpusDecoderConfig::kOutputGain);
+TEST_F(CodecConfigGeneratorTest, IgnoresOpusOutputGain) {
+  const int16_t kArbitraryOutputGain = 99;
+  ASSERT_NE(kArbitraryOutputGain, OpusDecoderConfig::kOutputGain);
   InitMetadataForOpus(codec_config_metadata_);
   codec_config_metadata_.at(0)
       .mutable_codec_config()
       ->mutable_decoder_config_opus()
-      ->set_output_gain(kInvalidOutputGain);
+      ->set_output_gain(kArbitraryOutputGain);
 
   const auto output_obus = InitAndGenerate();
   ASSERT_THAT(output_obus, IsOk());
 
-  EXPECT_EQ(std::get<OpusDecoderConfig>(
-                output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
-                .output_gain_,
-            kInvalidOutputGain);
+  EXPECT_THAT(
+      std::get_if<OpusDecoderConfig>(
+          &output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config),
+      Pointee(Field(&OpusDecoderConfig::output_gain_,
+                    OpusDecoderConfig::kOutputGain)));
 }
 
-TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusChannelMapping) {
-  // IAMF requires `mapping_family` is fixed. The generator does not validate
-  // OBU requirements.
-  const uint8_t kInvalidMappingFamily = 99;
-  ASSERT_NE(kInvalidMappingFamily, OpusDecoderConfig::kMappingFamily);
+TEST_F(CodecConfigGeneratorTest, IgnoresOpusChannelMapping) {
+  const uint8_t kArbitraryMappingFamily = 99;
+  ASSERT_NE(kArbitraryMappingFamily, OpusDecoderConfig::kMappingFamily);
   InitMetadataForOpus(codec_config_metadata_);
   codec_config_metadata_.at(0)
       .mutable_codec_config()
       ->mutable_decoder_config_opus()
-      ->set_mapping_family(kInvalidMappingFamily);
+      ->set_mapping_family(kArbitraryMappingFamily);
 
   const auto output_obus = InitAndGenerate();
   ASSERT_THAT(output_obus, IsOk());
 
-  EXPECT_EQ(std::get<OpusDecoderConfig>(
-                output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
-                .mapping_family_,
-            kInvalidMappingFamily);
+  EXPECT_THAT(
+      std::get_if<OpusDecoderConfig>(
+          &output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config),
+      Pointee(Field(&OpusDecoderConfig::mapping_family_,
+                    OpusDecoderConfig::kMappingFamily)));
 }
 
 TEST_F(CodecConfigGeneratorTest, InvalidOpusDecoderConfigIsMissing) {

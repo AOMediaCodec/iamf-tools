@@ -69,9 +69,11 @@ message OpusDecoderConfig {
 
   uint32 pre_skip = 3;
   uint32 input_sample_rate = 4;
-  int32 output_gain = 5 [default = 0];
+  // `output_gain` is ignored. The value in the bitstream is fixed to 0.
+  int32 output_gain = 5 [default = 0, deprecated = true];
 
-  uint32 mapping_family = 6 [default = 0];
+  // `mapping_family` is ignored. The value in the bitstream is fixed to 0.
+  uint32 mapping_family = 6 [default = 0, deprecated = true];
 
   OpusEncoderMetadata opus_encoder_metadata = 7;
 }
