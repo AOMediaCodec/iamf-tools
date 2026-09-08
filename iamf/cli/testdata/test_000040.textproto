@@ -53,6 +53,34 @@ codec_config_metadata {
   }
 }
 
+# Insert a buggy Audio Element OBU with invalid `output_channel_count` = 3.
+arbitrary_obu_metadata {
+  invalidates_bitstream: true
+  insertion_hook: INSERTION_HOOK_AFTER_CODEC_CONFIGS
+  obu_type: OBU_IA_AUDIO_ELEMENT
+  obu_header {
+    obu_redundant_copy: false
+    obu_trimming_status_flag: false
+    obu_extension_flag: false
+  }
+  payload:
+    "\xac\x02"  # `audio_element_id` (300).
+    "\x20"  # `audio_element_type` (1 = `AUDIO_ELEMENT_SCENE_BASED`), `reserved` (0).
+    "\xc8\x01"  # `codec_config_id` (200).
+    "\x03"  # `num_substreams` (3).
+    "\x00"  # `audio_substream_ids[0]` (0).
+    "\x01"  # `audio_substream_ids[1]` (1).
+    "\x02"  # `audio_substream_ids[2]` (2).
+    "\x00"  # `num_parameters` (0).
+    "\x00"  # `ambisonics_mode` (0 = `AMBISONICS_MODE_MONO`).
+    # `ambisonics_mono_config`:
+    "\x03"  # `output_channel_count` (3). Invalid: must be (1 + N)^2.
+    "\x03"  # `substream_count` (3).
+    "\x00"  # `channel_mapping[0]` (0).
+    "\x01"  # `channel_mapping[1]` (1).
+    "\x02"  # `channel_mapping[2]` (2).
+}
+
 audio_element_metadata {
   audio_element_id: 300
   audio_element_type: AUDIO_ELEMENT_SCENE_BASED
@@ -62,10 +90,13 @@ audio_element_metadata {
   ambisonics_config {
     ambisonics_mode: AMBISONICS_MODE_MONO
     ambisonics_mono_config {
-      output_channel_count: 3
+      output_channel_count: 4
       substream_count: 3
-      channel_mapping: [0, 1, 2]
+      channel_mapping: [0, 1, 2, 255]
     }
+  }
+  obu_header {
+    obu_redundant_copy: true
   }
 }
 
