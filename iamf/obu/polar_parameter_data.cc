@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/polar_parameter_data.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <utility>
 
@@ -28,6 +29,10 @@
 namespace iamf_tools {
 
 namespace {
+
+int16_t Clip3(int16_t value, int16_t min_val, int16_t max_val) {
+  return std::clamp(value, min_val, max_val);
+}
 
 template <typename T>
 absl::Status ValidateRange(const AnimatedParameterData<T>& anim, T min_val,
@@ -60,11 +65,15 @@ absl::StatusOr<PolarParameterData> PolarParameterData::CreateFromBuffer(
   AnimationType animation_type =
       static_cast<AnimationType>(animation_type_uleb);
 
-  auto read_azimuth = [](ReadBitBuffer& r, int16_t& val) {
-    return r.ReadSigned9(val);
+  auto read_azimuth = [](ReadBitBuffer& r, int16_t& val) -> absl::Status {
+    RETURN_IF_NOT_OK(r.ReadSigned9(val));
+    val = Clip3(val, -180, 180);
+    return absl::OkStatus();
   };
-  auto read_elevation = [](ReadBitBuffer& r, int8_t& val) {
-    return r.ReadSigned8(val);
+  auto read_elevation = [](ReadBitBuffer& r, int8_t& val) -> absl::Status {
+    RETURN_IF_NOT_OK(r.ReadSigned8(val));
+    val = Clip3(val, -90, 90);
+    return absl::OkStatus();
   };
   auto read_distance = [](ReadBitBuffer& r, uint8_t& val) {
     return r.ReadUnsignedLiteral(7, val);
@@ -106,10 +115,10 @@ absl::StatusOr<PolarParameterData> PolarParameterData::Create(
   RETURN_IF_NOT_OK(ValidateEqual(distance.animation_type(), animation_type,
                                  "distance animation_type"));
 
-  // azimuth is 9 bits signed -> [-256, 255]
-  RETURN_IF_NOT_OK(ValidateRange<int16_t>(azimuth, -256, 255, "azimuth"));
-  // elevation is 8 bits signed -> [-128, 127]
-  RETURN_IF_NOT_OK(ValidateRange<int8_t>(elevation, -128, 127, "elevation"));
+  // azimuth is clipped to [-180, 180]
+  RETURN_IF_NOT_OK(ValidateRange<int16_t>(azimuth, -180, 180, "azimuth"));
+  // elevation is clipped to [-90, 90]
+  RETURN_IF_NOT_OK(ValidateRange<int8_t>(elevation, -90, 90, "elevation"));
   // distance is 7 bits unsigned -> [0, 127]
   RETURN_IF_NOT_OK(ValidateRange<uint8_t>(distance, 0, 127, "distance"));
 
@@ -121,10 +130,10 @@ absl::Status PolarParameterData::Write(WriteBitBuffer& wb) const {
       wb.WriteUleb128(static_cast<DecodedUleb128>(animation_type_)));
 
   auto write_azimuth = [](WriteBitBuffer& w, int16_t val) {
-    return w.WriteSigned9(val);
+    return w.WriteSigned9(Clip3(val, -180, 180));
   };
   auto write_elevation = [](WriteBitBuffer& w, int8_t val) {
-    return w.WriteSigned8(val);
+    return w.WriteSigned8(Clip3(val, -90, 90));
   };
   auto write_distance = [](WriteBitBuffer& w, uint8_t val) {
     return w.WriteUnsignedLiteral(val, 7);

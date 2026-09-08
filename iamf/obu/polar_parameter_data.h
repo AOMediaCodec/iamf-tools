@@ -41,8 +41,8 @@ class PolarParameterData : public ParameterData {
   /*!\brief Creates a `PolarParameterData`.
    *
    * \param animation_type Animation type.
-   * \param azimuth Animated azimuth parameter in range [-256, 255].
-   * \param elevation Animated elevation parameter in range [-128, 127].
+   * \param azimuth Animated azimuth parameter in range [-180, 180].
+   * \param elevation Animated elevation parameter in range [-90, 90].
    * \param distance Animated distance parameter in range [0, 127].
    * \return Deserialized `PolarParameterData` or error.
    */

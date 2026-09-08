@@ -91,6 +91,33 @@ TEST(CreateFromBuffer, SuccessLinear) {
   EXPECT_EQ(*data->distance().end_point_value(), 0);
 }
 
+TEST(CreateFromBuffer, ClipsAzimuthAndElevation) {
+  // Input values in bitstream:
+  //   azimuth = 181 (clipped to 180)
+  //   elevation = 91 (clipped to 90)
+  //   distance = 4
+  std::vector<uint8_t> source = {
+      // Byte 0: animation_type (0 = kStep)
+      0b00000000,
+      // Byte 1: azimuth_start[8:1] (181 = 0b0'1011'0101)
+      0b01011010,
+      // Byte 2: azimuth_start[0] (1) | elevation_start[7:1] (91 = 0b0101'1011)
+      0b10101101,
+      // Byte 3: elevation_start[0] (1) | distance_start[6:0] (4 = 0b000'0100)
+      0b10000100,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto data = PolarParameterData::CreateFromBuffer(*buffer);
+
+  ASSERT_THAT(data, IsOk());
+  EXPECT_EQ(data->animation_type(), AnimationType::kStep);
+  EXPECT_EQ(*data->azimuth().start_point_value(), 180);
+  EXPECT_EQ(*data->elevation().start_point_value(), 90);
+  EXPECT_EQ(*data->distance().start_point_value(), 4);
+}
+
 TEST(CreateFromBuffer, FailsWhenNotEnoughBytes) {
   std::vector<uint8_t> source = {
       // Byte 0: animation_type (0 = kStep)
@@ -127,9 +154,9 @@ TEST(CreateFromBuffer, FailsForInvalidAnimationType) {
 }
 
 TEST(Create, FailsForAzimuthMaxOutOfRange) {
-  // azimuth is out of range [-256, 255].
+  // azimuth is out of range [-180, 180].
   auto data = PolarParameterData::Create(
-      AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(300),
+      AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(181),
       AnimatedParameterData<int8_t>::MakeStep(0),
       AnimatedParameterData<uint8_t>::MakeStep(0));
 
@@ -137,20 +164,40 @@ TEST(Create, FailsForAzimuthMaxOutOfRange) {
 }
 
 TEST(Create, FailsForAzimuthMinOutOfRange) {
-  // azimuth is out of range [-256, 255].
+  // azimuth is out of range [-180, 180].
   auto data = PolarParameterData::Create(
-      AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(-300),
+      AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(-181),
       AnimatedParameterData<int8_t>::MakeStep(0),
       AnimatedParameterData<uint8_t>::MakeStep(0));
 
   EXPECT_THAT(data, Not(IsOk()));
 }
 
+TEST(Create, FailsForElevationMaxOutOfRange) {
+  // elevation is out of range [-90, 90].
+  auto data = PolarParameterData::Create(
+      AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(0),
+      AnimatedParameterData<int8_t>::MakeStep(91),
+      AnimatedParameterData<uint8_t>::MakeStep(0));
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+TEST(Create, FailsForElevationMinOutOfRange) {
+  // elevation is out of range [-90, 90].
+  auto data = PolarParameterData::Create(
+      AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(0),
+      AnimatedParameterData<int8_t>::MakeStep(-91),
+      AnimatedParameterData<uint8_t>::MakeStep(0));
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
 TEST(Create, FailsForAzimuthEndPointOutOfRange) {
-  // azimuth end_point_value is out of range [-256, 255].
+  // azimuth end_point_value is out of range [-180, 180].
   auto data = PolarParameterData::Create(
       AnimationType::kLinear,
-      AnimatedParameterData<int16_t>::MakeLinear(0, 300),
+      AnimatedParameterData<int16_t>::MakeLinear(0, 181),
       AnimatedParameterData<int8_t>::MakeLinear(0, 0),
       AnimatedParameterData<uint8_t>::MakeLinear(0, 0));
 
@@ -158,10 +205,10 @@ TEST(Create, FailsForAzimuthEndPointOutOfRange) {
 }
 
 TEST(Create, FailsForAzimuthControlPointOutOfRange) {
-  // azimuth control_point_value is out of range [-256, 255].
+  // azimuth control_point_value is out of range [-180, 180].
   auto data = PolarParameterData::Create(
       AnimationType::kBezier,
-      AnimatedParameterData<int16_t>::MakeBezier(0, 0, 300, 128),
+      AnimatedParameterData<int16_t>::MakeBezier(0, 0, 181, 128),
       AnimatedParameterData<int8_t>::MakeBezier(0, 0, 0, 128),
       AnimatedParameterData<uint8_t>::MakeBezier(0, 0, 0, 128));
 
