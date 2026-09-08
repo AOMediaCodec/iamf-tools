@@ -29,8 +29,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 
-constexpr bool kOverrideAudioRollDistance = true;
-
 class LpcmEncoderTest : public EncoderTestBase, public testing::Test {
  public:
   LpcmEncoderTest() = default;
@@ -43,8 +41,7 @@ class LpcmEncoderTest : public EncoderTestBase, public testing::Test {
     const CodecConfig temp = {.codec_id = CodecConfig::kCodecIdLpcm,
                               .num_samples_per_frame = num_samples_per_frame_,
                               .decoder_config = lpcm_decoder_config_};
-    auto codec_config = CodecConfigObu::Create(ObuHeader(), 0, temp,
-                                               kOverrideAudioRollDistance);
+    auto codec_config = CodecConfigObu::Create(ObuHeader(), 0, temp);
     ASSERT_THAT(codec_config, IsOk());
 
     encoder_ = std::make_unique<LpcmEncoder>(*codec_config, channel_count_);

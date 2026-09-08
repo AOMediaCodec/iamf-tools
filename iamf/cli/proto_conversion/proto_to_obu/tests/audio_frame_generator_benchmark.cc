@@ -57,7 +57,6 @@ void ConfigureUserMetadata(iamf_tools_cli_proto::UserMetadata& user_metadata,
   codec_config_metadata =
       CodecConfigObuMetadataBuilder::GetLpcmCodecConfigObuMetadata(
           kCodecConfigId, num_samples_per_frame, kSampleSize, kSampleRate);
-  codec_config_metadata.mutable_codec_config()->set_audio_roll_distance(0);
 
   auto& audio_frame_metadata = *user_metadata.add_audio_frame_metadata();
   ABSL_CHECK_OK(AudioFrameMetadataBuilder::PopulateAudioFrameMetadata(

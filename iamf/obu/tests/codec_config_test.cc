@@ -43,8 +43,6 @@ using ::absl_testing::IsOk;
 
 using testing::Not;
 
-constexpr bool kOverrideAudioRollDistance = true;
-constexpr bool kDontOverrideAudioRollDistance = false;
 constexpr int16_t kInvalidAudioRollDistance = 123;
 constexpr int16_t kLpcmAudioRollDistance = 0;
 constexpr DecodedUleb128 kCodecConfigId = 123;
@@ -116,8 +114,7 @@ class CodecConfigTestBase : public ObuTestBase {
 
  protected:
   void InitExpectOk() override {
-    auto obu = CodecConfigObu::Create(header_, codec_config_id_, codec_config_,
-                                      override_audio_roll_distance_);
+    auto obu = CodecConfigObu::Create(header_, codec_config_id_, codec_config_);
     ASSERT_THAT(obu, IsOk());
     obu_ = std::make_unique<CodecConfigObu>(std::move(*obu));
   }
@@ -130,8 +127,6 @@ class CodecConfigTestBase : public ObuTestBase {
 
   DecodedUleb128 codec_config_id_;
   CodecConfig codec_config_;
-
-  bool override_audio_roll_distance_ = kOverrideAudioRollDistance;
 };
 
 struct SampleRateTestCase {
@@ -226,24 +221,6 @@ TEST_F(CodecConfigLpcmTest, CreateSetsObuTyoe) {
 
 TEST_F(CodecConfigLpcmTest, CreateSetsAudioRollDistance) {
   codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
-  override_audio_roll_distance_ = kOverrideAudioRollDistance;
-  InitExpectOk();
-
-  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance, kLpcmAudioRollDistance);
-}
-
-TEST_F(CodecConfigLpcmTest, CreateObeysInvalidAudioRollDistance) {
-  codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
-  override_audio_roll_distance_ = kDontOverrideAudioRollDistance;
-  InitExpectOk();
-
-  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance,
-            kInvalidAudioRollDistance);
-}
-
-TEST_F(CodecConfigLpcmTest, CreateMayOverrideAudioRollDistance) {
-  codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
-  override_audio_roll_distance_ = kOverrideAudioRollDistance;
   InitExpectOk();
 
   EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance, kLpcmAudioRollDistance);
@@ -513,11 +490,9 @@ TEST_F(CodecConfigOpusTest, InitializeFailsWithIllegalCodecId) {
 TEST_F(CodecConfigOpusTest, CreateFailsWhenOverridingAudioRollDistanceFails) {
   constexpr uint32_t kNumSamplesPerFrameCausesDivideByZero = 0;
   codec_config_.num_samples_per_frame = kNumSamplesPerFrameCausesDivideByZero;
-  override_audio_roll_distance_ = kOverrideAudioRollDistance;
 
   // Underlying Opus roll distance calculation would fail.
-  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_,
-                                     override_audio_roll_distance_),
+  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_),
               Not(IsOk()));
 }
 

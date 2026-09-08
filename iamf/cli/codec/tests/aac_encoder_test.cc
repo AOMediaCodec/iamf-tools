@@ -31,7 +31,6 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::Not;
 
-constexpr bool kOverrideAudioRollDistance = true;
 constexpr bool kIgnoredValidatePreskip = true;
 
 class AacEncoderTest : public EncoderTestBase, public testing::Test {
@@ -53,8 +52,7 @@ class AacEncoderTest : public EncoderTestBase, public testing::Test {
                               .num_samples_per_frame = num_samples_per_frame_,
                               .decoder_config = aac_decoder_config_};
 
-    auto codec_config = CodecConfigObu::Create(ObuHeader(), 0, temp,
-                                               kOverrideAudioRollDistance);
+    auto codec_config = CodecConfigObu::Create(ObuHeader(), 0, temp);
     ASSERT_THAT(codec_config, IsOk());
 
     encoder_ = std::make_unique<AacEncoder>(aac_encoder_metadata_,

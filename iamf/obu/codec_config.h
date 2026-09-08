@@ -93,14 +93,13 @@ class CodecConfigObu : public ObuBase {
   /*!\brief Constructor.
    *
    * \param header `ObuHeader` of the OBU.
-   * \param input_codec_config `codec_config_id` in the OBU.
-   * \param codec_config `codec_config` in the OBU.
+   * \param codec_config_id `codec_config_id` in the OBU.
+   * \param input_codec_config `codec_config` in the OBU.
    * \return `CodecConfigObu` on success. A specific status on failure.
    */
   static absl::StatusOr<CodecConfigObu> Create(
       const ObuHeader& header, DecodedUleb128 codec_config_id,
-      const CodecConfig& input_codec_config,
-      bool automatically_override_roll_distance = true);
+      const CodecConfig& input_codec_config);
 
   /*!\brief Creates a `CodecConfigObu` from a `ReadBitBuffer`.
    *

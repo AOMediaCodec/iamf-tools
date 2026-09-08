@@ -44,6 +44,8 @@ and this project adheres to
     determining the size from related elements.
 -   Drop support of `output_wav_file_bit_depth_override` in `TestVectorMetadata`
     in favor of `output_rendered_file_format` in `EncoderControlMetadata`.
+-   Drop `automatically_override_roll_distance` parameter from
+    `CodecConfigObu::Create` in favor of always automatically determining it.
 
 ### Deprecated
 

@@ -349,11 +349,6 @@ absl::Status CodecConfigGenerator::Generate(
         .codec_id = obu_codec_id,
         .num_samples_per_frame = input_codec_config.num_samples_per_frame()};
 
-    RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
-        "CodecConfigObu.audio_roll_distance",
-        input_codec_config.audio_roll_distance(),
-        obu_codec_config.audio_roll_distance));
-
     // Process the codec-specific `decoder_config` field.
     if (obu_codec_id == CodecConfig::kCodecIdLpcm) {
       LpcmDecoderConfig lpcm_decoder_config;
@@ -384,8 +379,7 @@ absl::Status CodecConfigGenerator::Generate(
 
     auto obu = CodecConfigObu::Create(
         GetHeaderFromMetadata(codec_config_metadata.obu_header()),
-        codec_config_metadata.codec_config_id(), obu_codec_config,
-        input_codec_config.automatically_override_audio_roll_distance());
+        codec_config_metadata.codec_config_id(), obu_codec_config);
     if (!obu.ok()) {
       return obu.status();
     }

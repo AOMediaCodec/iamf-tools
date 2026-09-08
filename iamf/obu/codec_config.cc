@@ -228,18 +228,17 @@ absl::Status ReadAndValidateDecoderConfig(ReadBitBuffer& rb,
 
 absl::StatusOr<CodecConfigObu> CodecConfigObu::Create(
     const ObuHeader& header, DecodedUleb128 codec_config_id,
-    const CodecConfig& input_codec_config,
-    bool automatically_override_roll_distance) {
+    const CodecConfig& input_codec_config) {
   RETURN_IF_NOT_OK(
       ValidateNumSamplesPerFrame(input_codec_config.num_samples_per_frame));
-  // Copy the codec config, it may be modified to correct the roll distance.
+  // Copy the codec config, it will be modified to correct the roll distance.
   CodecConfig codec_config = input_codec_config;
   uint32_t output_sample_rate = 0;
   uint32_t input_sample_rate = 0;
   uint8_t bit_depth_to_measure_loudness = 0;
   RETURN_IF_NOT_OK(InitializeCodecConfigAndMetadata(
-      automatically_override_roll_distance, codec_config, output_sample_rate,
-      input_sample_rate, bit_depth_to_measure_loudness));
+      /*automatically_override_roll_distance=*/true, codec_config,
+      output_sample_rate, input_sample_rate, bit_depth_to_measure_loudness));
 
   auto obu =
       CodecConfigObu(header, codec_config_id, codec_config, output_sample_rate,

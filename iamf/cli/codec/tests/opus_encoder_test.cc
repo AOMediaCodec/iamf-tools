@@ -36,7 +36,6 @@ using ::absl_testing::IsOk;
 using ::testing::Not;
 using CodecConfigsById = DescriptorObus::CodecConfigsById;
 
-constexpr bool kOverrideAudioRollDistance = true;
 constexpr bool kValidateCodecDelay = true;
 constexpr bool kDontValidateCodecDelay = false;
 constexpr uint16_t kIncorrectPreSkip = 999;
@@ -142,8 +141,7 @@ class OpusEncoderTest : public EncoderTestBase, public testing::Test {
                               .num_samples_per_frame = num_samples_per_frame_,
                               .decoder_config = opus_decoder_config_};
 
-    auto codec_config = CodecConfigObu::Create(ObuHeader(), 0, temp,
-                                               kOverrideAudioRollDistance);
+    auto codec_config = CodecConfigObu::Create(ObuHeader(), 0, temp);
     ASSERT_THAT(codec_config, IsOk());
 
     encoder_ = std::make_unique<OpusEncoder>(opus_encoder_settings_,

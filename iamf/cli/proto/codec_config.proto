@@ -215,7 +215,9 @@ message CodecConfig {
 
   CodecId codec_id = 10;
   uint32 num_samples_per_frame = 2;
-  int32 audio_roll_distance = 9;
+  // `audio_roll_distance` is deprecated and ignored. The value in the bitstream
+  // is automatically determined.
+  int32 audio_roll_distance = 9 [deprecated = true];
 
   oneof decoder_config {
     LpcmDecoderConfig decoder_config_lpcm = 5;
@@ -230,9 +232,10 @@ message CodecConfig {
   // library.
   bool automatically_override_codec_delay = 11 [default = true];
 
-  // If true, the `audio_roll_distance` will be ignored and automatically be set
-  // to the correct value.
-  bool automatically_override_audio_roll_distance = 12 [default = true];
+  // `automatically_override_audio_roll_distance` is deprecated and ignored. The
+  // audio roll distance is always automatically determined.
+  bool automatically_override_audio_roll_distance = 12
+      [default = true, deprecated = true];
 
   // Next ID: 13
 }

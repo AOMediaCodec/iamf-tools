@@ -500,7 +500,6 @@ void ConfigureAacCodecConfigMetadata(
         codec_config_id: 99
         codec_config {
           codec_id: CODEC_ID_AAC_LC
-          automatically_override_audio_roll_distance: true
           decoder_config_aac: {
             decoder_specific_info {
               sample_frequency_index: AAC_SAMPLE_FREQUENCY_INDEX_48000

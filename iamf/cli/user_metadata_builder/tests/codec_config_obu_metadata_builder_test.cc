@@ -35,7 +35,6 @@ constexpr uint32_t kLpcmSampleRate = 16000;
 constexpr uint8_t kLpcmSampleSize = 16;
 constexpr int64_t kLpcmNumSamplesPerFrame = 64;
 
-constexpr bool kAutomaticallyOverrideAudioRollDistance = true;
 constexpr bool kAutomaticallyOverrideCodecDelay = true;
 
 void ExpectGeneratingCodecConfigsByIducceeds(
@@ -87,8 +86,6 @@ TEST(GetLpcmCodecConfigObuMetadata, UsesAutomaticOverrideFields) {
   // Ensure the automatic configuration fields are set, instead of having to
   // consider specific required values based on the codec.
   const auto& codec_config = codec_config_obu_metadata.codec_config();
-  EXPECT_EQ(codec_config.automatically_override_audio_roll_distance(),
-            kAutomaticallyOverrideAudioRollDistance);
   EXPECT_EQ(codec_config.automatically_override_codec_delay(),
             kAutomaticallyOverrideCodecDelay);
 }
@@ -134,8 +131,6 @@ TEST(GetOpusCodecConfigObuMetadata, UsesAutomaticOverrideFields) {
   // Ensure the automatic configuration fields are set, instead of having to
   // consider specific required values based on the codec.
   const auto& codec_config = codec_config_obu_metadata.codec_config();
-  EXPECT_EQ(codec_config.automatically_override_audio_roll_distance(),
-            kAutomaticallyOverrideAudioRollDistance);
   EXPECT_EQ(codec_config.automatically_override_codec_delay(),
             kAutomaticallyOverrideCodecDelay);
 }
