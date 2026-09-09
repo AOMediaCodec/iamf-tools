@@ -346,10 +346,11 @@ std::vector<uint32_t> CollectMixGainParameterIds(
   return parameter_ids;
 }
 
-void ExpectParameterIdsAreDistinct(const std::vector<uint32_t>& parameter_ids) {
+// Returns true if no two of `parameter_ids` are equal.
+bool AreParameterIdsDistinct(const std::vector<uint32_t>& parameter_ids) {
   const std::set<uint32_t> unique_parameter_ids(parameter_ids.begin(),
                                                 parameter_ids.end());
-  EXPECT_EQ(unique_parameter_ids.size(), parameter_ids.size());
+  return unique_parameter_ids.size() == parameter_ids.size();
 }
 
 TEST(PopulateMixPresentation, AssignsADistinctParameterIdToEachMixGain) {
@@ -362,7 +363,8 @@ TEST(PopulateMixPresentation, AssignsADistinctParameterIdToEachMixGain) {
   const auto parameter_ids =
       CollectMixGainParameterIds(mix_presentation_metadata);
   ASSERT_EQ(parameter_ids.size(), 3);
-  ExpectParameterIdsAreDistinct(parameter_ids);
+  EXPECT_TRUE(AreParameterIdsDistinct(parameter_ids))
+      << "parameter IDs: " << ::testing::PrintToString(parameter_ids);
 }
 
 TEST(PopulateMixPresentation,
@@ -399,7 +401,8 @@ TEST(PopulateMixPresentation,
                        second_parameter_ids.end());
 
   ASSERT_EQ(parameter_ids.size(), 6);
-  ExpectParameterIdsAreDistinct(parameter_ids);
+  EXPECT_TRUE(AreParameterIdsDistinct(parameter_ids))
+      << "parameter IDs: " << ::testing::PrintToString(parameter_ids);
 }
 
 TEST(PopulateMixPresentation, SetsTheCommonParameterRateOnEveryMixGain) {
