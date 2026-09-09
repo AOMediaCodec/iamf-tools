@@ -597,13 +597,18 @@ absl::Status SeparateLfeChannels(const std::filesystem::path& output_file_path,
   size_t num_samples_to_read = kSizeToFlush;
   std::vector<char> temp_buffer(num_samples_to_read * bytes_per_sample *
                                 num_channels);
+  // The buffer is reused for every chunk; its logical size is the chunk size
+  // and must stay constant for the lifetime of the loop below. Bind it once
+  // rather than querying the vector, so that the read size, the loop stride
+  // and the buffer's extent cannot drift apart.
+  const size_t bytes_per_read = temp_buffer.size();
 
   // Perform the file read in chunks and use the temporary buffer for further
   // processing.
   for (size_t data_chunk_pos = 0; data_chunk_pos < data_chunk_info.size;
-       data_chunk_pos += temp_buffer.capacity()) {
+       data_chunk_pos += bytes_per_read) {
     const size_t bytes_to_read =
-        std::min(temp_buffer.capacity(), data_chunk_info.size - data_chunk_pos);
+        std::min(bytes_per_read, data_chunk_info.size - data_chunk_pos);
     if (!input_stream.read(temp_buffer.data(), bytes_to_read)) {
       AbortAllWavWriters(nonlfe_lfe_wav_writer);
       return absl::OutOfRangeError(
@@ -614,7 +619,6 @@ absl::Status SeparateLfeChannels(const std::filesystem::path& output_file_path,
     RETURN_IF_NOT_OK(FlushLfeNonLfeWavs(
         temp_buffer, bytes_to_read, num_channels, bytes_per_sample,
         *segment_layout, nonlfe_lfe_wav_writer));
-    temp_buffer.clear();
   }
   return absl::OkStatus();
 }
