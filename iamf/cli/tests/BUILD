@@ -383,6 +383,7 @@ cc_test(
 cc_test(
     name = "encoder_main_lib_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["encoder_main_lib_test.cc"],
     data = [
         "//iamf/cli/testdata:input_wav_files",
