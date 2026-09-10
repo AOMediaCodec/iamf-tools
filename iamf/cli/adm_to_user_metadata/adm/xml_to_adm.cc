@@ -49,6 +49,12 @@ constexpr absl::string_view kTypeDefinitionBinaural = "0005";
 
 constexpr size_t kAudioPackFormatIdRefLength = 11;
 
+// Largest number of channels in any layout `kValidPackLayouts` accepts, which
+// is 7.1.4. The pack layout itself is what decides whether a Dolby
+// DirectSpeakers pack is supported; this only bounds the work done before
+// that check.
+constexpr size_t kMaxDirectSpeakersChannels = 12;
+
 // It defines adm elements.
 enum AdmElement {
   kAudioProgramme = 0,
@@ -420,6 +426,10 @@ absl::StatusOr<std::string> CreatePackLayout(
       {"RoomCentricRightRearSurround", "Rrs"},
       {"RoomCentricLeftTopSurround", "Lts"},
       {"RoomCentricRightTopSurround", "Rts"},
+      {"RoomCentricLeftTopFront", "Ltf"},
+      {"RoomCentricRightTopFront", "Rtf"},
+      {"RoomCentricLeftTopRear", "Ltr"},
+      {"RoomCentricRightTopRear", "Rtr"},
       {"RoomCentricLeftSurround", "Ls"},
       {"RoomCentricRightSurround", "Rs"}};
 
@@ -454,6 +464,8 @@ absl::Status ValidatePackLayout(const std::string& pack_layout) {
           {"L,R,C,LFE,Lss,Rss,Lrs,Rrs"},
           {"L,R,C,Lss,Rss,Lrs,Rrs,Lts,Rts"},
           {"L,R,C,LFE,Lss,Rss,Lrs,Rrs,Lts,Rts"},
+          {"L,R,C,Lss,Rss,Lrs,Rrs,Ltf,Rtf,Ltr,Rtr"},
+          {"L,R,C,LFE,Lss,Rss,Lrs,Rrs,Ltf,Rtf,Ltr,Rtr"},
       });
 
   if (!kValidPackLayouts->contains(pack_layout)) {
@@ -534,15 +546,17 @@ absl::Status ValidateAdmObjectForDolbyAdm(const ADM& adm,
     }
   } else {
     ABSL_CHECK_EQ(type_definition, kTypeDefinitionDirectSpeakers);
-    if (num_tracks_in_object > 10) {
-      return absl::InvalidArgumentError(
+    if (num_tracks_in_object > kMaxDirectSpeakersChannels) {
+      return absl::InvalidArgumentError(absl::StrCat(
           "Maximum number of occurrences of track UID refs for DirectSpeakers "
-          "is 10.");
+          "is ",
+          kMaxDirectSpeakersChannels, "."));
     }
-    if (num_channels_in_pack > 10) {
-      return absl::InvalidArgumentError(
+    if (num_channels_in_pack > kMaxDirectSpeakersChannels) {
+      return absl::InvalidArgumentError(absl::StrCat(
           "Maximum number of occurrences of channel ID refs for DirectSpeakers "
-          "is 10.");
+          "is ",
+          kMaxDirectSpeakersChannels, "."));
     }
 
     // Create an audio pack layout string based on channel names present within
