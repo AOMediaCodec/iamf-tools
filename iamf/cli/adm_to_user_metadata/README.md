@@ -66,7 +66,7 @@ The input format required to run the binary is as below:
 
 options:
   --adm_filename (required) - ADM wav file to process.
-  --importance_threshold (optional) - Used to reject objects whose importance is below the given threshold of range 0 to 10 (default 0).
+  --importance_threshold (optional) - Omits objects whose importance is below the given threshold of range 0 to 10 from the generated metadata (default 0). The audio of an omitted object is still rendered into the output.
   --frame_duration_ms (optional) - Target frame duration in ms. The actual output may be slightly lower due to rounding. (default 10).
   --write_binary_proto (optional) - Whether to write the output as a binary proto or a textproto (default true)
   --output_file_path (optional) - Path to write output files to. (default current directory)
@@ -94,8 +94,11 @@ options:
     -   Some types directly representable in IAMF include {stereo, 5.1, 7.1.4,
         third_order_ambisonics}. One type that is not representable directly in
         IAMF includes objects.
-    -   Low importance objects are filtered out based on the
-        `--importance_threshold` flag.
+    -   Low importance objects are filtered out of the generated metadata
+        based on the `--importance_threshold` flag. This is a metadata-only
+        filter: the wav splicer and the panner address the input file's
+        channels by position, so a filtered object's audio is still rendered
+        into the output.
 -   Mix Presentation OBUs: mix presentations are generated based on ADM
     `audioProgramme`s.
 
