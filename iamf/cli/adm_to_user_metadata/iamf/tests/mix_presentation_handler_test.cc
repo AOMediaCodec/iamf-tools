@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -325,6 +326,97 @@ TEST(PopulateMixPresentation, PopulatesOneAudioElementPerAudioObject) {
           .sub_mixes(0)
           .audio_elements_size(),
       2);
+}
+
+// Collects every mix gain parameter ID in a populated mix presentation: one
+// per audio element (`element_mix_gain`), plus the sub-mix's
+// `output_mix_gain`.
+std::vector<uint32_t> CollectMixGainParameterIds(
+    const iamf_tools_cli_proto::MixPresentationObuMetadata&
+        mix_presentation_metadata) {
+  std::vector<uint32_t> parameter_ids;
+  for (const auto& sub_mix : mix_presentation_metadata.sub_mixes()) {
+    for (const auto& audio_element : sub_mix.audio_elements()) {
+      parameter_ids.push_back(
+          audio_element.element_mix_gain().param_definition().parameter_id());
+    }
+    parameter_ids.push_back(
+        sub_mix.output_mix_gain().param_definition().parameter_id());
+  }
+  return parameter_ids;
+}
+
+// Returns true if no two of `parameter_ids` are equal.
+bool AreParameterIdsDistinct(const std::vector<uint32_t>& parameter_ids) {
+  const std::set<uint32_t> unique_parameter_ids(parameter_ids.begin(),
+                                                parameter_ids.end());
+  return unique_parameter_ids.size() == parameter_ids.size();
+}
+
+TEST(PopulateMixPresentation, AssignsADistinctParameterIdToEachMixGain) {
+  // Each `element_mix_gain` carries its own `default_mix_gain`, so sharing an
+  // ID between two of them, or with the sub-mix's `output_mix_gain`, would
+  // describe one parameter with conflicting definitions.
+  const auto& mix_presentation_metadata =
+      GetMixObuMetataExpectOk({GetStereoAudioObject(), Get5_1AudioObject()});
+
+  const auto parameter_ids =
+      CollectMixGainParameterIds(mix_presentation_metadata);
+  ASSERT_EQ(parameter_ids.size(), 3);
+  EXPECT_TRUE(AreParameterIdsDistinct(parameter_ids))
+      << "parameter IDs: " << ::testing::PrintToString(parameter_ids);
+}
+
+TEST(PopulateMixPresentation,
+     AssignsDistinctParameterIdsAcrossMixPresentations) {
+  const std::vector<AudioObject> kAudioObjects = {GetStereoAudioObject(),
+                                                  Get5_1AudioObject()};
+  std::map<std::string, uint32_t> audio_object_id_to_audio_element_id;
+  uint32_t audio_element_id = 0;
+  for (const auto& audio_object : kAudioObjects) {
+    audio_object_id_to_audio_element_id[audio_object.id] = audio_element_id++;
+  }
+  MixPresentationHandler handler(kCommonParameterRate,
+                                 audio_object_id_to_audio_element_id);
+
+  // Parameter IDs are unique across the whole IA sequence, not just within one
+  // mix presentation, so a second mix presentation from the same handler must
+  // not reuse the first one's IDs.
+  iamf_tools_cli_proto::MixPresentationObuMetadata first_mix_presentation;
+  ASSERT_THAT(handler.PopulateMixPresentation(kMixPresentationId, "", "",
+                                              kAudioObjects, LoudnessMetadata(),
+                                              first_mix_presentation),
+              IsOk());
+  iamf_tools_cli_proto::MixPresentationObuMetadata second_mix_presentation;
+  ASSERT_THAT(handler.PopulateMixPresentation(kMixPresentationId + 1, "", "",
+                                              kAudioObjects, LoudnessMetadata(),
+                                              second_mix_presentation),
+              IsOk());
+
+  std::vector<uint32_t> parameter_ids =
+      CollectMixGainParameterIds(first_mix_presentation);
+  const auto second_parameter_ids =
+      CollectMixGainParameterIds(second_mix_presentation);
+  parameter_ids.insert(parameter_ids.end(), second_parameter_ids.begin(),
+                       second_parameter_ids.end());
+
+  ASSERT_EQ(parameter_ids.size(), 6);
+  EXPECT_TRUE(AreParameterIdsDistinct(parameter_ids))
+      << "parameter IDs: " << ::testing::PrintToString(parameter_ids);
+}
+
+TEST(PopulateMixPresentation, SetsTheCommonParameterRateOnEveryMixGain) {
+  const auto& mix_presentation_metadata =
+      GetMixObuMetataExpectOk({GetStereoAudioObject(), Get5_1AudioObject()});
+
+  const auto& sub_mix = mix_presentation_metadata.sub_mixes(0);
+  for (const auto& audio_element : sub_mix.audio_elements()) {
+    EXPECT_EQ(
+        audio_element.element_mix_gain().param_definition().parameter_rate(),
+        kCommonParameterRate);
+  }
+  EXPECT_EQ(sub_mix.output_mix_gain().param_definition().parameter_rate(),
+            kCommonParameterRate);
 }
 
 }  // namespace
