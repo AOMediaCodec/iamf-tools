@@ -224,36 +224,51 @@ class AnimatedParameterData {
     return WritePayload(wb, write_value_func);
   }
 
+  /*!\brief Prints the payload of the animated parameter data.
+   */
+  void PrintPayload() const {
+    if (animation_type_ == kStep) {
+      ABSL_LOG(INFO) << "     // Step";
+      ABSL_LOG(INFO) << "     start_point_value= "
+                     << absl::StrCat(*start_point_value_);
+    } else if (animation_type_ == kLinear) {
+      ABSL_LOG(INFO) << "     // Linear";
+      ABSL_LOG(INFO) << "     start_point_value= "
+                     << absl::StrCat(*start_point_value_);
+      ABSL_LOG(INFO) << "     end_point_value= "
+                     << absl::StrCat(*end_point_value_);
+    } else if (animation_type_ == kBezier) {
+      ABSL_LOG(INFO) << "     // Bezier";
+      ABSL_LOG(INFO) << "     start_point_value= "
+                     << absl::StrCat(*start_point_value_);
+      ABSL_LOG(INFO) << "     end_point_value= "
+                     << absl::StrCat(*end_point_value_);
+      ABSL_LOG(INFO) << "     control_point_value= "
+                     << absl::StrCat(*control_point_value_);
+      ABSL_LOG(INFO) << "     control_point_relative_time= "
+                     << absl::StrCat(*control_point_relative_time_);
+    } else if (animation_type_ == kInterLinear) {
+      ABSL_LOG(INFO) << "     // InterLinear";
+      ABSL_LOG(INFO) << "     end_point_value= "
+                     << absl::StrCat(*end_point_value_);
+    } else if (animation_type_ == kInterBezier) {
+      ABSL_LOG(INFO) << "     // InterBezier";
+      ABSL_LOG(INFO) << "     end_point_value= "
+                     << absl::StrCat(*end_point_value_);
+      ABSL_LOG(INFO) << "     control_point_value= "
+                     << absl::StrCat(*control_point_value_);
+      ABSL_LOG(INFO) << "     control_point_relative_time= "
+                     << absl::StrCat(*control_point_relative_time_);
+    }
+  }
+
   /*!\brief Prints the animated parameter data.
    */
   void Print() const {
     ABSL_LOG(INFO) << "    animation_type= "
                    << absl::StrCat(
                           static_cast<DecodedUleb128>(animation_type_));
-    if (animation_type_ == kStep) {
-      ABSL_LOG(INFO) << "     // Step";
-      ABSL_LOG(INFO) << "     start_point_value= " << *start_point_value_;
-    } else if (animation_type_ == kLinear) {
-      ABSL_LOG(INFO) << "     // Linear";
-      ABSL_LOG(INFO) << "     start_point_value= " << *start_point_value_;
-      ABSL_LOG(INFO) << "     end_point_value= " << *end_point_value_;
-    } else if (animation_type_ == kBezier) {
-      ABSL_LOG(INFO) << "     // Bezier";
-      ABSL_LOG(INFO) << "     start_point_value= " << *start_point_value_;
-      ABSL_LOG(INFO) << "     end_point_value= " << *end_point_value_;
-      ABSL_LOG(INFO) << "     control_point_value= " << *control_point_value_;
-      ABSL_LOG(INFO) << "     control_point_relative_time= "
-                     << absl::StrCat(*control_point_relative_time_);
-    } else if (animation_type_ == kInterLinear) {
-      ABSL_LOG(INFO) << "     // InterLinear";
-      ABSL_LOG(INFO) << "     end_point_value= " << *end_point_value_;
-    } else if (animation_type_ == kInterBezier) {
-      ABSL_LOG(INFO) << "     // InterBezier";
-      ABSL_LOG(INFO) << "     end_point_value= " << *end_point_value_;
-      ABSL_LOG(INFO) << "     control_point_value= " << *control_point_value_;
-      ABSL_LOG(INFO) << "     control_point_relative_time= "
-                     << absl::StrCat(*control_point_relative_time_);
-    }
+    PrintPayload();
   }
 
   /*!\brief Gets the animation type.

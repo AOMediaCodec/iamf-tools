@@ -449,5 +449,41 @@ TEST(Print, InterBezierAnimationDoesNotCrash) {
   data.Print();
 }
 
+TEST(Print, Int8DoesNotCrash) {
+  const auto data = AnimatedParameterData<int8_t>::MakeStep(-2);
+  data.Print();
+}
+
+TEST(Print, Uint8DoesNotCrash) {
+  const auto data = AnimatedParameterData<uint8_t>::MakeStep(127);
+  data.Print();
+}
+
+TEST(PrintPayload, StepAnimationDoesNotCrash) {
+  const auto data = AnimatedParameterData<int16_t>::MakeStep(10);
+  data.PrintPayload();
+}
+
+TEST(PrintPayload, LinearAnimationDoesNotCrash) {
+  const auto data = AnimatedParameterData<int16_t>::MakeLinear(10, 20);
+  data.PrintPayload();
+}
+
+TEST(PrintPayload, BezierAnimationDoesNotCrash) {
+  const auto data = AnimatedParameterData<int16_t>::MakeBezier(10, 20, 15, 128);
+  data.PrintPayload();
+}
+
+TEST(PrintPayload, InterLinearAnimationDoesNotCrash) {
+  const auto data = AnimatedParameterData<int16_t>::MakeInterLinear(20);
+  data.PrintPayload();
+}
+
+TEST(PrintPayload, InterBezierAnimationDoesNotCrash) {
+  const auto data =
+      AnimatedParameterData<int16_t>::MakeInterBezier(20, 15, 128);
+  data.PrintPayload();
+}
+
 }  // namespace
 }  // namespace iamf_tools
