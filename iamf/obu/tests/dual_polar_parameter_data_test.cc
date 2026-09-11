@@ -463,5 +463,31 @@ TEST(Write, LinearAnimationWritesCorrectly) {
                              }));
 }
 
+TEST(Print, StepAnimationDoesNotCrash) {
+  const auto data = DualPolarParameterData::Create(
+      AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(1),
+      AnimatedParameterData<int8_t>::MakeStep(-2),
+      AnimatedParameterData<uint8_t>::MakeStep(127),
+      AnimatedParameterData<int16_t>::MakeStep(-1),
+      AnimatedParameterData<int8_t>::MakeStep(2),
+      AnimatedParameterData<uint8_t>::MakeStep(64));
+
+  ASSERT_THAT(data, IsOk());
+  data->Print();
+}
+
+TEST(Print, LinearAnimationDoesNotCrash) {
+  const auto data = DualPolarParameterData::Create(
+      AnimationType::kLinear, AnimatedParameterData<int16_t>::MakeLinear(1, 2),
+      AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
+      AnimatedParameterData<uint8_t>::MakeLinear(127, 0),
+      AnimatedParameterData<int16_t>::MakeLinear(-1, -2),
+      AnimatedParameterData<int8_t>::MakeLinear(2, 3),
+      AnimatedParameterData<uint8_t>::MakeLinear(64, 32));
+
+  ASSERT_THAT(data, IsOk());
+  data->Print();
+}
+
 }  // namespace
 }  // namespace iamf_tools

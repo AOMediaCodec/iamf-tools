@@ -197,7 +197,20 @@ absl::Status DualPolarParameterData::Write(WriteBitBuffer& wb) const {
 }
 
 void DualPolarParameterData::Print() const {
-  ABSL_LOG(INFO) << "DualPolarParameterData printing is not implemented yet:";
+  ABSL_LOG(INFO) << "    animation_type= "
+                 << absl::StrCat(static_cast<DecodedUleb128>(animation_type_));
+  ABSL_LOG(INFO) << "    first_azimuth:";
+  first_azimuth_.PrintPayload();
+  ABSL_LOG(INFO) << "    first_elevation:";
+  first_elevation_.PrintPayload();
+  ABSL_LOG(INFO) << "    first_distance:";
+  first_distance_.PrintPayload();
+  ABSL_LOG(INFO) << "    second_azimuth:";
+  second_azimuth_.PrintPayload();
+  ABSL_LOG(INFO) << "    second_elevation:";
+  second_elevation_.PrintPayload();
+  ABSL_LOG(INFO) << "    second_distance:";
+  second_distance_.PrintPayload();
 }
 
 }  // namespace iamf_tools

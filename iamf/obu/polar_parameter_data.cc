@@ -146,7 +146,14 @@ absl::Status PolarParameterData::Write(WriteBitBuffer& wb) const {
 }
 
 void PolarParameterData::Print() const {
-  ABSL_LOG(INFO) << "PolarParameterData printing is not implemented yet:";
+  ABSL_LOG(INFO) << "    animation_type= "
+                 << absl::StrCat(static_cast<DecodedUleb128>(animation_type_));
+  ABSL_LOG(INFO) << "    azimuth:";
+  azimuth_.PrintPayload();
+  ABSL_LOG(INFO) << "    elevation:";
+  elevation_.PrintPayload();
+  ABSL_LOG(INFO) << "    distance:";
+  distance_.PrintPayload();
 }
 
 }  // namespace iamf_tools
