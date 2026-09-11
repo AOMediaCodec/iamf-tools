@@ -278,5 +278,23 @@ TEST(Write, InterBezierAnimationWritesCorrectly) {
                                   0x00, 0x00, 0x00, 0x32, 0x0f}));
 }
 
+TEST(Print, StepAnimationDoesNotCrash) {
+  const auto data = Cart16ParameterData::Make(
+      AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(5),
+      AnimatedParameterData<int16_t>::MakeStep(-10),
+      AnimatedParameterData<int16_t>::MakeStep(100));
+
+  data.Print();
+}
+
+TEST(Print, LinearAnimationDoesNotCrash) {
+  const auto data = Cart16ParameterData::Make(
+      AnimationType::kLinear, AnimatedParameterData<int16_t>::MakeLinear(1, 2),
+      AnimatedParameterData<int16_t>::MakeLinear(-2, -3),
+      AnimatedParameterData<int16_t>::MakeLinear(32767, 0));
+
+  data.Print();
+}
+
 }  // namespace
 }  // namespace iamf_tools
