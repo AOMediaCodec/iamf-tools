@@ -16,6 +16,7 @@
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -112,7 +113,20 @@ absl::Status DualCart8ParameterData::Write(WriteBitBuffer& wb) const {
 }
 
 void DualCart8ParameterData::Print() const {
-  ABSL_LOG(INFO) << "DualCart8ParameterData printing is not implemented yet:";
+  ABSL_LOG(INFO) << "    animation_type= "
+                 << absl::StrCat(static_cast<DecodedUleb128>(animation_type_));
+  ABSL_LOG(INFO) << "    first_x:";
+  first_x_.PrintPayload();
+  ABSL_LOG(INFO) << "    first_y:";
+  first_y_.PrintPayload();
+  ABSL_LOG(INFO) << "    first_z:";
+  first_z_.PrintPayload();
+  ABSL_LOG(INFO) << "    second_x:";
+  second_x_.PrintPayload();
+  ABSL_LOG(INFO) << "    second_y:";
+  second_y_.PrintPayload();
+  ABSL_LOG(INFO) << "    second_z:";
+  second_z_.PrintPayload();
 }
 
 }  // namespace iamf_tools
