@@ -20,10 +20,14 @@ single_version_override(
     version = "20260526.0",
 )
 
-bazel_dep(name = "googletest", version = "1.18.0")
 bazel_dep(name = "protobuf", version = "36.0.bcr.1")
-bazel_dep(name = "fuzztest", version = "20260629.0")
-bazel_dep(name = "google_benchmark", version = "1.9.5")
+
+# Testing dependencies.
+bazel_dep(name = "abseil-py", version = "2.1.0", dev_dependency = True)
+bazel_dep(name = "fuzztest", version = "20260629.0", dev_dependency = True)
+bazel_dep(name = "google_benchmark", version = "1.9.5", dev_dependency = True)
+bazel_dep(name = "googletest", version = "1.18.0", dev_dependency = True)
+
 bazel_dep(
     name = "eigen",
     version = "3.4.0.bcr.3",
@@ -32,8 +36,6 @@ bazel_dep(name = "platforms", version = "1.1.0")
 
 # Extra dependencies for python scripts.
 bazel_dep(name = "rules_python", version = "1.8.4")
-
-bazel_dep(name = "abseil-py", version = "2.1.0", dev_dependency = True)
 
 # Android NDK dependencies for Andoid builds.
 # Note that this does not fetch the Android NDK itself.  If building Android builds, an environment
