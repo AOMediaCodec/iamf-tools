@@ -12,9 +12,9 @@
 #include "iamf/obu/dual_cart8_parameter_data.h"
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -112,21 +112,15 @@ absl::Status DualCart8ParameterData::Write(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
-void DualCart8ParameterData::Print() const {
-  ABSL_LOG(INFO) << "    animation_type= "
-                 << absl::StrCat(static_cast<DecodedUleb128>(animation_type_));
-  ABSL_LOG(INFO) << "    first_x:";
-  first_x_.PrintPayload();
-  ABSL_LOG(INFO) << "    first_y:";
-  first_y_.PrintPayload();
-  ABSL_LOG(INFO) << "    first_z:";
-  first_z_.PrintPayload();
-  ABSL_LOG(INFO) << "    second_x:";
-  second_x_.PrintPayload();
-  ABSL_LOG(INFO) << "    second_y:";
-  second_y_.PrintPayload();
-  ABSL_LOG(INFO) << "    second_z:";
-  second_z_.PrintPayload();
+std::string DualCart8ParameterData::ToString() const {
+  return absl::StrCat(
+      "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+      "\n    first_x:\n", first_x_.ToStringPayload(), "\n    first_y:\n",
+      first_y_.ToStringPayload(), "\n    first_z:\n",
+      first_z_.ToStringPayload(), "\n    second_x:\n",
+      second_x_.ToStringPayload(), "\n    second_y:\n",
+      second_y_.ToStringPayload(), "\n    second_z:\n",
+      second_z_.ToStringPayload());
 }
 
 }  // namespace iamf_tools

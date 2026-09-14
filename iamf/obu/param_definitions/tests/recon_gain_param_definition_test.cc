@@ -13,9 +13,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -348,6 +350,32 @@ TEST(CreateParameterDataFromBuffer, FailsForTruncatedReconGainFlagElements) {
   auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
 
   EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
+TEST(AbslStringify, FormatsCorrectly) {
+  auto param_definition = CreateReconGainParamDefinition(
+      GetDefaultReconGainBaseArgs(), /*audio_element_id=*/42);
+  param_definition.aux_data_ = {
+      ReconGainParamDefinition::ReconGainAuxiliaryData{
+          .recon_gain_is_present_flag = true,
+          .channel_numbers_for_layer = {.surround = 5, .lfe = 1, .height = 2},
+      }};
+
+  const std::string formatted = absl::StrCat(param_definition);
+
+  EXPECT_EQ(formatted,
+            "ReconGainParamDefinition:\n"
+            "  parameter_type= 2\n"
+            "  parameter_id= 0\n"
+            "  parameter_rate= 1\n"
+            "  param_definition_mode= 0\n"
+            "  reserved= 0\n"
+            "  duration= 64\n"
+            "  constant_subblock_duration= 64\n"
+            "  num_subblocks= 1\n"
+            "  audio_element_id= 42\n"
+            "  // recon_gain_is_present_flags[0]= 1\n"
+            "  // channel_numbers_for_layer[0]= 5.1.2");
 }
 
 }  // namespace

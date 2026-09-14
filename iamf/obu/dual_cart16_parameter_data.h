@@ -13,6 +13,7 @@
 #define OBU_DUAL_CART16_PARAMETER_DATA_H_
 
 #include <cstdint>
+#include <string>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -68,9 +69,11 @@ struct DualCart16ParameterData : public ParameterData {
    */
   absl::Status Write(WriteBitBuffer& wb) const override;
 
-  /*!\brief Prints the DualCart16 parameter data.
+  /*!\brief Returns a string representation of the parameter data.
+   *
+   * \return String representation of the parameter data.
    */
-  void Print() const override;
+  std::string ToString() const override;
 
   // Getters
   AnimationType animation_type() const { return animation_type_; }

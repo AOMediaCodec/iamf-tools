@@ -12,10 +12,12 @@
 #include "iamf/obu/animated_parameter_data.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -423,66 +425,88 @@ TEST(WritePayload, LinearDoesNotWriteAnimationTypePrefix) {
   EXPECT_EQ(wb.bit_buffer(), expected_data);
 }
 
-TEST(Print, StepAnimationDoesNotCrash) {
+TEST(AnimatedParameterDataTest, AbslStringify_formatsStepAnimation) {
   const auto data = AnimatedParameterData<int16_t>::MakeStep(10);
-  data.Print();
+
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 0\n"
+            "     // Step\n"
+            "     start_point_value= 10");
 }
 
-TEST(Print, LinearAnimationDoesNotCrash) {
+TEST(AnimatedParameterDataTest, AbslStringify_formatsLinearAnimation) {
   const auto data = AnimatedParameterData<int16_t>::MakeLinear(10, 20);
-  data.Print();
+
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 1\n"
+            "     // Linear\n"
+            "     start_point_value= 10\n"
+            "     end_point_value= 20");
 }
 
-TEST(Print, BezierAnimationDoesNotCrash) {
+TEST(AnimatedParameterDataTest, AbslStringify_formatsBezierAnimation) {
   const auto data = AnimatedParameterData<int16_t>::MakeBezier(10, 20, 15, 128);
-  data.Print();
+
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 2\n"
+            "     // Bezier\n"
+            "     start_point_value= 10\n"
+            "     end_point_value= 20\n"
+            "     control_point_value= 15\n"
+            "     control_point_relative_time= 128");
 }
 
-TEST(Print, InterLinearAnimationDoesNotCrash) {
+TEST(AnimatedParameterDataTest, AbslStringify_formatsInterLinearAnimation) {
   const auto data = AnimatedParameterData<int16_t>::MakeInterLinear(20);
-  data.Print();
+
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 3\n"
+            "     // InterLinear\n"
+            "     end_point_value= 20");
 }
 
-TEST(Print, InterBezierAnimationDoesNotCrash) {
+TEST(AnimatedParameterDataTest, AbslStringify_formatsInterBezierAnimation) {
   const auto data =
       AnimatedParameterData<int16_t>::MakeInterBezier(20, 15, 128);
-  data.Print();
+
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 4\n"
+            "     // InterBezier\n"
+            "     end_point_value= 20\n"
+            "     control_point_value= 15\n"
+            "     control_point_relative_time= 128");
 }
 
-TEST(Print, Int8DoesNotCrash) {
+TEST(AnimatedParameterDataTest, AbslStringify_formatsInt8) {
   const auto data = AnimatedParameterData<int8_t>::MakeStep(-2);
-  data.Print();
+
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 0\n"
+            "     // Step\n"
+            "     start_point_value= -2");
 }
 
-TEST(Print, Uint8DoesNotCrash) {
+TEST(AnimatedParameterDataTest, AbslStringify_formatsUint8) {
   const auto data = AnimatedParameterData<uint8_t>::MakeStep(127);
-  data.Print();
-}
 
-TEST(PrintPayload, StepAnimationDoesNotCrash) {
-  const auto data = AnimatedParameterData<int16_t>::MakeStep(10);
-  data.PrintPayload();
-}
+  const std::string formatted = absl::StrCat(data);
 
-TEST(PrintPayload, LinearAnimationDoesNotCrash) {
-  const auto data = AnimatedParameterData<int16_t>::MakeLinear(10, 20);
-  data.PrintPayload();
-}
-
-TEST(PrintPayload, BezierAnimationDoesNotCrash) {
-  const auto data = AnimatedParameterData<int16_t>::MakeBezier(10, 20, 15, 128);
-  data.PrintPayload();
-}
-
-TEST(PrintPayload, InterLinearAnimationDoesNotCrash) {
-  const auto data = AnimatedParameterData<int16_t>::MakeInterLinear(20);
-  data.PrintPayload();
-}
-
-TEST(PrintPayload, InterBezierAnimationDoesNotCrash) {
-  const auto data =
-      AnimatedParameterData<int16_t>::MakeInterBezier(20, 15, 128);
-  data.PrintPayload();
+  EXPECT_EQ(formatted,
+            "    animation_type= 0\n"
+            "     // Step\n"
+            "     start_point_value= 127");
 }
 
 }  // namespace

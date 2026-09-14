@@ -12,10 +12,11 @@
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -65,15 +66,15 @@ DualCart8ParamDefinition::CreateParameterDataFromBuffer(
   return std::make_unique<DualCart8ParameterData>(*std::move(data));
 }
 
-void DualCart8ParamDefinition::Print() const {
-  ABSL_LOG(INFO) << "DualCart8ParamDefinition:";
-  ParamDefinition::Print();
-  ABSL_LOG(INFO) << "  default_first_x: " << default_first_x_;
-  ABSL_LOG(INFO) << "  default_first_y: " << default_first_y_;
-  ABSL_LOG(INFO) << "  default_first_z: " << default_first_z_;
-  ABSL_LOG(INFO) << "  default_second_x: " << default_second_x_;
-  ABSL_LOG(INFO) << "  default_second_y: " << default_second_y_;
-  ABSL_LOG(INFO) << "  default_second_z: " << default_second_z_;
+std::string DualCart8ParamDefinition::ToString() const {
+  return absl::StrCat("DualCart8ParamDefinition:\n",
+                      ParamDefinition::ToString(),
+                      "\n  default_first_x: ", default_first_x_,
+                      "\n  default_first_y: ", default_first_y_,
+                      "\n  default_first_z: ", default_first_z_,
+                      "\n  default_second_x: ", default_second_x_,
+                      "\n  default_second_y: ", default_second_y_,
+                      "\n  default_second_z: ", default_second_z_);
 }
 
 }  // namespace iamf_tools

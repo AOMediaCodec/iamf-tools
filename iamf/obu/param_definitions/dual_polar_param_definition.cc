@@ -14,10 +14,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -78,15 +79,15 @@ DualPolarParamDefinition::CreateParameterDataFromBuffer(
   return std::make_unique<DualPolarParameterData>(*std::move(data));
 }
 
-void DualPolarParamDefinition::Print() const {
-  ABSL_LOG(INFO) << "DualPolarParamDefinition:";
-  ParamDefinition::Print();
-  ABSL_LOG(INFO) << "  default_first_azimuth: " << default_first_azimuth_;
-  ABSL_LOG(INFO) << "  default_first_elevation: " << default_first_elevation_;
-  ABSL_LOG(INFO) << "  default_first_distance: " << default_first_distance_;
-  ABSL_LOG(INFO) << "  default_second_azimuth: " << default_second_azimuth_;
-  ABSL_LOG(INFO) << "  default_second_elevation: " << default_second_elevation_;
-  ABSL_LOG(INFO) << "  default_second_distance: " << default_second_distance_;
+std::string DualPolarParamDefinition::ToString() const {
+  return absl::StrCat(
+      "DualPolarParamDefinition:\n", ParamDefinition::ToString(),
+      "\n  default_first_azimuth: ", default_first_azimuth_,
+      "\n  default_first_elevation: ", default_first_elevation_,
+      "\n  default_first_distance: ", default_first_distance_,
+      "\n  default_second_azimuth: ", default_second_azimuth_,
+      "\n  default_second_elevation: ", default_second_elevation_,
+      "\n  default_second_distance: ", default_second_distance_);
 }
 
 }  // namespace iamf_tools

@@ -13,9 +13,9 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <string>
 #include <utility>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -196,21 +196,15 @@ absl::Status DualPolarParameterData::Write(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
-void DualPolarParameterData::Print() const {
-  ABSL_LOG(INFO) << "    animation_type= "
-                 << absl::StrCat(static_cast<DecodedUleb128>(animation_type_));
-  ABSL_LOG(INFO) << "    first_azimuth:";
-  first_azimuth_.PrintPayload();
-  ABSL_LOG(INFO) << "    first_elevation:";
-  first_elevation_.PrintPayload();
-  ABSL_LOG(INFO) << "    first_distance:";
-  first_distance_.PrintPayload();
-  ABSL_LOG(INFO) << "    second_azimuth:";
-  second_azimuth_.PrintPayload();
-  ABSL_LOG(INFO) << "    second_elevation:";
-  second_elevation_.PrintPayload();
-  ABSL_LOG(INFO) << "    second_distance:";
-  second_distance_.PrintPayload();
+std::string DualPolarParameterData::ToString() const {
+  return absl::StrCat(
+      "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+      "\n    first_azimuth:\n", first_azimuth_.ToStringPayload(),
+      "\n    first_elevation:\n", first_elevation_.ToStringPayload(),
+      "\n    first_distance:\n", first_distance_.ToStringPayload(),
+      "\n    second_azimuth:\n", second_azimuth_.ToStringPayload(),
+      "\n    second_elevation:\n", second_elevation_.ToStringPayload(),
+      "\n    second_distance:\n", second_distance_.ToStringPayload());
 }
 
 }  // namespace iamf_tools

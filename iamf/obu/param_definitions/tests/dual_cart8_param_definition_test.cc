@@ -12,9 +12,11 @@
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -130,6 +132,30 @@ TEST(DualCart8ParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
   EXPECT_EQ(*dual_cart8_data->second_x().start_point_value(), 4);
   EXPECT_EQ(*dual_cart8_data->second_y().start_point_value(), 5);
   EXPECT_EQ(*dual_cart8_data->second_z().start_point_value(), 6);
+}
+
+TEST(DualCart8ParamDefinitionTest, AbslStringifyFormatsCorrectly) {
+  const DualCart8ParamDefinition param_definition(
+      GetDualCart8ParamDefinitionArgs());
+
+  const std::string formatted = absl::StrCat(param_definition);
+
+  EXPECT_EQ(formatted,
+            "DualCart8ParamDefinition:\n"
+            "  parameter_type= 7\n"
+            "  parameter_id= 1\n"
+            "  parameter_rate= 1\n"
+            "  param_definition_mode= 0\n"
+            "  reserved= 0\n"
+            "  duration= 10\n"
+            "  constant_subblock_duration= 10\n"
+            "  num_subblocks= 1\n"
+            "  default_first_x: 0\n"
+            "  default_first_y: 0\n"
+            "  default_first_z: 0\n"
+            "  default_second_x: 0\n"
+            "  default_second_y: 0\n"
+            "  default_second_z: 0");
 }
 
 }  // namespace

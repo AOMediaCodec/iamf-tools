@@ -12,9 +12,11 @@
 #include "iamf/obu/dual_cart16_parameter_data.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -246,7 +248,7 @@ TEST(Write, LinearAnimationWritesCorrectly) {
                              }));
 }
 
-TEST(Print, StepAnimationDoesNotCrash) {
+TEST(AbslStringify, FormatsStepAnimation) {
   const auto data = DualCart16ParameterData::Make(
       AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(1),
       AnimatedParameterData<int16_t>::MakeStep(2),
@@ -255,10 +257,31 @@ TEST(Print, StepAnimationDoesNotCrash) {
       AnimatedParameterData<int16_t>::MakeStep(5),
       AnimatedParameterData<int16_t>::MakeStep(6));
 
-  data.Print();
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 0\n"
+            "    first_x:\n"
+            "     // Step\n"
+            "     start_point_value= 1\n"
+            "    first_y:\n"
+            "     // Step\n"
+            "     start_point_value= 2\n"
+            "    first_z:\n"
+            "     // Step\n"
+            "     start_point_value= 3\n"
+            "    second_x:\n"
+            "     // Step\n"
+            "     start_point_value= 4\n"
+            "    second_y:\n"
+            "     // Step\n"
+            "     start_point_value= 5\n"
+            "    second_z:\n"
+            "     // Step\n"
+            "     start_point_value= 6");
 }
 
-TEST(Print, LinearAnimationDoesNotCrash) {
+TEST(AbslStringify, FormatsLinearAnimation) {
   const auto data = DualCart16ParameterData::Make(
       AnimationType::kLinear, AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       AnimatedParameterData<int16_t>::MakeLinear(3, 4),
@@ -267,7 +290,34 @@ TEST(Print, LinearAnimationDoesNotCrash) {
       AnimatedParameterData<int16_t>::MakeLinear(9, 10),
       AnimatedParameterData<int16_t>::MakeLinear(11, 12));
 
-  data.Print();
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 1\n"
+            "    first_x:\n"
+            "     // Linear\n"
+            "     start_point_value= 1\n"
+            "     end_point_value= 2\n"
+            "    first_y:\n"
+            "     // Linear\n"
+            "     start_point_value= 3\n"
+            "     end_point_value= 4\n"
+            "    first_z:\n"
+            "     // Linear\n"
+            "     start_point_value= 5\n"
+            "     end_point_value= 6\n"
+            "    second_x:\n"
+            "     // Linear\n"
+            "     start_point_value= 7\n"
+            "     end_point_value= 8\n"
+            "    second_y:\n"
+            "     // Linear\n"
+            "     start_point_value= 9\n"
+            "     end_point_value= 10\n"
+            "    second_z:\n"
+            "     // Linear\n"
+            "     start_point_value= 11\n"
+            "     end_point_value= 12");
 }
 
 }  // namespace

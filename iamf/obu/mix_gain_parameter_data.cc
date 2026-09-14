@@ -12,6 +12,7 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -34,7 +35,9 @@ AnimationType MixGainParameterData::GetAnimationType() const {
   return param_data.animation_type();
 }
 
-void MixGainParameterData::Print() const { param_data.Print(); }
+std::string MixGainParameterData::ToString() const {
+  return param_data.ToString();
+}
 
 absl::StatusOr<MixGainParameterData> MixGainParameterData::CreateFromBuffer(
     ReadBitBuffer& rb) {

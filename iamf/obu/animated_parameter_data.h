@@ -15,8 +15,8 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -224,51 +224,73 @@ class AnimatedParameterData {
     return WritePayload(wb, write_value_func);
   }
 
-  /*!\brief Prints the payload of the animated parameter data.
+  /*!\brief Returns string representation of payload.
+   *
+   * \return String representation of payload.
    */
-  void PrintPayload() const {
-    if (animation_type_ == kStep) {
-      ABSL_LOG(INFO) << "     // Step";
-      ABSL_LOG(INFO) << "     start_point_value= "
-                     << absl::StrCat(*start_point_value_);
-    } else if (animation_type_ == kLinear) {
-      ABSL_LOG(INFO) << "     // Linear";
-      ABSL_LOG(INFO) << "     start_point_value= "
-                     << absl::StrCat(*start_point_value_);
-      ABSL_LOG(INFO) << "     end_point_value= "
-                     << absl::StrCat(*end_point_value_);
-    } else if (animation_type_ == kBezier) {
-      ABSL_LOG(INFO) << "     // Bezier";
-      ABSL_LOG(INFO) << "     start_point_value= "
-                     << absl::StrCat(*start_point_value_);
-      ABSL_LOG(INFO) << "     end_point_value= "
-                     << absl::StrCat(*end_point_value_);
-      ABSL_LOG(INFO) << "     control_point_value= "
-                     << absl::StrCat(*control_point_value_);
-      ABSL_LOG(INFO) << "     control_point_relative_time= "
-                     << absl::StrCat(*control_point_relative_time_);
-    } else if (animation_type_ == kInterLinear) {
-      ABSL_LOG(INFO) << "     // InterLinear";
-      ABSL_LOG(INFO) << "     end_point_value= "
-                     << absl::StrCat(*end_point_value_);
-    } else if (animation_type_ == kInterBezier) {
-      ABSL_LOG(INFO) << "     // InterBezier";
-      ABSL_LOG(INFO) << "     end_point_value= "
-                     << absl::StrCat(*end_point_value_);
-      ABSL_LOG(INFO) << "     control_point_value= "
-                     << absl::StrCat(*control_point_value_);
-      ABSL_LOG(INFO) << "     control_point_relative_time= "
-                     << absl::StrCat(*control_point_relative_time_);
+  std::string ToStringPayload() const {
+    switch (animation_type_) {
+      case kStep:
+        return absl::StrCat(
+            "     // Step\n"
+            "     start_point_value= ",
+            absl::StrCat(*start_point_value_));
+      case kLinear:
+        return absl::StrCat(
+            "     // Linear\n"
+            "     start_point_value= ",
+            absl::StrCat(*start_point_value_),
+            "\n"
+            "     end_point_value= ",
+            absl::StrCat(*end_point_value_));
+      case kBezier:
+        return absl::StrCat(
+            "     // Bezier\n"
+            "     start_point_value= ",
+            absl::StrCat(*start_point_value_),
+            "\n"
+            "     end_point_value= ",
+            absl::StrCat(*end_point_value_),
+            "\n"
+            "     control_point_value= ",
+            absl::StrCat(*control_point_value_),
+            "\n"
+            "     control_point_relative_time= ",
+            absl::StrCat(*control_point_relative_time_));
+      case kInterLinear:
+        return absl::StrCat(
+            "     // InterLinear\n"
+            "     end_point_value= ",
+            absl::StrCat(*end_point_value_));
+      case kInterBezier:
+        return absl::StrCat(
+            "     // InterBezier\n"
+            "     end_point_value= ",
+            absl::StrCat(*end_point_value_),
+            "\n"
+            "     control_point_value= ",
+            absl::StrCat(*control_point_value_),
+            "\n"
+            "     control_point_relative_time= ",
+            absl::StrCat(*control_point_relative_time_));
     }
+    return "";
   }
 
-  /*!\brief Prints the animated parameter data.
+  /*!\brief Returns string representation of animated parameter data.
+   *
+   * \return String representation of animated parameter data.
    */
-  void Print() const {
-    ABSL_LOG(INFO) << "    animation_type= "
-                   << absl::StrCat(
-                          static_cast<DecodedUleb128>(animation_type_));
-    PrintPayload();
+  std::string ToString() const {
+    return absl::StrCat(
+        "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+        "\n", ToStringPayload());
+  }
+
+  /*!\brief Supports Abseil stringification. */
+  template <typename Sink>
+  friend void AbslStringify(Sink& sink, const AnimatedParameterData& data) {
+    sink.Append(data.ToString());
   }
 
   /*!\brief Gets the animation type.

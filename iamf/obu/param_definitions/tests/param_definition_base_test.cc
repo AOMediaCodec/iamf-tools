@@ -14,13 +14,18 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <string>
 
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/subblock_schedule.h"
+#include "iamf/obu/parameter_data.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
@@ -146,6 +151,74 @@ TEST(ReadAndValidate, InvalidWhenNumSubblocksExceedsMaximum) {
 
   EXPECT_THAT(param_definition.ParamDefinition::ReadAndValidate(*buffer),
               Not(IsOk()));
+}
+
+/*!\brief Minimal concrete subclass of ParamDefinition for testing. */
+class ConcreteParamDefinition : public ParamDefinition {
+ public:
+  /*!\brief Constructor.
+   *
+   * \param args Arguments for `ParamDefinition`.
+   */
+  explicit ConcreteParamDefinition(const ParamDefinition::BaseArgs& args)
+      : ParamDefinition(kParameterDefinitionMixGain, args) {}
+
+  /*!\brief Stub implementation of ValidateAndWrite.
+   *
+   * \param wb Buffer to write to.
+   * \return Always returns OkStatus.
+   */
+  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const override {
+    return absl::OkStatus();
+  }
+
+  /*!\brief Stub implementation of ReadAndValidate.
+   *
+   * \param rb Buffer to read from.
+   * \return Always returns OkStatus.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb) override {
+    return absl::OkStatus();
+  }
+
+  /*!\brief Stub implementation of CreateParameterDataFromBuffer.
+   *
+   * \param rb Buffer to read from.
+   * \return Always returns nullptr.
+   */
+  absl::StatusOr<std::unique_ptr<ParameterData>> CreateParameterDataFromBuffer(
+      ReadBitBuffer& rb) const override {
+    return nullptr;
+  }
+};
+
+TEST(AbslStringify, FormatsWithoutSchedule) {
+  const ConcreteParamDefinition param_definition(GetParamDefinitionMode1Args());
+
+  const std::string formatted = absl::StrCat(param_definition);
+
+  EXPECT_EQ(formatted,
+            "  parameter_type= 0\n"
+            "  parameter_id= 0\n"
+            "  parameter_rate= 48000\n"
+            "  param_definition_mode= 1\n"
+            "  reserved= 0");
+}
+
+TEST(AbslStringify, FormatsWithSchedule) {
+  const ConcreteParamDefinition param_definition(GetParamDefinitionMode0Args());
+
+  const std::string formatted = absl::StrCat(param_definition);
+
+  EXPECT_EQ(formatted,
+            "  parameter_type= 0\n"
+            "  parameter_id= 0\n"
+            "  parameter_rate= 48000\n"
+            "  param_definition_mode= 0\n"
+            "  reserved= 0\n"
+            "  duration= 64\n"
+            "  constant_subblock_duration= 64\n"
+            "  num_subblocks= 1");
 }
 
 }  // namespace

@@ -14,10 +14,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -68,12 +69,11 @@ PolarParamDefinition::CreateParameterDataFromBuffer(ReadBitBuffer& rb) const {
   return std::make_unique<PolarParameterData>(*std::move(data));
 }
 
-void PolarParamDefinition::Print() const {
-  ABSL_LOG(INFO) << "PolarParamDefinition:";
-  ParamDefinition::Print();
-  ABSL_LOG(INFO) << "  default_azimuth: " << default_azimuth_;
-  ABSL_LOG(INFO) << "  default_elevation: " << default_elevation_;
-  ABSL_LOG(INFO) << "  default_distance: " << default_distance_;
+std::string PolarParamDefinition::ToString() const {
+  return absl::StrCat("PolarParamDefinition:\n", ParamDefinition::ToString(),
+                      "\n  default_azimuth: ", default_azimuth_,
+                      "\n  default_elevation: ", default_elevation_,
+                      "\n  default_distance: ", default_distance_);
 }
 
 }  // namespace iamf_tools

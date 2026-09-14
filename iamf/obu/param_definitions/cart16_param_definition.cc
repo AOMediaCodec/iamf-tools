@@ -12,10 +12,11 @@
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -57,12 +58,11 @@ Cart16ParamDefinition::CreateParameterDataFromBuffer(ReadBitBuffer& rb) const {
   return std::make_unique<Cart16ParameterData>(*std::move(data));
 }
 
-void Cart16ParamDefinition::Print() const {
-  ABSL_LOG(INFO) << "Cart16ParamDefinition:";
-  ParamDefinition::Print();
-  ABSL_LOG(INFO) << "  default_x: " << default_x_;
-  ABSL_LOG(INFO) << "  default_y: " << default_y_;
-  ABSL_LOG(INFO) << "  default_z: " << default_z_;
+std::string Cart16ParamDefinition::ToString() const {
+  return absl::StrCat("Cart16ParamDefinition:\n", ParamDefinition::ToString(),
+                      "\n  default_x: ", default_x_,
+                      "\n  default_y: ", default_y_,
+                      "\n  default_z: ", default_z_);
 }
 
 }  // namespace iamf_tools

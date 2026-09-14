@@ -12,9 +12,11 @@
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -193,6 +195,26 @@ TEST(PolarParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
   EXPECT_EQ(*polar_data->azimuth().start_point_value(), 1);
   EXPECT_EQ(*polar_data->elevation().start_point_value(), -2);
   EXPECT_EQ(*polar_data->distance().start_point_value(), 127);
+}
+
+TEST(PolarParamDefinitionTest, AbslStringifyFormatsCorrectly) {
+  const PolarParamDefinition param_definition(GetPolarParamDefinitionArgs());
+
+  const std::string formatted = absl::StrCat(param_definition);
+
+  EXPECT_EQ(formatted,
+            "PolarParamDefinition:\n"
+            "  parameter_type= 3\n"
+            "  parameter_id= 1\n"
+            "  parameter_rate= 1\n"
+            "  param_definition_mode= 0\n"
+            "  reserved= 0\n"
+            "  duration= 10\n"
+            "  constant_subblock_duration= 10\n"
+            "  num_subblocks= 1\n"
+            "  default_azimuth: 0\n"
+            "  default_elevation: 0\n"
+            "  default_distance: 0");
 }
 
 }  // namespace

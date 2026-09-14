@@ -726,11 +726,11 @@ void MixPresentationObu::PrintObu() const {
       }
       audio_element.rendering_config.Print();
       ABSL_LOG(INFO) << "        element_mix_gain:";
-      audio_element.element_mix_gain.Print();
+      ABSL_LOG(INFO) << audio_element.element_mix_gain;
     }
 
     ABSL_LOG(INFO) << "    output_mix_gain:";
-    sub_mix.output_mix_gain.Print();
+    ABSL_LOG(INFO) << sub_mix.output_mix_gain;
 
     ABSL_LOG(INFO) << "    num_layouts= " << sub_mix.layouts.size();
 

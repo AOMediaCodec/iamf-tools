@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 #include "absl/status/status.h"
 #include "absl/types/span.h"
@@ -78,7 +79,7 @@ class MockParamDefinition : public ParamDefinition {
   MOCK_METHOD(absl::StatusOr<std::unique_ptr<ParameterData>>,
               CreateParameterDataFromBuffer, (ReadBitBuffer & rb),
               (const, override));
-  MOCK_METHOD(void, Print, (), (const, override));
+  MOCK_METHOD(std::string, ToString, (), (const, override));
 };
 
 /*!\brief Makes arguments for Mode 1 (`kModeScheduleInParameterBlock`).

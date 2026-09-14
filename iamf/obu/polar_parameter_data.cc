@@ -13,9 +13,9 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <string>
 #include <utility>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -145,15 +145,12 @@ absl::Status PolarParameterData::Write(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
-void PolarParameterData::Print() const {
-  ABSL_LOG(INFO) << "    animation_type= "
-                 << absl::StrCat(static_cast<DecodedUleb128>(animation_type_));
-  ABSL_LOG(INFO) << "    azimuth:";
-  azimuth_.PrintPayload();
-  ABSL_LOG(INFO) << "    elevation:";
-  elevation_.PrintPayload();
-  ABSL_LOG(INFO) << "    distance:";
-  distance_.PrintPayload();
+std::string PolarParameterData::ToString() const {
+  return absl::StrCat(
+      "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+      "\n    azimuth:\n", azimuth_.ToStringPayload(), "\n    elevation:\n",
+      elevation_.ToStringPayload(), "\n    distance:\n",
+      distance_.ToStringPayload());
 }
 
 }  // namespace iamf_tools

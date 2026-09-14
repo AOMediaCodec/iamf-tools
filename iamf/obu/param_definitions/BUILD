@@ -14,9 +14,9 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/obu:cart16_parameter_data",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -31,9 +31,9 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/obu:cart8_parameter_data",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -47,9 +47,9 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -64,9 +64,9 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/obu:dual_cart16_parameter_data",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -81,9 +81,9 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/obu:dual_cart8_parameter_data",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -98,9 +98,9 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/obu:dual_polar_parameter_data",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -115,7 +115,6 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
@@ -138,9 +137,9 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -160,7 +159,6 @@ cc_library(
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
@@ -195,9 +193,9 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/obu:parameter_data",
         "//iamf/obu:polar_parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -211,7 +209,6 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/obu:parameter_data",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
@@ -233,10 +230,10 @@ cc_library(
         "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/functional:function_ref",
         "@abseil-cpp//absl/log:absl_check",
-        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:str_format",
         "@abseil-cpp//absl/types:span",
     ],
 )

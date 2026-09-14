@@ -13,9 +13,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -301,6 +303,25 @@ TEST(CreateParameterDataFromBuffer, FailsForInvalidAnimationType) {
   auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
 
   EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
+TEST(AbslStringify, FormatsCorrectly) {
+  MixGainParamDefinition mix_gain_param_definition(
+      GetParamDefinitionMode1Args());
+  mix_gain_param_definition.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(0);
+
+  const std::string formatted = absl::StrCat(mix_gain_param_definition);
+
+  EXPECT_EQ(
+      formatted,
+      "MixGainParamDefinition:\n"
+      "  parameter_type= 0\n"
+      "  parameter_id= 0\n"
+      "  parameter_rate= 1\n"
+      "  param_definition_mode= 1\n"
+      "  reserved= 0\n"
+      "  default_mix_gain= QFormatOrFloatingPoint(q7.8=0, float=0.000000)");
 }
 
 }  // namespace

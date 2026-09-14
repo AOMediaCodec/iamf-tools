@@ -13,9 +13,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -328,6 +330,27 @@ TEST(CreateParameterDataFromBuffer, FailsForReservedDMixPMode) {
   auto parameter_data = param_definition.CreateParameterDataFromBuffer(*buffer);
 
   EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
+TEST(AbslStringify, FormatsCorrectly) {
+  const auto demixing_param_definition = CreateDemixingParamDefinition();
+
+  const std::string formatted = absl::StrCat(demixing_param_definition);
+
+  EXPECT_EQ(formatted,
+            "DemixingParamDefinition:\n"
+            "  parameter_type= 1\n"
+            "  parameter_id= 0\n"
+            "  parameter_rate= 1\n"
+            "  param_definition_mode= 0\n"
+            "  reserved= 0\n"
+            "  duration= 64\n"
+            "  constant_subblock_duration= 64\n"
+            "  num_subblocks= 1\n"
+            "    dmixp_mode= 0\n"
+            "    reserved= 0\n"
+            "    default_w= 0\n"
+            "    reserved_for_future_use= 0");
 }
 
 }  // namespace

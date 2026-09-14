@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -67,9 +68,11 @@ class DualCart16ParamDefinition : public ParamDefinition {
   absl::StatusOr<std::unique_ptr<ParameterData>> CreateParameterDataFromBuffer(
       ReadBitBuffer& rb) const override;
 
-  /*!\brief Prints the parameter definition.
+  /*!\brief Returns a string representation of the parameter definition.
+   *
+   * \return String representation of the parameter definition.
    */
-  void Print() const override;
+  std::string ToString() const override;
 
   int16_t default_first_x_ = 0;
   int16_t default_first_y_ = 0;

@@ -13,9 +13,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -203,6 +205,20 @@ TEST(CreateParameterDataFromBuffer, FailsForParameterDataSizeTooLarge) {
   auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
 
   EXPECT_THAT(parameter_data, Not(IsOk()));
+}
+
+TEST(AbslStringify, FormatsCorrectly) {
+  ExtendedParamDefinition param_definition(
+      ParamDefinition::kParameterDefinitionReservedStart,
+      ParamDefinition::BaseArgs{});
+  param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
+
+  const std::string formatted = absl::StrCat(param_definition);
+
+  EXPECT_EQ(formatted,
+            "ExtendedParamDefinition:\n"
+            "  param_definition_size= 5\n"
+            "  // Skipped printing param_definition_bytes");
 }
 
 }  // namespace

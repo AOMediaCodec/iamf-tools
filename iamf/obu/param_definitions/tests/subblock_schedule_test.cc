@@ -15,15 +15,19 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/parameter_data.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -231,7 +235,6 @@ class DummyParameterData : public ParameterData {
   absl::Status Write(WriteBitBuffer& wb) const override {
     return wb.WriteUnsignedLiteral(0, 8);
   }
-  void Print() const override {}
 };
 
 TEST(Write, ConstantSubblockDurationWithParameterData) {
@@ -394,6 +397,35 @@ TEST(CreateFromBufferWithParameterData, VariableSubblockDuration) {
   EXPECT_THAT(result->schedule.GetSubblockDuration(0), IsOkAndHolds(30));
   EXPECT_THAT(result->schedule.GetSubblockDuration(1), IsOkAndHolds(34));
   EXPECT_THAT(result->parameter_data, ElementsAre(NotNull(), NotNull()));
+}
+
+TEST(AbslStringify, FormatsConstantSubblockDuration) {
+  const auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+      /*duration=*/64, /*constant_subblock_duration=*/32);
+  ASSERT_THAT(schedule, IsOk());
+
+  const std::string formatted = absl::StrCat(*schedule);
+
+  EXPECT_EQ(formatted,
+            "  duration= 64\n"
+            "  constant_subblock_duration= 32\n"
+            "  num_subblocks= 2");
+}
+
+TEST(AbslStringify, FormatsVariableSubblockDurations) {
+  const std::vector<DecodedUleb128> subblock_durations = {30, 34};
+  const auto schedule =
+      SubblockSchedule::CreateWithVariableSubblockDuration(subblock_durations);
+  ASSERT_THAT(schedule, IsOk());
+
+  const std::string formatted = absl::StrCat(*schedule);
+
+  EXPECT_EQ(formatted,
+            "  duration= 64\n"
+            "  constant_subblock_duration= 0\n"
+            "  num_subblocks= 2\n"
+            "  subblock_durations[0]= 30\n"
+            "  subblock_durations[1]= 34");
 }
 
 }  // namespace

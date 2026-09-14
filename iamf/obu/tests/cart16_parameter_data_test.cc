@@ -12,9 +12,11 @@
 #include "iamf/obu/cart16_parameter_data.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -278,22 +280,49 @@ TEST(Write, InterBezierAnimationWritesCorrectly) {
                                   0x00, 0x00, 0x00, 0x32, 0x0f}));
 }
 
-TEST(Print, StepAnimationDoesNotCrash) {
+TEST(AbslStringify, FormatsStepAnimation) {
   const auto data = Cart16ParameterData::Make(
       AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(5),
       AnimatedParameterData<int16_t>::MakeStep(-10),
       AnimatedParameterData<int16_t>::MakeStep(100));
 
-  data.Print();
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 0\n"
+            "    x:\n"
+            "     // Step\n"
+            "     start_point_value= 5\n"
+            "    y:\n"
+            "     // Step\n"
+            "     start_point_value= -10\n"
+            "    z:\n"
+            "     // Step\n"
+            "     start_point_value= 100");
 }
 
-TEST(Print, LinearAnimationDoesNotCrash) {
+TEST(AbslStringify, FormatsLinearAnimation) {
   const auto data = Cart16ParameterData::Make(
       AnimationType::kLinear, AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       AnimatedParameterData<int16_t>::MakeLinear(-2, -3),
       AnimatedParameterData<int16_t>::MakeLinear(32767, 0));
 
-  data.Print();
+  const std::string formatted = absl::StrCat(data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 1\n"
+            "    x:\n"
+            "     // Linear\n"
+            "     start_point_value= 1\n"
+            "     end_point_value= 2\n"
+            "    y:\n"
+            "     // Linear\n"
+            "     start_point_value= -2\n"
+            "     end_point_value= -3\n"
+            "    z:\n"
+            "     // Linear\n"
+            "     start_point_value= 32767\n"
+            "     end_point_value= 0");
 }
 
 }  // namespace

@@ -12,9 +12,11 @@
 #include "iamf/obu/dual_polar_parameter_data.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -463,7 +465,7 @@ TEST(Write, LinearAnimationWritesCorrectly) {
                              }));
 }
 
-TEST(Print, StepAnimationDoesNotCrash) {
+TEST(AbslStringify, FormatsStepAnimation) {
   const auto data = DualPolarParameterData::Create(
       AnimationType::kStep, AnimatedParameterData<int16_t>::MakeStep(1),
       AnimatedParameterData<int8_t>::MakeStep(-2),
@@ -473,10 +475,31 @@ TEST(Print, StepAnimationDoesNotCrash) {
       AnimatedParameterData<uint8_t>::MakeStep(64));
 
   ASSERT_THAT(data, IsOk());
-  data->Print();
+  const std::string formatted = absl::StrCat(*data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 0\n"
+            "    first_azimuth:\n"
+            "     // Step\n"
+            "     start_point_value= 1\n"
+            "    first_elevation:\n"
+            "     // Step\n"
+            "     start_point_value= -2\n"
+            "    first_distance:\n"
+            "     // Step\n"
+            "     start_point_value= 127\n"
+            "    second_azimuth:\n"
+            "     // Step\n"
+            "     start_point_value= -1\n"
+            "    second_elevation:\n"
+            "     // Step\n"
+            "     start_point_value= 2\n"
+            "    second_distance:\n"
+            "     // Step\n"
+            "     start_point_value= 64");
 }
 
-TEST(Print, LinearAnimationDoesNotCrash) {
+TEST(AbslStringify, FormatsLinearAnimation) {
   const auto data = DualPolarParameterData::Create(
       AnimationType::kLinear, AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
@@ -486,7 +509,34 @@ TEST(Print, LinearAnimationDoesNotCrash) {
       AnimatedParameterData<uint8_t>::MakeLinear(64, 32));
 
   ASSERT_THAT(data, IsOk());
-  data->Print();
+  const std::string formatted = absl::StrCat(*data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 1\n"
+            "    first_azimuth:\n"
+            "     // Linear\n"
+            "     start_point_value= 1\n"
+            "     end_point_value= 2\n"
+            "    first_elevation:\n"
+            "     // Linear\n"
+            "     start_point_value= -2\n"
+            "     end_point_value= -3\n"
+            "    first_distance:\n"
+            "     // Linear\n"
+            "     start_point_value= 127\n"
+            "     end_point_value= 0\n"
+            "    second_azimuth:\n"
+            "     // Linear\n"
+            "     start_point_value= -1\n"
+            "     end_point_value= -2\n"
+            "    second_elevation:\n"
+            "     // Linear\n"
+            "     start_point_value= 2\n"
+            "     end_point_value= 3\n"
+            "    second_distance:\n"
+            "     // Linear\n"
+            "     start_point_value= 64\n"
+            "     end_point_value= 32");
 }
 
 }  // namespace

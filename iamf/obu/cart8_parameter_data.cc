@@ -12,9 +12,9 @@
 #include "iamf/obu/cart8_parameter_data.h"
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -79,15 +79,11 @@ absl::Status Cart8ParameterData::Write(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
-void Cart8ParameterData::Print() const {
-  ABSL_LOG(INFO) << "    animation_type= "
-                 << absl::StrCat(static_cast<DecodedUleb128>(animation_type_));
-  ABSL_LOG(INFO) << "    x:";
-  x_.PrintPayload();
-  ABSL_LOG(INFO) << "    y:";
-  y_.PrintPayload();
-  ABSL_LOG(INFO) << "    z:";
-  z_.PrintPayload();
+std::string Cart8ParameterData::ToString() const {
+  return absl::StrCat(
+      "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+      "\n    x:\n", x_.ToStringPayload(), "\n    y:\n", y_.ToStringPayload(),
+      "\n    z:\n", z_.ToStringPayload());
 }
 
 }  // namespace iamf_tools

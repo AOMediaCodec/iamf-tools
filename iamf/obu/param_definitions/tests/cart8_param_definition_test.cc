@@ -12,9 +12,11 @@
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -112,6 +114,26 @@ TEST(Cart8ParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
   EXPECT_EQ(*cart8_data->x().start_point_value(), 1);
   EXPECT_EQ(*cart8_data->y().start_point_value(), 2);
   EXPECT_EQ(*cart8_data->z().start_point_value(), 3);
+}
+
+TEST(Cart8ParamDefinitionTest, AbslStringifyFormatsCorrectly) {
+  const Cart8ParamDefinition param_definition(GetCart8ParamDefinitionArgs());
+
+  const std::string formatted = absl::StrCat(param_definition);
+
+  EXPECT_EQ(formatted,
+            "Cart8ParamDefinition:\n"
+            "  parameter_type= 4\n"
+            "  parameter_id= 1\n"
+            "  parameter_rate= 1\n"
+            "  param_definition_mode= 0\n"
+            "  reserved= 0\n"
+            "  duration= 10\n"
+            "  constant_subblock_duration= 10\n"
+            "  num_subblocks= 1\n"
+            "  default_x: 0\n"
+            "  default_y: 0\n"
+            "  default_z: 0");
 }
 
 }  // namespace
