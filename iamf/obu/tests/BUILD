@@ -305,6 +305,7 @@ cc_test(
         "extension_parameter_data_test.cc",
         "mix_gain_parameter_data_test.cc",
         "polar_parameter_data_test.cc",
+        "polar_position_data_test.cc",
         "recon_gain_info_parameter_data_test.cc",
     ],
     deps = [
@@ -319,6 +320,7 @@ cc_test(
         "//iamf/obu:dual_polar_parameter_data",
         "//iamf/obu:parameter_data",
         "//iamf/obu:polar_parameter_data",
+        "//iamf/obu:polar_position_data",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings",

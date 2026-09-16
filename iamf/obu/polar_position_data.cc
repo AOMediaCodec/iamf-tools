@@ -1,0 +1,185 @@
+/*
+ * Copyright (c) 2026, Alliance for Open Media. All rights reserved
+ *
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at www.aomedia.org/license/software-license/bsd-3-c-c. If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * www.aomedia.org/license/patent.
+ */
+
+#include "iamf/obu/polar_position_data.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <utility>
+
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
+#include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/animated_parameter_data.h"
+#include "iamf/obu/types.h"
+
+namespace iamf_tools {
+
+namespace {
+
+int16_t Clip3(int16_t value, int16_t min_val, int16_t max_val) {
+  return std::clamp(value, min_val, max_val);
+}
+
+template <typename T>
+absl::Status ValidateRange(const AnimatedParameterData<T>& anim, T min_val,
+                           T max_val, absl::string_view name) {
+  const T min = min_val;
+  const T max = max_val;
+  const std::pair<const T&, const T&> kRange{min, max};
+
+  if (anim.start_point_value().has_value()) {
+    RETURN_IF_NOT_OK(ValidateInRange(*anim.start_point_value(), kRange,
+                                     absl::StrCat(name, " start_point_value")));
+  }
+  if (anim.end_point_value().has_value()) {
+    RETURN_IF_NOT_OK(ValidateInRange(*anim.end_point_value(), kRange,
+                                     absl::StrCat(name, " end_point_value")));
+  }
+  if (anim.control_point_value().has_value()) {
+    RETURN_IF_NOT_OK(
+        ValidateInRange(*anim.control_point_value(), kRange,
+                        absl::StrCat(name, " control_point_value")));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ValidatePosition(AnimationType animation_type,
+                              const PolarPosition& position,
+                              absl::string_view prefix) {
+  RETURN_IF_NOT_OK(
+      ValidateEqual(position.azimuth.animation_type(), animation_type,
+                    absl::StrCat(prefix, " azimuth animation_type")));
+  RETURN_IF_NOT_OK(
+      ValidateEqual(position.elevation.animation_type(), animation_type,
+                    absl::StrCat(prefix, " elevation animation_type")));
+  RETURN_IF_NOT_OK(
+      ValidateEqual(position.distance.animation_type(), animation_type,
+                    absl::StrCat(prefix, " distance animation_type")));
+
+  // azimuth is clipped to [-180, 180]
+  RETURN_IF_NOT_OK(ValidateRange<int16_t>(position.azimuth, -180, 180,
+                                          absl::StrCat(prefix, " azimuth")));
+  // elevation is clipped to [-90, 90]
+  RETURN_IF_NOT_OK(ValidateRange<int8_t>(position.elevation, -90, 90,
+                                         absl::StrCat(prefix, " elevation")));
+  // distance is 7 bits unsigned -> [0, 127]
+  RETURN_IF_NOT_OK(ValidateRange<uint8_t>(position.distance, 0, 127,
+                                          absl::StrCat(prefix, " distance")));
+  return absl::OkStatus();
+}
+
+absl::StatusOr<PolarPosition> ReadPosition(AnimationType animation_type,
+                                           ReadBitBuffer& rb) {
+  auto read_azimuth = [](ReadBitBuffer& r, int16_t& val) -> absl::Status {
+    RETURN_IF_NOT_OK(r.ReadSigned9(val));
+    val = Clip3(val, -180, 180);
+    return absl::OkStatus();
+  };
+  auto read_elevation = [](ReadBitBuffer& r, int8_t& val) -> absl::Status {
+    RETURN_IF_NOT_OK(r.ReadSigned8(val));
+    val = Clip3(val, -90, 90);
+    return absl::OkStatus();
+  };
+  auto read_distance = [](ReadBitBuffer& r, uint8_t& val) {
+    return r.ReadUnsignedLiteral(7, val);
+  };
+
+  auto azimuth =
+      AnimatedParameterData<int16_t>::CreateFromBufferGivenAnimationType(
+          animation_type, rb, read_azimuth);
+  if (!azimuth.ok()) {
+    return azimuth.status();
+  }
+
+  auto elevation =
+      AnimatedParameterData<int8_t>::CreateFromBufferGivenAnimationType(
+          animation_type, rb, read_elevation);
+  if (!elevation.ok()) {
+    return elevation.status();
+  }
+
+  auto distance =
+      AnimatedParameterData<uint8_t>::CreateFromBufferGivenAnimationType(
+          animation_type, rb, read_distance);
+  if (!distance.ok()) {
+    return distance.status();
+  }
+
+  return PolarPosition{
+      .azimuth = *std::move(azimuth),
+      .elevation = *std::move(elevation),
+      .distance = *std::move(distance),
+  };
+}
+
+}  // namespace
+
+absl::StatusOr<PolarPositionData> PolarPositionData::CreateFromBuffer(
+    ReadBitBuffer& rb, bool is_dual) {
+  DecodedUleb128 animation_type_uleb;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(animation_type_uleb));
+
+  const AnimationType animation_type =
+      static_cast<AnimationType>(animation_type_uleb);
+
+  auto first_position = ReadPosition(animation_type, rb);
+  if (!first_position.ok()) {
+    return first_position.status();
+  }
+
+  if (!is_dual) {
+    return Create(animation_type, *std::move(first_position));
+  }
+
+  auto second_position = ReadPosition(animation_type, rb);
+  if (!second_position.ok()) {
+    return second_position.status();
+  }
+
+  return CreateDual(animation_type, *std::move(first_position),
+                    *std::move(second_position));
+}
+
+absl::StatusOr<PolarPositionData> PolarPositionData::Create(
+    AnimationType animation_type, PolarPosition first_position) {
+  RETURN_IF_NOT_OK(
+      ValidatePosition(animation_type, first_position, "first_position"));
+  return PolarPositionData(animation_type, std::move(first_position),
+                           /*second_position=*/std::nullopt);
+}
+
+absl::StatusOr<PolarPositionData> PolarPositionData::CreateDual(
+    AnimationType animation_type, PolarPosition first_position,
+    PolarPosition second_position) {
+  RETURN_IF_NOT_OK(
+      ValidatePosition(animation_type, first_position, "first_position"));
+  RETURN_IF_NOT_OK(
+      ValidatePosition(animation_type, second_position, "second_position"));
+  return PolarPositionData(animation_type, std::move(first_position),
+                           std::move(second_position));
+}
+
+absl::Status PolarPositionData::Write(WriteBitBuffer& /*wb*/) const {
+  return absl::UnimplementedError("Write() is not implemented.");
+}
+
+std::string PolarPositionData::ToString() const { return ""; }
+
+}  // namespace iamf_tools

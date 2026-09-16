@@ -94,6 +94,14 @@ class PolarPositionData : public ParameterData {
    */
   std::string ToString() const override;
 
+  // Getters
+  AnimationType animation_type() const { return animation_type_; }
+  const PolarPosition& first_position() const { return first_position_; }
+  const std::optional<PolarPosition>& second_position() const {
+    return second_position_;
+  }
+  bool is_dual() const { return second_position_.has_value(); }
+
  private:
   PolarPositionData(AnimationType animation_type, PolarPosition first_position,
                     std::optional<PolarPosition> second_position)
