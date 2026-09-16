@@ -198,25 +198,6 @@ cc_library(
 )
 
 cc_library(
-    name = "dual_polar_parameter_data",
-    srcs = ["dual_polar_parameter_data.cc"],
-    hdrs = ["dual_polar_parameter_data.h"],
-    deps = [
-        ":animated_parameter_data",
-        ":parameter_data",
-        ":types",
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:macros",
-        "//iamf/common/utils:validation_utils",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-        "@abseil-cpp//absl/strings:string_view",
-    ],
-)
-
-cc_library(
     name = "element_gain_offset_config",
     srcs = ["element_gain_offset_config.cc"],
     hdrs = ["element_gain_offset_config.h"],
@@ -393,25 +374,6 @@ cc_library(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-    ],
-)
-
-cc_library(
-    name = "polar_parameter_data",
-    srcs = ["polar_parameter_data.cc"],
-    hdrs = ["polar_parameter_data.h"],
-    deps = [
-        ":animated_parameter_data",
-        ":parameter_data",
-        ":types",
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:macros",
-        "//iamf/common/utils:validation_utils",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-        "@abseil-cpp//absl/strings:string_view",
     ],
 )
 
