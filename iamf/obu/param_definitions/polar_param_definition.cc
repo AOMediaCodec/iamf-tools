@@ -24,7 +24,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/parameter_data.h"
-#include "iamf/obu/polar_parameter_data.h"
+#include "iamf/obu/polar_position_data.h"
 
 namespace iamf_tools {
 namespace {
@@ -62,11 +62,11 @@ absl::Status PolarParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 
 absl::StatusOr<std::unique_ptr<ParameterData>>
 PolarParamDefinition::CreateParameterDataFromBuffer(ReadBitBuffer& rb) const {
-  auto data = PolarParameterData::CreateFromBuffer(rb);
+  auto data = PolarPositionData::CreateFromBuffer(rb, /*is_dual=*/false);
   if (!data.ok()) {
     return data.status();
   }
-  return std::make_unique<PolarParameterData>(*std::move(data));
+  return std::make_unique<PolarPositionData>(*std::move(data));
 }
 
 std::string PolarParamDefinition::ToString() const {

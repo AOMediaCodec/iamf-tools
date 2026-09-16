@@ -59,7 +59,7 @@ class DualPolarParamDefinition : public ParamDefinition {
 
   /*!\brief Creates parameter data from a buffer.
    *
-   * The created instance will be of type `DualPolarParameterData`.
+   * The created instance will be of type `PolarPositionData`.
    *
    * \param rb Buffer to read from.
    * \return Unique pointer to created parameter data, or specific error

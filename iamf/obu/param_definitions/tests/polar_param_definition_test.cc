@@ -25,7 +25,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
-#include "iamf/obu/polar_parameter_data.h"
+#include "iamf/obu/polar_position_data.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
@@ -189,12 +189,13 @@ TEST(PolarParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(payload);
   auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
   ASSERT_THAT(parameter_data, IsOk());
-  auto* polar_data = dynamic_cast<PolarParameterData*>(parameter_data->get());
+  auto* polar_data = dynamic_cast<PolarPositionData*>(parameter_data->get());
   ASSERT_NE(polar_data, nullptr);
+  EXPECT_FALSE(polar_data->is_dual());
   EXPECT_EQ(polar_data->animation_type(), AnimationType::kStep);
-  EXPECT_EQ(*polar_data->azimuth().start_point_value(), 1);
-  EXPECT_EQ(*polar_data->elevation().start_point_value(), -2);
-  EXPECT_EQ(*polar_data->distance().start_point_value(), 127);
+  EXPECT_EQ(*polar_data->first_position().azimuth.start_point_value(), 1);
+  EXPECT_EQ(*polar_data->first_position().elevation.start_point_value(), -2);
+  EXPECT_EQ(*polar_data->first_position().distance.start_point_value(), 127);
 }
 
 TEST(PolarParamDefinitionTest, AbslStringifyFormatsCorrectly) {

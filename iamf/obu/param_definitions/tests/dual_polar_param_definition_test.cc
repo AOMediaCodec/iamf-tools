@@ -24,8 +24,8 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/animated_parameter_data.h"
-#include "iamf/obu/dual_polar_parameter_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/polar_position_data.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
@@ -236,15 +236,22 @@ TEST(DualPolarParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
   auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
   ASSERT_THAT(parameter_data, IsOk());
   auto* dual_polar_data =
-      dynamic_cast<DualPolarParameterData*>(parameter_data->get());
+      dynamic_cast<PolarPositionData*>(parameter_data->get());
   ASSERT_NE(dual_polar_data, nullptr);
+  EXPECT_TRUE(dual_polar_data->is_dual());
   EXPECT_EQ(dual_polar_data->animation_type(), AnimationType::kStep);
-  EXPECT_EQ(*dual_polar_data->first_azimuth().start_point_value(), 1);
-  EXPECT_EQ(*dual_polar_data->first_elevation().start_point_value(), -2);
-  EXPECT_EQ(*dual_polar_data->first_distance().start_point_value(), 127);
-  EXPECT_EQ(*dual_polar_data->second_azimuth().start_point_value(), -1);
-  EXPECT_EQ(*dual_polar_data->second_elevation().start_point_value(), 2);
-  EXPECT_EQ(*dual_polar_data->second_distance().start_point_value(), 64);
+  EXPECT_EQ(*dual_polar_data->first_position().azimuth.start_point_value(), 1);
+  EXPECT_EQ(*dual_polar_data->first_position().elevation.start_point_value(),
+            -2);
+  EXPECT_EQ(*dual_polar_data->first_position().distance.start_point_value(),
+            127);
+  ASSERT_TRUE(dual_polar_data->second_position().has_value());
+  EXPECT_EQ(*dual_polar_data->second_position()->azimuth.start_point_value(),
+            -1);
+  EXPECT_EQ(*dual_polar_data->second_position()->elevation.start_point_value(),
+            2);
+  EXPECT_EQ(*dual_polar_data->second_position()->distance.start_point_value(),
+            64);
 }
 
 TEST(DualPolarParamDefinitionTest, AbslStringifyFormatsCorrectly) {
