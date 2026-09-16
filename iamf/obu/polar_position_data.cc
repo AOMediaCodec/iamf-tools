@@ -176,10 +176,51 @@ absl::StatusOr<PolarPositionData> PolarPositionData::CreateDual(
                            std::move(second_position));
 }
 
-absl::Status PolarPositionData::Write(WriteBitBuffer& /*wb*/) const {
-  return absl::UnimplementedError("Write() is not implemented.");
+absl::Status PolarPositionData::Write(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(
+      wb.WriteUleb128(static_cast<DecodedUleb128>(animation_type_)));
+
+  auto write_azimuth = [](WriteBitBuffer& w, int16_t val) {
+    return w.WriteSigned9(Clip3(val, -180, 180));
+  };
+  auto write_elevation = [](WriteBitBuffer& w, int8_t val) {
+    return w.WriteSigned8(Clip3(val, -90, 90));
+  };
+  auto write_distance = [](WriteBitBuffer& w, uint8_t val) {
+    return w.WriteUnsignedLiteral(val, 7);
+  };
+
+  auto write_position = [&](const PolarPosition& pos) -> absl::Status {
+    RETURN_IF_NOT_OK(pos.azimuth.WritePayload(wb, write_azimuth));
+    RETURN_IF_NOT_OK(pos.elevation.WritePayload(wb, write_elevation));
+    RETURN_IF_NOT_OK(pos.distance.WritePayload(wb, write_distance));
+    return absl::OkStatus();
+  };
+
+  RETURN_IF_NOT_OK(write_position(first_position_));
+  if (second_position_.has_value()) {
+    RETURN_IF_NOT_OK(write_position(*second_position_));
+  }
+  return absl::OkStatus();
 }
 
-std::string PolarPositionData::ToString() const { return ""; }
+std::string PolarPositionData::ToString() const {
+  if (!second_position_.has_value()) {
+    return absl::StrCat(
+        "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+        "\n    azimuth:\n", first_position_.azimuth.ToStringPayload(),
+        "\n    elevation:\n", first_position_.elevation.ToStringPayload(),
+        "\n    distance:\n", first_position_.distance.ToStringPayload());
+  }
+  return absl::StrCat(
+      "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+      "\n    first_azimuth:\n", first_position_.azimuth.ToStringPayload(),
+      "\n    first_elevation:\n", first_position_.elevation.ToStringPayload(),
+      "\n    first_distance:\n", first_position_.distance.ToStringPayload(),
+      "\n    second_azimuth:\n", second_position_->azimuth.ToStringPayload(),
+      "\n    second_elevation:\n",
+      second_position_->elevation.ToStringPayload(), "\n    second_distance:\n",
+      second_position_->distance.ToStringPayload());
+}
 
 }  // namespace iamf_tools

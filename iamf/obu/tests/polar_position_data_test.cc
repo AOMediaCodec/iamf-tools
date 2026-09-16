@@ -12,13 +12,16 @@
 #include "iamf/obu/polar_position_data.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/animated_parameter_data.h"
 
 namespace iamf_tools {
@@ -753,6 +756,293 @@ TEST(CreateDual, ReturnsErrorForMismatchingSecondAzimuthAnimationType) {
       PolarPositionData::CreateDual(AnimationType::kStep, first, second);
 
   EXPECT_THAT(data, Not(IsOk()));
+}
+
+// ============================================================================
+// Write - Single Point Tests
+// ============================================================================
+
+TEST(Write, StepAnimationWritesCorrectlyForSinglePoint) {
+  PolarPosition pos = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeStep(1),
+      .elevation = AnimatedParameterData<int8_t>::MakeStep(-2),
+      .distance = AnimatedParameterData<uint8_t>::MakeStep(127),
+  };
+  const auto data = PolarPositionData::Create(AnimationType::kStep, pos);
+
+  ASSERT_THAT(data, IsOk());
+
+  WriteBitBuffer wb(4);
+  EXPECT_THAT(data->Write(wb), IsOk());
+  EXPECT_EQ(
+      wb.bit_buffer(),
+      (std::vector<uint8_t>{
+          // Byte 0: animation_type (0 = kStep)
+          0b00000000,
+          // Byte 1: azimuth_start[8:1] (00000000)
+          0b00000000,
+          // Byte 2: azimuth_start[0] (1) | elevation_start[7:1] (1111111)
+          0b11111111,
+          // Byte 3: elevation_start[0] (0) | distance_start[6:0] (1111111)
+          0b01111111,
+      }));
+}
+
+TEST(Write, LinearAnimationWritesCorrectlyForSinglePoint) {
+  PolarPosition pos = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
+      .elevation = AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
+      .distance = AnimatedParameterData<uint8_t>::MakeLinear(127, 0),
+  };
+  const auto data = PolarPositionData::Create(AnimationType::kLinear, pos);
+
+  ASSERT_THAT(data, IsOk());
+
+  WriteBitBuffer wb(7);
+  EXPECT_THAT(data->Write(wb), IsOk());
+  EXPECT_EQ(
+      wb.bit_buffer(),
+      (std::vector<uint8_t>{
+          // Byte 0: animation_type (1 = kLinear)
+          0b00000001,
+          // Byte 1: azimuth_start[8:1] (00000000)
+          0b00000000,
+          // Byte 2: azimuth_start[0] (1) | azimuth_end[8:2] (0000000)
+          0b10000000,
+          // Byte 3: azimuth_end[1:0] (10) | elevation_start[7:2] (111111)
+          0b10111111,
+          // Byte 4: elevation_start[1:0] (10) | elevation_end[7:2] (111111)
+          0b10111111,
+          // Byte 5: elevation_end[1:0] (01) | distance_start[6:1] (111111)
+          0b01111111,
+          // Byte 6: distance_start[0] (1) | distance_end[6:0] (0000000)
+          0b10000000,
+      }));
+}
+
+// ============================================================================
+// Write - Dual Points Tests
+// ============================================================================
+
+TEST(Write, StepAnimationWritesCorrectlyForDualPoints) {
+  PolarPosition first = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeStep(1),
+      .elevation = AnimatedParameterData<int8_t>::MakeStep(-2),
+      .distance = AnimatedParameterData<uint8_t>::MakeStep(127),
+  };
+  PolarPosition second = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeStep(-1),
+      .elevation = AnimatedParameterData<int8_t>::MakeStep(2),
+      .distance = AnimatedParameterData<uint8_t>::MakeStep(64),
+  };
+  const auto data =
+      PolarPositionData::CreateDual(AnimationType::kStep, first, second);
+
+  ASSERT_THAT(data, IsOk());
+
+  WriteBitBuffer wb(7);
+  EXPECT_THAT(data->Write(wb), IsOk());
+  EXPECT_EQ(wb.bit_buffer(), (std::vector<uint8_t>{
+                                 // Byte 0: animation_type (0 = kStep)
+                                 0b00000000,
+                                 // Byte 1: first_azimuth_start[8:1] (00000000)
+                                 0b00000000,
+                                 // Byte 2: first_azimuth_start[0] (1) |
+                                 // first_elevation_start[7:1] (1111111)
+                                 0b11111111,
+                                 // Byte 3: first_elevation_start[0] (0) |
+                                 // first_distance_start[6:0] (1111111)
+                                 0b01111111,
+                                 // Byte 4: second_azimuth_start[8:1] (11111111)
+                                 0b11111111,
+                                 // Byte 5: second_azimuth_start[0] (1) |
+                                 // second_elevation_start[7:1] (0000001)
+                                 0b10000001,
+                                 // Byte 6: second_elevation_start[0] (0) |
+                                 // second_distance_start[6:0] (1000000)
+                                 0b01000000,
+                             }));
+}
+
+TEST(Write, LinearAnimationWritesCorrectlyForDualPoints) {
+  PolarPosition first = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
+      .elevation = AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
+      .distance = AnimatedParameterData<uint8_t>::MakeLinear(127, 0),
+  };
+  PolarPosition second = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeLinear(-1, -2),
+      .elevation = AnimatedParameterData<int8_t>::MakeLinear(2, 3),
+      .distance = AnimatedParameterData<uint8_t>::MakeLinear(64, 32),
+  };
+  const auto data =
+      PolarPositionData::CreateDual(AnimationType::kLinear, first, second);
+
+  ASSERT_THAT(data, IsOk());
+
+  WriteBitBuffer wb(13);
+  EXPECT_THAT(data->Write(wb), IsOk());
+  EXPECT_EQ(wb.bit_buffer(), (std::vector<uint8_t>{
+                                 // Byte 0: animation_type (1 = kLinear)
+                                 0b00000001,
+                                 // Bytes 1..6: first polar coordinates
+                                 0b00000000,
+                                 0b10000000,
+                                 0b10111111,
+                                 0b10111111,
+                                 0b01111111,
+                                 0b10000000,
+                                 // Bytes 7..12: second polar coordinates
+                                 0b11111111,
+                                 0b11111111,
+                                 0b10000000,
+                                 0b10000000,
+                                 0b11100000,
+                                 0b00100000,
+                             }));
+}
+
+// ============================================================================
+// AbslStringify - Single Point Tests
+// ============================================================================
+
+TEST(AbslStringify, FormatsStepAnimationForSinglePoint) {
+  PolarPosition pos = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeStep(1),
+      .elevation = AnimatedParameterData<int8_t>::MakeStep(-2),
+      .distance = AnimatedParameterData<uint8_t>::MakeStep(127),
+  };
+  const auto data = PolarPositionData::Create(AnimationType::kStep, pos);
+
+  ASSERT_THAT(data, IsOk());
+  const std::string formatted = absl::StrCat(*data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 0\n"
+            "    azimuth:\n"
+            "     // Step\n"
+            "     start_point_value= 1\n"
+            "    elevation:\n"
+            "     // Step\n"
+            "     start_point_value= -2\n"
+            "    distance:\n"
+            "     // Step\n"
+            "     start_point_value= 127");
+}
+
+TEST(AbslStringify, FormatsLinearAnimationForSinglePoint) {
+  PolarPosition pos = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
+      .elevation = AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
+      .distance = AnimatedParameterData<uint8_t>::MakeLinear(127, 0),
+  };
+  const auto data = PolarPositionData::Create(AnimationType::kLinear, pos);
+
+  ASSERT_THAT(data, IsOk());
+  const std::string formatted = absl::StrCat(*data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 1\n"
+            "    azimuth:\n"
+            "     // Linear\n"
+            "     start_point_value= 1\n"
+            "     end_point_value= 2\n"
+            "    elevation:\n"
+            "     // Linear\n"
+            "     start_point_value= -2\n"
+            "     end_point_value= -3\n"
+            "    distance:\n"
+            "     // Linear\n"
+            "     start_point_value= 127\n"
+            "     end_point_value= 0");
+}
+
+// ============================================================================
+// AbslStringify - Dual Points Tests
+// ============================================================================
+
+TEST(AbslStringify, FormatsStepAnimationForDualPoints) {
+  PolarPosition first = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeStep(1),
+      .elevation = AnimatedParameterData<int8_t>::MakeStep(-2),
+      .distance = AnimatedParameterData<uint8_t>::MakeStep(127),
+  };
+  PolarPosition second = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeStep(-1),
+      .elevation = AnimatedParameterData<int8_t>::MakeStep(2),
+      .distance = AnimatedParameterData<uint8_t>::MakeStep(64),
+  };
+  const auto data =
+      PolarPositionData::CreateDual(AnimationType::kStep, first, second);
+
+  ASSERT_THAT(data, IsOk());
+  const std::string formatted = absl::StrCat(*data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 0\n"
+            "    first_azimuth:\n"
+            "     // Step\n"
+            "     start_point_value= 1\n"
+            "    first_elevation:\n"
+            "     // Step\n"
+            "     start_point_value= -2\n"
+            "    first_distance:\n"
+            "     // Step\n"
+            "     start_point_value= 127\n"
+            "    second_azimuth:\n"
+            "     // Step\n"
+            "     start_point_value= -1\n"
+            "    second_elevation:\n"
+            "     // Step\n"
+            "     start_point_value= 2\n"
+            "    second_distance:\n"
+            "     // Step\n"
+            "     start_point_value= 64");
+}
+
+TEST(AbslStringify, FormatsLinearAnimationForDualPoints) {
+  PolarPosition first = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
+      .elevation = AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
+      .distance = AnimatedParameterData<uint8_t>::MakeLinear(127, 0),
+  };
+  PolarPosition second = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeLinear(-1, -2),
+      .elevation = AnimatedParameterData<int8_t>::MakeLinear(2, 3),
+      .distance = AnimatedParameterData<uint8_t>::MakeLinear(64, 32),
+  };
+  const auto data =
+      PolarPositionData::CreateDual(AnimationType::kLinear, first, second);
+
+  ASSERT_THAT(data, IsOk());
+  const std::string formatted = absl::StrCat(*data);
+
+  EXPECT_EQ(formatted,
+            "    animation_type= 1\n"
+            "    first_azimuth:\n"
+            "     // Linear\n"
+            "     start_point_value= 1\n"
+            "     end_point_value= 2\n"
+            "    first_elevation:\n"
+            "     // Linear\n"
+            "     start_point_value= -2\n"
+            "     end_point_value= -3\n"
+            "    first_distance:\n"
+            "     // Linear\n"
+            "     start_point_value= 127\n"
+            "     end_point_value= 0\n"
+            "    second_azimuth:\n"
+            "     // Linear\n"
+            "     start_point_value= -1\n"
+            "     end_point_value= -2\n"
+            "    second_elevation:\n"
+            "     // Linear\n"
+            "     start_point_value= 2\n"
+            "     end_point_value= 3\n"
+            "    second_distance:\n"
+            "     // Linear\n"
+            "     start_point_value= 64\n"
+            "     end_point_value= 32");
 }
 
 }  // namespace
