@@ -108,40 +108,6 @@ cc_library(
 )
 
 cc_library(
-    name = "cart16_parameter_data",
-    srcs = ["cart16_parameter_data.cc"],
-    hdrs = ["cart16_parameter_data.h"],
-    deps = [
-        ":animated_parameter_data",
-        ":parameter_data",
-        ":types",
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:macros",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "cart8_parameter_data",
-    srcs = ["cart8_parameter_data.cc"],
-    hdrs = ["cart8_parameter_data.h"],
-    deps = [
-        ":animated_parameter_data",
-        ":parameter_data",
-        ":types",
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:macros",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
     name = "cartesian_position_data",
     srcs = ["cartesian_position_data.cc"],
     hdrs = ["cartesian_position_data.h"],
@@ -178,40 +144,6 @@ cc_library(
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@abseil-cpp//absl/log:absl_log",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "dual_cart16_parameter_data",
-    srcs = ["dual_cart16_parameter_data.cc"],
-    hdrs = ["dual_cart16_parameter_data.h"],
-    deps = [
-        ":animated_parameter_data",
-        ":parameter_data",
-        ":types",
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:macros",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "dual_cart8_parameter_data",
-    srcs = ["dual_cart8_parameter_data.cc"],
-    hdrs = ["dual_cart8_parameter_data.h"],
-    deps = [
-        ":animated_parameter_data",
-        ":parameter_data",
-        ":types",
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:macros",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
