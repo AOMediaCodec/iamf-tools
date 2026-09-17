@@ -48,6 +48,101 @@ using absl::MakeConstSpan;
 
 constexpr InternalSampleType kArbitrarySample = 0.5;
 
+TEST(ValidateTrimming, SucceedsAndCalculatesValidTicks) {
+  const LabeledFrame kFrame = {.samples_to_trim_at_end = 2,
+                               .samples_to_trim_at_start = 1,
+                               .label_to_samples = {{kMono, {1, 2, 3, 4, 5}}}};
+  size_t num_valid_ticks = 0;
+  EXPECT_THAT(ValidateTrimming(kFrame, {kMono}, /*num_samples_per_frame=*/5,
+                               TrimmingSettings{}, num_valid_ticks),
+              IsOk());
+  EXPECT_EQ(num_valid_ticks, 2);
+}
+
+TEST(ValidateTrimming, IgnoresTrimmingWhenSettingsAreFalse) {
+  const LabeledFrame kFrame = {.samples_to_trim_at_end = 2,
+                               .samples_to_trim_at_start = 1,
+                               .label_to_samples = {{kMono, {1, 2, 3, 4, 5}}}};
+  size_t num_valid_ticks = 0;
+  EXPECT_THAT(ValidateTrimming(
+                  kFrame, {kMono}, /*num_samples_per_frame=*/5,
+                  TrimmingSettings{.trim_beginning = false, .trim_end = false},
+                  num_valid_ticks),
+              IsOk());
+  EXPECT_EQ(num_valid_ticks, 5);
+}
+
+TEST(ValidateTrimming, FailsWithOnlyOmittedLabels) {
+  const LabeledFrame kFrame = {.label_to_samples = {}};
+  constexpr size_t kNumSamples = 100;
+  const std::vector<ChannelLabel::Label> kOmittedOnlyArrangement = {kOmitted};
+  size_t num_valid_ticks = 0;
+
+  EXPECT_THAT(ValidateTrimming(kFrame, kOmittedOnlyArrangement, kNumSamples,
+                               TrimmingSettings{}, num_valid_ticks),
+              Not(IsOk()));
+}
+
+TEST(ValidateTrimming, InvalidWhenRequestedLabelsHaveDifferentNumberOfSamples) {
+  const LabeledFrame kStereoLabeledFrameWithMissingSample = {
+      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  size_t num_valid_ticks = 0;
+  EXPECT_THAT(
+      ValidateTrimming(kStereoLabeledFrameWithMissingSample, kStereoArrangement,
+                       2, TrimmingSettings{}, num_valid_ticks),
+      Not(IsOk()));
+}
+
+TEST(ValidateTrimming, FailsWhenNumSamplesPerFrameDiffersFromRawTimeTicks) {
+  const LabeledFrame kStereoLabeledFrame = {
+      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+
+  size_t num_valid_ticks = 0;
+  EXPECT_THAT(ValidateTrimming(kStereoLabeledFrame, kStereoArrangement, 1,
+                               TrimmingSettings{}, num_valid_ticks),
+              Not(IsOk()));
+}
+
+TEST(ValidateTrimming, InvalidWhenTrimIsImplausible) {
+  const LabeledFrame kFrameWithExcessSamplesTrimmed = {
+      .samples_to_trim_at_end = 1,
+      .samples_to_trim_at_start = 2,
+      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  size_t num_valid_ticks = 0;
+  EXPECT_THAT(
+      ValidateTrimming(kFrameWithExcessSamplesTrimmed, kStereoArrangement, 2,
+                       TrimmingSettings{}, num_valid_ticks),
+      Not(IsOk()));
+}
+
+TEST(ValidateTrimming, InvalidWhenTrimOverflows) {
+  // Set trim values such that their sum overflows a `DecodedUleb128`.
+  const LabeledFrame kFrameWithExcessSamplesTrimmed = {
+      .samples_to_trim_at_end = 1,
+      .samples_to_trim_at_start = std::numeric_limits<DecodedUleb128>::max(),
+      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  size_t num_valid_ticks = 0;
+
+  EXPECT_THAT(
+      ValidateTrimming(kFrameWithExcessSamplesTrimmed, kStereoArrangement, 2,
+                       TrimmingSettings{}, num_valid_ticks),
+      Not(IsOk()));
+}
+
+TEST(ValidateTrimming, InvalidMissingLabel) {
+  const LabeledFrame kStereoLabeledFrame = {
+      .label_to_samples = {{kL2, {0}}, {kR2, {10}}}};
+  const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
+  size_t num_valid_ticks = 0;
+  EXPECT_THAT(ValidateTrimming(kStereoLabeledFrame, kMonoArrangement, 1,
+                               TrimmingSettings{}, num_valid_ticks),
+              Not(IsOk()));
+}
+
 TEST(ArrangeSamples, SucceedsOnEmptyFrame) {
   constexpr size_t kNumChannels = 2;
   std::vector<absl::Span<const InternalSampleType>> samples(kNumChannels);
@@ -154,20 +249,6 @@ TEST(ArrangeSamples, LeavesOmittedLabelsZeroForChannelBasedLayout) {
                                    Pointwise(DoubleEq(), {0.0, 0.0})));
 }
 
-TEST(ArrangeSamples, FailsWithOnlyOmittedLabels) {
-  const LabeledFrame kFrame = {.label_to_samples = {}};
-  constexpr size_t kNumChannels = 1;
-  constexpr size_t kNumSamples = 100;
-  const std::vector<ChannelLabel::Label> kOmittedOnlyArrangement = {kOmitted};
-  const std::vector<InternalSampleType> kEmptyChannel(kNumSamples, 0.0);
-  std::vector<absl::Span<const InternalSampleType>> samples(kNumChannels);
-  size_t num_valid_samples = 0;
-
-  EXPECT_THAT(ArrangeSamples(kFrame, kOmittedOnlyArrangement, kEmptyChannel,
-                             TrimmingSettings{}, samples, num_valid_samples),
-              Not(IsOk()));
-}
-
 TEST(ArrangeSamples, ExcludesSamplesToBeTrimmed) {
   const LabeledFrame kMonoLabeledFrameWithSamplesToTrim = {
       .samples_to_trim_at_end = 2,
@@ -220,88 +301,6 @@ TEST(ArrangeSamples, TrimmingAllFramesFromStartIsResultsInEmptyChannels) {
   for (const auto& channel : samples) {
     EXPECT_TRUE(channel.empty());
   }
-}
-
-TEST(ArrangeSamples, InvalidWhenRequestedLabelsHaveDifferentNumberOfSamples) {
-  const LabeledFrame kStereoLabeledFrameWithMissingSample = {
-      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10}}}};
-  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
-  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
-
-  std::vector<absl::Span<const InternalSampleType>> samples(
-      kStereoArrangement.size());
-  size_t num_valid_samples = 0;
-  EXPECT_THAT(ArrangeSamples(kStereoLabeledFrameWithMissingSample,
-                             kStereoArrangement, kEmptyChannel,
-                             TrimmingSettings{}, samples, num_valid_samples),
-              Not(IsOk()));
-}
-
-TEST(ArrangeSamples, InvalidWhenEmptyChannelHasTooFewSamples) {
-  const LabeledFrame kStereoLabeledFrame = {
-      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
-  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
-
-  // Other labels have two samples, but the empty channel has only one.
-  const std::vector<InternalSampleType> kEmptyChannelWithTooManySamples(1, 0.0);
-
-  std::vector<absl::Span<const InternalSampleType>> samples(
-      kStereoArrangement.size());
-  size_t num_valid_samples = 0;
-  EXPECT_THAT(ArrangeSamples(kStereoLabeledFrame, kStereoArrangement,
-                             kEmptyChannelWithTooManySamples,
-                             TrimmingSettings{}, samples, num_valid_samples),
-              Not(IsOk()));
-}
-
-TEST(ArrangeSamples, InvalidWhenTrimIsImplausible) {
-  const LabeledFrame kFrameWithExcessSamplesTrimmed = {
-      .samples_to_trim_at_end = 1,
-      .samples_to_trim_at_start = 2,
-      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
-  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
-  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
-
-  std::vector<absl::Span<const InternalSampleType>> samples(
-      kStereoArrangement.size());
-  size_t num_valid_samples = 0;
-  EXPECT_THAT(ArrangeSamples(kFrameWithExcessSamplesTrimmed, kStereoArrangement,
-                             kEmptyChannel, TrimmingSettings{}, samples,
-                             num_valid_samples),
-              Not(IsOk()));
-}
-
-TEST(ArrangeSamples, InvalidWhenTrimOverflows) {
-  // Set trim values such that their sum overflows a `DecodedUleb128`.
-  const LabeledFrame kFrameWithExcessSamplesTrimmed = {
-      .samples_to_trim_at_end = 1,
-      .samples_to_trim_at_start = std::numeric_limits<DecodedUleb128>::max(),
-      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
-  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
-  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
-  std::vector<absl::Span<const InternalSampleType>> samples(
-      kStereoArrangement.size());
-  size_t num_valid_samples = 0;
-
-  EXPECT_THAT(ArrangeSamples(kFrameWithExcessSamplesTrimmed, kStereoArrangement,
-                             kEmptyChannel, TrimmingSettings{}, samples,
-                             num_valid_samples),
-              Not(IsOk()));
-}
-
-TEST(ArrangeSamples, InvalidMissingLabel) {
-  const LabeledFrame kStereoLabeledFrame = {
-      .label_to_samples = {{kL2, {0}}, {kR2, {10}}}};
-  const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
-  const std::vector<InternalSampleType> kEmptyChannel(1, 0.0);
-
-  std::vector<absl::Span<const InternalSampleType>> unused_samples(
-      kMonoArrangement.size());
-  size_t num_valid_samples = 0;
-  EXPECT_THAT(
-      ArrangeSamples(kStereoLabeledFrame, kMonoArrangement, kEmptyChannel,
-                     TrimmingSettings{}, unused_samples, num_valid_samples),
-      Not(IsOk()));
 }
 
 TEST(ArrangeSamples, IncludesStartSamplesWhenTrimBeginningIsFalse) {

@@ -13,6 +13,7 @@
 #ifndef CLI_RENDERER_LAYOUT_RENDERER_BASE_H_
 #define CLI_RENDERER_LAYOUT_RENDERER_BASE_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -20,7 +21,9 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/demixing_manager.h"
+#include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
@@ -116,6 +119,18 @@ class LayoutRendererBase {
       std::vector<std::vector<InternalSampleType>>& rendered_samples,
       std::vector<absl::Span<const InternalSampleType>>&
           valid_rendered_samples) = 0;
+
+  /*!\brief Helper function to collect audio element IDs and mix gains.
+   *
+   * \param sub_mix_audio_elements Sub-mix audio elements containing mix gain
+   *        info.
+   * \param audio_element_ids Output audio element IDs.
+   * \param element_mix_gains Output element mix gains.
+   */
+  static void CollectAudioElementIdsAndMixGains(
+      const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
+      std::vector<DecodedUleb128>& audio_element_ids,
+      std::vector<MixGainParamDefinition>& element_mix_gains);
 
   const std::vector<DecodedUleb128> audio_element_ids_;
   const std::vector<MixGainParamDefinition> element_mix_gains_;

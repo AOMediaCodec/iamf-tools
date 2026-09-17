@@ -232,12 +232,8 @@ std::unique_ptr<DefaultLayoutRenderer> DefaultLayoutRenderer::Create(
 
   std::vector<DecodedUleb128> audio_element_ids;
   std::vector<MixGainParamDefinition> element_mix_gains;
-  audio_element_ids.reserve(num_audio_elements);
-  element_mix_gains.reserve(num_audio_elements);
-  for (const auto& sub_mix_audio_element : sub_mix_audio_elements) {
-    audio_element_ids.emplace_back(sub_mix_audio_element.audio_element_id);
-    element_mix_gains.emplace_back(sub_mix_audio_element.element_mix_gain);
-  }
+  CollectAudioElementIdsAndMixGains(sub_mix_audio_elements, audio_element_ids,
+                                    element_mix_gains);
   return absl::WrapUnique(new DefaultLayoutRenderer(
       audio_element_ids, element_mix_gains, output_mix_gain,
       std::move(renderers), num_channels, common_sample_rate,

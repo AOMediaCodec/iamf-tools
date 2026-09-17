@@ -169,9 +169,11 @@ cc_library(
     hdrs = ["layout_renderer_base.h"],
     deps = [
         "//iamf/cli:demixing_manager",
+        "//iamf/cli:labeled_frame",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
+        "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
         "@abseil-cpp//absl/container:flat_hash_map",

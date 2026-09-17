@@ -23,6 +23,7 @@
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
+#include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
@@ -65,6 +66,18 @@ absl::Status LayoutRendererBase::Render(
 
   return FinalizeOperation(id_to_parameter_block, rendered_samples,
                            valid_rendered_samples);
+}
+
+void LayoutRendererBase::CollectAudioElementIdsAndMixGains(
+    const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
+    std::vector<DecodedUleb128>& audio_element_ids,
+    std::vector<MixGainParamDefinition>& element_mix_gains) {
+  audio_element_ids.reserve(sub_mix_audio_elements.size());
+  element_mix_gains.reserve(sub_mix_audio_elements.size());
+  for (const auto& sub_mix_audio_element : sub_mix_audio_elements) {
+    audio_element_ids.emplace_back(sub_mix_audio_element.audio_element_id);
+    element_mix_gains.emplace_back(sub_mix_audio_element.element_mix_gain);
+  }
 }
 
 }  // namespace iamf_tools
