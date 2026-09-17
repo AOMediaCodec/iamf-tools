@@ -16,12 +16,15 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/types.h"
 
@@ -291,6 +294,35 @@ class AnimatedParameterData {
   template <typename Sink>
   friend void AbslStringify(Sink& sink, const AnimatedParameterData& data) {
     sink.Append(data.ToString());
+  }
+
+  /*!\brief Validates that all populated points are within [min_val, max_val].
+   *
+   * \param min_val Minimum valid value (inclusive).
+   * \param max_val Maximum valid value (inclusive).
+   * \param name Name of the parameter for error reporting.
+   * \return `absl::OkStatus()` if all populated points are in range, error
+   *         status otherwise.
+   */
+  absl::Status ValidateRange(T min_val, T max_val,
+                             absl::string_view name) const {
+    const std::pair<const T&, const T&> kRange{min_val, max_val};
+
+    if (start_point_value_.has_value()) {
+      RETURN_IF_NOT_OK(
+          ValidateInRange(*start_point_value_, kRange,
+                          absl::StrCat(name, " start_point_value")));
+    }
+    if (end_point_value_.has_value()) {
+      RETURN_IF_NOT_OK(ValidateInRange(*end_point_value_, kRange,
+                                       absl::StrCat(name, " end_point_value")));
+    }
+    if (control_point_value_.has_value()) {
+      RETURN_IF_NOT_OK(
+          ValidateInRange(*control_point_value_, kRange,
+                          absl::StrCat(name, " control_point_value")));
+    }
+    return absl::OkStatus();
   }
 
   /*!\brief Gets the animation type.

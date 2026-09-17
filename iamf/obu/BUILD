@@ -33,6 +33,7 @@ cc_library(
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
@@ -142,14 +143,21 @@ cc_library(
 
 cc_library(
     name = "cartesian_position_data",
+    srcs = ["cartesian_position_data.cc"],
     hdrs = ["cartesian_position_data.h"],
     deps = [
         ":animated_parameter_data",
         ":parameter_data",
+        ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_macros",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:string_view",
     ],
 )
 

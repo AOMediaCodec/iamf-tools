@@ -37,29 +37,6 @@ int16_t Clip3(int16_t value, int16_t min_val, int16_t max_val) {
   return std::clamp(value, min_val, max_val);
 }
 
-template <typename T>
-absl::Status ValidateRange(const AnimatedParameterData<T>& anim, T min_val,
-                           T max_val, absl::string_view name) {
-  const T min = min_val;
-  const T max = max_val;
-  const std::pair<const T&, const T&> kRange{min, max};
-
-  if (anim.start_point_value().has_value()) {
-    RETURN_IF_NOT_OK(ValidateInRange(*anim.start_point_value(), kRange,
-                                     absl::StrCat(name, " start_point_value")));
-  }
-  if (anim.end_point_value().has_value()) {
-    RETURN_IF_NOT_OK(ValidateInRange(*anim.end_point_value(), kRange,
-                                     absl::StrCat(name, " end_point_value")));
-  }
-  if (anim.control_point_value().has_value()) {
-    RETURN_IF_NOT_OK(
-        ValidateInRange(*anim.control_point_value(), kRange,
-                        absl::StrCat(name, " control_point_value")));
-  }
-  return absl::OkStatus();
-}
-
 absl::Status ValidatePosition(AnimationType animation_type,
                               const PolarPosition& position,
                               absl::string_view prefix) {
@@ -74,14 +51,14 @@ absl::Status ValidatePosition(AnimationType animation_type,
                     absl::StrCat(prefix, " distance animation_type")));
 
   // azimuth is clipped to [-180, 180]
-  RETURN_IF_NOT_OK(ValidateRange<int16_t>(position.azimuth, -180, 180,
-                                          absl::StrCat(prefix, " azimuth")));
+  RETURN_IF_NOT_OK(position.azimuth.ValidateRange(
+      -180, 180, absl::StrCat(prefix, " azimuth")));
   // elevation is clipped to [-90, 90]
-  RETURN_IF_NOT_OK(ValidateRange<int8_t>(position.elevation, -90, 90,
-                                         absl::StrCat(prefix, " elevation")));
+  RETURN_IF_NOT_OK(position.elevation.ValidateRange(
+      -90, 90, absl::StrCat(prefix, " elevation")));
   // distance is 7 bits unsigned -> [0, 127]
-  RETURN_IF_NOT_OK(ValidateRange<uint8_t>(position.distance, 0, 127,
-                                          absl::StrCat(prefix, " distance")));
+  RETURN_IF_NOT_OK(position.distance.ValidateRange(
+      0, 127, absl::StrCat(prefix, " distance")));
   return absl::OkStatus();
 }
 

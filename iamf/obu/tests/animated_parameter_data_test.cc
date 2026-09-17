@@ -509,5 +509,32 @@ TEST(AnimatedParameterDataTest, AbslStringify_formatsUint8) {
             "     start_point_value= 127");
 }
 
+TEST(AnimatedParameterDataTest, ValidateRangeSucceedsWhenValuesInRange) {
+  const auto step = AnimatedParameterData<int16_t>::MakeStep(50);
+  EXPECT_THAT(step.ValidateRange(-100, 100, "param"), IsOk());
+
+  const auto linear = AnimatedParameterData<int16_t>::MakeLinear(-50, 50);
+  EXPECT_THAT(linear.ValidateRange(-100, 100, "param"), IsOk());
+
+  const auto bezier =
+      AnimatedParameterData<int16_t>::MakeBezier(-50, 50, 0, 128);
+  EXPECT_THAT(bezier.ValidateRange(-100, 100, "param"), IsOk());
+}
+
+TEST(AnimatedParameterDataTest, ValidateRangeFailsWhenStartPointOutOfRange) {
+  const auto data = AnimatedParameterData<int16_t>::MakeStep(101);
+  EXPECT_THAT(data.ValidateRange(-100, 100, "param"), Not(IsOk()));
+}
+
+TEST(AnimatedParameterDataTest, ValidateRangeFailsWhenEndPointOutOfRange) {
+  const auto data = AnimatedParameterData<int16_t>::MakeLinear(0, -101);
+  EXPECT_THAT(data.ValidateRange(-100, 100, "param"), Not(IsOk()));
+}
+
+TEST(AnimatedParameterDataTest, ValidateRangeFailsWhenControlPointOutOfRange) {
+  const auto data = AnimatedParameterData<int16_t>::MakeBezier(0, 50, 101, 128);
+  EXPECT_THAT(data.ValidateRange(-100, 100, "param"), Not(IsOk()));
+}
+
 }  // namespace
 }  // namespace iamf_tools

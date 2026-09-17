@@ -298,6 +298,7 @@ cc_test(
     srcs = [
         "cart16_parameter_data_test.cc",
         "cart8_parameter_data_test.cc",
+        "cartesian_position_data_test.cc",
         "demixing_info_parameter_data_test.cc",
         "dual_cart16_parameter_data_test.cc",
         "dual_cart8_parameter_data_test.cc",
@@ -313,6 +314,7 @@ cc_test(
         "//iamf/obu:animated_parameter_data",
         "//iamf/obu:cart16_parameter_data",
         "//iamf/obu:cart8_parameter_data",
+        "//iamf/obu:cartesian_position_data",
         "//iamf/obu:dual_cart16_parameter_data",
         "//iamf/obu:dual_cart8_parameter_data",
         "//iamf/obu:parameter_data",
