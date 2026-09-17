@@ -141,6 +141,19 @@ cc_library(
 )
 
 cc_library(
+    name = "cartesian_position_data",
+    hdrs = ["cartesian_position_data.h"],
+    deps = [
+        ":animated_parameter_data",
+        ":parameter_data",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "codec_config",
     srcs = ["codec_config.cc"],
     hdrs = ["codec_config.h"],
