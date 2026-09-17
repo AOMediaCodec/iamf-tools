@@ -20,7 +20,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/dual_cart8_parameter_data.h"
+#include "iamf/obu/cartesian_position_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/parameter_data.h"
 
@@ -59,11 +59,12 @@ absl::Status DualCart8ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 absl::StatusOr<std::unique_ptr<ParameterData>>
 DualCart8ParamDefinition::CreateParameterDataFromBuffer(
     ReadBitBuffer& rb) const {
-  auto data = DualCart8ParameterData::CreateFromBuffer(rb);
+  auto data = CartesianPositionData::CreateFromBuffer(
+      rb, CartesianBitDepth::k8Bit, /*is_dual=*/true);
   if (!data.ok()) {
     return data.status();
   }
-  return std::make_unique<DualCart8ParameterData>(*std::move(data));
+  return std::make_unique<CartesianPositionData>(*std::move(data));
 }
 
 std::string DualCart8ParamDefinition::ToString() const {

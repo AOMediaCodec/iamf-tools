@@ -24,7 +24,7 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/animated_parameter_data.h"
-#include "iamf/obu/dual_cart8_parameter_data.h"
+#include "iamf/obu/cartesian_position_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
@@ -122,16 +122,18 @@ TEST(DualCart8ParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(payload);
   auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
   ASSERT_THAT(parameter_data, IsOk());
-  auto* dual_cart8_data =
-      dynamic_cast<DualCart8ParameterData*>(parameter_data->get());
-  ASSERT_NE(dual_cart8_data, nullptr);
-  EXPECT_EQ(dual_cart8_data->animation_type(), AnimationType::kStep);
-  EXPECT_EQ(*dual_cart8_data->first_x().start_point_value(), 1);
-  EXPECT_EQ(*dual_cart8_data->first_y().start_point_value(), 2);
-  EXPECT_EQ(*dual_cart8_data->first_z().start_point_value(), 3);
-  EXPECT_EQ(*dual_cart8_data->second_x().start_point_value(), 4);
-  EXPECT_EQ(*dual_cart8_data->second_y().start_point_value(), 5);
-  EXPECT_EQ(*dual_cart8_data->second_z().start_point_value(), 6);
+  auto* cart_data = dynamic_cast<CartesianPositionData*>(parameter_data->get());
+  ASSERT_NE(cart_data, nullptr);
+  EXPECT_TRUE(cart_data->is_dual());
+  EXPECT_EQ(cart_data->animation_type(), AnimationType::kStep);
+  EXPECT_EQ(cart_data->bit_depth(), CartesianBitDepth::k8Bit);
+  EXPECT_EQ(*cart_data->first_position().x.start_point_value(), 1);
+  EXPECT_EQ(*cart_data->first_position().y.start_point_value(), 2);
+  EXPECT_EQ(*cart_data->first_position().z.start_point_value(), 3);
+  ASSERT_TRUE(cart_data->second_position().has_value());
+  EXPECT_EQ(*cart_data->second_position()->x.start_point_value(), 4);
+  EXPECT_EQ(*cart_data->second_position()->y.start_point_value(), 5);
+  EXPECT_EQ(*cart_data->second_position()->z.start_point_value(), 6);
 }
 
 TEST(DualCart8ParamDefinitionTest, AbslStringifyFormatsCorrectly) {

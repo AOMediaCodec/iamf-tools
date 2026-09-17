@@ -59,7 +59,7 @@ class Cart16ParamDefinition : public ParamDefinition {
 
   /*!\brief Creates parameter data from a buffer.
    *
-   * The created instance will be of type `Cart16ParameterData`.
+   * The created instance will be of type `CartesianPositionData`.
    *
    * \param rb Buffer to read from.
    * \return Unique pointer to created parameter data, or specific error

@@ -24,7 +24,7 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/animated_parameter_data.h"
-#include "iamf/obu/cart8_parameter_data.h"
+#include "iamf/obu/cartesian_position_data.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
@@ -108,12 +108,14 @@ TEST(Cart8ParamDefinitionTest, CreateParameterDataFromBufferSucceeds) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(payload);
   auto parameter_data = param_definition.CreateParameterDataFromBuffer(*rb);
   ASSERT_THAT(parameter_data, IsOk());
-  auto* cart8_data = dynamic_cast<Cart8ParameterData*>(parameter_data->get());
-  ASSERT_NE(cart8_data, nullptr);
-  EXPECT_EQ(cart8_data->animation_type(), AnimationType::kStep);
-  EXPECT_EQ(*cart8_data->x().start_point_value(), 1);
-  EXPECT_EQ(*cart8_data->y().start_point_value(), 2);
-  EXPECT_EQ(*cart8_data->z().start_point_value(), 3);
+  auto* cart_data = dynamic_cast<CartesianPositionData*>(parameter_data->get());
+  ASSERT_NE(cart_data, nullptr);
+  EXPECT_FALSE(cart_data->is_dual());
+  EXPECT_EQ(cart_data->animation_type(), AnimationType::kStep);
+  EXPECT_EQ(cart_data->bit_depth(), CartesianBitDepth::k8Bit);
+  EXPECT_EQ(*cart_data->first_position().x.start_point_value(), 1);
+  EXPECT_EQ(*cart_data->first_position().y.start_point_value(), 2);
+  EXPECT_EQ(*cart_data->first_position().z.start_point_value(), 3);
 }
 
 TEST(Cart8ParamDefinitionTest, AbslStringifyFormatsCorrectly) {
