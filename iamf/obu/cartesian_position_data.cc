@@ -159,11 +159,48 @@ absl::StatusOr<CartesianPositionData> CartesianPositionData::CreateDual(
                                std::move(second_position));
 }
 
-absl::Status CartesianPositionData::Write(WriteBitBuffer& /*wb*/) const {
-  return absl::UnimplementedError(
-      "CartesianPositionData::Write is not implemented.");
+absl::Status CartesianPositionData::Write(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(
+      wb.WriteUleb128(static_cast<DecodedUleb128>(animation_type_)));
+
+  auto write_coord = [this](WriteBitBuffer& w, int16_t val) -> absl::Status {
+    if (bit_depth_ == CartesianBitDepth::k8Bit) {
+      return w.WriteSigned8(static_cast<int8_t>(val));
+    } else {
+      return w.WriteSigned16(val);
+    }
+  };
+
+  auto write_position = [&](const CartesianPosition& pos) -> absl::Status {
+    RETURN_IF_NOT_OK(pos.x.WritePayload(wb, write_coord));
+    RETURN_IF_NOT_OK(pos.y.WritePayload(wb, write_coord));
+    RETURN_IF_NOT_OK(pos.z.WritePayload(wb, write_coord));
+    return absl::OkStatus();
+  };
+
+  RETURN_IF_NOT_OK(write_position(first_position_));
+  if (second_position_.has_value()) {
+    RETURN_IF_NOT_OK(write_position(*second_position_));
+  }
+  return absl::OkStatus();
 }
 
-std::string CartesianPositionData::ToString() const { return ""; }
+std::string CartesianPositionData::ToString() const {
+  if (!second_position_.has_value()) {
+    return absl::StrCat(
+        "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+        "\n    x:\n", first_position_.x.ToStringPayload(), "\n    y:\n",
+        first_position_.y.ToStringPayload(), "\n    z:\n",
+        first_position_.z.ToStringPayload());
+  }
+  return absl::StrCat(
+      "    animation_type= ", static_cast<DecodedUleb128>(animation_type_),
+      "\n    first_x:\n", first_position_.x.ToStringPayload(),
+      "\n    first_y:\n", first_position_.y.ToStringPayload(),
+      "\n    first_z:\n", first_position_.z.ToStringPayload(),
+      "\n    second_x:\n", second_position_->x.ToStringPayload(),
+      "\n    second_y:\n", second_position_->y.ToStringPayload(),
+      "\n    second_z:\n", second_position_->z.ToStringPayload());
+}
 
 }  // namespace iamf_tools
