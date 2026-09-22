@@ -70,7 +70,6 @@ TEST(GetLpcmCodecConfigObuMetadata, OutputHasReasonableDefaults) {
           kLpcmSampleRate);
 
   const auto& codec_config = codec_config_obu_metadata.codec_config();
-  EXPECT_EQ(codec_config.codec_id(), iamf_tools_cli_proto::CODEC_ID_LPCM);
   EXPECT_EQ(codec_config.decoder_config_lpcm().sample_format_flags(),
             iamf_tools_cli_proto::LPCM_LITTLE_ENDIAN);
 }
@@ -102,7 +101,6 @@ TEST(GetOpusCodecConfigObuMetadata, OutputHasReasonableDefaults) {
           kCodecConfigId, kOpusNumSamplesPerFrame);
 
   const auto& codec_config = codec_config_obu_metadata.codec_config();
-  EXPECT_EQ(codec_config.codec_id(), iamf_tools_cli_proto::CODEC_ID_OPUS);
   EXPECT_EQ(codec_config.decoder_config_opus().version(), kOpusVersion);
   EXPECT_EQ(codec_config.decoder_config_opus().input_sample_rate(),
             kOpusInputSampleRate);

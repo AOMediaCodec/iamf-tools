@@ -69,6 +69,8 @@ and this project adheres to
 -   Deprecate `automatically_override_codec_delay` and
     `OpusDecoderConfig::pre_skip` in favor of always automatically determining
     the codec delay.
+-   Deprecate `CodecId` enum and `CodecConfig::codec_id` field. Infer the codec
+    based on which `decoder_config` is present.
 
 ### Fixed
 

@@ -205,6 +205,8 @@ message FlacDecoderConfig {
 }
 
 enum CodecId {
+  option deprecated = true;
+
   CODEC_ID_INVALID = 0;
   CODEC_ID_OPUS = 0x4f707573;    // "Opus"
   CODEC_ID_LPCM = 0x6970636d;    // "ipcm"
@@ -217,7 +219,9 @@ message CodecConfig {
 
   uint32 deprecated_codec_id = 1 [deprecated = true];
 
-  CodecId codec_id = 10;
+  // `codec_id` is deprecated and ignored. The codec is inferred from which
+  // `decoder_config` is present.
+  CodecId codec_id = 10 [deprecated = true];
   uint32 num_samples_per_frame = 2;
   // `audio_roll_distance` is deprecated and ignored. The value in the bitstream
   // is automatically determined.

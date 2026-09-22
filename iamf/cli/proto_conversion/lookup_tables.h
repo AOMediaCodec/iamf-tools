@@ -25,7 +25,6 @@
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -74,18 +73,6 @@ class LookupTables {
          {DMIXP_MODE_2_N, kDMixPMode2_n},
          {DMIXP_MODE_3_N, kDMixPMode3_n},
          {DMIXP_MODE_RESERVED_B, kDMixPModeReserved2}});
-  }();
-
-  inline static constexpr auto kProtoAndInternalCodecIds = []() {
-    using enum iamf_tools_cli_proto::CodecId;
-    using enum CodecConfig::CodecId;
-    return std::to_array<
-        std::pair<iamf_tools_cli_proto::CodecId, CodecConfig::CodecId>>({
-        {CODEC_ID_OPUS, kCodecIdOpus},
-        {CODEC_ID_FLAC, kCodecIdFlac},
-        {CODEC_ID_AAC_LC, kCodecIdAacLc},
-        {CODEC_ID_LPCM, kCodecIdLpcm},
-    });
   }();
 
   inline static constexpr auto kProtoAndInternalFlacBlockTypes = []() {

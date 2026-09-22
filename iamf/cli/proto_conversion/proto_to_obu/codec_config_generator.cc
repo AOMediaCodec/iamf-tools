@@ -19,6 +19,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/status_macros.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -38,31 +39,6 @@
 namespace iamf_tools {
 
 namespace {
-
-// Copies the `CodecId` based on the input data.
-absl::Status CopyCodecId(
-    const iamf_tools_cli_proto::CodecConfig& input_codec_config,
-    CodecConfig::CodecId& output_codec_id) {
-  if (input_codec_config.has_deprecated_codec_id()) {
-    return absl::InvalidArgumentError(
-        "Please upgrade the `deprecated_codec_id` field to the new `codec_id` "
-        "field.\n"
-        "Suggested upgrades:\n"
-        "- `deprecated_codec_id: 0x6d703461` -> `codec_id: CODEC_ID_AAC_LC`\n"
-        "- `deprecated_codec_id: 0x664c6143` -> `codec_id: CODEC_ID_FLAC`\n"
-        "- `deprecated_codec_id: 0x6970636d` -> `codec_id: CODEC_ID_LPCM`\n"
-        "- `deprecated_codec_id: 0x4f707573` -> `codec_id: CODEC_ID_OPUS`\n");
-  }
-  if (!input_codec_config.has_codec_id()) {
-    return absl::InvalidArgumentError("Missing `codec_id` field.");
-  }
-
-  static const auto kProtoToInternalCodecId =
-      BuildStaticMapFromPairs(LookupTables::kProtoAndInternalCodecIds);
-
-  return CopyFromMap(*kProtoToInternalCodecId, input_codec_config.codec_id(),
-                     "Internal version of proto `CodecId`= ", output_codec_id);
-}
 
 absl::Status CopyFlacBlockType(
     iamf_tools_cli_proto::FlacBlockType input_flac_block_type,
@@ -88,13 +64,9 @@ absl::Status CopySampleFrequencyIndex(
                      output_sample_frequency_index);
 }
 
-absl::Status GenerateLpcmDecoderConfig(
-    const iamf_tools_cli_proto::CodecConfig& user_codec_config,
-    LpcmDecoderConfig& obu_decoder_config) {
-  if (!user_codec_config.has_decoder_config_lpcm()) {
-    return absl::InvalidArgumentError("Missing LPCM decoder config.");
-  }
-  const auto& lpcm_metadata = user_codec_config.decoder_config_lpcm();
+absl::StatusOr<LpcmDecoderConfig> GenerateLpcmDecoderConfig(
+    const iamf_tools_cli_proto::LpcmDecoderConfig& lpcm_metadata) {
+  LpcmDecoderConfig obu_decoder_config;
   switch (lpcm_metadata.sample_format_flags()) {
     using enum iamf_tools_cli_proto::LpcmFormatFlags;
     using enum LpcmDecoderConfig::LpcmFormatFlagsBitmask;
@@ -115,22 +87,17 @@ absl::Status GenerateLpcmDecoderConfig(
       "LpcmDecoderConfig.sample_size", lpcm_metadata.sample_size(),
       obu_decoder_config.sample_size_));
 
-  return absl::OkStatus();
+  return obu_decoder_config;
 }
 
-absl::Status GenerateOpusDecoderConfig(
-    const iamf_tools_cli_proto::CodecConfig& user_codec_config,
-    OpusDecoderConfig& obu_decoder_config) {
-  if (!user_codec_config.has_decoder_config_opus()) {
-    return absl::InvalidArgumentError("Missing Opus decoder config.");
-  }
-  const auto& opus_metadata = user_codec_config.decoder_config_opus();
-
+absl::StatusOr<OpusDecoderConfig> GenerateOpusDecoderConfig(
+    const iamf_tools_cli_proto::OpusDecoderConfig& opus_metadata) {
+  OpusDecoderConfig obu_decoder_config;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "OpusDecoderConfig.version", opus_metadata.version(),
       obu_decoder_config.version_));
   obu_decoder_config.input_sample_rate_ = opus_metadata.input_sample_rate();
-  return absl::OkStatus();
+  return obu_decoder_config;
 }
 
 absl::Status CopyStreamInfo(
@@ -170,14 +137,9 @@ absl::Status CopyStreamInfo(
   return absl::OkStatus();
 }
 
-absl::Status GenerateFlacDecoderConfig(
-    const iamf_tools_cli_proto::CodecConfig& user_codec_config,
-    FlacDecoderConfig& obu_decoder_config) {
-  if (!user_codec_config.has_decoder_config_flac()) {
-    return absl::InvalidArgumentError("Missing FLAC decoder config.");
-  }
-
-  const auto& flac_metadata = user_codec_config.decoder_config_flac();
+absl::StatusOr<FlacDecoderConfig> GenerateFlacDecoderConfig(
+    const iamf_tools_cli_proto::FlacDecoderConfig& flac_metadata) {
+  FlacDecoderConfig obu_decoder_config;
 
   obu_decoder_config.metadata_blocks_.reserve(
       flac_metadata.metadata_blocks().size());
@@ -224,17 +186,12 @@ absl::Status GenerateFlacDecoderConfig(
     obu_decoder_config.metadata_blocks_.push_back(obu_metadata_block);
   }
 
-  return absl::OkStatus();
+  return obu_decoder_config;
 }
 
-absl::Status GenerateAacDecoderConfig(
-    const iamf_tools_cli_proto::CodecConfig& user_codec_config,
-    AacDecoderConfig& obu_decoder_config) {
-  if (!user_codec_config.has_decoder_config_aac()) {
-    return absl::InvalidArgumentError("Missing AAC decoder config.");
-  }
-  const auto& aac_metadata = user_codec_config.decoder_config_aac();
-
+absl::StatusOr<AacDecoderConfig> GenerateAacDecoderConfig(
+    const iamf_tools_cli_proto::AacDecoderConfig& aac_metadata) {
+  AacDecoderConfig obu_decoder_config;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "AacDecoderConfig.decoder_config_descriptor_tag",
       aac_metadata.decoder_config_descriptor_tag(),
@@ -300,7 +257,7 @@ absl::Status GenerateAacDecoderConfig(
   audio_specific_config.ga_specific_config_.extension_flag =
       aac_metadata.ga_specific_config().extension_flag();
 
-  return absl::OkStatus();
+  return obu_decoder_config;
 }
 
 void LogCodecConfigsById(
@@ -333,39 +290,43 @@ absl::Status CodecConfigGenerator::Generate(
     // Most fields nested within the inner `codec_config`.
     const auto& input_codec_config = codec_config_metadata.codec_config();
 
-    CodecConfig::CodecId obu_codec_id;
-    RETURN_IF_NOT_OK(CopyCodecId(input_codec_config, obu_codec_id));
-
     CodecConfig obu_codec_config{
-        .codec_id = obu_codec_id,
         .num_samples_per_frame = input_codec_config.num_samples_per_frame()};
 
     // Process the codec-specific `decoder_config` field.
-    if (obu_codec_id == CodecConfig::kCodecIdLpcm) {
-      LpcmDecoderConfig lpcm_decoder_config;
-      RETURN_IF_NOT_OK(
-          GenerateLpcmDecoderConfig(input_codec_config, lpcm_decoder_config));
-      obu_codec_config.decoder_config = lpcm_decoder_config;
-    } else if (obu_codec_id == CodecConfig::kCodecIdOpus) {
-      OpusDecoderConfig opus_decoder_config;
-      RETURN_IF_NOT_OK(
-          GenerateOpusDecoderConfig(input_codec_config, opus_decoder_config));
-      obu_codec_config.decoder_config = opus_decoder_config;
-    } else if (obu_codec_id == CodecConfig::kCodecIdFlac) {
-      FlacDecoderConfig flac_decoder_config;
-      RETURN_IF_NOT_OK(
-          GenerateFlacDecoderConfig(input_codec_config, flac_decoder_config));
-      obu_codec_config.decoder_config = flac_decoder_config;
-    } else if (obu_codec_id == CodecConfig::kCodecIdAacLc) {
-      AacDecoderConfig aac_decoder_config;
-      RETURN_IF_NOT_OK(
-          GenerateAacDecoderConfig(input_codec_config, aac_decoder_config));
-      obu_codec_config.decoder_config = aac_decoder_config;
-    } else {
-      // This should not be possible because `CopyCodecId` would have already
-      // detected the error.
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unsupported codec with codec_id= ", obu_codec_id));
+    switch (input_codec_config.decoder_config_case()) {
+      using enum iamf_tools_cli_proto::CodecConfig::DecoderConfigCase;
+      case kDecoderConfigLpcm: {
+        obu_codec_config.codec_id = CodecConfig::kCodecIdLpcm;
+        ABSL_ASSIGN_OR_RETURN(obu_codec_config.decoder_config,
+                              GenerateLpcmDecoderConfig(
+                                  input_codec_config.decoder_config_lpcm()));
+        break;
+      }
+      case kDecoderConfigOpus: {
+        obu_codec_config.codec_id = CodecConfig::kCodecIdOpus;
+        ABSL_ASSIGN_OR_RETURN(obu_codec_config.decoder_config,
+                              GenerateOpusDecoderConfig(
+                                  input_codec_config.decoder_config_opus()));
+        break;
+      }
+      case kDecoderConfigFlac: {
+        obu_codec_config.codec_id = CodecConfig::kCodecIdFlac;
+        ABSL_ASSIGN_OR_RETURN(obu_codec_config.decoder_config,
+                              GenerateFlacDecoderConfig(
+                                  input_codec_config.decoder_config_flac()));
+        break;
+      }
+      case kDecoderConfigAac: {
+        obu_codec_config.codec_id = CodecConfig::kCodecIdAacLc;
+        ABSL_ASSIGN_OR_RETURN(
+            obu_codec_config.decoder_config,
+            GenerateAacDecoderConfig(input_codec_config.decoder_config_aac()));
+        break;
+      }
+      case DECODER_CONFIG_NOT_SET:
+      default:
+        return absl::InvalidArgumentError("Missing `decoder_config` field.");
     }
 
     auto obu = CodecConfigObu::Create(

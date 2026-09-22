@@ -61,7 +61,6 @@ void InitMetadataForLpcm(
       R"pb(
         codec_config_id: 200
         codec_config {
-          codec_id: CODEC_ID_LPCM
           num_samples_per_frame: 64
           audio_roll_distance: 0
           decoder_config_lpcm {
@@ -89,7 +88,6 @@ void InitMetadataForOpus(
       R"pb(
         codec_config_id: 200
         codec_config {
-          codec_id: CODEC_ID_OPUS
           num_samples_per_frame: 120
           decoder_config_opus {
             version: 1
@@ -126,7 +124,6 @@ void InitMetadataForAac(
       R"pb(
         codec_config_id: 200
         codec_config {
-          codec_id: CODEC_ID_AAC_LC
           num_samples_per_frame: 1024
           audio_roll_distance: -1
           decoder_config_aac: {
@@ -184,7 +181,6 @@ void FillMetadataForFlac(CodecConfigObuMetadata& codec_config_metadata) {
       R"pb(
         codec_config_id: 200
         codec_config {
-          codec_id: CODEC_ID_FLAC
           num_samples_per_frame: 64
           audio_roll_distance: 0
           decoder_config_flac: {
@@ -250,8 +246,6 @@ TEST_F(CodecConfigGeneratorTest, GeneratesObuForLpcm) {
 
 TEST_F(CodecConfigGeneratorTest, InvalidLpcmDecoderConfigIsMissing) {
   InitMetadataForLpcm(codec_config_metadata_);
-  ASSERT_EQ(codec_config_metadata_.at(0).codec_config().codec_id(),
-            iamf_tools_cli_proto::CODEC_ID_LPCM);
   codec_config_metadata_.at(0)
       .mutable_codec_config()
       ->clear_decoder_config_lpcm();
@@ -317,28 +311,28 @@ TEST_F(CodecConfigGeneratorTest, FailsForUnknownSampleFormatFlags) {
   EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
 }
 
-TEST_F(CodecConfigGeneratorTest, DeprecatedCodecIdIsNotSupported) {
+TEST_F(CodecConfigGeneratorTest, IgnoresDeprecatedCodecId) {
   InitMetadataForLpcm(codec_config_metadata_);
-  codec_config_metadata_.at(0).mutable_codec_config()->clear_codec_id();
   codec_config_metadata_.at(0).mutable_codec_config()->set_deprecated_codec_id(
-      CodecConfig::kCodecIdLpcm);
+      CodecConfig::kCodecIdOpus);
+  InitExpectedObuForLpcm(expected_obus_);
 
-  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
+  const auto output_obus = InitAndGenerate();
+  ASSERT_THAT(output_obus, IsOk());
+
+  EXPECT_EQ(*output_obus, expected_obus_);
 }
 
-TEST_F(CodecConfigGeneratorTest, FailsForUnknownCodecId) {
+TEST_F(CodecConfigGeneratorTest, IgnoresCodecId) {
   InitMetadataForLpcm(codec_config_metadata_);
   codec_config_metadata_.at(0).mutable_codec_config()->set_codec_id(
       iamf_tools_cli_proto::CODEC_ID_INVALID);
+  InitExpectedObuForLpcm(expected_obus_);
 
-  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
-}
+  const auto output_obus = InitAndGenerate();
+  ASSERT_THAT(output_obus, IsOk());
 
-TEST_F(CodecConfigGeneratorTest, FailsWhenCodecIdIsMissing) {
-  InitMetadataForLpcm(codec_config_metadata_);
-  codec_config_metadata_.at(0).mutable_codec_config()->clear_codec_id();
-
-  EXPECT_THAT(InitAndGenerate(), Not(IsOk()));
+  EXPECT_EQ(*output_obus, expected_obus_);
 }
 
 TEST_F(CodecConfigGeneratorTest, GeneratesObuForOpus) {
@@ -471,8 +465,6 @@ TEST_F(CodecConfigGeneratorTest, IgnoresOpusChannelMapping) {
 
 TEST_F(CodecConfigGeneratorTest, InvalidOpusDecoderConfigIsMissing) {
   InitMetadataForOpus(codec_config_metadata_);
-  ASSERT_EQ(codec_config_metadata_.at(0).codec_config().codec_id(),
-            iamf_tools_cli_proto::CODEC_ID_OPUS);
   codec_config_metadata_.at(0)
       .mutable_codec_config()
       ->clear_decoder_config_opus();
@@ -741,8 +733,6 @@ TEST(Generate,
 
 TEST_F(CodecConfigGeneratorTest, InvalidAacDecoderConfigIsMissing) {
   InitMetadataForAac(codec_config_metadata_);
-  ASSERT_EQ(codec_config_metadata_.at(0).codec_config().codec_id(),
-            iamf_tools_cli_proto::CODEC_ID_AAC_LC);
   codec_config_metadata_.at(0)
       .mutable_codec_config()
       ->clear_decoder_config_aac();
