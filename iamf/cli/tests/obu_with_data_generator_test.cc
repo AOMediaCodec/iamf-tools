@@ -819,6 +819,87 @@ TEST(GenerateParameterBlockWithData, ValidParameterBlock) {
   EXPECT_EQ(parameter_blocks_with_data.front().end_timestamp, kEndTimestamp);
 }
 
+TEST(FillSubstreamCounts, FillsExpectedCountsForOneLayerMono) {
+  ScalableChannelLayoutConfig config{
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono}}};
+
+  EXPECT_THAT(ObuWithDataGenerator::FillSubstreamCounts(config), IsOk());
+
+  ASSERT_EQ(config.channel_audio_layer_configs.size(), 1);
+  EXPECT_EQ(config.channel_audio_layer_configs[0].substream_count, 1);
+  EXPECT_EQ(config.channel_audio_layer_configs[0].coupled_substream_count, 0);
+}
+
+TEST(FillSubstreamCounts, FillsExpectedCountsForTwoLayerConfig) {
+  ScalableChannelLayoutConfig config{
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo},
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_ch}}};
+
+  EXPECT_THAT(ObuWithDataGenerator::FillSubstreamCounts(config), IsOk());
+
+  ASSERT_EQ(config.channel_audio_layer_configs.size(), 2);
+  EXPECT_EQ(config.channel_audio_layer_configs[0].substream_count, 1);
+  EXPECT_EQ(config.channel_audio_layer_configs[0].coupled_substream_count, 1);
+  EXPECT_EQ(config.channel_audio_layer_configs[1].substream_count, 3);
+  EXPECT_EQ(config.channel_audio_layer_configs[1].coupled_substream_count, 1);
+}
+
+TEST(FillSubstreamCounts, FillsExpectedCountsForExpandedLayout) {
+  ScalableChannelLayoutConfig config{
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayout9_1_6_ch}}};
+
+  EXPECT_THAT(ObuWithDataGenerator::FillSubstreamCounts(config), IsOk());
+
+  ASSERT_EQ(config.channel_audio_layer_configs.size(), 1);
+  EXPECT_EQ(config.channel_audio_layer_configs[0].substream_count, 9);
+  EXPECT_EQ(config.channel_audio_layer_configs[0].coupled_substream_count, 7);
+}
+
+TEST(FillSubstreamCounts, OverwritesExistingCounts) {
+  ScalableChannelLayoutConfig config{
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+           .substream_count = 99,
+           .coupled_substream_count = 99}}};
+
+  EXPECT_THAT(ObuWithDataGenerator::FillSubstreamCounts(config), IsOk());
+
+  ASSERT_EQ(config.channel_audio_layer_configs.size(), 1);
+  EXPECT_EQ(config.channel_audio_layer_configs[0].substream_count, 1);
+  EXPECT_EQ(config.channel_audio_layer_configs[0].coupled_substream_count, 1);
+}
+
+TEST(FillSubstreamCounts, FailsWhenChannelNumbersDecrease) {
+  ScalableChannelLayoutConfig config{
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_ch},
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo}}};
+
+  EXPECT_THAT(ObuWithDataGenerator::FillSubstreamCounts(config), Not(IsOk()));
+}
+
+TEST(FillSubstreamCounts, FailsWithReservedLayout) {
+  ScalableChannelLayoutConfig config{
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReserved14}}};
+
+  EXPECT_THAT(ObuWithDataGenerator::FillSubstreamCounts(config), Not(IsOk()));
+}
+
+TEST(FillSubstreamCounts, FailsWhenExpandedLayoutIsMissing) {
+  ScalableChannelLayoutConfig config{
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .expanded_loudspeaker_layout = std::nullopt}}};
+
+  EXPECT_THAT(ObuWithDataGenerator::FillSubstreamCounts(config), Not(IsOk()));
+}
+
 TEST(FinalizeScalableChannelLayoutConfig,
      FillsExpectedOutputForForOneLayerStereo) {
   const std::vector<DecodedUleb128> kSubstreamIds = {99};
