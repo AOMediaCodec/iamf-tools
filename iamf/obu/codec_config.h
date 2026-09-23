@@ -69,14 +69,18 @@ struct CodecConfig {
                              human_readable_codec_id, " )"));
   }
 
+  /*!\brief Gets the codec ID inferred from the `decoder_config`.
+   *
+   * \return Codec ID of the underlying `decoder_config`.
+   */
+  CodecId GetCodecId() const;
+
   friend bool operator==(const CodecConfig& lhs,
                          const CodecConfig& rhs) = default;
 
-  CodecId codec_id;
   DecodedUleb128 num_samples_per_frame;
   int16_t audio_roll_distance;
 
-  // Active field depends on `codec_id`.
   DecoderConfig decoder_config;
 };
 
@@ -127,14 +131,13 @@ class CodecConfigObu : public ObuBase {
 
   /*!\brief Sets the codec delay in the underlying `decoder_config`.
    *
-   * In some codecs, like Opus, the codec delay is called "pre-skip".
+   * In some codecs, like Opus, the codec delay is called "pre-skip". This may
+   * be a no-op when the underlying `decoder_config` does not have a codec delay
+   * field.
    *
    * \param codec_delay Codec delay to set in the underlying `decoder_config`.
-   * \return `absl::OkStatus()` on success. Succeed may be a no-op when the
-   *         underlying `decoder_config` does not have a field for codec delay.
-   *         A specific status on failure.
    */
-  absl::Status SetCodecDelay(uint16_t codec_delay);
+  void SetCodecDelay(uint16_t codec_delay);
 
   /*!\brief Gets the output sample rate associated with the OBU.
    *

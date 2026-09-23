@@ -60,8 +60,7 @@ constexpr uint8_t kLowerByteSerializedSamplingFrequencyIndex64000 =
     << 7;
 
 CodecConfig GetLpcmCodecConfig(uint32_t sample_rate) {
-  return {.codec_id = CodecConfig::kCodecIdLpcm,
-          .num_samples_per_frame = 64,
+  return {.num_samples_per_frame = 64,
           .audio_roll_distance = 0,
           .decoder_config = LpcmDecoderConfig{
               .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmBigEndian,
@@ -100,13 +99,11 @@ TEST(Create, FailsWithTooManySamplesPerFrame) {
 
 class CodecConfigTestBase : public ObuTestBase {
  public:
-  CodecConfigTestBase(CodecConfig::CodecId codec_id,
-                      DecoderConfig decoder_config)
+  explicit CodecConfigTestBase(DecoderConfig decoder_config)
       : ObuTestBase(
             /*expected_header=*/{0, 14}, /*expected_payload=*/{}),
         codec_config_id_(kCodecConfigId),
-        codec_config_({.codec_id = codec_id,
-                       .num_samples_per_frame = 64,
+        codec_config_({.num_samples_per_frame = 64,
                        .audio_roll_distance = 0,
                        .decoder_config = decoder_config}) {}
 
@@ -178,12 +175,10 @@ INSTANTIATE_TEST_SUITE_P(
 class CodecConfigLpcmTest : public CodecConfigTestBase, public testing::Test {
  public:
   CodecConfigLpcmTest()
-      : CodecConfigTestBase(
-            CodecConfig::kCodecIdLpcm,
-            LpcmDecoderConfig{.sample_format_flags_bitmask_ =
-                                  LpcmDecoderConfig::kLpcmBigEndian,
-                              .sample_size_ = 16,
-                              .sample_rate_ = 48000}) {
+      : CodecConfigTestBase(LpcmDecoderConfig{
+            .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmBigEndian,
+            .sample_size_ = 16,
+            .sample_rate_ = 48000}) {
     expected_payload_ = {// `codec_config_id`.
                          kCodecConfigId,
                          // `codec_id`.
@@ -210,7 +205,7 @@ TEST_F(CodecConfigLpcmTest, IsAlwaysLossless) {
 TEST_F(CodecConfigLpcmTest, SetCodecDelayIsNoOp) {
   InitExpectOk();
 
-  EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
+  obu_->SetCodecDelay(kArbitraryCodecDelay);
 }
 
 TEST_F(CodecConfigLpcmTest, CreateSetsObuTyoe) {
@@ -249,13 +244,6 @@ TEST_F(CodecConfigLpcmTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
                        0, 0, 0xbb, 0x80};
 
   InitAndTestWrite();
-}
-
-TEST_F(CodecConfigLpcmTest, CreateFailsWithIllegalCodecId) {
-  codec_config_.codec_id = static_cast<CodecConfig::CodecId>(0);
-
-  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_),
-              Not(IsOk()));
 }
 
 TEST_F(CodecConfigLpcmTest, CreateFailsWithWriteIllegalSampleSize) {
@@ -422,10 +410,8 @@ TEST_F(CodecConfigLpcmTest, RedundantCopy) {
 class CodecConfigOpusTest : public CodecConfigTestBase, public testing::Test {
  public:
   CodecConfigOpusTest()
-      : CodecConfigTestBase(
-            CodecConfig::kCodecIdOpus,
-            OpusDecoderConfig{
-                .version_ = 1, .pre_skip_ = 0, .input_sample_rate_ = 0}) {
+      : CodecConfigTestBase(OpusDecoderConfig{
+            .version_ = 1, .pre_skip_ = 0, .input_sample_rate_ = 0}) {
     // Overwrite some default values to be more reasonable for Opus.
     codec_config_.num_samples_per_frame = 960;
     codec_config_.audio_roll_distance = -4;
@@ -480,13 +466,6 @@ TEST_F(CodecConfigOpusTest, ManyLargeValues) {
   InitAndTestWrite();
 }
 
-TEST_F(CodecConfigOpusTest, InitializeFailsWithIllegalCodecId) {
-  codec_config_.codec_id = static_cast<CodecConfig::CodecId>(0);
-
-  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_),
-              Not(IsOk()));
-}
-
 TEST_F(CodecConfigOpusTest, CreateFailsWhenOverridingAudioRollDistanceFails) {
   constexpr uint32_t kNumSamplesPerFrameCausesDivideByZero = 0;
   codec_config_.num_samples_per_frame = kNumSamplesPerFrameCausesDivideByZero;
@@ -500,7 +479,7 @@ TEST_F(CodecConfigOpusTest, Default) { InitAndTestWrite(); }
 
 TEST_F(CodecConfigOpusTest, SetCodecDelaySetsPreSkip) {
   InitExpectOk();
-  EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
+  obu_->SetCodecDelay(kArbitraryCodecDelay);
 
   const auto decoder_config = obu_->GetCodecConfig().decoder_config;
   ASSERT_TRUE(std::holds_alternative<OpusDecoderConfig>(decoder_config));
@@ -573,7 +552,7 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
   EXPECT_THAT(obu, IsOk());
 
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
-  EXPECT_EQ(obu->GetCodecConfig().codec_id, CodecConfig::kCodecIdOpus);
+  EXPECT_EQ(obu->GetCodecConfig().GetCodecId(), CodecConfig::kCodecIdOpus);
   EXPECT_EQ(obu->GetNumSamplesPerFrame(), kExpectedNumSamplesPerFrame);
   EXPECT_EQ(obu->GetCodecConfig().audio_roll_distance,
             kExpectedAudioRollDistance);
@@ -593,17 +572,15 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
 class CodecConfigAacTest : public CodecConfigTestBase, public testing::Test {
  public:
   CodecConfigAacTest()
-      : CodecConfigTestBase(
-            CodecConfig::kCodecIdAacLc,
-            AacDecoderConfig{
-                .buffer_size_db_ = 0,
-                .max_bitrate_ = 0,
-                .average_bit_rate_ = 0,
-                .decoder_specific_info_ =
-                    {.audio_specific_config =
-                         {.sample_frequency_index_ = AudioSpecificConfig::
-                              SampleFrequencyIndex::k64000}},
-            }) {
+      : CodecConfigTestBase(AacDecoderConfig{
+            .buffer_size_db_ = 0,
+            .max_bitrate_ = 0,
+            .average_bit_rate_ = 0,
+            .decoder_specific_info_ =
+                {.audio_specific_config =
+                     {.sample_frequency_index_ =
+                          AudioSpecificConfig::SampleFrequencyIndex::k64000}},
+        }) {
     // Overwrite some default values to be more reasonable for AAC.
     codec_config_.num_samples_per_frame = 1024;
     codec_config_.audio_roll_distance = -1;
@@ -619,7 +596,7 @@ TEST_F(CodecConfigAacTest, IsNeverLossless) {
 TEST_F(CodecConfigAacTest, SetCodecDelayIsNoOp) {
   InitExpectOk();
 
-  EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
+  obu_->SetCodecDelay(kArbitraryCodecDelay);
 }
 
 TEST(CreateFromBuffer, AacLcDecoderConfig) {
@@ -677,7 +654,7 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
   EXPECT_THAT(obu, IsOk());
 
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
-  EXPECT_EQ(obu->GetCodecConfig().codec_id, CodecConfig::kCodecIdAacLc);
+  EXPECT_EQ(obu->GetCodecConfig().GetCodecId(), CodecConfig::kCodecIdAacLc);
   EXPECT_EQ(obu->GetNumSamplesPerFrame(), kExpectedNumSamplesPerFrame);
   EXPECT_EQ(obu->GetCodecConfig().audio_roll_distance,
             kExpectedAudioRollDistance);
@@ -722,17 +699,14 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
 class CodecConfigFlacTest : public CodecConfigTestBase, public testing::Test {
  public:
   CodecConfigFlacTest()
-      : CodecConfigTestBase(
-            CodecConfig::kCodecIdFlac,
-            FlacDecoderConfig{
-                {{.header = {.block_type =
-                                 FlacMetaBlockHeader::kFlacStreamInfo},
-                  .payload = FlacMetaBlockStreamInfo{
-                      .minimum_block_size = 16,
-                      .maximum_block_size = 16,
-                      .sample_rate = 48000,
-                      .bits_per_sample = 15,
-                      .total_samples_in_stream = 0}}}}) {}
+      : CodecConfigTestBase(FlacDecoderConfig{
+            {{.header = {.block_type = FlacMetaBlockHeader::kFlacStreamInfo},
+              .payload =
+                  FlacMetaBlockStreamInfo{.minimum_block_size = 16,
+                                          .maximum_block_size = 16,
+                                          .sample_rate = 48000,
+                                          .bits_per_sample = 15,
+                                          .total_samples_in_stream = 0}}}}) {}
 };
 
 TEST_F(CodecConfigFlacTest, IsAlwaysLossless) {
@@ -744,7 +718,7 @@ TEST_F(CodecConfigFlacTest, IsAlwaysLossless) {
 TEST_F(CodecConfigFlacTest, SetCodecDelayIsNoOp) {
   InitExpectOk();
 
-  EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
+  obu_->SetCodecDelay(kArbitraryCodecDelay);
 }
 
 TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
@@ -778,7 +752,7 @@ TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
-  EXPECT_EQ(obu->GetCodecConfig().codec_id, CodecConfig::kCodecIdLpcm);
+  EXPECT_EQ(obu->GetCodecConfig().GetCodecId(), CodecConfig::kCodecIdLpcm);
   EXPECT_EQ(obu->GetNumSamplesPerFrame(), kNumSamplesPerFrame);
   EXPECT_EQ(obu->GetCodecConfig().audio_roll_distance,
             kExpectedAudioRollDistance);
@@ -842,7 +816,7 @@ TEST(CreateFromBuffer, ValidFlacDecoderConfig) {
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
-  EXPECT_EQ(obu->GetCodecConfig().codec_id, CodecConfig::kCodecIdFlac);
+  EXPECT_EQ(obu->GetCodecConfig().GetCodecId(), CodecConfig::kCodecIdFlac);
   EXPECT_EQ(obu->GetNumSamplesPerFrame(), kNumSamplesPerFrame);
   EXPECT_EQ(obu->GetCodecConfig().audio_roll_distance,
             kExpectedAudioRollDistance);

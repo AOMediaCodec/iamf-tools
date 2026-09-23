@@ -12,6 +12,7 @@
 #include "iamf/obu/codec_config.h"
 
 #include <cstdint>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -32,6 +33,23 @@
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+CodecConfig::CodecId CodecConfig::GetCodecId() const {
+  return std::visit(
+      [](const auto& config) -> CodecId {
+        using T = std::decay_t<decltype(config)>;
+        if constexpr (std::is_same_v<T, OpusDecoderConfig>) {
+          return kCodecIdOpus;
+        } else if constexpr (std::is_same_v<T, FlacDecoderConfig>) {
+          return kCodecIdFlac;
+        } else if constexpr (std::is_same_v<T, LpcmDecoderConfig>) {
+          return kCodecIdLpcm;
+        } else if constexpr (std::is_same_v<T, AacDecoderConfig>) {
+          return kCodecIdAacLc;
+        }
+      },
+      decoder_config);
+}
 
 namespace {
 
@@ -146,12 +164,12 @@ absl::Status InitializeCodecConfigAndMetadata(
     uint32_t& output_sample_rate, uint32_t& input_sample_rate,
     uint8_t& bit_depth_to_measure_loudness) {
   RETURN_IF_NOT_OK(SetSampleRatesAndBitDepths(
-      codec_config.codec_id, codec_config.decoder_config, output_sample_rate,
-      input_sample_rate, bit_depth_to_measure_loudness));
+      codec_config.GetCodecId(), codec_config.decoder_config,
+      output_sample_rate, input_sample_rate, bit_depth_to_measure_loudness));
 
   if (automatically_override_roll_distance) {
     RETURN_IF_NOT_OK(OverrideAudioRollDistance(
-        codec_config.codec_id, codec_config.num_samples_per_frame,
+        codec_config.GetCodecId(), codec_config.num_samples_per_frame,
         codec_config.audio_roll_distance));
   }
 
@@ -163,7 +181,7 @@ absl::Status ValidateAndWriteDecoderConfig(const CodecConfig& codec_config,
   // Write the `decoder_config` struct portion. This is codec specific.
   const int16_t audio_roll_distance = codec_config.audio_roll_distance;
   const uint32_t num_samples_per_frame = codec_config.num_samples_per_frame;
-  switch (codec_config.codec_id) {
+  switch (codec_config.GetCodecId()) {
     using enum CodecConfig::CodecId;
     case kCodecIdOpus:
       return std::get<OpusDecoderConfig>(codec_config.decoder_config)
@@ -179,16 +197,17 @@ absl::Status ValidateAndWriteDecoderConfig(const CodecConfig& codec_config,
           .ValidateAndWrite(num_samples_per_frame, audio_roll_distance, wb);
     default:
       return absl::InvalidArgumentError(
-          absl::StrCat("Unknown codec_id: ", codec_config.codec_id));
+          absl::StrCat("Unknown codec_id: ", codec_config.GetCodecId()));
   }
 }
 
 absl::Status ReadAndValidateDecoderConfig(ReadBitBuffer& rb,
+                                          CodecConfig::CodecId codec_id,
                                           CodecConfig& codec_config) {
   const int16_t audio_roll_distance = codec_config.audio_roll_distance;
   const uint32_t num_samples_per_frame = codec_config.num_samples_per_frame;
   // Read the `decoder_config` struct portion. This is codec specific.
-  switch (codec_config.codec_id) {
+  switch (codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdOpus: {
       OpusDecoderConfig opus_decoder_config;
@@ -220,7 +239,7 @@ absl::Status ReadAndValidateDecoderConfig(ReadBitBuffer& rb,
     }
     default:
       return absl::InvalidArgumentError(
-          absl::StrCat("Unknown codec_id: ", codec_config.codec_id));
+          absl::StrCat("Unknown codec_id: ", codec_id));
   }
 }
 
@@ -278,7 +297,7 @@ absl::StatusOr<CodecConfigObu> CodecConfigObu::CreateFromBuffer(
 absl::Status CodecConfigObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUleb128(codec_config_id_));
 
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(codec_config_.codec_id, 32));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(codec_config_.GetCodecId(), 32));
   RETURN_IF_NOT_OK(
       ValidateNumSamplesPerFrame(codec_config_.num_samples_per_frame));
   RETURN_IF_NOT_OK(wb.WriteUleb128(codec_config_.num_samples_per_frame));
@@ -295,14 +314,14 @@ absl::Status CodecConfigObu::ReadAndValidatePayloadDerived(
   RETURN_IF_NOT_OK(rb.ReadULeb128(codec_config_id_));
   uint64_t codec_id;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, codec_id));
-  codec_config_.codec_id = static_cast<CodecConfig::CodecId>(codec_id);
   RETURN_IF_NOT_OK(rb.ReadULeb128(codec_config_.num_samples_per_frame));
   RETURN_IF_NOT_OK(
       ValidateNumSamplesPerFrame(codec_config_.num_samples_per_frame));
   RETURN_IF_NOT_OK(rb.ReadSigned16(codec_config_.audio_roll_distance));
 
   // Read the `decoder_config_`. This is codec specific.
-  RETURN_IF_NOT_OK(ReadAndValidateDecoderConfig(rb, codec_config_));
+  RETURN_IF_NOT_OK(ReadAndValidateDecoderConfig(
+      rb, static_cast<CodecConfig::CodecId>(codec_id), codec_config_));
   return absl::OkStatus();
 }
 
@@ -310,13 +329,13 @@ void CodecConfigObu::PrintObu() const {
   ABSL_VLOG(1) << "Codec Config OBU:";
   ABSL_VLOG(1) << "  codec_config_id= " << codec_config_id_;
   ABSL_VLOG(1) << "  codec_config:";
-  ABSL_VLOG(1) << "    codec_id= " << codec_config_.codec_id;
+  ABSL_VLOG(1) << "    codec_id= " << codec_config_.GetCodecId();
   ABSL_VLOG(1) << "    num_samples_per_frame= " << GetNumSamplesPerFrame();
   ABSL_VLOG(1) << "    audio_roll_distance= "
                << codec_config_.audio_roll_distance;
 
   // Print the `decoder_config_`. This is codec specific.
-  switch (codec_config_.codec_id) {
+  switch (codec_config_.GetCodecId()) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
       std::get<LpcmDecoderConfig>(codec_config_.decoder_config).Print();
@@ -331,7 +350,7 @@ void CodecConfigObu::PrintObu() const {
       std::get<AacDecoderConfig>(codec_config_.decoder_config).Print();
       break;
     default:
-      ABSL_LOG(ERROR) << "Unknown codec_id: " << codec_config_.codec_id;
+      ABSL_LOG(ERROR) << "Unknown codec_id: " << codec_config_.GetCodecId();
       break;
   }
 
@@ -341,34 +360,20 @@ void CodecConfigObu::PrintObu() const {
                << absl::StrCat(bit_depth_to_measure_loudness_);
 }
 
-absl::Status CodecConfigObu::SetCodecDelay(uint16_t codec_delay) {
-  switch (codec_config_.codec_id) {
-    using enum CodecConfig::CodecId;
-    case kCodecIdLpcm:
-    case kCodecIdFlac:
-    case kCodecIdAacLc:
-      // Ok the `decoder_config` does not have a field for codec delay.
-      return absl::OkStatus();
-    case kCodecIdOpus: {
-      OpusDecoderConfig* opus_decoder_config =
-          std::get_if<OpusDecoderConfig>(&codec_config_.decoder_config);
-      if (opus_decoder_config == nullptr) {
-        return absl::InvalidArgumentError(
-            "OpusDecoderConfig is not set in CodecConfig.");
-      }
-      opus_decoder_config->pre_skip_ = codec_delay;
-      return absl::OkStatus();
-    }
-    default:
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unknown codec_id: ", codec_config_.codec_id));
+void CodecConfigObu::SetCodecDelay(uint16_t codec_delay) {
+  auto* opus_decoder_config =
+      std::get_if<OpusDecoderConfig>(&codec_config_.decoder_config);
+  if (opus_decoder_config == nullptr) {
+    // Ok, only the Opus decoder config actually holds the pre-skip value.
+    return;
   }
+  opus_decoder_config->pre_skip_ = codec_delay;
 }
 
 bool CodecConfigObu::IsLossless() const {
   using enum CodecConfig::CodecId;
-  return codec_config_.codec_id == kCodecIdFlac ||
-         codec_config_.codec_id == kCodecIdLpcm;
+  return codec_config_.GetCodecId() == kCodecIdFlac ||
+         codec_config_.GetCodecId() == kCodecIdLpcm;
 }
 
 }  // namespace iamf_tools

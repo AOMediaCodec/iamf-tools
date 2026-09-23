@@ -91,7 +91,7 @@ absl::StatusOr<std::list<DownMixer>> CreateAmbisonicsDownmixers(
                    audio_element_with_data.obu.GetAudioElementId())));
   auto mixer =
       std::make_unique<AmbisonicsMixer>(AmbisonicsMixer::MakeFromPreset(
-          audio_element_with_data.codec_config->GetCodecConfig().codec_id,
+          audio_element_with_data.codec_config->GetCodecConfig().GetCodecId(),
           *ambisonics_preset,
           audio_element_with_data.codec_config->GetNumSamplesPerFrame()));
   const std::vector<ChannelLabel::Label> input_labels = mixer->GetInputLabels();

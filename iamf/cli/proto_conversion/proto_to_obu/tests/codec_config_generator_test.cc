@@ -108,8 +108,7 @@ void InitMetadataForOpus(
 void InitExpectedObuForOpus(CodecConfigsById& expected_obus) {
   auto codec_config = CodecConfigObu::Create(
       ObuHeader(), kCodecConfigId,
-      {.codec_id = CodecConfig::CodecConfig::kCodecIdOpus,
-       .num_samples_per_frame = 120,
+      {.num_samples_per_frame = 120,
        .audio_roll_distance = -32,
        .decoder_config = OpusDecoderConfig{
            .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 48000}});
@@ -160,8 +159,7 @@ void InitMetadataForAac(
 void InitExpectedObuForAac(CodecConfigsById& expected_obus) {
   auto codec_config = CodecConfigObu::Create(
       ObuHeader(), kCodecConfigId,
-      {.codec_id = CodecConfig::kCodecIdAacLc,
-       .num_samples_per_frame = 1024,
+      {.num_samples_per_frame = 1024,
        .audio_roll_distance = -1,
        .decoder_config = AacDecoderConfig{
            .buffer_size_db_ = 0,

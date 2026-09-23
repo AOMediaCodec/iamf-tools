@@ -79,7 +79,7 @@ absl::StatusOr<std::vector<AudioElementVerificationResult>> VerifyAudioElements(
     auto it = obus.codec_config_obus.find(codec_config_id);
 
     if (it == obus.codec_config_obus.end() ||
-        it->second.GetCodecConfig().codec_id != CodecConfig::kCodecIdOpus) {
+        it->second.GetCodecConfig().GetCodecId() != CodecConfig::kCodecIdOpus) {
       continue;  // Skip non-Opus Ambisonics.
     }
 

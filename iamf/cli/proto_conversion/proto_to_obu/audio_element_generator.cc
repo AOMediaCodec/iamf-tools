@@ -508,7 +508,7 @@ absl::StatusOr<AmbisonicsConfig> GetPresetConfig(
     return preset.status();
   }
   auto mixer = AmbisonicsMixer::MakeFromPreset(
-      codec_config_obu.GetCodecConfig().codec_id, *preset,
+      codec_config_obu.GetCodecConfig().GetCodecId(), *preset,
       codec_config_obu.GetNumSamplesPerFrame());
   return mixer.GetAmbisonicsConfig();
 }

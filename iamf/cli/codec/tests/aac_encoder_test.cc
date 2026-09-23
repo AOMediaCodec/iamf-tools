@@ -48,8 +48,7 @@ class AacEncoderTest : public EncoderTestBase, public testing::Test {
   void ConstructEncoder() override {
     // Construct a Codec Config OBU. The only fields that should affect the
     // output are `num_samples_per_frame` and `decoder_config`.
-    const CodecConfig temp = {.codec_id = CodecConfig::kCodecIdAacLc,
-                              .num_samples_per_frame = num_samples_per_frame_,
+    const CodecConfig temp = {.num_samples_per_frame = num_samples_per_frame_,
                               .decoder_config = aac_decoder_config_};
 
     auto codec_config = CodecConfigObu::Create(ObuHeader(), 0, temp);

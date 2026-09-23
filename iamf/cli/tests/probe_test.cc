@@ -783,8 +783,7 @@ TEST(Probe, ReportsDescriptorDurationFromFlacStreamInfo) {
   DescriptorObus::CodecConfigsById codec_configs;
   auto flac_obu = CodecConfigObu::Create(
       ObuHeader(), kCodecConfigId,
-      {.codec_id = CodecConfig::kCodecIdFlac,
-       .num_samples_per_frame = kNumSamplesPerFrame,
+      {.num_samples_per_frame = kNumSamplesPerFrame,
        .decoder_config = FlacDecoderConfig(
            {{{.header = {.block_type = FlacMetaBlockHeader::kFlacStreamInfo},
               .payload = FlacMetaBlockStreamInfo{

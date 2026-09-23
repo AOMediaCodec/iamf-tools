@@ -77,7 +77,7 @@ absl::Status InitializeEncoder(
     const CodecConfigObu& codec_config, SubstreamChannelCount channel_count,
     std::unique_ptr<EncoderBase>& encoder, bool validate_codec_delay,
     int substream_id = 0) {
-  switch (codec_config.GetCodecConfig().codec_id) {
+  switch (codec_config.GetCodecConfig().GetCodecId()) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
       encoder = std::make_unique<LpcmEncoder>(codec_config, channel_count);
@@ -105,7 +105,7 @@ absl::Status InitializeEncoder(
       break;
     default:
       return absl::InvalidArgumentError(absl::StrCat(
-          "Unknown codec_id= ", codec_config.GetCodecConfig().codec_id));
+          "Unknown codec_id= ", codec_config.GetCodecConfig().GetCodecId()));
   }
   RETURN_IF_NOT_OK(encoder->Initialize(validate_codec_delay));
   return absl::OkStatus();

@@ -139,8 +139,7 @@ void AddOpusCodecConfigWithIdAndPreSkip(uint32_t codec_config_id,
 
   auto codec_config = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
-      {.codec_id = CodecConfig::kCodecIdOpus,
-       .num_samples_per_frame = 960,
+      {.num_samples_per_frame = 960,
        .audio_roll_distance = -4,
        .decoder_config = OpusDecoderConfig{.version_ = 1,
                                            .pre_skip_ = pre_skip,

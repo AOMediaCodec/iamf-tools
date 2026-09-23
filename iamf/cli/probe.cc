@@ -457,8 +457,8 @@ CodecConfigReport BuildCodecConfigReport(uint32_t id,
   const CodecConfig& cc = obu.GetCodecConfig();
   CodecConfigReport r;
   r.id = id;
-  r.codec_id = CodecIdToString(cc.codec_id);
-  r.codec_id_raw = static_cast<uint32_t>(cc.codec_id);
+  r.codec_id = CodecIdToString(cc.GetCodecId());
+  r.codec_id_raw = static_cast<uint32_t>(cc.GetCodecId());
   r.num_samples_per_frame = obu.GetNumSamplesPerFrame();
   r.audio_roll_distance = cc.audio_roll_distance;
   r.output_sample_rate = obu.GetOutputSampleRate();

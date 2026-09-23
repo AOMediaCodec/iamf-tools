@@ -149,8 +149,7 @@ void AddLpcmCodecConfig(DecodedUleb128 codec_config_id,
 
   auto obu = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
-      {.codec_id = CodecConfig::kCodecIdLpcm,
-       .num_samples_per_frame = num_samples_per_frame,
+      {.num_samples_per_frame = num_samples_per_frame,
        .decoder_config = LpcmDecoderConfig{
            .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian,
            .sample_size_ = sample_size,
@@ -179,8 +178,7 @@ void AddOpusCodecConfig(uint32_t codec_config_id,
 
   auto obu = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
-      {.codec_id = CodecConfig::kCodecIdOpus,
-       .num_samples_per_frame = num_samples_per_frame,
+      {.num_samples_per_frame = num_samples_per_frame,
        .decoder_config = OpusDecoderConfig{.version_ = 1,
                                            .pre_skip_ = 312,
                                            .input_sample_rate_ = sample_rate}});
@@ -207,8 +205,7 @@ void AddFlacCodecConfig(uint32_t codec_config_id,
 
   auto obu = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
-      {.codec_id = CodecConfig::kCodecIdFlac,
-       .num_samples_per_frame = num_samples_per_frame,
+      {.num_samples_per_frame = num_samples_per_frame,
        .decoder_config = FlacDecoderConfig(
            {{{.header = {.block_type = FlacMetaBlockHeader::kFlacStreamInfo},
               .payload = FlacMetaBlockStreamInfo{
@@ -242,8 +239,7 @@ void AddAacCodecConfig(
 
   auto obu = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
-      {.codec_id = CodecConfig::kCodecIdAacLc,
-       .num_samples_per_frame = num_samples_per_frame,
+      {.num_samples_per_frame = num_samples_per_frame,
        .decoder_config = AacDecoderConfig{
            .decoder_specific_info_ = {
                .audio_specific_config = {.sample_frequency_index_ =

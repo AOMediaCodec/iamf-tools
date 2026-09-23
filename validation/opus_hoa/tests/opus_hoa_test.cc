@@ -58,7 +58,6 @@ CodecConfigObu MakeOpusCodecConfigObu(uint32_t codec_config_id) {
   return CodecConfigObu::Create(ObuHeader{.obu_type = kObuIaCodecConfig},
                                 codec_config_id,
                                 CodecConfig{
-                                    .codec_id = CodecConfig::kCodecIdOpus,
                                     .num_samples_per_frame = 960,
                                     .audio_roll_distance = -4,
                                     .decoder_config = decoder_config,
@@ -332,7 +331,6 @@ TEST(VerificationTestSuite, SkipNonOpusCodecConfig) {
       CodecConfigObu::Create(ObuHeader{.obu_type = kObuIaCodecConfig},
                              kCodecConfigId,
                              CodecConfig{
-                                 .codec_id = CodecConfig::kCodecIdLpcm,
                                  .num_samples_per_frame = 240,
                                  .audio_roll_distance = 0,
                                  .decoder_config = lpcm_config,

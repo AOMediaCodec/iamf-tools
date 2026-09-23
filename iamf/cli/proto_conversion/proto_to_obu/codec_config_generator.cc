@@ -277,7 +277,8 @@ absl::Status OverrideCodecDelay(
     return required_codec_delay.status();
   }
 
-  return codec_config_obu.SetCodecDelay(*required_codec_delay);
+  codec_config_obu.SetCodecDelay(*required_codec_delay);
+  return absl::OkStatus();
 }
 
 }  // namespace
@@ -297,28 +298,24 @@ absl::Status CodecConfigGenerator::Generate(
     switch (input_codec_config.decoder_config_case()) {
       using enum iamf_tools_cli_proto::CodecConfig::DecoderConfigCase;
       case kDecoderConfigLpcm: {
-        obu_codec_config.codec_id = CodecConfig::kCodecIdLpcm;
         ABSL_ASSIGN_OR_RETURN(obu_codec_config.decoder_config,
                               GenerateLpcmDecoderConfig(
                                   input_codec_config.decoder_config_lpcm()));
         break;
       }
       case kDecoderConfigOpus: {
-        obu_codec_config.codec_id = CodecConfig::kCodecIdOpus;
         ABSL_ASSIGN_OR_RETURN(obu_codec_config.decoder_config,
                               GenerateOpusDecoderConfig(
                                   input_codec_config.decoder_config_opus()));
         break;
       }
       case kDecoderConfigFlac: {
-        obu_codec_config.codec_id = CodecConfig::kCodecIdFlac;
         ABSL_ASSIGN_OR_RETURN(obu_codec_config.decoder_config,
                               GenerateFlacDecoderConfig(
                                   input_codec_config.decoder_config_flac()));
         break;
       }
       case kDecoderConfigAac: {
-        obu_codec_config.codec_id = CodecConfig::kCodecIdAacLc;
         ABSL_ASSIGN_OR_RETURN(
             obu_codec_config.decoder_config,
             GenerateAacDecoderConfig(input_codec_config.decoder_config_aac()));
