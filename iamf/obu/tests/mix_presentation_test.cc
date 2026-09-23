@@ -1247,6 +1247,29 @@ TEST(CreateFromBufferTest, IgnoresDuplicateContentLanguageTags) {
   EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_value, "eng");
 }
 
+TEST(MixPresentationTagsCreateFromBufferTest, IgnoresDuplicateContentTypeTags) {
+  const std::vector<uint8_t> kInvalidThenValidContentLanguageTags = {
+      // `num_tags`.
+      2,
+      // `tag_name[0]`.
+      'c', 'o', 'n', 't', 'e', 'n', 't', '_', 't', 'y', 'p', 'e', '\0',
+      // `tag_value[0]`.
+      'f', 'i', 'r', 's', 't', '\0',
+      // `tag_name[1]`.
+      'c', 'o', 'n', 't', 'e', 'n', 't', '_', 't', 'y', 'p', 'e',
+      '\0',  // `tag_value[1]` (valid 3-char ISO-639-2).
+      's', 'e', 'c', 'o', 'n', 'd', '\0'};
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(kInvalidThenValidContentLanguageTags));
+
+  const auto tags = MixPresentationTags::CreateFromBuffer(*buffer);
+
+  ASSERT_THAT(tags, IsOk());
+  ASSERT_EQ(tags->tags.size(), 1);
+  EXPECT_EQ(tags->tags[0].tag_name, "content_type");
+  EXPECT_EQ(tags->tags[0].tag_value, "first");
+}
+
 TEST(CreateFromBufferTest, ReadsOptionalFields) {
   constexpr uint8_t kZeroNumTags = 0;
   const std::vector<uint8_t> kMixPresentationTags = {
@@ -1778,6 +1801,17 @@ TEST(MixPresentationTagsWriteAndValidate, InvalidForDuplicateContentIdTag) {
 
   EXPECT_THAT(
       kMixPresentationTagsWithDuplicateContentLanguageTag.ValidateAndWrite(wb),
+      Not(IsOk()));
+}
+
+TEST(MixPresentationTagsWriteAndValidate, InvalidForDuplicateContentTypeTag) {
+  const MixPresentationTags kMixPresentationTagsWithDuplicateContentTypeTag = {
+      .tags = {{"content_type", "first"}, {"content_type", "second"}}};
+
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(
+      kMixPresentationTagsWithDuplicateContentTypeTag.ValidateAndWrite(wb),
       Not(IsOk()));
 }
 

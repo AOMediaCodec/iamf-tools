@@ -374,6 +374,7 @@ const auto& GetTagRestrictions() {
       kTagRestrictions({
           {"content_language",
            {.max_count = 1, .validate_value = &ValidateCompliesWithIso639_2}},
+          {"content_type", {.max_count = 1}},
       });
   return *kTagRestrictions;
 }
