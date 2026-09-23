@@ -71,6 +71,9 @@ and this project adheres to
     the codec delay.
 -   Deprecate `CodecId` enum and `CodecConfig::codec_id` field. Infer the codec
     based on which `decoder_config` is present.
+-   Deprecate `ChannelAudioLayerConfig::substream_count` and
+    `ChannelAudioLayerConfig::coupled_substream_count` in favor of automatically
+    determining them from the `loudspeaker_layout`.
 
 ### Fixed
 

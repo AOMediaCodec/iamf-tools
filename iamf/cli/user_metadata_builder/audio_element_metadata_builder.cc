@@ -54,28 +54,6 @@ absl::StatusOr<int32_t> LookupNumSubstreamsFromInputLayout(
                      "Number of substreams for `IamfInputLayout`");
 }
 
-absl::StatusOr<int32_t> LookupCoupledSubstreamCountFromInputLayout(
-    IamfInputLayout input_layout) {
-  // Map which holds the loudspeaker layout and the count of coupled
-  // substream(s) corresponding to it.
-  using enum IamfInputLayout;
-  static const absl::NoDestructor<absl::flat_hash_map<IamfInputLayout, int32_t>>
-      kInputLayoutToCoupledSubstreamCount({
-          {kMono, 0},
-          {kStereo, 1},
-          {k5_1, 2},
-          {k5_1_2, 3},
-          {k5_1_4, 4},
-          {k7_1, 3},
-          {k7_1_4, 5},
-          {kBinaural, 1},
-          {kLFE, 0},
-      });
-
-  return LookupInMap(*kInputLayoutToCoupledSubstreamCount, input_layout,
-                     "Coupled substream count for `IamfInputLayout`");
-}
-
 absl::StatusOr<iamf_tools_cli_proto::LoudspeakerLayout>
 LookupLoudspeakerLayoutFromInputLayout(IamfInputLayout input_layout) {
   using enum IamfInputLayout;
@@ -147,7 +125,7 @@ LookupAudioElementTypeFromInputLayout(IamfInputLayout input_layout) {
 }
 
 absl::Status PopulateChannelBasedAudioElementMetadata(
-    IamfInputLayout input_layout, int32_t num_substreams,
+    IamfInputLayout input_layout,
     iamf_tools_cli_proto::ScalableChannelLayoutConfig&
         scalable_channel_layout_config) {
   // Simplistically add one layer. This most closely matches other popular
@@ -166,17 +144,6 @@ absl::Status PopulateChannelBasedAudioElementMetadata(
   // with the single-layer assumption.
   channel_audio_layer_config->set_output_gain_is_present_flag(0);
   channel_audio_layer_config->set_recon_gain_is_present_flag(0);
-
-  // As 'num_layers' is set to 1, 'substream_count' is equal to
-  // 'num_substreams'.
-  channel_audio_layer_config->set_substream_count(num_substreams);
-  const auto coupled_substream_count =
-      LookupCoupledSubstreamCountFromInputLayout(input_layout);
-  if (!coupled_substream_count.ok()) {
-    return coupled_substream_count.status();
-  }
-  channel_audio_layer_config->set_coupled_substream_count(
-      *coupled_substream_count);
 
   // Set the specific 'expanded_loudspeaker_layout' field when it is relevant
   // (e.g. LFE).
@@ -254,7 +221,7 @@ absl::Status AudioElementMetadataBuilder::PopulateAudioElementMetadata(
     using enum iamf_tools_cli_proto::AudioElementType;
     case AUDIO_ELEMENT_CHANNEL_BASED:
       return PopulateChannelBasedAudioElementMetadata(
-          input_layout, *num_substreams,
+          input_layout,
           *audio_element_obu_metadata.mutable_scalable_channel_layout_config());
     case AUDIO_ELEMENT_SCENE_BASED:
       PopulateSceneBasedAudioElementMetadata(*num_substreams,

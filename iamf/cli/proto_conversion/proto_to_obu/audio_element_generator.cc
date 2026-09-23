@@ -370,13 +370,6 @@ absl::StatusOr<AudioElementWithData> CreateChannelBasedAudioElementWithData(
     RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
         "ChannelAudioLayerConfig.reserved_a", input_layer_config.reserved_a(),
         layer_config.reserved_a));
-    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-        "ChannelAudioLayerConfig.substream_count",
-        input_layer_config.substream_count(), layer_config.substream_count));
-    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-        "ChannelAudioLayerConfig.coupled_substream_count",
-        input_layer_config.coupled_substream_count(),
-        layer_config.coupled_substream_count));
 
     if (layer_config.output_gain_is_present_flag == 1) {
       RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
@@ -392,6 +385,8 @@ absl::StatusOr<AudioElementWithData> CreateChannelBasedAudioElementWithData(
     }
     config.channel_audio_layer_configs.emplace_back(std::move(layer_config));
   }
+
+  RETURN_IF_NOT_OK(ObuWithDataGenerator::FillSubstreamCounts(config));
 
   auto obu = AudioElementObu::CreateForScalableChannelLayout(
       GetHeaderFromMetadata(audio_element_metadata.obu_header()),

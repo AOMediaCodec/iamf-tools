@@ -124,16 +124,12 @@ void FillTwoLayerStereoMetadata(
             output_gain_is_present_flag: 0
             recon_gain_is_present_flag: 0
             reserved_a: 0
-            substream_count: 1
-            coupled_substream_count: 0
           }
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
             output_gain_is_present_flag: 1
             recon_gain_is_present_flag: 0
             reserved_a: 0
-            substream_count: 1
-            coupled_substream_count: 0
             output_gain_flag: 32
             output_gain: 32767
           }
@@ -157,8 +153,6 @@ TEST(Generate, PopulatesExpandedLoudspeakerLayout) {
         scalable_channel_layout_config {
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
-            substream_count: 1
-            coupled_substream_count: 0
             expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_LFE
           }
         }
@@ -178,6 +172,8 @@ TEST(Generate, PopulatesExpandedLoudspeakerLayout) {
           .channel_audio_layer_configs[0];
   EXPECT_EQ(output_first_layer.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutExpanded);
+  EXPECT_EQ(output_first_layer.substream_count, 1);
+  EXPECT_EQ(output_first_layer.coupled_substream_count, 0);
   ASSERT_TRUE(output_first_layer.expanded_loudspeaker_layout.has_value());
   EXPECT_EQ(*output_first_layer.expanded_loudspeaker_layout,
             ChannelAudioLayerConfig::kExpandedLayoutLFE);
@@ -194,8 +190,6 @@ TEST(Generate, PopulatesExpandedLayoutBottom3Ch) {
         scalable_channel_layout_config {
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
-            substream_count: 2
-            coupled_substream_count: 1
             expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_BOTTOM_3_CH
           }
         }
@@ -215,6 +209,8 @@ TEST(Generate, PopulatesExpandedLayoutBottom3Ch) {
           .channel_audio_layer_configs[0];
   EXPECT_EQ(output_first_layer.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutExpanded);
+  EXPECT_EQ(output_first_layer.substream_count, 2);
+  EXPECT_EQ(output_first_layer.coupled_substream_count, 1);
   ASSERT_TRUE(output_first_layer.expanded_loudspeaker_layout.has_value());
   EXPECT_EQ(*output_first_layer.expanded_loudspeaker_layout,
             ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch);
@@ -231,8 +227,6 @@ TEST(Generate, PopulatesExpandedLayoutTop1Ch) {
         scalable_channel_layout_config {
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
-            substream_count: 1
-            coupled_substream_count: 0
             expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_TOP_1_CH
           }
         }
@@ -268,8 +262,6 @@ TEST(Generate, InvalidWhenExpandedLoudspeakerLayoutIsSignalledButNotPresent) {
         scalable_channel_layout_config {
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
-            substream_count: 1
-            coupled_substream_count: 0
             # expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_LFE
           }
         }
@@ -295,8 +287,6 @@ TEST(Generate, IgnoresExpandedLayoutWhenNotSignalled) {
         scalable_channel_layout_config {
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
-            substream_count: 1
-            coupled_substream_count: 1
             expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_LFE
           }
         }
@@ -328,8 +318,6 @@ TEST(Generate, LeavesExpandedLayoutEmptyWhenNotSignalled) {
         scalable_channel_layout_config {
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
-            substream_count: 1
-            coupled_substream_count: 1
           }
         }
       )pb",
@@ -347,6 +335,41 @@ TEST(Generate, LeavesExpandedLayoutEmptyWhenNotSignalled) {
           kAudioElementId, output_obus)
           .channel_audio_layer_configs[0];
   EXPECT_FALSE(output_first_layer.expanded_loudspeaker_layout.has_value());
+}
+
+TEST(Generate, IgnoresDeprecatedSubstreamCountAndCoupledSubstreamCount) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  ASSERT_TRUE(TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 300
+        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
+        codec_config_id: 200
+        audio_substream_ids: [ 99 ]
+        scalable_channel_layout_config {
+          channel_audio_layer_configs {
+            loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
+            substream_count: 999
+            coupled_substream_count: 999
+          }
+        }
+      )pb",
+      audio_element_metadatas.Add()));
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  AudioElementsById output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  // Regardless, the output has the correct substream count and coupled
+  // substream count.
+  const auto& output_first_layer =
+      GetConfigForAudioElementIdExpectOk<ScalableChannelLayoutConfig>(
+          kAudioElementId, output_obus)
+          .channel_audio_layer_configs[0];
+  EXPECT_EQ(output_first_layer.substream_count, 1);
+  EXPECT_EQ(output_first_layer.coupled_substream_count, 1);
 }
 
 TEST(Generate, NoAudioElementObus) {

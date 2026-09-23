@@ -93,8 +93,6 @@ TEST(PopulateAudioElementMetadata, ConfiguresStereo) {
 
   EXPECT_FALSE(channel_audio_layer_configs.output_gain_is_present_flag());
   EXPECT_FALSE(channel_audio_layer_configs.recon_gain_is_present_flag());
-  EXPECT_EQ(channel_audio_layer_configs.substream_count(), 1);
-  EXPECT_EQ(channel_audio_layer_configs.coupled_substream_count(), 1);
   EXPECT_FALSE(channel_audio_layer_configs.output_gain_flag());
 }
 
@@ -137,8 +135,6 @@ TEST(PopulateAudioElementMetadata, ConfiguresLFE) {
             iamf_tools_cli_proto::LOUDSPEAKER_LAYOUT_EXPANDED);
   EXPECT_EQ(first_channel_audio_layer_config.expanded_loudspeaker_layout(),
             iamf_tools_cli_proto::EXPANDED_LOUDSPEAKER_LAYOUT_LFE);
-  EXPECT_EQ(first_channel_audio_layer_config.substream_count(), 1);
-  EXPECT_EQ(first_channel_audio_layer_config.coupled_substream_count(), 0);
 }
 
 TEST(PopulateAudioElementMetadata, ConfiguresFirstOrderAmbisonics) {

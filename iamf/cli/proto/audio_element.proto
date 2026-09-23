@@ -96,8 +96,12 @@ message ChannelAudioLayerConfig {
   uint32 output_gain_is_present_flag = 2;
   uint32 recon_gain_is_present_flag = 3;
   uint32 reserved_a = 4;
-  uint32 substream_count = 5;
-  uint32 coupled_substream_count = 6;
+  // `substream_count` is deprecated and ignored. The value in the bitstream is
+  // automatically determined from the `loudspeaker_layout`.
+  uint32 substream_count = 5 [deprecated = true];
+  // `coupled_substream_count` is deprecated and ignored. The value in the
+  // bitstream is automatically determined from the `loudspeaker_layout`.
+  uint32 coupled_substream_count = 6 [deprecated = true];
   uint32 output_gain_flag = 7;
   uint32 reserved_b = 8;
   int32 output_gain = 9;
