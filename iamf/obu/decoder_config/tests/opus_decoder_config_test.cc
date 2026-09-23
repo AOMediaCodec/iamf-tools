@@ -39,15 +39,7 @@ class OpusTest : public testing::Test {
   void TestWriteDecoderConfig() {
     WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-    // `num_samples_per_frame` and `audio_roll_distance` would typically come
-    // from the associated Codec Config OBU. Choose arbitrary legal values as
-    // default.
-    static constexpr uint32_t kNumSamplesPerFrame = 960;
-    static constexpr int16_t kAudioRollDistance = -4;
-
-    EXPECT_EQ(opus_decoder_config_
-                  .ValidateAndWrite(kNumSamplesPerFrame, kAudioRollDistance, wb)
-                  .code(),
+    EXPECT_EQ(opus_decoder_config_.ValidateAndWrite(wb).code(),
               expected_write_status_code_);
 
     if (expected_write_status_code_ == absl::StatusCode::kOk) {
@@ -258,8 +250,6 @@ TEST_F(OpusTest, IllegalMappingFamilyNotZero) {
 
 TEST(ReadAndValidate, VaryAllLegalFields) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  2,
                                  // `output_channel_count`.
@@ -274,9 +264,7 @@ TEST(ReadAndValidate, VaryAllLegalFields) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              IsOk());
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 2);
   EXPECT_EQ(opus_decoder_config.pre_skip_, 3);
@@ -285,8 +273,6 @@ TEST(ReadAndValidate, VaryAllLegalFields) {
 
 TEST(ReadAndValidate, MaxAllLegalFields) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  15,
                                  // `output_channel_count`.
@@ -301,9 +287,7 @@ TEST(ReadAndValidate, MaxAllLegalFields) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              IsOk());
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 15);
   EXPECT_EQ(opus_decoder_config.pre_skip_, 0xffff);
@@ -312,8 +296,6 @@ TEST(ReadAndValidate, MaxAllLegalFields) {
 
 TEST(ReadAndValidate, MinorVersion) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  2,
                                  // `output_channel_count`.
@@ -328,17 +310,13 @@ TEST(ReadAndValidate, MinorVersion) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              IsOk());
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 2);
 }
 
 TEST(ReadAndValidate, IllegalVersionZero) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  0,
                                  // `output_channel_count`.
@@ -353,15 +331,11 @@ TEST(ReadAndValidate, IllegalVersionZero) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              Not(IsOk()));
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), Not(IsOk()));
 }
 
 TEST(ReadAndValidate, IllegalVersionFuture) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  16,
                                  // `output_channel_count`.
@@ -376,15 +350,11 @@ TEST(ReadAndValidate, IllegalVersionFuture) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              Not(IsOk()));
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), Not(IsOk()));
 }
 
 TEST(ReadAndValidate, IllegalVersionmax) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  255,
                                  // `output_channel_count`.
@@ -399,15 +369,11 @@ TEST(ReadAndValidate, IllegalVersionmax) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              Not(IsOk()));
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), Not(IsOk()));
 }
 
 TEST(ReadAndValidate, OutputChannelCountIsIgnored) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  1,
                                  // `output_channel_count`.
@@ -422,15 +388,11 @@ TEST(ReadAndValidate, OutputChannelCountIsIgnored) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              IsOk());
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), IsOk());
 }
 
 TEST(ReadAndValidate, ReadPreSkip312) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  1,
                                  // `output_channel_count`.
@@ -445,9 +407,7 @@ TEST(ReadAndValidate, ReadPreSkip312) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              IsOk());
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 1);
   EXPECT_EQ(opus_decoder_config.pre_skip_, 312);
@@ -455,8 +415,6 @@ TEST(ReadAndValidate, ReadPreSkip312) {
 
 TEST(ReadAndValidate, ReadSampleRate48kHz) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  1,
                                  // `output_channel_count`.
@@ -471,9 +429,7 @@ TEST(ReadAndValidate, ReadSampleRate48kHz) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              IsOk());
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 1);
   EXPECT_EQ(opus_decoder_config.input_sample_rate_, 48000);
@@ -481,8 +437,6 @@ TEST(ReadAndValidate, ReadSampleRate48kHz) {
 
 TEST(ReadAndValidate, ReadSampleRate192kHz) {
   OpusDecoderConfig opus_decoder_config;
-  uint32_t num_samples_per_frame = 960;
-  int16_t audio_roll_distance = -4;
   std::vector<uint8_t> source = {// `version`.
                                  1,
                                  // `output_channel_count`.
@@ -497,9 +451,7 @@ TEST(ReadAndValidate, ReadSampleRate192kHz) {
                                  OpusDecoderConfig::kMappingFamily};
   auto read_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
-  EXPECT_THAT(opus_decoder_config.ReadAndValidate(
-                  num_samples_per_frame, audio_roll_distance, *read_buffer),
-              IsOk());
+  EXPECT_THAT(opus_decoder_config.ReadAndValidate(*read_buffer), IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 1);
   EXPECT_EQ(opus_decoder_config.input_sample_rate_, 192000);
@@ -539,22 +491,6 @@ TEST(GetRequiredAudioRollDistance, IsInvalidWhenNumSamplesPerFrameIsZero) {
   constexpr uint32_t kInvalidNumSamplesPerFrame = 0;
   EXPECT_THAT(OpusDecoderConfig::GetRequiredAudioRollDistance(
                   kInvalidNumSamplesPerFrame),
-              Not(IsOk()));
-}
-
-TEST(ValidateAndWrite, ValidatesAudioRollDistance) {
-  constexpr OpusDecoderConfig opus_decoder_config_ = {
-      .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0};
-  constexpr uint32_t kNumSamplesPerFrame = 960;
-  constexpr int16_t kAudioRollDistance = -4;
-  constexpr int16_t kInvalidAudioRollDistance = -5;
-  WriteBitBuffer ignored_wb(128);
-
-  EXPECT_THAT(opus_decoder_config_.ValidateAndWrite(
-                  kNumSamplesPerFrame, kAudioRollDistance, ignored_wb),
-              IsOk());
-  EXPECT_THAT(opus_decoder_config_.ValidateAndWrite(
-                  kNumSamplesPerFrame, kInvalidAudioRollDistance, ignored_wb),
               Not(IsOk()));
 }
 

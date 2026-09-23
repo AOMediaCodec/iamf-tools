@@ -42,6 +42,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::Field;
 using ::testing::Not;
 using ::testing::Pointee;
@@ -109,7 +110,6 @@ void InitExpectedObuForOpus(CodecConfigsById& expected_obus) {
   auto codec_config = CodecConfigObu::Create(
       ObuHeader(), kCodecConfigId,
       {.num_samples_per_frame = 120,
-       .audio_roll_distance = -32,
        .decoder_config = OpusDecoderConfig{
            .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 48000}});
   ASSERT_THAT(codec_config, IsOk());
@@ -160,7 +160,6 @@ void InitExpectedObuForAac(CodecConfigsById& expected_obus) {
   auto codec_config = CodecConfigObu::Create(
       ObuHeader(), kCodecConfigId,
       {.num_samples_per_frame = 1024,
-       .audio_roll_distance = -1,
        .decoder_config = AacDecoderConfig{
            .buffer_size_db_ = 0,
            .max_bitrate_ = 0,
@@ -749,7 +748,7 @@ TEST(Generate, FillsTopLevelFieldsForFlac) {
   EXPECT_TRUE(output_obus.contains(kCodecConfigId));
   const auto& codec_config = output_obus.at(kCodecConfigId).GetCodecConfig();
   EXPECT_EQ(codec_config.num_samples_per_frame, 64);
-  EXPECT_EQ(codec_config.audio_roll_distance, 0);
+  EXPECT_THAT(codec_config.GetAudioRollDistance(), IsOkAndHolds(0));
 }
 
 TEST(Generate, FillsStreamInfoForFlac) {

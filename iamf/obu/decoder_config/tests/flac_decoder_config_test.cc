@@ -64,11 +64,9 @@ class FlacTest : public testing::Test {
   void TestWriteDecoderConfig() {
     WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-    EXPECT_EQ(
-        flac_decoder_config_
-            .ValidateAndWrite(num_samples_per_frame_, audio_roll_distance_, wb)
-            .code(),
-        expected_write_status_code_);
+    EXPECT_EQ(flac_decoder_config_.ValidateAndWrite(num_samples_per_frame_, wb)
+                  .code(),
+              expected_write_status_code_);
 
     if (expected_write_status_code_ == absl::StatusCode::kOk) {
       ValidateWriteResults(wb, expected_decoder_config_payload_);
@@ -78,10 +76,6 @@ class FlacTest : public testing::Test {
   // `num_samples_per_frame_` would typically come from the associated Codec
   // Config OBU. Some fields in the decoder config must be consistent with it,
   uint32_t num_samples_per_frame_;
-
-  // `audio_roll_distance_` would typically come from the associated Codec
-  // Config OBU. The IAMF specification REQUIRES this be 0.
-  int16_t audio_roll_distance_ = 0;
 
   FlacDecoderConfig flac_decoder_config_;
   // A pointer which is initialized to point to the `FlacMetaBlockStreamInfo` in
@@ -421,12 +415,6 @@ TEST_F(FlacTest, WriteMinimumMaximumBlockSizeMax) {
   TestWriteDecoderConfig();
 }
 
-TEST_F(FlacTest, IllegalAudioRollDistanceMustBeZero) {
-  audio_roll_distance_ = -1;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  TestWriteDecoderConfig();
-}
-
 TEST_F(FlacTest, IllegalMinimumMaximumBlockSizeZero) {
   first_stream_info_payload_->minimum_block_size = 0;
   first_stream_info_payload_->maximum_block_size = 0;
@@ -752,7 +740,7 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(payload));
   FlacDecoderConfig decoder_config;
   EXPECT_THAT(decoder_config.ReadAndValidate(
-                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
+                  /*num_samples_per_frame=*/64, *rb),
               IsOk());
   EXPECT_EQ(decoder_config.metadata_blocks_.size(), 1);
   FlacMetaBlockHeader header = decoder_config.metadata_blocks_[0].header;
@@ -815,7 +803,7 @@ TEST(ReadAndValidateTest, ReadAndValidateCanReadMultipleMetadataBlocks) {
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(payload));
   FlacDecoderConfig decoder_config;
   EXPECT_THAT(decoder_config.ReadAndValidate(
-                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
+                  /*num_samples_per_frame=*/64, *rb),
               IsOk());
   // The StreamInfo block details are tested in the previous test.  Here, we'll
   // just check that it is not labelled as the last block.
@@ -881,7 +869,7 @@ TEST(ReadAndValidate, ReadsInvalidMd5Signature) {
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(payload));
   FlacDecoderConfig decoder_config;
   EXPECT_THAT(decoder_config.ReadAndValidate(
-                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
+                  /*num_samples_per_frame=*/64, *rb),
               IsOk());
   EXPECT_THAT(decoder_config.metadata_blocks_[0].header.block_type,
               Eq(FlacMetaBlockHeader::kFlacStreamInfo));
@@ -927,7 +915,7 @@ TEST(ReadAndValidateTest, ReadsInvalidFrameSizes) {
   FlacDecoderConfig decoder_config;
 
   EXPECT_THAT(decoder_config.ReadAndValidate(
-                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
+                  /*num_samples_per_frame=*/64, *rb),
               IsOk());
 
   FlacMetaBlockStreamInfo* stream_info = std::get_if<FlacMetaBlockStreamInfo>(

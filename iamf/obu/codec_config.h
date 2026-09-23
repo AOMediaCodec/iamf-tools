@@ -75,11 +75,16 @@ struct CodecConfig {
    */
   CodecId GetCodecId() const;
 
+  /*!\brief Gets the audio roll distance of the codec config.
+   *
+   * \return Audio roll distance based on the underlying `decoder_config`.
+   */
+  absl::StatusOr<int16_t> GetAudioRollDistance() const;
+
   friend bool operator==(const CodecConfig& lhs,
                          const CodecConfig& rhs) = default;
 
   DecodedUleb128 num_samples_per_frame;
-  int16_t audio_roll_distance;
 
   DecoderConfig decoder_config;
 };

@@ -460,7 +460,7 @@ CodecConfigReport BuildCodecConfigReport(uint32_t id,
   r.codec_id = CodecIdToString(cc.GetCodecId());
   r.codec_id_raw = static_cast<uint32_t>(cc.GetCodecId());
   r.num_samples_per_frame = obu.GetNumSamplesPerFrame();
-  r.audio_roll_distance = cc.audio_roll_distance;
+  r.audio_roll_distance = cc.GetAudioRollDistance().value_or(0);
   r.output_sample_rate = obu.GetOutputSampleRate();
   r.input_sample_rate = obu.GetInputSampleRate();
   r.bit_depth = static_cast<int>(obu.GetBitDepthToMeasureLoudness());

@@ -59,7 +59,6 @@ CodecConfigObu MakeOpusCodecConfigObu(uint32_t codec_config_id) {
                                 codec_config_id,
                                 CodecConfig{
                                     .num_samples_per_frame = 960,
-                                    .audio_roll_distance = -4,
                                     .decoder_config = decoder_config,
                                 })
       .value();
@@ -332,7 +331,6 @@ TEST(VerificationTestSuite, SkipNonOpusCodecConfig) {
                              kCodecConfigId,
                              CodecConfig{
                                  .num_samples_per_frame = 240,
-                                 .audio_roll_distance = 0,
                                  .decoder_config = lpcm_config,
                              })
           .value();

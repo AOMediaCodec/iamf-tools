@@ -31,9 +31,6 @@ using ::testing::Not;
 
 using SampleFrequencyIndex = AudioSpecificConfig::SampleFrequencyIndex;
 
-constexpr int16_t kAudioRollDistance = -1;
-constexpr int16_t kInvalidAudioRollDistance = 0;
-
 constexpr int64_t kInitialBufferSize = 64;
 
 // Despite being represented in 4-bits the AAC Sampling Frequency Index 64000 is
@@ -123,6 +120,8 @@ constexpr auto kDefaultAudioDecoderConfigPayload = std::to_array<uint8_t>(
          kChannelConfigurationAndGaSpecificConfigMask});
 
 TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
+  constexpr int16_t kAudioRollDistance = -1;
+
   EXPECT_EQ(AacDecoderConfig::GetRequiredAudioRollDistance(),
             kAudioRollDistance);
 }
@@ -309,7 +308,7 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       kDefaultAudioDecoderConfigPayload);
 
-  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
+  EXPECT_THAT(decoder_config.ReadAndValidate(*rb), IsOk());
 
   EXPECT_EQ(decoder_config.decoder_config_descriptor_tag_,
             AacDecoderConfig::kDecoderConfigDescriptorTag);
@@ -361,8 +360,7 @@ TEST(AacDecoderConfig, FailsIfDecoderConfigDescriptorExpandableSizeIsTooSmall) {
   AacDecoderConfig decoder_config;
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
 
-  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb),
-              Not(IsOk()));
+  EXPECT_THAT(decoder_config.ReadAndValidate(*rb), Not(IsOk()));
 }
 
 TEST(AacDecoderConfig, ReadExtensions) {
@@ -397,7 +395,7 @@ TEST(AacDecoderConfig, ReadExtensions) {
   AacDecoderConfig decoder_config;
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
 
-  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
+  EXPECT_THAT(decoder_config.ReadAndValidate(*rb), IsOk());
 
   EXPECT_EQ(
       decoder_config.decoder_specific_info_.decoder_specific_info_extension,
@@ -413,25 +411,14 @@ TEST(AacDecoderConfig, ReadFailsWhenExtensionExceedsTwoMegabytes) {
   AacDecoderConfig decoder_config;
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
 
-  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb),
-              Not(IsOk()));
-}
-
-TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
-  AacDecoderConfig decoder_config;
-  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kDefaultAudioDecoderConfigPayload);
-
-  EXPECT_THAT(decoder_config.ReadAndValidate(kInvalidAudioRollDistance, *rb),
-              Not(IsOk()));
+  EXPECT_THAT(decoder_config.ReadAndValidate(*rb), Not(IsOk()));
 }
 
 TEST(ValidateAndWrite, WritesDefaultDecoderConfig) {
   const auto aac_decoder_config = GetAacDecoderConfig();
 
   WriteBitBuffer wb(kInitialBufferSize);
-  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(kAudioRollDistance, wb),
-              IsOk());
+  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(wb), IsOk());
 
   ValidateWriteResults(wb, kDefaultAudioDecoderConfigPayload);
 }
@@ -473,8 +460,7 @@ TEST(ValidateAndWrite, WritesWithExtension) {
        'c', 'd', 'e', 'a', 'b', 'c'});
 
   WriteBitBuffer wb(kInitialBufferSize);
-  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(kAudioRollDistance, wb),
-              IsOk());
+  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(wb), IsOk());
 
   ValidateWriteResults(wb, kExpectedPayload);
 }
@@ -487,16 +473,6 @@ TEST(AudioSpecificConfigValidateAndWrite, DefaultValuesAreExpected) {
   EXPECT_THAT(audio_specific_config.ValidateAndWrite(wb), IsOk());
 
   ValidateWriteResults(wb, kDefaultAudioSpecificConfigPayload);
-}
-
-TEST(ValidateAndWrite, IllegalAudioRollDistanceMustBeNegativeOne) {
-  auto aac_decoder_config = GetAacDecoderConfig();
-
-  constexpr int16_t kIllegalAudioRollDistance = 1;
-  WriteBitBuffer wb(kInitialBufferSize);
-  EXPECT_THAT(
-      aac_decoder_config.ValidateAndWrite(kIllegalAudioRollDistance, wb),
-      Not(IsOk()));
 }
 
 TEST(ValidateAndWrite, WritesMaxBufferSizeDb) {
@@ -532,8 +508,7 @@ TEST(ValidateAndWrite, WritesMaxBufferSizeDb) {
            kChannelConfigurationAndGaSpecificConfigMask});
 
   WriteBitBuffer wb(kInitialBufferSize);
-  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(kAudioRollDistance, wb),
-              IsOk());
+  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(wb), IsOk());
 
   ValidateWriteResults(wb, kExpectedPayload);
 }
@@ -546,8 +521,7 @@ TEST(ValidateAndWrite, InvalidOverflowBufferSizeDbOver24Bits) {
   aac_decoder_config.buffer_size_db_ = (1 << 24);
 
   WriteBitBuffer wb(kInitialBufferSize);
-  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(kAudioRollDistance, wb),
-              Not(IsOk()));
+  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(wb), Not(IsOk()));
 }
 
 TEST(GetOutputSampleRate, GetImplicitSampleRate64000) {
