@@ -1191,7 +1191,7 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTags) {
   EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_value, "123");
 }
 
-TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
+TEST(CreateFromBufferTest, IgnoresDuplicateContentLanguageTags) {
   const std::vector<uint8_t> kDuplicateContentLanguageTags = {
       // Start MixPresentationTags.
       2,
@@ -1199,12 +1199,12 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
       'c', 'o', 'n', 't', 'e', 'n', 't', '_', 'l', 'a', 'n', 'g', 'u', 'a', 'g',
       'e', '\0',
       // `tag_value[0]`.
-      'e', 'n', '-', 'u', 's', '\0',
+      'e', 'n', 'g', '\0',
       // `tag_name[1]`.
       'c', 'o', 'n', 't', 'e', 'n', 't', '_', 'l', 'a', 'n', 'g', 'u', 'a', 'g',
       'e', '\0',
       // `tag_value[1]`.
-      'e', 'n', '-', 'g', 'b', '\0'};
+      'k', 'o', 'r', '\0'};
   std::vector<uint8_t> source = {
       // Start Mix OBU.
       // mix_presentation_id
@@ -1238,16 +1238,13 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
   ObuHeader header;
   auto obu =
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
-  EXPECT_THAT(obu, IsOk());
+  ASSERT_THAT(obu, IsOk());
 
   ASSERT_TRUE(obu->mix_presentation_tags_.has_value());
-  // Ok, the spec notes that there SHALL not be duplicate `content_language`
-  // tags. But decoders SHOULD be able to handle them.
-  EXPECT_EQ(obu->mix_presentation_tags_->tags.size(), 2);
+  // Only the first tag is kept.
+  ASSERT_EQ(obu->mix_presentation_tags_->tags.size(), 1);
   EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_name, "content_language");
-  EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_value, "en-us");
-  EXPECT_EQ(obu->mix_presentation_tags_->tags[1].tag_name, "content_language");
-  EXPECT_EQ(obu->mix_presentation_tags_->tags[1].tag_value, "en-gb");
+  EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_value, "eng");
 }
 
 TEST(CreateFromBufferTest, ReadsOptionalFields) {

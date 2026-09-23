@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <utility>
@@ -360,6 +361,41 @@ absl::Status ValidateCompliesWithIso639_2(absl::string_view string) {
   }
 }
 
+struct TagRestriction {
+  int max_count;
+  absl::Status (*validate_value)(absl::string_view) = nullptr;
+};
+
+const auto& GetTagRestrictions() {
+  // Tags are freeform and may be duplicated. Except some tags have additional
+  // restrictions.
+  static const absl::NoDestructor<
+      absl::flat_hash_map<absl::string_view, TagRestriction>>
+      kTagRestrictions({
+          {"content_language",
+           {.max_count = 1, .validate_value = &ValidateCompliesWithIso639_2}},
+      });
+  return *kTagRestrictions;
+}
+
+absl::Status ValidateTag(const MixPresentationTags::Tag& tag,
+                         absl::flat_hash_map<std::string, int>& tag_counts) {
+  const auto it = GetTagRestrictions().find(tag.tag_name);
+  if (it == GetTagRestrictions().end()) {
+    return absl::OkStatus();
+  }
+
+  // Some tags have values that must comply with a validation function.
+  if (it->second.validate_value != nullptr) {
+    RETURN_IF_NOT_OK(it->second.validate_value(tag.tag_value));
+  }
+  int& count = tag_counts[tag.tag_name];
+  count++;
+  return Validate(
+      count, std::less_equal<DecodedUleb128>(), it->second.max_count,
+      absl::StrCat("Tag ", tag.tag_name, " has too many occurrences."));
+}
+
 absl::StatusOr<MixPresentationTags> MixPresentationTags::CreateFromBuffer(
     ReadBitBuffer& rb) {
   // `num_tags` in the structure is implicit based on the size of `tags`.
@@ -367,16 +403,22 @@ absl::StatusOr<MixPresentationTags> MixPresentationTags::CreateFromBuffer(
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_tags));
   std::vector<Tag> tags;
   tags.reserve(num_tags);
+  absl::flat_hash_map<std::string, int> tag_counts;
   for (int i = 0; i < num_tags; ++i) {
     std::string tag_name;
     RETURN_IF_NOT_OK(rb.ReadString(tag_name));
     std::string tag_value;
     RETURN_IF_NOT_OK(rb.ReadString(tag_value));
-    tags.push_back({.tag_name = tag_name, .tag_value = tag_value});
+    Tag tag = {.tag_name = tag_name, .tag_value = tag_value};
+    // For permissive decoding, ignore tags that violate value or count
+    // restrictions.
+    if (const auto status = ValidateTag(tag, tag_counts); !status.ok()) {
+      ABSL_LOG(WARNING) << "Ignoring invalid tag: " << status.message();
+      continue;
+    }
+    tags.push_back(std::move(tag));
   }
 
-  // For permissive decoding, we choose not to validate the `content_language`
-  // tags. The spec has language about how duplicate tags may be decoded.
   return MixPresentationTags{.tags = tags};
 }
 
@@ -385,22 +427,11 @@ absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(StaticCastIfInRange("num_tags", tags.size(), num_tags));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_tags, 8));
 
-  int count_content_language_tag = 0;
-
+  absl::flat_hash_map<std::string, int> tag_counts;
   for (const auto& tag : tags) {
-    if (tag.tag_name == "content_language") {
-      RETURN_IF_NOT_OK(ValidateCompliesWithIso639_2(tag.tag_value));
-
-      count_content_language_tag++;
-    }
+    RETURN_IF_NOT_OK(ValidateTag(tag, tag_counts));
     RETURN_IF_NOT_OK(wb.WriteString(tag.tag_name));
     RETURN_IF_NOT_OK(wb.WriteString(tag.tag_value));
-  }
-  // Tags are freeform and may be duplicated. Except for the "content_language"
-  // tag which SHALL appear at most once.
-  if (count_content_language_tag > 1) {
-    return absl::InvalidArgumentError(
-        "Expected zero or one content_language tag.");
   }
 
   return absl::OkStatus();
