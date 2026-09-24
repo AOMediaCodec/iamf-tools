@@ -81,6 +81,11 @@ and this project adheres to
     `channel_configuration`), and `AacGaSpecificConfig` (`frame_length_flag`,
     `depends_on_core_coder`, `extension_flag`) in favor of always using the
     fixed values required by the IAMF specification.
+-   Deprecate fixed and inferred fields in `FlacMetaBlockStreamInfo`
+    (`minimum_block_size`, `maximum_block_size`, `minimum_frame_size`,
+    `maximum_frame_size`, `number_of_channels`, `md5_signature`) in favor of
+    inferring the block sizes from `CodecConfig.num_samples_per_frame` and using
+    the fixed values required by the IAMF specification.
 
 ### Fixed
 

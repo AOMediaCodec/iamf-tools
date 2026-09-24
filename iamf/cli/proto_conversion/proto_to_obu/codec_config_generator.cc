@@ -101,43 +101,27 @@ absl::StatusOr<OpusDecoderConfig> GenerateOpusDecoderConfig(
 }
 
 absl::Status CopyStreamInfo(
+    uint32_t num_samples_per_frame,
     const iamf_tools_cli_proto::FlacMetaBlockStreamInfo& user_stream_info,
     FlacMetaBlockStreamInfo& obu_stream_info) {
+  uint16_t min_and_max_block_size;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint16_t>(
-      "FlacMetaBlockStreamInfo.minimum_block_size",
-      user_stream_info.minimum_block_size(),
-      obu_stream_info.minimum_block_size));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint16_t>(
-      "FlacMetaBlockStreamInfo.maximum_block_size",
-      user_stream_info.maximum_block_size(),
-      obu_stream_info.maximum_block_size));
-  obu_stream_info.minimum_frame_size = user_stream_info.minimum_frame_size();
-  obu_stream_info.maximum_frame_size = user_stream_info.maximum_frame_size();
+      "CodecConfig.num_samples_per_frame", num_samples_per_frame,
+      min_and_max_block_size));
+  obu_stream_info.minimum_block_size = min_and_max_block_size;
+  obu_stream_info.maximum_block_size = min_and_max_block_size;
   obu_stream_info.sample_rate = user_stream_info.sample_rate();
 
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "FlacMetaBlockStreamInfo.number_of_channels",
-      user_stream_info.number_of_channels(),
-      obu_stream_info.number_of_channels));
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "FlacMetaBlockStreamInfo.bits_per_sample",
       user_stream_info.bits_per_sample(), obu_stream_info.bits_per_sample));
   obu_stream_info.total_samples_in_stream =
       user_stream_info.total_samples_in_stream();
-  if (user_stream_info.md5_signature().size() !=
-      obu_stream_info.md5_signature.size()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Expected a 16 byte MD5 signature. Actual size: ",
-                     user_stream_info.md5_signature().size()));
-  }
-  std::transform(user_stream_info.md5_signature().begin(),
-                 user_stream_info.md5_signature().end(),
-                 obu_stream_info.md5_signature.begin(),
-                 [](const char x) { return static_cast<uint8_t>(x); });
   return absl::OkStatus();
 }
 
 absl::StatusOr<FlacDecoderConfig> GenerateFlacDecoderConfig(
+    uint32_t num_samples_per_frame,
     const iamf_tools_cli_proto::FlacDecoderConfig& flac_metadata) {
   FlacDecoderConfig obu_decoder_config;
 
@@ -167,8 +151,9 @@ absl::StatusOr<FlacDecoderConfig> GenerateFlacDecoderConfig(
       }
 
       FlacMetaBlockStreamInfo obu_stream_info;
-      RETURN_IF_NOT_OK(
-          CopyStreamInfo(metadata_block.stream_info(), obu_stream_info));
+      RETURN_IF_NOT_OK(CopyStreamInfo(num_samples_per_frame,
+                                      metadata_block.stream_info(),
+                                      obu_stream_info));
       obu_metadata_block.payload = obu_stream_info;
     } else {
       // For most blocks just copy in the payload.
@@ -278,6 +263,7 @@ absl::Status CodecConfigGenerator::Generate(
       case kDecoderConfigFlac: {
         ABSL_ASSIGN_OR_RETURN(obu_codec_config.decoder_config,
                               GenerateFlacDecoderConfig(
+                                  input_codec_config.num_samples_per_frame(),
                                   input_codec_config.decoder_config_flac()));
         break;
       }

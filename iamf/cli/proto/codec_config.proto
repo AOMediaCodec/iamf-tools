@@ -171,20 +171,24 @@ message FlacMetaBlockHeader {
 }
 
 message FlacMetaBlockStreamInfo {
-  uint32 minimum_block_size = 1;
-  uint32 maximum_block_size = 2;
-  uint32 minimum_frame_size = 3 [default = 0];
-
-  uint32 maximum_frame_size = 4 [default = 0];
-
   uint32 sample_rate = 5;
-  uint32 number_of_channels = 6 [default = 1];
-
   uint32 bits_per_sample = 7;
   uint64 total_samples_in_stream = 8;
-  bytes md5_signature = 9
-      [default =
-           "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"];
+
+  // Below deprecated fields are ignored. Their values are fixed, or inferred
+  // from other parts of the bitstream.
+  uint32 minimum_block_size = 1 [deprecated = true];
+  uint32 maximum_block_size = 2 [deprecated = true];
+  uint32 minimum_frame_size = 3 [default = 0, deprecated = true];
+  uint32 maximum_frame_size = 4 [default = 0, deprecated = true];
+  uint32 number_of_channels = 6 [default = 1, deprecated = true];
+  bytes md5_signature = 9 [
+    default =
+        "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000",
+    deprecated = true
+  ];
+
+  // Next ID: 10
 }
 
 // Settings to configure `libflac`.

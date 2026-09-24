@@ -184,8 +184,6 @@ void FillMetadataForFlac(CodecConfigObuMetadata& codec_config_metadata) {
             metadata_blocks: {
               header: { block_type: FLAC_BLOCK_TYPE_STREAMINFO }
               stream_info {
-                minimum_block_size: 64
-                maximum_block_size: 64
                 sample_rate: 48000
                 bits_per_sample: 15  # Flac interprets this as 16 bits.
                 total_samples_in_stream: 24000
@@ -788,53 +786,16 @@ TEST(Generate, FillsStreamInfoForFlac) {
             FlacStreamInfoLooseConstraints::kMd5Signature);
 }
 
-TEST(Generate, IamfFlacFixedFieldsMayBeIncluded) {
+TEST(Generate, IgnoresDeprecatedFlacStreamInfoFields) {
   CodecConfigMetadatas codec_config_metadatas;
   CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
   FillMetadataForFlac(codec_config_metadata);
-  // Some fields are fixed in IAMF, and default to the fixed value. It's OK to
-  // explicitly set these fields
-  auto* stream_info = codec_config_metadata.mutable_codec_config()
-                          ->mutable_decoder_config_flac()
-                          ->mutable_metadata_blocks(0)
-                          ->mutable_stream_info();
-  stream_info->set_minimum_block_size(
-      FlacStreamInfoLooseConstraints::kMinFrameSize);
-  stream_info->set_maximum_block_size(
-      FlacStreamInfoLooseConstraints::kMaxFrameSize);
-  stream_info->set_number_of_channels(
-      FlacStreamInfoStrictConstraints::kNumberOfChannels);
-  stream_info->set_md5_signature(
-      FlacStreamInfoLooseConstraints::kMd5Signature.data(),
-      FlacStreamInfoLooseConstraints::kMd5Signature.size());
-
-  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
-  CodecConfigsById output_obus;
-  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
-
-  ASSERT_TRUE(output_obus.contains(kCodecConfigId));
-  const auto* decoder_config = std::get_if<FlacDecoderConfig>(
-      &output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
-  ASSERT_NE(decoder_config, nullptr);
-  const auto* stream_info_block = std::get_if<FlacMetaBlockStreamInfo>(
-      &decoder_config->metadata_blocks_[0].payload);
-  ASSERT_NE(stream_info_block, nullptr);
-  EXPECT_EQ(stream_info_block->minimum_frame_size,
-            FlacStreamInfoLooseConstraints::kMinFrameSize);
-  EXPECT_EQ(stream_info_block->maximum_frame_size,
-            FlacStreamInfoLooseConstraints::kMaxFrameSize);
-  EXPECT_EQ(stream_info_block->number_of_channels,
-            FlacStreamInfoStrictConstraints::kNumberOfChannels);
-  EXPECT_EQ(stream_info_block->md5_signature,
-            FlacStreamInfoLooseConstraints::kMd5Signature);
-}
-
-TEST(Generate, ObeysInvalidFlacStreamInfo) {
-  CodecConfigMetadatas codec_config_metadatas;
-  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
-  FillMetadataForFlac(codec_config_metadata);
-  // IAMF requires several fields in the Stream Info block are fixed. The
-  // generator does not validate OBU requirements.
+  const uint16_t kInvalidMinimumBlockSize = 128;
+  ASSERT_NE(kInvalidMinimumBlockSize,
+            codec_config_metadata.codec_config().num_samples_per_frame());
+  const uint16_t kInvalidMaximumBlockSize = 256;
+  ASSERT_NE(kInvalidMaximumBlockSize,
+            codec_config_metadata.codec_config().num_samples_per_frame());
   const uint32_t kInvalidMinimumFrameSize = 99;
   ASSERT_NE(kInvalidMinimumFrameSize,
             FlacStreamInfoLooseConstraints::kMinFrameSize);
@@ -851,6 +812,8 @@ TEST(Generate, ObeysInvalidFlacStreamInfo) {
                                    ->mutable_decoder_config_flac()
                                    ->mutable_metadata_blocks(0)
                                    ->mutable_stream_info();
+  stream_info_metadata->set_minimum_block_size(kInvalidMinimumBlockSize);
+  stream_info_metadata->set_maximum_block_size(kInvalidMaximumBlockSize);
   stream_info_metadata->set_minimum_frame_size(kInvalidMinimumFrameSize);
   stream_info_metadata->set_maximum_frame_size(kInvalidMaximumFrameSize);
   stream_info_metadata->set_number_of_channels(kInvalidNumberOfChannels);
@@ -862,16 +825,24 @@ TEST(Generate, ObeysInvalidFlacStreamInfo) {
   EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   ASSERT_TRUE(output_obus.contains(kCodecConfigId));
+  // IAMF requires several fields are fixed, or based on the number of samples
+  // per frame. The generator always sets the correct value.
   const auto* decoder_config = std::get_if<FlacDecoderConfig>(
       &output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
   ASSERT_NE(decoder_config, nullptr);
   const auto* stream_info = std::get_if<FlacMetaBlockStreamInfo>(
       &decoder_config->metadata_blocks_[0].payload);
   ASSERT_NE(stream_info, nullptr);
-  EXPECT_EQ(stream_info->minimum_frame_size, kInvalidMinimumFrameSize);
-  EXPECT_EQ(stream_info->maximum_frame_size, kInvalidMaximumFrameSize);
-  EXPECT_EQ(stream_info->number_of_channels, kInvalidNumberOfChannels);
-  EXPECT_EQ(stream_info->md5_signature, kInvalidMd5Signature);
+  EXPECT_EQ(stream_info->minimum_block_size, 64);
+  EXPECT_EQ(stream_info->maximum_block_size, 64);
+  EXPECT_EQ(stream_info->minimum_frame_size,
+            FlacStreamInfoLooseConstraints::kMinFrameSize);
+  EXPECT_EQ(stream_info->maximum_frame_size,
+            FlacStreamInfoLooseConstraints::kMaxFrameSize);
+  EXPECT_EQ(stream_info->number_of_channels,
+            FlacStreamInfoStrictConstraints::kNumberOfChannels);
+  EXPECT_EQ(stream_info->md5_signature,
+            FlacStreamInfoLooseConstraints::kMd5Signature);
 }
 
 TEST(Generate, ConfiguresFlacWithExtraBlocks) {
@@ -948,23 +919,6 @@ TEST(Generate, IgnoresDeprecatedLastMetadataBlockFlag) {
   const auto& decoder_config = std::get<FlacDecoderConfig>(
       output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
   EXPECT_EQ(decoder_config.metadata_blocks_.size(), 1);
-}
-
-TEST(Generate, FailsWhenFlacMd5SignatureIsNotSixteenBytes) {
-  CodecConfigMetadatas codec_config_metadatas;
-  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
-  FillMetadataForFlac(codec_config_metadata);
-  codec_config_metadata.mutable_codec_config()
-      ->mutable_decoder_config_flac()
-      ->mutable_metadata_blocks(0)
-      ->mutable_stream_info()
-      ->mutable_md5_signature()
-      ->assign("0");
-
-  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
-
-  CodecConfigsById output_obus;
-  EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
 TEST(Generate, InvalidUnknownBlockType) {
