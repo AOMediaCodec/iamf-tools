@@ -94,11 +94,11 @@ options:
     -   Some types directly representable in IAMF include {stereo, 5.1, 7.1.4,
         third_order_ambisonics}. One type that is not representable directly in
         IAMF includes objects.
-    -   Low importance objects are filtered out of the generated metadata
-        based on the `--importance_threshold` flag. This is a metadata-only
-        filter: the wav splicer and the panner address the input file's
-        channels by position, so a filtered object's audio is still rendered
-        into the output.
+    -   Low importance objects are filtered out of the generated metadata based
+        on the `--importance_threshold` flag. This is a metadata-only filter:
+        the wav splicer and the panner address the input file's channels by
+        position, so a filtered object's audio is still rendered into the
+        output.
 -   Mix Presentation OBUs: mix presentations are generated based on ADM
     `audioProgramme`s.
 

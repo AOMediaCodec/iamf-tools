@@ -10,12 +10,28 @@ and this project adheres to
 
 ### Added
 
--   Add optional setting to disable trimming of audio at start or end by the
-    decoder.
--   Add `IamfEncoderInterface::GetEncoderDelay` to retrieve the total encoder
-    delay.
--   Add `AmbisonicsPreset` modes, which automatically configure ambisonics
-    projection or ambisonics mode modes when it is the best practice to do so.
+-   `IamfDecoderInterface`:
+    -   Add `TrimmingSettings` to control whether the decoder automatically
+        trims audio.
+    -   Add `OutputLayout::kIAMF_Binaural`.
+-   `IamfEncoderInterface` supports IAMF v2.0.0:
+    -   Add `PROFILE_VERSION_BASE_ADVANCED`, `PROFILE_VERSION_ADVANCED1`, and
+        `PROFILE_VERSION_ADVANCED2` profiles.
+    -   Support object-based audio elements.
+    -   Add layouts for 10.2.9.3 and 7.1.5.4.
+    -   Support `MetadataObu`.
+    -   Support `ElementGainOffsetConfig`, `BinauralFilterProfile`, and
+        `MixPresentationOptionalFields`, and `LOUDNESS_INFO_TYPE_LIVE`.
+    -   Add `GetEncoderDelay` to retrieve the total encoder delay.
+    -   Add `AmbisonicsPreset` modes, which automatically configure ambisonics
+        projection or ambisonics modes when it is the best practice to do so.
+    -   Support encoding streams with multiple Codec Config OBUs.
+-   Add a [`Probe` library](iamf/cli/probe.h) and
+    [command-line binary](docs/iamf_probe_main.md) to inspect standalone IAMF
+    files without decoding audio. This library is experimental and its API is
+    subject to change.
+-   Support 7.1.4 DirectSpeakers packs and spherical block positions in ADM
+    conversion.
 
 ### Removed
 
@@ -60,15 +76,18 @@ and this project adheres to
     `HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED`.
 -   Deprecate the spelling of `HEADPHONES_RENDERING_MODE_RESERVED_2` in favor of
     `HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED`.
--   Deprecate `OpusDecoderConfig::output_channel_count` field in favor of
-    always using the fixed value required by the IAMF specification (2).
--   Deprecate `OpusDecoderConfig::output_gain` field in favor of always using the
-    fixed value required by the IAMF specification (0).
+-   Deprecate `OpusDecoderConfig::output_channel_count` field in favor of always
+    using the fixed value required by the IAMF specification (2).
+-   Deprecate `OpusDecoderConfig::output_gain` field in favor of always using
+    the fixed value required by the IAMF specification (0).
 -   Deprecate `OpusDecoderConfig::mapping_family` field in favor of always using
     the fixed value required by the IAMF specification (0).
 -   Deprecate `automatically_override_codec_delay` and
     `OpusDecoderConfig::pre_skip` in favor of always automatically determining
     the codec delay.
+-   Deprecate `automatically_override_audio_roll_distance` and
+    `CodecConfig::audio_roll_distance` in favor of always automatically
+    determining the audio roll distance.
 -   Deprecate `CodecId` enum and `CodecConfig::codec_id` field. Infer the codec
     based on which `decoder_config` is present.
 -   Deprecate `ChannelAudioLayerConfig::substream_count` and
@@ -86,16 +105,30 @@ and this project adheres to
     `maximum_frame_size`, `number_of_channels`, `md5_signature`) in favor of
     inferring the block sizes from `CodecConfig.num_samples_per_frame` and using
     the fixed values required by the IAMF specification.
+-   Deprecate `OBU_IA_RESERVED_24` in favor of `OBU_IA_METADATA`.
+-   Deprecate `LOUDNESS_INFO_TYPE_RESERVED_4` in favor of
+    `LOUDNESS_INFO_TYPE_LIVE`.
+
+### Changed
+
+-   Select creator-preferred stereo and binaural layouts by default in the
+    decoder per IAMF specification §7.4.1.
+-   Compress precomputed loudspeaker gain tables and optimize ambisonics and
+    parameter block processing to reduce binary size and CPU/memory usage.
+-   Update several library dependencies.
 
 ### Fixed
 
--   Forbid encoding or decoding with multiple Codec Config OBUs under Simple
+-   Forbid encoding or decoding with multiple Codec Config OBUs under Simple,
     Base, and Base-Enhanced profiles.
--   Improve spec compliance, when decoding streams with unknown Descriptor OBUs.
+-   Improve spec compliance, when decoding streams with unknown Descriptor OBUs
+    or redundant IA Sequence Headers.
+-   Fix decoding of IEEE float WAV inputs in `WavReader`.
 
 ### Security
 
--   Fix potential invalid memory access for certain bitstreams.
+-   Fix potential buffer overflows, integer overflows, divide-by-zero, invalid
+    memory access, or excessive memory allocation for certain bitstreams.
 
 ## [2.1.0] - 2025-11-06
 

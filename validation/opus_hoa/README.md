@@ -1,21 +1,26 @@
 # Opus Ambisonics Verifier (`opus_hoa_main`)
 
-Checks if Opus Ambisonics Audio Elements in an IAMF bitstream (`.iamf`) follow recommendations for coding mode and demixing matrix.
+Checks if Opus Ambisonics Audio Elements in an IAMF bitstream (`.iamf`) follow
+recommendations for coding mode and demixing matrix.
 
 Audio Elements are classified as:
 
-* **CANONICAL**: Matches recommended mode and matrix.
-* **CUSTOM**: Valid, but uses non-standard mode or matrix.
+*   **CANONICAL**: Matches recommended mode and matrix.
+*   **CUSTOM**: Valid, but uses non-standard mode or matrix.
 
-*(Note: Non-Opus Ambisonics Audio Elements or those with missing codec configurations are skipped).*
+*(Note: Non-Opus Ambisonics Audio Elements or those with missing codec
+configurations are skipped).*
 
 ## Recommended Practices
 
-The verifier checks if Opus Ambisonics Audio Elements adhere to recommended practices:
+The verifier checks if Opus Ambisonics Audio Elements adhere to recommended
+practices:
 
-* **0OA to 2OA**: Use **MONO** mode (0).
-* **3OA to 4OA**: Use **PROJECTION** mode (1) with the reference Opus demixing matrix coefficients.
-* **PROJECTION mode**: `coupled_substream_count` should be the floor of half the total input channel count.
+*   **0OA to 2OA**: Use **MONO** mode (0).
+*   **3OA to 4OA**: Use **PROJECTION** mode (1) with the reference Opus demixing
+    matrix coefficients.
+*   **PROJECTION mode**: `coupled_substream_count` should be the floor of half
+    the total input channel count.
 
 ## Build
 
@@ -33,8 +38,9 @@ bazel run //validation/opus_hoa:opus_hoa_main -- \
 
 ### Flags
 
-* `--input` (Required): Input `.iamf` file.
-* `--report_file` (Optional, default: `opus_hoa_report.txt`): Output report file.
+*   `--input` (Required): Input `.iamf` file.
+*   `--report_file` (Optional, default: `opus_hoa_report.txt`): Output report
+    file.
 
 ## Output
 

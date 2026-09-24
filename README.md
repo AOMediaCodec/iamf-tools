@@ -45,8 +45,8 @@ standalone IAMF and IAMF in MP4.
 ### Inspecting IAMF content
 
 `iamf-tools` provides a probe that summarizes the descriptor OBUs (and,
-optionally, the temporal units) of a standalone IAMF file without decoding
-any audio:
+optionally, the temporal units) of a standalone IAMF file without decoding any
+audio:
 
 -   [`Probe` API](iamf/cli/probe.h)
 -   [Command-line probe for standalone IAMF files](docs/iamf_probe_main.md)
