@@ -109,42 +109,46 @@ message AacEncoderMetadata {
 }
 
 message AacDecoderSpecificInfo {
-  uint32 decoder_specific_info_descriptor_tag = 5 [default = 0x05];
-
-  uint32 audio_object_type = 1 [default = 2];
-
   SampleFrequencyIndex sample_frequency_index = 2;
+
+  // Below deprecated fields are ignored. Their values are fixed in the
+  // bitstream.
+  uint32 decoder_specific_info_descriptor_tag = 5
+      [default = 0x05, deprecated = true];
+  uint32 audio_object_type = 1 [default = 2, deprecated = true];
   uint32 sampling_frequency = 3 [deprecated = true];
-  uint32 channel_configuration = 4 [default = 2];
+  uint32 channel_configuration = 4 [default = 2, deprecated = true];
 
   // Next ID: 6
 }
 
 message AacGaSpecificConfig {
-  bool frame_length_flag = 1 [default = false];
+  // This entire message is deprecated. All fields are fixed in the
+  // bitstream.
+  option deprecated = true;
 
-  bool depends_on_core_coder = 2 [default = false];
-
-  bool extension_flag = 3 [default = false];
+  bool frame_length_flag = 1 [default = false, deprecated = true];
+  bool depends_on_core_coder = 2 [default = false, deprecated = true];
+  bool extension_flag = 3 [default = false, deprecated = true];
 }
 
 message AacDecoderConfig {
-  uint32 decoder_config_descriptor_tag = 11 [default = 0x04];
-
-  uint32 object_type_indication = 1 [default = 0x40];
-
-  uint32 stream_type = 2 [default = 5];
-
-  bool upstream = 3 [default = false];
-
-  bool reserved = 4 [default = true];  // As per ISO 14496-1:2010.
-
   uint32 buffer_size_db = 5;
   uint32 max_bitrate = 6;
   uint32 average_bit_rate = 7;
   AacDecoderSpecificInfo decoder_specific_info = 8;
-  AacGaSpecificConfig ga_specific_config = 9;
   AacEncoderMetadata aac_encoder_metadata = 10;
+
+  // Below deprecated fields are ignored. Their values are fixed in the
+  // bitstream.
+  uint32 decoder_config_descriptor_tag = 11 [default = 0x04, deprecated = true];
+  uint32 object_type_indication = 1 [default = 0x40, deprecated = true];
+  uint32 stream_type = 2 [default = 5, deprecated = true];
+  bool upstream = 3 [default = false, deprecated = true];
+  bool reserved = 4 [default = true, deprecated = true];
+  AacGaSpecificConfig ga_specific_config = 9 [deprecated = true];
+
+  // Next ID: 12
 }
 
 enum FlacBlockType {

@@ -74,6 +74,13 @@ and this project adheres to
 -   Deprecate `ChannelAudioLayerConfig::substream_count` and
     `ChannelAudioLayerConfig::coupled_substream_count` in favor of automatically
     determining them from the `loudspeaker_layout`.
+-   Deprecate fixed fields in `AacDecoderConfig`
+    (`decoder_config_descriptor_tag`, `object_type_indication`, `stream_type`,
+    `upstream`, `reserved`, `ga_specific_config`), `AacDecoderSpecificInfo`
+    (`decoder_specific_info_descriptor_tag`, `audio_object_type`,
+    `channel_configuration`), and `AacGaSpecificConfig` (`frame_length_flag`,
+    `depends_on_core_coder`, `extension_flag`) in favor of always using the
+    fixed values required by the IAMF specification.
 
 ### Fixed
 

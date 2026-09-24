@@ -518,9 +518,7 @@ TEST_F(CodecConfigGeneratorTest, IamfAacFixedFieldsMayBeOmitted) {
   EXPECT_EQ(*output_obus, expected_obus_);
 }
 
-TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacDecoderConfig) {
-  // IAMF requires several fields in the AAC Decoder Config are fixed. The
-  // generator does not validate OBU requirements.
+TEST_F(CodecConfigGeneratorTest, IgnoresDeprecatedAacDecoderConfigFields) {
   const uint8_t kInvalidDecoderConfigDescriptorTag = 99;
   ASSERT_NE(kInvalidDecoderConfigDescriptorTag,
             AacDecoderConfig::kDecoderConfigDescriptorTag);
@@ -545,20 +543,22 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacDecoderConfig) {
 
   const auto output_obus = InitAndGenerate();
   ASSERT_THAT(output_obus, IsOk());
+
+  // IAMF requires the decoder specific info tag is fixed. The generator
+  // always sets the correct value.
   const auto& decoder_config = std::get<AacDecoderConfig>(
       output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config);
-
   EXPECT_EQ(decoder_config.decoder_config_descriptor_tag_,
-            kInvalidDecoderConfigDescriptorTag);
+            AacDecoderConfig::kDecoderConfigDescriptorTag);
   EXPECT_EQ(decoder_config.object_type_indication_,
-            kInvalidObjectTypeIndication);
-  EXPECT_EQ(decoder_config.stream_type_, kInvalidStreamType);
-  EXPECT_EQ(decoder_config.upstream_, kInvalidUpstream);
+            AacDecoderConfig::kObjectTypeIndication);
+  EXPECT_EQ(decoder_config.stream_type_, AacDecoderConfig::kStreamType);
+  EXPECT_EQ(decoder_config.upstream_, AacDecoderConfig::kUpstream);
+  EXPECT_EQ(decoder_config.reserved_, AacDecoderConfig::kReserved);
 }
 
-TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacAudioSpecificConfig) {
-  // IAMF requires `audio_object_type` is fixed. The generator does
-  // not validate OBU requirements.
+TEST_F(CodecConfigGeneratorTest,
+       IgnoresDeprecatedAacAudioSpecificConfigFields) {
   const uint8_t kInvalidAudioObjectType = 99;
   ASSERT_NE(kInvalidAudioObjectType, AudioSpecificConfig::kAudioObjectType);
   const uint8_t kInvalidChannelConfiguration = 98;
@@ -580,18 +580,19 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacAudioSpecificConfig) {
   const auto output_obus = InitAndGenerate();
   ASSERT_THAT(output_obus, IsOk());
 
+  // IAMF requires the decoder specific info tag is fixed. The generator
+  // always sets the correct value.
   const auto& audio_specific_config =
       std::get<AacDecoderConfig>(
           output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
           .decoder_specific_info_.audio_specific_config;
-  EXPECT_EQ(audio_specific_config.audio_object_type_, kInvalidAudioObjectType);
+  EXPECT_EQ(audio_specific_config.audio_object_type_,
+            AudioSpecificConfig::kAudioObjectType);
   EXPECT_EQ(audio_specific_config.channel_configuration_,
-            kInvalidChannelConfiguration);
+            AudioSpecificConfig::kChannelConfiguration);
 }
 
-TEST_F(CodecConfigGeneratorTest, ObeysInvalidDecoderSpecificInfo) {
-  // IAMF requires one field in the Decoder Specific Config is fixed. The
-  // generator does not validate OBU requirements.
+TEST_F(CodecConfigGeneratorTest, IgnoresDeprecatedDecoderSpecificInfoTag) {
   const uint8_t kInvalidDecoderSpecificInfoTag = 99;
   ASSERT_NE(kInvalidDecoderSpecificInfoTag,
             AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag);
@@ -606,15 +607,15 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidDecoderSpecificInfo) {
   const auto output_obus = InitAndGenerate();
   ASSERT_THAT(output_obus, IsOk());
 
+  // IAMF requires the decoder specific info tag is fixed. The generator
+  // always sets the correct value.
   EXPECT_EQ(std::get<AacDecoderConfig>(
                 output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
                 .decoder_specific_info_.decoder_specific_info_tag,
-            kInvalidDecoderSpecificInfoTag);
+            AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag);
 }
 
-TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacGaSpecificConfig) {
-  // IAMF requires several fields in the GA specific config are fixed. The
-  // generator does not validate OBU requirements.
+TEST_F(CodecConfigGeneratorTest, IgnoresDeprecatedAacGaSpecificConfig) {
   const bool kInvalidFrameLengthFlag = true;
   ASSERT_NE(kInvalidFrameLengthFlag,
             AudioSpecificConfig::GaSpecificConfig::kFrameLengthFlag);
@@ -640,11 +641,14 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacGaSpecificConfig) {
           output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
           .decoder_specific_info_.audio_specific_config.ga_specific_config_;
 
+  // IAMF requires several fields in the GA specific config are fixed. The
+  // generator always sets the correct values.
   EXPECT_EQ(generated_ga_specific_config.frame_length_flag,
-            kInvalidFrameLengthFlag);
+            AudioSpecificConfig::GaSpecificConfig::kFrameLengthFlag);
   EXPECT_EQ(generated_ga_specific_config.depends_on_core_coder,
-            kDependsOnCoreCoder);
-  EXPECT_EQ(generated_ga_specific_config.extension_flag, kExtensionFlag);
+            AudioSpecificConfig::GaSpecificConfig::kDependsOnCoreCoder);
+  EXPECT_EQ(generated_ga_specific_config.extension_flag,
+            AudioSpecificConfig::GaSpecificConfig::kExtensionFlag);
 }
 
 TEST_F(CodecConfigGeneratorTest, InvalidUnknownSamplingFrequencyIndex) {

@@ -192,19 +192,6 @@ absl::StatusOr<FlacDecoderConfig> GenerateFlacDecoderConfig(
 absl::StatusOr<AacDecoderConfig> GenerateAacDecoderConfig(
     const iamf_tools_cli_proto::AacDecoderConfig& aac_metadata) {
   AacDecoderConfig obu_decoder_config;
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AacDecoderConfig.decoder_config_descriptor_tag",
-      aac_metadata.decoder_config_descriptor_tag(),
-      obu_decoder_config.decoder_config_descriptor_tag_));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AacDecoderConfig.object_type_indication",
-      aac_metadata.object_type_indication(),
-      obu_decoder_config.object_type_indication_));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AacDecoderConfig.stream_type", aac_metadata.stream_type(),
-      obu_decoder_config.stream_type_));
-  obu_decoder_config.upstream_ = aac_metadata.upstream();
-  obu_decoder_config.reserved_ = aac_metadata.reserved();
   obu_decoder_config.buffer_size_db_ = aac_metadata.buffer_size_db();
   obu_decoder_config.max_bitrate_ = aac_metadata.max_bitrate();
   obu_decoder_config.average_bit_rate_ = aac_metadata.average_bit_rate();
@@ -212,17 +199,8 @@ absl::StatusOr<AacDecoderConfig> GenerateAacDecoderConfig(
   if (!aac_metadata.has_decoder_specific_info()) {
     return absl::InvalidArgumentError("Missing AAC decoder specific info.");
   }
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AacDecoderConfig.decoder_specific_info_descriptor_tag",
-      aac_metadata.decoder_specific_info()
-          .decoder_specific_info_descriptor_tag(),
-      obu_decoder_config.decoder_specific_info_.decoder_specific_info_tag));
   auto& audio_specific_config =
       obu_decoder_config.decoder_specific_info_.audio_specific_config;
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AacDecoderConfig.audio_object_type",
-      aac_metadata.decoder_specific_info().audio_object_type(),
-      audio_specific_config.audio_object_type_));
 
   if (aac_metadata.decoder_specific_info().sample_frequency_index() ==
       iamf_tools_cli_proto::AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE) {
@@ -244,18 +222,6 @@ absl::StatusOr<AacDecoderConfig> GenerateAacDecoderConfig(
         aac_metadata.decoder_specific_info().sample_frequency_index(),
         audio_specific_config.sample_frequency_index_));
   }
-
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AacDecoderConfig.channel_configuration",
-      aac_metadata.decoder_specific_info().channel_configuration(),
-      audio_specific_config.channel_configuration_));
-
-  audio_specific_config.ga_specific_config_.frame_length_flag =
-      aac_metadata.ga_specific_config().frame_length_flag();
-  audio_specific_config.ga_specific_config_.depends_on_core_coder =
-      aac_metadata.ga_specific_config().depends_on_core_coder();
-  audio_specific_config.ga_specific_config_.extension_flag =
-      aac_metadata.ga_specific_config().extension_flag();
 
   return obu_decoder_config;
 }
