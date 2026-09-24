@@ -13,6 +13,7 @@ edition = "2023";
 package iamf_tools_cli_proto;
 
 import "iamf/cli/proto/parameter_data.proto";
+import "iamf/cli/proto/types.proto";
 
 // Valid proto enums start at index 1, which are different from the
 // corresponding enums in C++, e.g. kParameterDefinitionMixGain = 0.
@@ -56,7 +57,9 @@ message ParamDefinition {
 //  - For +6 dB, set the proto value to 256 * 6 = 1536.
 message MixGainParamDefinition {
   ParamDefinition param_definition = 1;
-  int32 default_mix_gain = 2;  // Q7.8.
+  // Deprecated. Prefer `default_mix_gain_db`.
+  int32 default_mix_gain = 2 [deprecated = true];  // Q7.8.
+  QFormatOrFloatingPoint default_mix_gain_db = 3;
 }
 
 message DemixingParamDefinition {

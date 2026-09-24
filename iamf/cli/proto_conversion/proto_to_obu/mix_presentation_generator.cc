@@ -21,6 +21,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/status_macros.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -405,13 +406,12 @@ absl::StatusOr<MixGainParamDefinition> CreateMixGainParamDefinition(
   if (!base_args.ok()) {
     return base_args.status();
   }
-  int16_t default_mix_gain_q78;
-  RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
-      "MixGainParamDefinition.default_mix_gain",
-      input_mix_gain.default_mix_gain(), default_mix_gain_q78));
   MixGainParamDefinition mix_gain(*base_args);
-  mix_gain.default_mix_gain_ =
-      QFormatOrFloatingPoint::MakeFromQ7_8(default_mix_gain_q78);
+  ABSL_ASSIGN_OR_RETURN(
+      mix_gain.default_mix_gain_,
+      ProtoToQFormatOrFloatingPoint(input_mix_gain.default_mix_gain(),
+                                    input_mix_gain.default_mix_gain_db(),
+                                    "MixGainParamDefinition.default_mix_gain"));
 
   return mix_gain;
 }

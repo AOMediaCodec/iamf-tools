@@ -26,6 +26,7 @@
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/types.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/utils/map_utils.h"
@@ -162,12 +163,8 @@ absl::Status SubMixAudioElementMetadataBuilder(
   // 'default_mix_gain' for each audio element in a mix presentation is
   // initialized to 0. If the corresponding audioObject in ADM has the 'gain'
   // parameter present, set it to the same.
-  int16_t mix_gain_q7_8;
-  if (const auto& status = FloatToQ7_8(audio_object.gain, mix_gain_q7_8);
-      !status.ok()) {
-    return status;
-  }
-  mix_gain_param_definition->set_default_mix_gain(mix_gain_q7_8);
+  mix_gain_param_definition->mutable_default_mix_gain_db()->set_floating_point(
+      audio_object.gain);
 
   auto* param_definition =
       mix_gain_param_definition->mutable_param_definition();
@@ -268,7 +265,7 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
   param_definition->set_parameter_id(next_parameter_id_++);
   param_definition->set_parameter_rate(common_parameter_rate_);
   param_definition->set_param_definition_mode(1);
-  mix_gain_param_definition->set_default_mix_gain(0);
+  mix_gain_param_definition->mutable_default_mix_gain_db()->set_q7_dot8(0);
   int32_t num_layouts = 1;
 
   // A stereo loudness layout is always required by IAMF.

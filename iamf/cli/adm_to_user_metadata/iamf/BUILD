@@ -42,6 +42,7 @@ cc_library(
         "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
+        "//iamf/cli/proto:types_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common/utils:map_utils",

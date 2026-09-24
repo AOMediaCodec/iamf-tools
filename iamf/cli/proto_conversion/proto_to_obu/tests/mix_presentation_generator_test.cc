@@ -84,7 +84,8 @@ void FillMixGainParamDefinition(
       ->set_param_definition_mode(kParamDefinitionMode);
   mix_gain_param_definition.mutable_param_definition()->set_reserved(
       kParamDefinitionReserved);
-  mix_gain_param_definition.set_default_mix_gain(output_mix_gain);
+  mix_gain_param_definition.mutable_default_mix_gain_db()->set_q7_dot8(
+      output_mix_gain);
 }
 
 // Fills `mix_presentation_metadata` with a single submix that contains a single
@@ -1248,6 +1249,66 @@ TEST(Generate, CopiesElementMixGain) {
   EXPECT_EQ(first_element_mix_gain.GetReserved(), kParamDefinitionReserved);
   EXPECT_EQ(first_element_mix_gain.default_mix_gain_.GetQ7_8(),
             kNonZeroMixGain);
+}
+
+TEST(Generate, CopiesFloatingPointElementMixGainDb) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_element_mix_gain()
+      ->mutable_default_mix_gain_db()
+      ->set_floating_point(-3.0f);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  MixPresentationObus generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  EXPECT_EQ(generated_obus.front()
+                .sub_mixes_[0]
+                .audio_elements[0]
+                .element_mix_gain.default_mix_gain_.GetQ7_8(),
+            -768);
+}
+
+TEST(Generate, CopiesDeprecatedDefaultMixGain) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto* element_mix_gain = mix_presentation_metadata.at(0)
+                               .mutable_sub_mixes(0)
+                               ->mutable_audio_elements(0)
+                               ->mutable_element_mix_gain();
+  element_mix_gain->clear_default_mix_gain_db();
+  element_mix_gain->set_default_mix_gain(-768);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  MixPresentationObus generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  EXPECT_EQ(generated_obus.front()
+                .sub_mixes_[0]
+                .audio_elements[0]
+                .element_mix_gain.default_mix_gain_.GetQ7_8(),
+            -768);
+}
+
+TEST(Generate, FailsWhenBothDeprecatedDefaultMixGainAndDefaultMixGainDbAreSet) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto* element_mix_gain = mix_presentation_metadata.at(0)
+                               .mutable_sub_mixes(0)
+                               ->mutable_audio_elements(0)
+                               ->mutable_element_mix_gain();
+  element_mix_gain->set_default_mix_gain(-768);
+  element_mix_gain->mutable_default_mix_gain_db()->set_floating_point(-3.0f);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  MixPresentationObus generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              Not(IsOk()));
 }
 
 TEST(Generate, EmptyUserMetadataGeneratesNoObus) {

@@ -33,6 +33,7 @@ cc_test(
         "//iamf/cli/adm_to_user_metadata/iamf:mix_presentation_handler",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
+        "//iamf/cli/proto:types_cc_proto",
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",

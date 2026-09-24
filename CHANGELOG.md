@@ -108,6 +108,8 @@ and this project adheres to
 -   Deprecate `OBU_IA_RESERVED_24` in favor of `OBU_IA_METADATA`.
 -   Deprecate `LOUDNESS_INFO_TYPE_RESERVED_4` in favor of
     `LOUDNESS_INFO_TYPE_LIVE`.
+-   Deprecate `MixGainParamDefinition::default_mix_gain` in favor of
+    `MixGainParamDefinition::default_mix_gain_db` (`QFormatOrFloatingPoint`).
 
 ### Changed
 

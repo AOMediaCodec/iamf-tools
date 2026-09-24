@@ -85,7 +85,10 @@ proto_library(
 proto_library(
     name = "param_definitions_proto",
     srcs = ["param_definitions.proto"],
-    deps = [":parameter_data_proto"],
+    deps = [
+        ":parameter_data_proto",
+        ":types_proto",
+    ],
 )
 
 proto_library(

@@ -26,6 +26,7 @@
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/types.pb.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -37,7 +38,6 @@ constexpr uint32_t kCommonParameterRate = 48000;
 constexpr uint32_t kMixPresentationId = 99;
 
 constexpr float kStereoGain = 3.0f / 256.0f;
-constexpr int16_t kExpectedStereoGain = 3;
 const AudioObject& GetStereoAudioObject() {
   constexpr absl::string_view kStereoAudioObjectId = "Stereo Audio Object";
   constexpr absl::string_view kStereoAudioPackFormatId = "AP_00010002";
@@ -183,10 +183,11 @@ TEST(PopulateMixPresentation, PopulatesStereoSubmix) {
   EXPECT_EQ(audio_element.audio_element_id(), kExpectedAudioElementId);
   EXPECT_FALSE(audio_element.localized_element_annotations().empty());
 
-  EXPECT_EQ(audio_element.element_mix_gain().default_mix_gain(),
-            kExpectedStereoGain);
+  EXPECT_EQ(
+      audio_element.element_mix_gain().default_mix_gain_db().floating_point(),
+      kStereoGain);
 
-  EXPECT_EQ(submix.output_mix_gain().default_mix_gain(), 0);
+  EXPECT_EQ(submix.output_mix_gain().default_mix_gain_db().q7_dot8(), 0);
 }
 
 TEST(PopulateMixPresentation,
