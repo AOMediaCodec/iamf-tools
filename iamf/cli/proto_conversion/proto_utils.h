@@ -13,10 +13,12 @@
 #ifndef CLI_PROTO_CONVERSION_PROTO_UTILS_H_
 #define CLI_PROTO_CONVERSION_PROTO_UTILS_H_
 
+#include <cstdint>
 #include <memory>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/ambisonics_mixer.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
@@ -43,6 +45,25 @@ namespace iamf_tools {
 absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
     const iamf_tools_cli_proto::QFormatOrFloatingPoint&
         input_q_format_or_floating_point);
+
+/*!\brief Converts a deprecated Q7.8 field or `QFormatOrFloatingPoint` proto.
+ *
+ * Returns an error for partial upgrades (only one of `deprecated_q7_dot8` may
+ * be `input_q_format_or_floating_point` set). Defaults to 0 (0.0 dB) if neither
+ * is set.
+ *
+ * \param deprecated_q7_dot8 Deprecated Q7.8 integer field value.
+ * \param input_q_format_or_floating_point `QFormatOrFloatingPoint` proto
+ *        message.
+ * \param field_name Field name used for error and warning messages.
+ * \return Internal representation of a `QFormatOrFloatingPoint` on success. A
+ *         specific status on failure.
+ */
+absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
+    int32_t deprecated_q7_dot8,
+    const iamf_tools_cli_proto::QFormatOrFloatingPoint&
+        input_q_format_or_floating_point,
+    absl::string_view field_name);
 
 /*!\brief Converts to the internal representation of the input protocol buffer.
  *

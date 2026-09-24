@@ -21,6 +21,7 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/ambisonics_mixer.h"
 #include "iamf/cli/proto/obu_header.pb.h"
@@ -58,6 +59,30 @@ absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
     // By default, return a safe 0.
     return QFormatOrFloatingPoint::MakeFromQ7_8(0);
   }
+}
+
+absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
+    int32_t deprecated_q7_dot8,
+    const iamf_tools_cli_proto::QFormatOrFloatingPoint&
+        input_q_format_or_floating_point,
+    absl::string_view field_name) {
+  const bool has_q_format_or_floating_point =
+      input_q_format_or_floating_point.value_case() !=
+      iamf_tools_cli_proto::QFormatOrFloatingPoint::VALUE_NOT_SET;
+  if (deprecated_q7_dot8 != 0 && has_q_format_or_floating_point) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Cannot specify both deprecated Q7.8 integer and "
+                     "`QFormatOrFloatingPoint` for ",
+                     field_name));
+  }
+  if (deprecated_q7_dot8 != 0) {
+    ABSL_LOG(WARNING) << "Using deprecated Q7.8 integer for " << field_name
+                      << ". Please upgrade to `QFormatOrFloatingPoint`.";
+    iamf_tools_cli_proto::QFormatOrFloatingPoint q_format_or_floating_point;
+    q_format_or_floating_point.set_q7_dot8(deprecated_q7_dot8);
+    return ProtoToQFormatOrFloatingPoint(q_format_or_floating_point);
+  }
+  return ProtoToQFormatOrFloatingPoint(input_q_format_or_floating_point);
 }
 
 absl::StatusOr<AmbisonicsMixer::Preset> ProtoToAmbisonicsPreset(

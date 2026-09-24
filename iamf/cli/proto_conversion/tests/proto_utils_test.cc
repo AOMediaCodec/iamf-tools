@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/ambisonics_mixer.h"
@@ -25,6 +26,7 @@
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/leb_generator.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/subblock_schedule.h"
@@ -37,6 +39,8 @@ using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::FloatNear;
 using ::testing::Not;
+
+constexpr absl::string_view kDebuggingMessage = "test_field";
 
 TEST(ProtoToAmbisonicsPreset, ConvertsAllPresets) {
   using enum iamf_tools_cli_proto::AmbisonicsPreset;
@@ -104,6 +108,47 @@ TEST(GetQ7_8FromProto, FloatOutOfRangeReturnsError) {
 
   EXPECT_THAT(ProtoToQFormatOrFloatingPoint(q_format_or_floating_point),
               Not(IsOk()));
+}
+
+TEST(ProtoToQFormatOrFloatingPointWithDeprecatedField,
+     UsesDeprecatedFieldWhenNonZero) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint empty_proto;
+  auto converted =
+      ProtoToQFormatOrFloatingPoint(-768, empty_proto, kDebuggingMessage);
+
+  EXPECT_THAT(converted,
+              IsOkAndHolds(QFormatOrFloatingPoint::MakeFromQ7_8(-768)));
+}
+
+TEST(ProtoToQFormatOrFloatingPointWithDeprecatedField,
+     UsesQFormatOrFloatingPointWhenSet) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint proto_field;
+  proto_field.set_floating_point(-3.0f);
+
+  auto converted =
+      ProtoToQFormatOrFloatingPoint(0, proto_field, kDebuggingMessage);
+
+  EXPECT_THAT(converted,
+              IsOkAndHolds(QFormatOrFloatingPoint::MakeFromQ7_8(-768)));
+}
+
+TEST(ProtoToQFormatOrFloatingPointWithDeprecatedField,
+     DefaultsToZeroWhenNeitherSet) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint empty_proto;
+  auto converted =
+      ProtoToQFormatOrFloatingPoint(0, empty_proto, kDebuggingMessage);
+
+  EXPECT_THAT(converted, IsOkAndHolds(QFormatOrFloatingPoint::MakeFromQ7_8(0)));
+}
+
+TEST(ProtoToQFormatOrFloatingPointWithDeprecatedField,
+     ReturnsErrorWhenBothSet) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint proto_field;
+  proto_field.set_floating_point(-3.0f);
+
+  EXPECT_THAT(
+      ProtoToQFormatOrFloatingPoint(-768, proto_field, kDebuggingMessage),
+      Not(IsOk()));
 }
 
 TEST(CopyDemixingInfoParameterData, Basic) {
