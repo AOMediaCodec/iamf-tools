@@ -39,25 +39,6 @@ Set the following fields in the textproto template.
     Set this to the desired output filename. The generated .iamf file will be
     named `file_name_prefix.iamf`.
 
--   `loudness`
-
-    Measure the loudness of the input audio, including the stereo downmix, and
-    store these values in the following loudness fields. IAMF decoders and
-    renderers can use this loudness metadata to normalize the output audio.
-
-    -   `loudness.integrated_loudness`
-
-        This is the [ITU-R BS.1770-4](https://www.itu.int/rec/R-REC-BS.1770)
-        integrated loudness, specified in LKFS. Convert the loudness value to
-        the correct `int16` value to use here as `integrated_loudness =
-        integrated_loudness_in_lkfs * 256`.
-
-    -   `loudness.digital_peak`
-
-        This is the digital (sampled) peak value of the audio signal, specified
-        in dBFS. Convert the peak value to the correct `int16` value to use here
-        as `digital_peak = digital_peak_in_dBFS * 256`.
-
 Optionally, modify other fields in the textproto template as necessary.
 
 -   `channel_metadatas`
@@ -74,22 +55,18 @@ Optionally, modify other fields in the textproto template as necessary.
     This informs the renderer if the audio element should be binauralized or
     downmixed to stereo.
 
--   `element_mix_gain.default_mix_gain`
+-   `element_mix_gain.default_mix_gain_db`
 
     This is the gain that will be applied to an audio element before it is
     summed with all other audio elements.
 
-    It is denoted in dB and Q7.8 format, and then converted to `int16`. Convert
-    a desired gain to the correct `int16` value to use here as
-    `default_mix_gain = gain_in_db * 256`.
+    It is denoted in dB (e.g., `floating_point: -3.0` or `floating_point: 0.0`).
 
--   `output_mix_gain.default_mix_gain`
+-   `output_mix_gain.default_mix_gain_db`
 
     This is the gain that will be applied to the summed audio elements.
 
-    It is denoted in dB and Q7.8 format, and then converted to `int16`. Convert
-    a desired gain to the correct `int16` value to use here as
-    `default_mix_gain = gain_in_db * 256`.
+    It is denoted in dB (e.g., `floating_point: 0.0`).
 
 The following are available for PCM textprotos only.
 
