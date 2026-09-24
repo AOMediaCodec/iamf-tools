@@ -112,7 +112,7 @@ target_include_directories(iamf_core PUBLIC
     ${SRC}/protobuf              # bazel-style "src/google/protobuf/..." includes
     ${SRC}/shims/flac            # "include/FLAC/..."
     ${SRC}/shims/opus            # "include/opus.h"
-    ${SRC}/shims/expat           # "expat/lib/expat.h"
+    ${SRC}/shims/expat           # "lib/expat.h"
     ${EIGEN_INC})
 target_link_libraries(iamf_core PUBLIC
     iamf_protos ebur128_analyzer obr_lib a2t_dsp fdk_aac_static

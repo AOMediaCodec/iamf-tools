@@ -34,9 +34,9 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "expat/lib/expat.h"
-#include "expat/lib/expat_external.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
+#include "lib/expat.h"
+#include "lib/expat_external.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {

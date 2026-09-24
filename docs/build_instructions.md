@@ -8,8 +8,6 @@
     [Bazelisk installation instructions](https://bazel.build/install/bazelisk).
     For further information on Bazel, see
     [Getting started](https://bazel.build/start).
--   CMake: required to build some dependencies. See CMake's
-    [Download](https://cmake.org/download/) page to install.
 -   Clang 13+ or GCC 10+ for Linux-like systems or MSVC for Windows.
 
 ### Additional Windows prerequisites
