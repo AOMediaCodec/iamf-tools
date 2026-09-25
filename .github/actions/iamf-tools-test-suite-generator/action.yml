@@ -17,6 +17,7 @@ runs:
       uses: actions/upload-artifact@v6
       with:
         name: iamf-test-vectors-${{ github.sha }}
+        retention-days: 7
         path: |
           ${{ github.workspace }}/iamf_test_vectors/*.iamf
           ${{ github.workspace }}/iamf_test_summary/*.csv
