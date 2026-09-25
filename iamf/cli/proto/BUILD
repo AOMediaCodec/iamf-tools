@@ -25,6 +25,7 @@ proto_library(
     deps = [
         "param_definitions_proto",
         ":obu_header_proto",
+        ":types_proto",
     ],
 )
 

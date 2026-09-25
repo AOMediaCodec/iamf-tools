@@ -14,6 +14,7 @@ package iamf_tools_cli_proto;
 
 import "iamf/cli/proto/obu_header.proto";
 import "iamf/cli/proto/param_definitions.proto";
+import "iamf/cli/proto/types.proto";
 
 option features.enum_type = CLOSED;
 
@@ -104,8 +105,12 @@ message ChannelAudioLayerConfig {
   uint32 coupled_substream_count = 6 [deprecated = true];
   uint32 output_gain_flag = 7;
   uint32 reserved_b = 8;
-  int32 output_gain = 9;
+  // Deprecated. Prefer `output_gain_db`.
+  int32 output_gain = 9 [deprecated = true];
+  QFormatOrFloatingPoint output_gain_db = 12;
   ExpandedLoudspeakerLayout expanded_loudspeaker_layout = 11;
+
+  // Next ID: 13
 }
 
 message ScalableChannelLayoutConfig {

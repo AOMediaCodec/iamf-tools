@@ -26,6 +26,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/types.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
@@ -131,7 +132,7 @@ void FillTwoLayerStereoMetadata(
             recon_gain_is_present_flag: 0
             reserved_a: 0
             output_gain_flag: 32
-            output_gain: 32767
+            output_gain_db { q7_dot8: 32767 }
           }
         }
       )pb",
@@ -736,6 +737,65 @@ TEST(Generate, FillsAudioElementWithDataFields) {
             kExpectedChannelNumbersForLayer);
   EXPECT_THAT(audio_element_with_data.label_to_output_gain,
               Contains(Pair(kL2, FloatEq(128.0 - 1 / 256.0))));
+}
+
+TEST(Generate, CopiesFloatingPointOutputGainDb) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  FillTwoLayerStereoMetadata(*audio_element_metadatas.Add());
+  audio_element_metadatas.at(0)
+      .mutable_scalable_channel_layout_config()
+      ->mutable_channel_audio_layer_configs(1)
+      ->mutable_output_gain_db()
+      ->set_floating_point(-6.0f);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+
+  AudioElementsById output_obus;
+  AudioElementGenerator generator(audio_element_metadatas);
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  ASSERT_TRUE(output_obus.contains(kAudioElementId));
+  EXPECT_THAT(output_obus.at(kAudioElementId).label_to_output_gain,
+              Contains(Pair(kL2, FloatEq(-6.0f))));
+}
+
+TEST(Generate, CopiesDeprecatedOutputGain) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  FillTwoLayerStereoMetadata(*audio_element_metadatas.Add());
+  auto* layer_config = audio_element_metadatas.at(0)
+                           .mutable_scalable_channel_layout_config()
+                           ->mutable_channel_audio_layer_configs(1);
+  layer_config->clear_output_gain_db();
+  layer_config->set_output_gain(-1536);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+
+  AudioElementsById output_obus;
+  AudioElementGenerator generator(audio_element_metadatas);
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  ASSERT_TRUE(output_obus.contains(kAudioElementId));
+  EXPECT_THAT(output_obus.at(kAudioElementId).label_to_output_gain,
+              Contains(Pair(kL2, FloatEq(-6.0f))));
+}
+
+TEST(Generate, FailsWhenBothDeprecatedOutputGainAndOutputGainDbAreSet) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  FillTwoLayerStereoMetadata(*audio_element_metadatas.Add());
+  auto* layer_config = audio_element_metadatas.at(0)
+                           .mutable_scalable_channel_layout_config()
+                           ->mutable_channel_audio_layer_configs(1);
+  layer_config->set_output_gain(-1536);
+  layer_config->mutable_output_gain_db()->set_floating_point(-6.0f);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+
+  AudioElementsById output_obus;
+  AudioElementGenerator generator(audio_element_metadatas);
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
 }
 
 TEST(Generate, DeprecatedLoudspeakerLayoutIsNotSupported) {

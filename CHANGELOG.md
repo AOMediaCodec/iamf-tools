@@ -110,6 +110,8 @@ and this project adheres to
     `LOUDNESS_INFO_TYPE_LIVE`.
 -   Deprecate `MixGainParamDefinition::default_mix_gain` in favor of
     `MixGainParamDefinition::default_mix_gain_db` (`QFormatOrFloatingPoint`).
+-   Deprecate `ChannelAudioLayerConfig::output_gain` in favor of
+    `ChannelAudioLayerConfig::output_gain_db` (`QFormatOrFloatingPoint`).
 
 ### Changed
 

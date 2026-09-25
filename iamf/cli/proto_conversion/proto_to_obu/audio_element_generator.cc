@@ -379,9 +379,13 @@ absl::StatusOr<AudioElementWithData> CreateChannelBasedAudioElementWithData(
       RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
           "ChannelAudioLayerConfig.reserved_b", input_layer_config.reserved_b(),
           layer_config.reserved_b));
-      RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
-          "ChannelAudioLayerConfig.output_gain",
-          input_layer_config.output_gain(), layer_config.output_gain));
+      const auto output_gain = ProtoToQFormatOrFloatingPoint(
+          input_layer_config.output_gain(), input_layer_config.output_gain_db(),
+          "ChannelAudioLayerConfig.output_gain");
+      if (!output_gain.ok()) {
+        return output_gain.status();
+      }
+      layer_config.output_gain = output_gain->GetQ7_8();
     }
     config.channel_audio_layer_configs.emplace_back(std::move(layer_config));
   }
