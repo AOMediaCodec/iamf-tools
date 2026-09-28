@@ -172,6 +172,14 @@ TEST_F(DefaultLayoutRendererTest, CreateFailsWhenFactoryReturnsNull) {
   EXPECT_THAT(renderer, IsNull());
 }
 
+TEST_F(DefaultLayoutRendererTest, CreateFailsWithNoAudioElement) {
+  auto renderer = DefaultLayoutRenderer::Create(
+      /*audio_elements_in_sub_mix=*/{}, /*sub_mix_audio_elements=*/{},
+      output_mix_gain_, layout_, kNumChannelsForStereo, kSampleRate,
+      kNumSamplesPerFrame, mock_factory_);
+  EXPECT_THAT(renderer, IsNull());
+}
+
 using DefaultLayoutRendererDeathTest = DefaultLayoutRendererTest;
 
 TEST_F(DefaultLayoutRendererDeathTest,

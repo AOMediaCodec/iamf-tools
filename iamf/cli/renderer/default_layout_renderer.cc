@@ -211,6 +211,10 @@ std::unique_ptr<DefaultLayoutRenderer> DefaultLayoutRenderer::Create(
     uint32_t common_num_samples_per_frame,
     const RendererFactoryBase& renderer_factory) {
   const size_t num_audio_elements = audio_elements_in_sub_mix.size();
+  if (num_audio_elements == 0) {
+    ABSL_LOG(ERROR) << "Rendering without an audio element is not supported.";
+    return nullptr;
+  }
   ABSL_CHECK_OK(ValidateContainerSizeEqual(
       "sub_mix_audio_elements", sub_mix_audio_elements, num_audio_elements));
 
