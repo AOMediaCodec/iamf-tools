@@ -1,0 +1,19 @@
+name: iamf-tools-bazel-cache
+
+description: Restore and save Bazel caches and configure .bazelrc to use them.
+
+runs:
+  using: composite
+  steps:
+    - name: Restore and save Bazel cache directories
+      uses: actions/cache@v6
+      with:
+        path: |
+          ~/.cache/bazel-repo
+          ~/.cache/bazel-disk
+        key: bazel-cache-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.bazelrc', '.bazelversion', 'MODULE.bazel', 'external/**') }}
+    - shell: bash
+      run: |
+        # Point Bazel at the directories managed by actions/cache above.
+        echo "common --repository_cache=~/.cache/bazel-repo" >> .bazelrc
+        echo "build --disk_cache=~/.cache/bazel-disk" >> .bazelrc

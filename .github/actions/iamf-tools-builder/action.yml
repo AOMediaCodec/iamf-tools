@@ -11,6 +11,8 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Cache Bazel repository and disk cache
+      uses: ./.github/actions/iamf-tools-bazel-cache
     - shell: bash
       run: |
         # Configure platform-specific settings.

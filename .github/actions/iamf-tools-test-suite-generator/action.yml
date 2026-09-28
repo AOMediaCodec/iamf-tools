@@ -3,6 +3,8 @@ description: Generate IAMF test suite.
 runs:
   using: composite
   steps:
+    - name: Cache Bazel repository and disk cache
+      uses: ./.github/actions/iamf-tools-bazel-cache
     - shell: bash
       run: |
         bazelisk build -c opt //iamf/cli:encoder_main
