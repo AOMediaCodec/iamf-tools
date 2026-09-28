@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-09-28
+
 ### Added
 
 -   `IamfDecoderInterface`:
@@ -274,7 +276,8 @@ and this project adheres to
     `deprecated_param_definition_type`, `deprecated_loudspeaker_layout` from the
     forked `.protos`.
 
-[Unreleased]: https://github.com/AOMediaCodec/iamf-tools/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/iamf-tools/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/AOMediaCodec/iamf-tools/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/AOMediaCodec/iamf-tools/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/AOMediaCodec/iamf-tools/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/AOMediaCodec/iamf-tools/releases/tag/v1.0.0
