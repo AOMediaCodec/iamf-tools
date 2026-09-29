@@ -321,9 +321,8 @@ absl::Status ReadBitBuffer::Seek(const int64_t position) {
   // Load the data from the source, starting from the byte that the requested
   // position is at.
   const int64_t starting_byte = position / 8;
-  const int64_t num_bytes =
-      std::min(static_cast<int64_t>(bit_buffer_.capacity()),
-               source_size_bits_ / 8 - starting_byte);
+  const int64_t num_bytes = std::min(static_cast<int64_t>(bit_buffer_.size()),
+                                     source_size_bits_ / 8 - starting_byte);
 
   RETURN_IF_NOT_OK(LoadBytesToBuffer(starting_byte, num_bytes));
 
