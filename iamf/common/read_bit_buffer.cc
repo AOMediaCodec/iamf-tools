@@ -254,8 +254,33 @@ absl::Status ReadBitBuffer::ReadIso14496_1Expanded(uint32_t max_class_size,
 }
 
 absl::Status ReadBitBuffer::ReadUint8Span(absl::Span<uint8_t> output) {
-  for (auto& byte : output) {
-    RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, byte));
+  size_t num_read = 0;
+  while (num_read < output.size()) {
+    // At a byte-aligned position, copy the bytes already loaded in
+    // `bit_buffer_` in one step, except the last one. For each copied byte,
+    // `ReadUnsignedLiteral(8, ...)` would pass its checks, seek within the
+    // buffer and read the same byte, so the output, position and status are
+    // the same. The last loaded byte still goes through
+    // `ReadUnsignedLiteral`, whose seek after the read loads the next part of
+    // the source and reports a failed load, as before.
+    if (buffer_bit_offset_ >= 0 && buffer_bit_offset_ % 8 == 0) {
+      const size_t byte_offset = static_cast<size_t>(buffer_bit_offset_ / 8);
+      const size_t loaded_bytes = std::min(
+          static_cast<size_t>(buffer_size_bits_ / 8), bit_buffer_.size());
+      if (byte_offset + 1 < loaded_bytes) {
+        const size_t count =
+            std::min(loaded_bytes - byte_offset - 1, output.size() - num_read);
+        // `ReadUnsignedLiteral` marks the position valid through `Tell()`.
+        is_position_valid_ = true;
+        std::copy_n(bit_buffer_.begin() + byte_offset, count,
+                    output.begin() + num_read);
+        buffer_bit_offset_ += static_cast<int64_t>(count) * 8;
+        num_read += count;
+        continue;
+      }
+    }
+    RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, output[num_read]));
+    ++num_read;
   }
   return absl::OkStatus();
 }

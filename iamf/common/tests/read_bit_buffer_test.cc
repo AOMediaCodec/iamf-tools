@@ -11,9 +11,11 @@
  */
 #include "iamf/common/read_bit_buffer.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <ios>
 #include <limits>
@@ -77,6 +79,29 @@ TEST(FileBasedReadBitBufferTest, CreateFromFilePathFailsWithNegativeCapacity) {
   const auto file_path = GetAndCleanupOutputFileName(".iamf");
   EXPECT_THAT(FileBasedReadBitBuffer::CreateFromFilePath(-1, file_path),
               ::testing::IsNull());
+}
+
+TEST(FileBasedReadBitBufferTest,
+     ReadUint8SpanReportsAFailedLoadAfterTheLastBufferedByte) {
+  // Reading the last byte of a window loads the next window. When that load
+  // fails, the read fails and leaves that byte unwritten, as byte-by-byte
+  // reads do.
+  constexpr std::array<uint8_t, 8> kEightBytes = {1, 2, 3, 4, 5, 6, 7, 8};
+  const auto file = GetAndCleanupOutputFileName(".bin");
+  std::ofstream(file, std::ios::binary)
+      .write(reinterpret_cast<const char*>(kEightBytes.data()),
+             kEightBytes.size());
+  auto rb = FileBasedReadBitBuffer::CreateFromFilePath(4, file);
+  ASSERT_NE(rb, nullptr);
+  // Shorten the file after the reader has taken its size, so loading the
+  // second window fails.
+  std::filesystem::resize_file(file, 4);
+
+  std::vector<uint8_t> output(4, 0xff);
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)),
+              StatusIs(kInvalidArgument));
+  EXPECT_EQ(rb->Tell(), 32);
+  EXPECT_THAT(output, testing::ElementsAre(1, 2, 3, 0xff));
 }
 
 TEST(StreamBasedReadBitBufferTest, CreateFromStreamFailsWithNegativeCapacity) {
@@ -597,6 +622,58 @@ TYPED_TEST(ReadBitBufferTest, ReadUint8SpanSucceedsWithMisalignedBuffer) {
   EXPECT_EQ(this->rb_->Tell(), 36);
 }
 
+TYPED_TEST(ReadBitBufferTest, ReadUint8SpanCrossesBufferReloads) {
+  // For the file and stream readers, a capacity smaller than the source makes
+  // the spans below cross several loads of the internal buffer. The memory
+  // reader holds the whole source.
+  constexpr size_t kSourceSize = 37;
+  for (size_t i = 0; i < kSourceSize; ++i) {
+    this->source_data_.push_back(static_cast<uint8_t>(i * 7 + 3));
+  }
+  const auto source_data_copy = this->source_data_;
+  this->rb_capacity_ = 4;
+  this->CreateReadBitBuffer();
+
+  std::vector<uint8_t> first(2);
+  ASSERT_THAT(this->rb_->ReadUint8Span(absl::MakeSpan(first)), IsOk());
+  std::vector<uint8_t> second(30);
+  ASSERT_THAT(this->rb_->ReadUint8Span(absl::MakeSpan(second)), IsOk());
+  EXPECT_EQ(this->rb_->Tell(), 32 * kBitsPerByte);
+  std::vector<uint8_t> third(5);
+  ASSERT_THAT(this->rb_->ReadUint8Span(absl::MakeSpan(third)), IsOk());
+  EXPECT_EQ(this->rb_->Tell(), kSourceSize * kBitsPerByte);
+
+  std::vector<uint8_t> output = first;
+  output.insert(output.end(), second.begin(), second.end());
+  output.insert(output.end(), third.begin(), third.end());
+  EXPECT_EQ(output, source_data_copy);
+}
+
+TYPED_TEST(ReadBitBufferTest, ReadUint8SpanMisalignedCrossesBufferReloads) {
+  constexpr size_t kSourceSize = 21;
+  for (size_t i = 0; i < kSourceSize; ++i) {
+    this->source_data_.push_back(static_cast<uint8_t>(0x5a ^ (i * 13)));
+  }
+  const auto source_data_copy = this->source_data_;
+  this->rb_capacity_ = 4;
+  this->CreateReadBitBuffer();
+
+  // Read 3 bits so every later byte straddles two source bytes.
+  constexpr int kOffsetBits = 3;
+  uint8_t literal = 0;
+  ASSERT_THAT(this->rb_->ReadUnsignedLiteral(kOffsetBits, literal), IsOk());
+  std::vector<uint8_t> output(kSourceSize - 1);
+  ASSERT_THAT(this->rb_->ReadUint8Span(absl::MakeSpan(output)), IsOk());
+  EXPECT_EQ(this->rb_->Tell(), kOffsetBits + (kSourceSize - 1) * kBitsPerByte);
+
+  for (size_t i = 0; i < output.size(); ++i) {
+    const uint8_t expected = static_cast<uint8_t>(
+        (source_data_copy[i] << kOffsetBits) |
+        (source_data_copy[i + 1] >> (kBitsPerByte - kOffsetBits)));
+    EXPECT_EQ(output[i], expected) << "byte " << i;
+  }
+}
+
 // `ReadUint8Span` errors.
 TYPED_TEST(ReadBitBufferTest,
            ReadUint8SpanFailsNotEnoughDataInBufferToFillSpan) {
@@ -610,6 +687,24 @@ TYPED_TEST(ReadBitBufferTest,
   std::vector<uint8_t> output(kOutputSizeTooLarge);
   EXPECT_THAT(this->rb_->ReadUint8Span(absl::MakeSpan(output)),
               StatusIs(kResourceExhausted));
+}
+
+TYPED_TEST(ReadBitBufferTest, ReadUint8SpanPastTheEndStopsAtTheLastByte) {
+  // The bytes before the end are read, as byte-by-byte reads would, and the
+  // position stays at the end of the source.
+  this->source_data_ = {0x10, 0x21, 0x32, 0x43, 0x54, 0x65};
+  const auto source_data_copy = this->source_data_;
+  this->rb_capacity_ = 4;
+  this->CreateReadBitBuffer();
+
+  std::vector<uint8_t> output(8, 0xff);
+  EXPECT_THAT(this->rb_->ReadUint8Span(absl::MakeSpan(output)),
+              StatusIs(kResourceExhausted));
+  EXPECT_EQ(this->rb_->Tell(), source_data_copy.size() * kBitsPerByte);
+  EXPECT_TRUE(std::equal(source_data_copy.begin(), source_data_copy.end(),
+                         output.begin()));
+  EXPECT_EQ(output[6], 0xff);
+  EXPECT_EQ(output[7], 0xff);
 }
 
 // --- ReadBoolean tests ---
@@ -1108,6 +1203,20 @@ TEST(StreamBasedReadBitBufferTest, TellFlushAndSeek) {
 
   // Seeking is disabled after Flush().
   EXPECT_THAT(rb->Seek(0), Not(IsOk()));
+}
+
+TEST(StreamBasedReadBitBufferTest, ReadUint8SpanAfterFlushEnablesSeek) {
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  ASSERT_NE(rb, nullptr);
+  ASSERT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
+  std::vector<uint8_t> output = {0};
+  ASSERT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
+  rb->Flush();
+
+  // A read after Flush() makes the position valid again, as a read with
+  // `ReadUnsignedLiteral` does, so seeking works.
+  ASSERT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
+  EXPECT_THAT(rb->Seek(0), IsOk());
 }
 
 TEST(StreamBasedReadBitBufferTest, PushBytesNumBytesAvailableSucceeds) {
