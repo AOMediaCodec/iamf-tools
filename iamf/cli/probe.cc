@@ -1293,11 +1293,14 @@ void ScanTemporalUnits(
   }
   if (max_samples > 0) {
     out.total_samples = max_samples;
-    // Pick an output sample rate from the first codec config.
+    // Pick an output sample rate from the lowest-ID codec config. The map
+    // is a hash map, so `begin()` would vary between processes.
     if (!descriptors.codec_config_obus.empty()) {
-      const auto& [unused_id, codec_cfg] =
-          *descriptors.codec_config_obus.begin();
-      const uint32_t rate = codec_cfg.GetOutputSampleRate();
+      const auto lowest = std::min_element(
+          descriptors.codec_config_obus.begin(),
+          descriptors.codec_config_obus.end(),
+          [](const auto& a, const auto& b) { return a.first < b.first; });
+      const uint32_t rate = lowest->second.GetOutputSampleRate();
       if (rate > 0) {
         out.output_sample_rate = rate;
         out.duration_seconds =
@@ -1355,6 +1358,19 @@ absl::StatusOr<ProbeReport> ProbeFromBuffer(ReadBitBuffer& read_bit_buffer,
     report.audio_elements.push_back(
         BuildAudioElementReport(element_with_data.obu));
   }
+
+  // `DescriptorObus` keeps codec configs and audio elements in hash maps
+  // whose iteration order changes from process to process. Sort by ID so
+  // the report, and the text and JSON output built from it, come out the
+  // same on every run.
+  std::sort(report.codec_configs.begin(), report.codec_configs.end(),
+            [](const CodecConfigReport& a, const CodecConfigReport& b) {
+              return a.id < b.id;
+            });
+  std::sort(report.audio_elements.begin(), report.audio_elements.end(),
+            [](const AudioElementReport& a, const AudioElementReport& b) {
+              return a.id < b.id;
+            });
 
   report.mix_presentations.reserve(descriptors.mix_presentation_obus.size());
   for (const auto& mp : descriptors.mix_presentation_obus) {

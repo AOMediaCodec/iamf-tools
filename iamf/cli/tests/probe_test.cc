@@ -957,5 +957,108 @@ TEST(ProbeFile, TruncatedDescriptorsReportInvalidArgument) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
+TEST(Probe, SortsCodecConfigsAndAudioElementsByAscendingId) {
+  // The parser holds codec configs and audio elements in hash maps, whose
+  // iteration order changes from process to process. With six of each, an
+  // unsorted report is ascending by chance in 1 of 720 orderings per map.
+  constexpr DecodedUleb128 kNumElements = 6;
+  constexpr DecodedUleb128 kFirstCodecConfigId = 10;
+  constexpr DecodedUleb128 kFirstAudioElementId = 100;
+  const IASequenceHeaderObu sequence_header(ObuHeader(),
+                                            ProfileVersion::kIamfSimpleProfile,
+                                            ProfileVersion::kIamfBaseProfile);
+  DescriptorObus::CodecConfigsById codec_configs;
+  DescriptorObus::AudioElementsById audio_elements;
+  std::vector<DecodedUleb128> audio_element_ids;
+  for (DecodedUleb128 i = 0; i < kNumElements; ++i) {
+    AddOpusCodecConfigWithId(kFirstCodecConfigId + i, codec_configs);
+    AddAmbisonicsMonoAudioElementWithSubstreamIds(
+        kFirstAudioElementId + i, kFirstCodecConfigId + i, {kSubstreamId + i},
+        codec_configs, audio_elements);
+    audio_element_ids.push_back(kFirstAudioElementId + i);
+  }
+  DescriptorObus::MixPresentationObus mix_presentations;
+  AddMixPresentationObuWithAudioElementIds(kMixPresentationId,
+                                           audio_element_ids, kParameterId,
+                                           kParameterRate, mix_presentations);
+
+  // Serialize codec configs and audio elements in descending-ID order.
+  std::list<const ObuBase*> obus = {&sequence_header};
+  for (DecodedUleb128 i = kNumElements; i-- > 0;) {
+    obus.push_back(&codec_configs.at(kFirstCodecConfigId + i));
+  }
+  for (DecodedUleb128 i = kNumElements; i-- > 0;) {
+    obus.push_back(&audio_elements.at(kFirstAudioElementId + i).obu);
+  }
+  for (const auto& mp : mix_presentations) obus.push_back(&mp);
+  auto data = SerializeObusExpectOk(obus);
+  AppendAudioFrame(kSubstreamId, &data);
+
+  const auto report = Probe(absl::MakeConstSpan(data));
+  ASSERT_THAT(report, IsOk());
+  ASSERT_EQ(report->codec_configs.size(), kNumElements);
+  ASSERT_EQ(report->audio_elements.size(), kNumElements);
+  for (DecodedUleb128 i = 0; i < kNumElements; ++i) {
+    EXPECT_EQ(report->codec_configs[i].id, kFirstCodecConfigId + i);
+    EXPECT_EQ(report->audio_elements[i].id, kFirstAudioElementId + i);
+  }
+}
+
+TEST(Probe, TemporalUnitScanTakesSampleRateFromLowestIdCodecConfig) {
+  // Only the lowest-ID codec config is at 16 kHz; the other eleven are at
+  // 48 kHz. The audio element uses the highest-ID config, so the rate does
+  // not come from the config that the audio frames belong to. Taking the
+  // first config in hash-map order instead gives 16 kHz in 1 of 12 orderings.
+  constexpr DecodedUleb128 kNumCodecConfigs = 12;
+  constexpr DecodedUleb128 kLowestCodecConfigId = 10;
+  constexpr DecodedUleb128 kHighestCodecConfigId =
+      kLowestCodecConfigId + kNumCodecConfigs - 1;
+  constexpr uint32_t kLowestIdSampleRate = 16000;
+  constexpr uint32_t kOtherSampleRate = 48000;
+  // `AddLpcmCodecConfigWithIdAndSampleRate` uses 8 samples per frame.
+  constexpr uint64_t kNumSamplesPerFrame = 8;
+  const IASequenceHeaderObu sequence_header(ObuHeader(),
+                                            ProfileVersion::kIamfSimpleProfile,
+                                            ProfileVersion::kIamfBaseProfile);
+  DescriptorObus::CodecConfigsById codec_configs;
+  for (DecodedUleb128 i = 0; i < kNumCodecConfigs; ++i) {
+    AddLpcmCodecConfigWithIdAndSampleRate(
+        kLowestCodecConfigId + i,
+        i == 0 ? kLowestIdSampleRate : kOtherSampleRate, codec_configs);
+  }
+  DescriptorObus::AudioElementsById audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kAudioElementId, kHighestCodecConfigId, {kSubstreamId}, codec_configs,
+      audio_elements);
+  DescriptorObus::MixPresentationObus mix_presentations;
+  AddMixPresentationObuWithAudioElementIds(kMixPresentationId,
+                                           {kAudioElementId}, kParameterId,
+                                           kParameterRate, mix_presentations);
+
+  std::list<const ObuBase*> obus = {&sequence_header};
+  for (DecodedUleb128 i = kNumCodecConfigs; i-- > 0;) {
+    obus.push_back(&codec_configs.at(kLowestCodecConfigId + i));
+  }
+  obus.push_back(&audio_elements.at(kAudioElementId).obu);
+  for (const auto& mp : mix_presentations) obus.push_back(&mp);
+  auto data = SerializeObusExpectOk(obus);
+  AppendAudioFrame(kSubstreamId, &data);
+
+  ProbeOptions options;
+  options.scan_mode = ScanMode::kScanCounts;
+  const auto report = Probe(absl::MakeConstSpan(data), options);
+  ASSERT_THAT(report, IsOk());
+  ASSERT_TRUE(report->temporal_unit_scan.has_value());
+  const auto& s = *report->temporal_unit_scan;
+  ASSERT_TRUE(s.total_samples.has_value());
+  EXPECT_EQ(*s.total_samples, kNumSamplesPerFrame);
+  ASSERT_TRUE(s.output_sample_rate.has_value());
+  EXPECT_EQ(*s.output_sample_rate, kLowestIdSampleRate);
+  ASSERT_TRUE(s.duration_seconds.has_value());
+  EXPECT_NEAR(*s.duration_seconds,
+              static_cast<double>(kNumSamplesPerFrame) / kLowestIdSampleRate,
+              1e-9);
+}
+
 }  // namespace
 }  // namespace iamf_tools
