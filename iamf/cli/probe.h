@@ -508,6 +508,10 @@ struct ProbeReport {
   uint8_t primary_profile_raw = 0;
   std::string additional_profile;  // Same vocabulary as `primary_profile`.
   uint8_t additional_profile_raw = 0;
+  // `codec_configs` and `audio_elements` are sorted by ascending `id`; the
+  // parser holds them in hash maps, so bitstream order is not available and
+  // map order is not stable across processes. `mix_presentations` keeps
+  // bitstream order.
   std::vector<CodecConfigReport> codec_configs;
   std::vector<AudioElementReport> audio_elements;
   std::vector<MixPresentationReport> mix_presentations;
