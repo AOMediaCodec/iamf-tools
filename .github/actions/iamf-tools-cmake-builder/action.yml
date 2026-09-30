@@ -33,7 +33,7 @@ runs:
         BIN="$RUNNER_TEMP/cmake-build/src/build-iamf"
         # Probe: parse descriptors of two in-tree IAMF files.
         "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/noise_1024samp_5p1_opus.iamf
-        "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/tones_100ms_3OA_stereo_opus.iamf
+        "$BIN/probe_main" --input_filename=iamf/cli/testdata/iamf/tones_100ms_1OA_stereo_opus.iamf
         # Decode: render an in-tree 5.1 Opus file; output must be non-empty.
         "$BIN/decoder_main" \
           --input_filename=iamf/cli/testdata/iamf/noise_1024samp_5p1_opus.iamf \
