@@ -9,21 +9,29 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
+#include "iamf/cli/proto_conversion/codec_config_utils.h"
+
 #include <cstdint>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/cli/codec/opus_encoder.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
+
+// These defines are not part of an official API and are likely to change or be
+// removed. Please do not depend on them.
+#ifndef IAMF_TOOLS_DISABLE_OPUS_ENCODER
+#include "iamf/cli/codec/opus_encoder.h"
 #include "include/opus_defines.h"
+#endif
 
 namespace iamf_tools {
 
+#ifndef IAMF_TOOLS_DISABLE_OPUS_ENCODER
 namespace {
 
 // Bitrates which Opus documents as a reasonable range.
@@ -111,5 +119,6 @@ absl::StatusOr<OpusEncoder::Settings> CreateOpusEncoderSettings(
       .libopus_application_mode = application,
       .target_substream_bitrate = *bitrate};
 }
+#endif
 
 }  // namespace iamf_tools

@@ -14,13 +14,19 @@
 #define CLI_PROTO_CONVERSION_CODEC_CONFIG_UTILS_H_
 
 #include "absl/status/statusor.h"
-#include "iamf/cli/codec/opus_encoder.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 
+// These defines are not part of an official API and are likely to change or be
+// removed. Please do not depend on them.
+#ifndef IAMF_TOOLS_DISABLE_OPUS_ENCODER
+#include "iamf/cli/codec/opus_encoder.h"
+#endif
+
 namespace iamf_tools {
 
+#ifndef IAMF_TOOLS_DISABLE_OPUS_ENCODER
 /*!\brief Creates `OpusEncoder::Settings` from the input protocol buffer.
  *
  * \param opus_encoder_metadata  Input protocol buffer.
@@ -31,6 +37,7 @@ namespace iamf_tools {
 absl::StatusOr<OpusEncoder::Settings> CreateOpusEncoderSettings(
     const iamf_tools_cli_proto::OpusEncoderMetadata& opus_encoder_metadata,
     SubstreamChannelCount channel_count, DecodedUleb128 substream_id);
+#endif
 
 }  // namespace iamf_tools
 

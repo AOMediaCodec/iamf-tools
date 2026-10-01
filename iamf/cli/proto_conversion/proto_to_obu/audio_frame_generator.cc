@@ -40,11 +40,8 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/codec/aac_encoder.h"
 #include "iamf/cli/codec/encoder_base.h"
-#include "iamf/cli/codec/flac_encoder.h"
 #include "iamf/cli/codec/lpcm_encoder.h"
-#include "iamf/cli/codec/opus_encoder.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
@@ -66,6 +63,20 @@
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
+// These defines are not part of an official API and are likely to change or be
+// removed. Please do not depend on them.
+#ifndef IAMF_TOOLS_DISABLE_AAC_ENCODER
+#include "iamf/cli/codec/aac_encoder.h"
+#endif
+
+#ifndef IAMF_TOOLS_DISABLE_FLAC_ENCODER
+#include "iamf/cli/codec/flac_encoder.h"
+#endif
+
+#ifndef IAMF_TOOLS_DISABLE_OPUS_ENCODER
+#include "iamf/cli/codec/opus_encoder.h"
+#endif
+
 namespace iamf_tools {
 
 namespace {
@@ -82,6 +93,7 @@ absl::Status InitializeEncoder(
     case kCodecIdLpcm:
       encoder = std::make_unique<LpcmEncoder>(codec_config, channel_count);
       break;
+#ifndef IAMF_TOOLS_DISABLE_OPUS_ENCODER
     case kCodecIdOpus: {
       auto opus_encoder_settings = CreateOpusEncoderSettings(
           codec_config_metadata.decoder_config_opus().opus_encoder_metadata(),
@@ -93,19 +105,25 @@ absl::Status InitializeEncoder(
                                               codec_config, channel_count);
       break;
     }
+#endif
+#ifndef IAMF_TOOLS_DISABLE_AAC_ENCODER
     case kCodecIdAacLc:
       encoder = std::make_unique<AacEncoder>(
           codec_config_metadata.decoder_config_aac().aac_encoder_metadata(),
           codec_config, channel_count);
       break;
+#endif
+#ifndef IAMF_TOOLS_DISABLE_FLAC_ENCODER
     case kCodecIdFlac:
       encoder = std::make_unique<FlacEncoder>(
           codec_config_metadata.decoder_config_flac().flac_encoder_metadata(),
           codec_config, channel_count);
       break;
+#endif
     default:
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Unknown codec_id= ", codec_config.GetCodecConfig().GetCodecId()));
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown or disabled codec_id= ",
+                       codec_config.GetCodecConfig().GetCodecId()));
   }
   RETURN_IF_NOT_OK(encoder->Initialize(validate_codec_delay));
   return absl::OkStatus();
