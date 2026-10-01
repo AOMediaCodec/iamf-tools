@@ -96,6 +96,56 @@ TEST(ProbeReportToJson, EmitsTemporalUnitScanWhenPresent) {
   EXPECT_THAT(json, HasSubstr("\"audio_frames_by_substream\": ["));
 }
 
+TEST(ProbeReportToJson, EmitsRenderingConfigParamDefinitions) {
+  ProbeReport report{};
+  MixPresentationReport mp{};
+  SubMixReport sub_mix{};
+  SubMixAudioElementReport ae{};
+  RenderingConfigParamDefinitionReport polar{};
+  polar.param_definition_type = "polar";
+  polar.param_definition_type_raw = 3;
+  polar.polar = PolarPositionReport{
+      .default_azimuth = -30, .default_elevation = 15, .default_distance = 63};
+  ae.rendering_config.param_definitions.push_back(polar);
+  RenderingConfigParamDefinitionReport dual_polar{};
+  dual_polar.param_definition_type = "dual_polar";
+  dual_polar.param_definition_type_raw = 6;
+  dual_polar.dual_polar =
+      DualPolarPositionReport{.first = {.default_azimuth = -90,
+                                        .default_elevation = -45,
+                                        .default_distance = 1},
+                              .second = {.default_azimuth = 90,
+                                         .default_elevation = 45,
+                                         .default_distance = 127}};
+  ae.rendering_config.param_definitions.push_back(dual_polar);
+  sub_mix.audio_elements.push_back(ae);
+  mp.sub_mixes.push_back(sub_mix);
+  report.mix_presentations.push_back(mp);
+
+  const std::string json = ProbeReportToJson(report);
+
+  EXPECT_THAT(json, HasSubstr("\"param_definitions\": ["));
+  EXPECT_THAT(json, HasSubstr("\"param_definition_type\": \"polar\""));
+  EXPECT_THAT(json, HasSubstr("\"param_definition_type_raw\": 3"));
+  EXPECT_THAT(
+      json, HasSubstr("\"polar\": {\"default_azimuth\": -30, "
+                      "\"default_elevation\": 15, \"default_distance\": 63}"));
+  EXPECT_THAT(json, HasSubstr("\"param_definition_type\": \"dual_polar\""));
+  EXPECT_THAT(
+      json,
+      HasSubstr("\"dual_polar\": {\"first\": {\"default_azimuth\": -90, "
+                "\"default_elevation\": -45, \"default_distance\": 1}, "
+                "\"second\": {\"default_azimuth\": 90, "
+                "\"default_elevation\": 45, \"default_distance\": 127}}"));
+}
+
+TEST(ProbeReportToJson, OmitsParamDefinitionsKeyWhenAbsent) {
+  const std::string json = ProbeReportToJson(ProbeMinimalIaSequence());
+
+  EXPECT_THAT(json, HasSubstr("\"rendering_config\""));
+  EXPECT_THAT(json, ::testing::Not(HasSubstr("\"param_definitions\"")));
+}
+
 TEST(ProbeReportToJson, EscapesStringsPerRfc8259) {
   ProbeReport report;
   report.primary_profile = "quote\"backslash\\control\x01";

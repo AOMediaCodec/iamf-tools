@@ -258,6 +258,37 @@ struct MixGainParamDefinitionReport {
   float default_mix_gain;
 };
 
+/*!\brief Default position carried by a polar param definition.
+ *
+ * `default_azimuth` and `default_elevation` are in signed degrees, as the
+ * parser clips them to [-180, 180] and [-90, 90]; `default_distance` is the
+ * raw 7-bit coded value.
+ */
+struct PolarPositionReport {
+  int16_t default_azimuth;
+  int8_t default_elevation;
+  uint8_t default_distance;
+};
+
+/*!\brief Both positions carried by a dual-polar param definition. */
+struct DualPolarPositionReport {
+  PolarPositionReport first;
+  PolarPositionReport second;
+};
+
+/*!\brief One position param definition carried by a rendering config.
+ *
+ * `polar` is populated for "polar" entries and `dual_polar` for "dual_polar"
+ * entries; cartesian entries report only the common fields.
+ */
+struct RenderingConfigParamDefinitionReport {
+  std::string param_definition_type;  // "polar", "dual_polar", ...
+  uint32_t param_definition_type_raw;
+  ParamDefinitionReport param_definition;
+  std::optional<PolarPositionReport> polar;
+  std::optional<DualPolarPositionReport> dual_polar;
+};
+
 /*!\brief Rendering config of one audio element within a sub-mix. */
 struct RenderingConfigReport {
   std::string
@@ -266,6 +297,7 @@ struct RenderingConfigReport {
   std::string
       binaural_filter_profile;  // "ambient", "direct", "reverberant", ...
   uint8_t binaural_filter_profile_raw;
+  std::vector<RenderingConfigParamDefinitionReport> param_definitions;
 };
 
 /*!\brief One audio element referenced by a sub-mix. */

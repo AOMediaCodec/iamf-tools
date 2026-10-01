@@ -275,6 +275,46 @@ std::string JsonMixGain(const MixGainParamDefinitionReport& g) {
       ", \"default_mix_gain_q7_8\": ", g.default_mix_gain_q7_8, "}");
 }
 
+std::string JsonPolarPosition(const PolarPositionReport& p) {
+  return absl::StrCat(
+      "{\"default_azimuth\": ", p.default_azimuth,
+      ", \"default_elevation\": ", static_cast<int>(p.default_elevation),
+      ", \"default_distance\": ", static_cast<int>(p.default_distance), "}");
+}
+
+std::string JsonRenderingConfig(const RenderingConfigReport& rc) {
+  std::string out = absl::StrCat(
+      "{\"headphones_rendering_mode\": ", J(rc.headphones_rendering_mode),
+      ", \"headphones_rendering_mode_raw\": ", rc.headphones_rendering_mode_raw,
+      ", \"binaural_filter_profile\": ", J(rc.binaural_filter_profile),
+      ", \"binaural_filter_profile_raw\": ", rc.binaural_filter_profile_raw);
+  if (!rc.param_definitions.empty()) {
+    std::vector<std::string> defs;
+    defs.reserve(rc.param_definitions.size());
+    for (const auto& d : rc.param_definitions) {
+      std::string def = absl::StrCat(
+          "{\"param_definition_type\": ", J(d.param_definition_type),
+          ", \"param_definition_type_raw\": ", d.param_definition_type_raw,
+          ", \"param_definition\": ", JsonParamDef(d.param_definition));
+      if (d.polar.has_value()) {
+        absl::StrAppend(&def, ", \"polar\": ", JsonPolarPosition(*d.polar));
+      }
+      if (d.dual_polar.has_value()) {
+        absl::StrAppend(
+            &def, ", \"dual_polar\": {\"first\": ",
+            JsonPolarPosition(d.dual_polar->first),
+            ", \"second\": ", JsonPolarPosition(d.dual_polar->second), "}");
+      }
+      absl::StrAppend(&def, "}");
+      defs.push_back(std::move(def));
+    }
+    absl::StrAppend(&out, ", \"param_definitions\": [",
+                    absl::StrJoin(defs, ", "), "]");
+  }
+  absl::StrAppend(&out, "}");
+  return out;
+}
+
 std::string JsonLoudness(const LoudnessInfoReport& l) {
   std::string out = absl::StrCat(
       "{\"info_type\": ", static_cast<int>(l.info_type),
@@ -328,14 +368,7 @@ std::string JsonSubMix(const SubMixReport& s) {
         "{\"audio_element_id\": ", a.audio_element_id,
         ", \"localized_element_annotations\": ",
         StrVec(a.localized_element_annotations),
-        ", \"rendering_config\": {\"headphones_rendering_mode\": ",
-        J(a.rendering_config.headphones_rendering_mode),
-        ", \"headphones_rendering_mode_raw\": ",
-        a.rendering_config.headphones_rendering_mode_raw,
-        ", \"binaural_filter_profile\": ",
-        J(a.rendering_config.binaural_filter_profile),
-        ", \"binaural_filter_profile_raw\": ",
-        a.rendering_config.binaural_filter_profile_raw, "}",
+        ", \"rendering_config\": ", JsonRenderingConfig(a.rendering_config),
         ", \"element_mix_gain\": ", JsonMixGain(a.element_mix_gain), "}"));
   }
   std::vector<std::string> layouts;

@@ -47,9 +47,11 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/parameter_data.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
@@ -648,7 +650,7 @@ MixGainParamDefinitionReport BuildMixGainReport(
 }
 
 RenderingConfigReport BuildRenderingConfigReport(const RenderingConfig& rc) {
-  return {
+  RenderingConfigReport r{
       .headphones_rendering_mode =
           HeadphonesRenderingModeToString(rc.headphones_rendering_mode),
       .headphones_rendering_mode_raw =
@@ -658,6 +660,37 @@ RenderingConfigReport BuildRenderingConfigReport(const RenderingConfig& rc) {
       .binaural_filter_profile_raw =
           static_cast<uint8_t>(rc.binaural_filter_profile),
   };
+  r.param_definitions.reserve(rc.rendering_config_param_definitions.size());
+  for (const auto& pd : rc.rendering_config_param_definitions) {
+    RenderingConfigParamDefinitionReport entry;
+    entry.param_definition_type =
+        ParamDefinitionTypeToString(pd.param_definition_type);
+    entry.param_definition_type_raw =
+        static_cast<uint32_t>(pd.param_definition_type);
+    entry.param_definition =
+        std::visit([](const auto& d) { return BuildParamDefReport(d); },
+                   pd.param_definition);
+    if (const auto* polar =
+            std::get_if<PolarParamDefinition>(&pd.param_definition)) {
+      entry.polar = PolarPositionReport{
+          .default_azimuth = polar->default_azimuth_,
+          .default_elevation = polar->default_elevation_,
+          .default_distance = polar->default_distance_,
+      };
+    } else if (const auto* dual_polar = std::get_if<DualPolarParamDefinition>(
+                   &pd.param_definition)) {
+      entry.dual_polar = DualPolarPositionReport{
+          .first = {.default_azimuth = dual_polar->default_first_azimuth_,
+                    .default_elevation = dual_polar->default_first_elevation_,
+                    .default_distance = dual_polar->default_first_distance_},
+          .second = {.default_azimuth = dual_polar->default_second_azimuth_,
+                     .default_elevation = dual_polar->default_second_elevation_,
+                     .default_distance = dual_polar->default_second_distance_},
+      };
+    }
+    r.param_definitions.push_back(std::move(entry));
+  }
+  return r;
 }
 
 SubMixAudioElementReport BuildSubMixAudioElementReport(

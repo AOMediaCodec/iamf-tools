@@ -43,10 +43,14 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/temporal_delimiter.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -261,6 +265,89 @@ TEST(Probe, PopulatesScalableChannelLayerDetails) {
   ASSERT_EQ(mp.sub_mixes.front().audio_elements.size(), 1);
   EXPECT_EQ(mp.sub_mixes.front().audio_elements.front().audio_element_id,
             kAudioElementId);
+}
+
+TEST(Probe, ReportsRenderingConfigParamDefinitions) {
+  constexpr DecodedUleb128 kPolarParameterId = 1001;
+  constexpr DecodedUleb128 kDualPolarParameterId = 1002;
+  const IASequenceHeaderObu sequence_header(ObuHeader(),
+                                            ProfileVersion::kIamfSimpleProfile,
+                                            ProfileVersion::kIamfBaseProfile);
+  DescriptorObus::CodecConfigsById codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  DescriptorObus::AudioElementsById audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
+                                                {kSubstreamId}, codec_configs,
+                                                audio_elements);
+  DescriptorObus::MixPresentationObus mix_presentations;
+  AddMixPresentationObuWithAudioElementIds(kMixPresentationId,
+                                           {kAudioElementId}, kParameterId,
+                                           kParameterRate, mix_presentations);
+  // Attach a polar and a dual-polar position param definition to the audio
+  // element's rendering config.
+  PolarParamDefinition polar(
+      MakeScheduleInParameterBlockBaseArgs(kPolarParameterId, kParameterRate));
+  polar.default_azimuth_ = -30;
+  polar.default_elevation_ = 15;
+  polar.default_distance_ = 63;
+  DualPolarParamDefinition dual_polar(MakeScheduleInParameterBlockBaseArgs(
+      kDualPolarParameterId, kParameterRate));
+  dual_polar.default_first_azimuth_ = -90;
+  dual_polar.default_first_elevation_ = -45;
+  dual_polar.default_first_distance_ = 1;
+  dual_polar.default_second_azimuth_ = 90;
+  dual_polar.default_second_elevation_ = 45;
+  dual_polar.default_second_distance_ = 127;
+  auto& rendering_config = mix_presentations.front()
+                               .sub_mixes_[0]
+                               .audio_elements[0]
+                               .rendering_config;
+  rendering_config.rendering_config_param_definitions.push_back(
+      RenderingConfigParamDefinition::Create(polar, {}));
+  rendering_config.rendering_config_param_definitions.push_back(
+      RenderingConfigParamDefinition::Create(dual_polar, {}));
+
+  std::list<const ObuBase*> obus = {&sequence_header};
+  for (const auto& [_, obu] : codec_configs) obus.push_back(&obu);
+  for (const auto& [_, element] : audio_elements) obus.push_back(&element.obu);
+  for (const auto& mp : mix_presentations) obus.push_back(&mp);
+  auto data = SerializeObusExpectOk(obus);
+  AppendAudioFrame(kSubstreamId, &data);
+
+  const auto report = Probe(absl::MakeConstSpan(data));
+  ASSERT_THAT(report, IsOk());
+  ASSERT_EQ(report->mix_presentations.size(), 1);
+  ASSERT_EQ(report->mix_presentations.front().sub_mixes.size(), 1);
+  const auto& sub_mix = report->mix_presentations.front().sub_mixes.front();
+  ASSERT_EQ(sub_mix.audio_elements.size(), 1);
+  const auto& rc = sub_mix.audio_elements.front().rendering_config;
+  ASSERT_EQ(rc.param_definitions.size(), 2);
+
+  const auto& polar_report = rc.param_definitions[0];
+  EXPECT_EQ(polar_report.param_definition_type, "polar");
+  EXPECT_EQ(polar_report.param_definition_type_raw, 3u);
+  EXPECT_EQ(polar_report.param_definition.parameter_id, kPolarParameterId);
+  EXPECT_EQ(polar_report.param_definition.parameter_rate, kParameterRate);
+  EXPECT_EQ(polar_report.param_definition.param_definition_mode, 1);
+  ASSERT_TRUE(polar_report.polar.has_value());
+  EXPECT_EQ(polar_report.polar->default_azimuth, -30);
+  EXPECT_EQ(polar_report.polar->default_elevation, 15);
+  EXPECT_EQ(polar_report.polar->default_distance, 63);
+  EXPECT_FALSE(polar_report.dual_polar.has_value());
+
+  const auto& dual_polar_report = rc.param_definitions[1];
+  EXPECT_EQ(dual_polar_report.param_definition_type, "dual_polar");
+  EXPECT_EQ(dual_polar_report.param_definition_type_raw, 6u);
+  EXPECT_EQ(dual_polar_report.param_definition.parameter_id,
+            kDualPolarParameterId);
+  EXPECT_FALSE(dual_polar_report.polar.has_value());
+  ASSERT_TRUE(dual_polar_report.dual_polar.has_value());
+  EXPECT_EQ(dual_polar_report.dual_polar->first.default_azimuth, -90);
+  EXPECT_EQ(dual_polar_report.dual_polar->first.default_elevation, -45);
+  EXPECT_EQ(dual_polar_report.dual_polar->first.default_distance, 1);
+  EXPECT_EQ(dual_polar_report.dual_polar->second.default_azimuth, 90);
+  EXPECT_EQ(dual_polar_report.dual_polar->second.default_elevation, 45);
+  EXPECT_EQ(dual_polar_report.dual_polar->second.default_distance, 127);
 }
 
 TEST(Probe, ComputesNumChannelsAcrossScalableLayers) {
