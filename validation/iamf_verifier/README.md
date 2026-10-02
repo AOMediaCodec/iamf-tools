@@ -33,7 +33,9 @@ The `iamf_verifier` tool compares an encoded Test bitstream (either standalone
         `decoder_main`.
     *   Asserts exact decoded sample count matching across each layout pair.
     *   Evaluates objective audio quality via
-        `mlsd_comparator.evaluate_audio_quality()`.
+        `mlsd_comparator.evaluate_audio_quality()`, applying calibrated
+        thresholds based on detected bitstream codec (Lossless: Peak 0.1,
+        Sustained 0.1; Lossy: Peak 2.4, Sustained 0.9).
 
 --------------------------------------------------------------------------------
 

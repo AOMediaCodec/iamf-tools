@@ -211,8 +211,8 @@ def detect_sustained_degradations(
 def evaluate_audio_quality(
     ref_filepath: str,
     target_filepath: str,
-    peak_threshold: float = 0.04,
-    sustained_threshold: float = 0.20,
+    peak_threshold: float = 0.1,
+    sustained_threshold: float = 0.1,
     sustained_ms: float = 100.0,
 ) -> tuple[bool, list[dict[str, Any]], float, float]:
   """Evaluates audio quality using dual-criterion peak and sustained thresholds.
@@ -220,8 +220,8 @@ def evaluate_audio_quality(
   Args:
     ref_filepath: Path to the reference WAV file.
     target_filepath: Path to the target WAV file to compare.
-    peak_threshold: Higher threshold for short transient clicks/pops.
-    sustained_threshold: Lower threshold for long-term encoding quality.
+    peak_threshold: Peak threshold for short transient clicks/pops.
+    sustained_threshold: Sustained threshold for long-term encoding quality.
     sustained_ms: Minimum duration in milliseconds to count as sustained.
 
   Returns:

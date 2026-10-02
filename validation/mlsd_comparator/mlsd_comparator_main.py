@@ -24,12 +24,12 @@ _REF_WAV = flags.DEFINE_string(
 _TEST_WAV = flags.DEFINE_string("test_wav", None, "Path to the test WAV file.")
 _PEAK_THRESHOLD = flags.DEFINE_float(
     "peak_threshold",
-    0.04,
+    0.1,
     "Peak threshold for Mel Log Spectral Distance (MLSD) evaluation.",
 )
 _SUSTAINED_THRESHOLD = flags.DEFINE_float(
     "sustained_threshold",
-    0.20,
+    0.1,
     "Sustained threshold for Mel Log Spectral Distance (MLSD) evaluation.",
 )
 _SUSTAINED_MS = flags.DEFINE_float(

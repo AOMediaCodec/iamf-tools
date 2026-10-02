@@ -22,7 +22,15 @@ from absl import app
 from absl import flags
 from absl import logging
 
+from validation.iamf_verifier import codec_inspector
 from validation.mlsd_comparator import mlsd_comparator
+
+
+# MLSD thresholds.
+_LOSSLESS_PEAK_THRESHOLD = 0.1
+_LOSSLESS_SUSTAINED_THRESHOLD = 0.1
+_LOSSY_PEAK_THRESHOLD = 2.4
+_LOSSY_SUSTAINED_THRESHOLD = 0.9
 
 
 @dataclasses.dataclass(frozen=True)
@@ -254,6 +262,8 @@ def _decode_and_evaluate_layout(
     mix_id: int,
     decoder_cmd: str,
     temp_dir: str,
+    peak_threshold: float,
+    sustained_threshold: float,
 ) -> CheckResult:
   """Decodes reference and test bitstreams to WAV and verifies MLSD audio quality.
 
@@ -268,6 +278,8 @@ def _decode_and_evaluate_layout(
     mix_id: Target integer Mix Presentation ID to decode.
     decoder_cmd: Command name or absolute path for the iamf_tools decoder.
     temp_dir: Temporary workspace directory path for decoded WAV files.
+    peak_threshold: Peak MLSD threshold.
+    sustained_threshold: Sustained MLSD threshold.
 
   Returns:
     Structured CheckResult indicating sample match and MLSD evaluation.
@@ -306,7 +318,12 @@ def _decode_and_evaluate_layout(
     )
 
   is_pass, anomalies, m_peak, m_sustained = (
-      mlsd_comparator.evaluate_audio_quality(ref_wav, test_wav)
+      mlsd_comparator.evaluate_audio_quality(
+          ref_wav,
+          test_wav,
+          peak_threshold=peak_threshold,
+          sustained_threshold=sustained_threshold,
+      )
   )
   if not is_pass:
     msg = f"[FAIL] MLSD verification failed for layout {layout}{mix_label}."
@@ -450,18 +467,39 @@ def _run_verifier(
           )
       )
     else:
-      for mix_id in mix_ids:
-        for layout in layouts:
-          results.append(
-              _decode_and_evaluate_layout(
-                  ref_file,
-                  test_iamf_file,
-                  layout,
-                  mix_id,
-                  decoder_cmd,
-                  temp_dir,
-              )
-          )
+      try:
+        with open(test_iamf_file, "rb") as f:
+          is_lossy = codec_inspector.is_lossy_bitstream(f)
+      except (OSError, ValueError) as err:
+        results.append(
+            CheckResult(
+                False,
+                f"[FAIL] Failed to inspect codecs in {test_iamf_file}: {err}",
+            )
+        )
+      else:
+        # Determine MLSD thresholds based on detected codec in the bitstream.
+        if is_lossy:
+          peak_threshold = _LOSSY_PEAK_THRESHOLD
+          sustained_threshold = _LOSSY_SUSTAINED_THRESHOLD
+        else:
+          peak_threshold = _LOSSLESS_PEAK_THRESHOLD
+          sustained_threshold = _LOSSLESS_SUSTAINED_THRESHOLD
+
+        for mix_id in mix_ids:
+          for layout in layouts:
+            results.append(
+                _decode_and_evaluate_layout(
+                    ref_file,
+                    test_iamf_file,
+                    layout,
+                    mix_id,
+                    decoder_cmd,
+                    temp_dir,
+                    peak_threshold=peak_threshold,
+                    sustained_threshold=sustained_threshold,
+                )
+            )
 
   report.extend(r.ledger_entry for r in results)
 

@@ -33,8 +33,8 @@ Python locates the `validation` package:
 PYTHONPATH=/path/to/iamf-tools python3 /path/to/iamf-tools/validation/mlsd_comparator/mlsd_comparator_main.py \
   --ref_wav=path/to/reference.wav \
   --test_wav=path/to/test.wav \
-  [--peak_threshold=0.04] \
-  [--sustained_threshold=0.20] \
+  [--peak_threshold=0.1] \
+  [--sustained_threshold=0.1] \
   [--sustained_ms=100.0] \
   [--report_file=mlsd_report.txt]
 ```
@@ -43,9 +43,9 @@ PYTHONPATH=/path/to/iamf-tools python3 /path/to/iamf-tools/validation/mlsd_compa
 
 *   `--ref_wav` (Required): Path to the reference (golden) WAV file.
 *   `--test_wav` (Required): Path to the test WAV file to evaluate.
-*   `--peak_threshold` (Optional, default: `0.04`): Peak threshold for short
+*   `--peak_threshold` (Optional, default: `0.1`): Peak threshold for short
     transient clicks/pops.
-*   `--sustained_threshold` (Optional, default: `0.20`): Sustained threshold for
+*   `--sustained_threshold` (Optional, default: `0.1`): Sustained threshold for
     long-term encoding quality.
 *   `--sustained_ms` (Optional, default: `100.0`): Minimum duration in
     milliseconds to count as a sustained degradation.
@@ -61,7 +61,7 @@ along with the final status (PASS/FAIL):
 
 ```text
 Maximum Peak MLSD: 0.02
-Maximum Sustained MLSD: 0.15
+Maximum Sustained MLSD: 0.08
 Status: PASS
 Report written to /path/to/iamf-tools/mlsd_report.txt
 ```
@@ -76,7 +76,7 @@ report writing is skipped):
 Test: MLSD evaluation
 Reference: golden_reference.wav
 Test: decoded_output.wav
-Maximum Peak MLSD: 0.02 (Threshold: 0.04)
-Maximum Sustained MLSD: 0.15 (Threshold: 0.20 over 100.0 ms)
+Maximum Peak MLSD: 0.02 (Threshold: 0.10)
+Maximum Sustained MLSD: 0.08 (Threshold: 0.10 over 100.0 ms)
 Result: PASS
 ```
