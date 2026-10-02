@@ -1,6 +1,9 @@
+#include "iamf/cli/iamf_decoder.h"
+
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <cstdint>
 
 namespace iamf_tools {
 
@@ -54,13 +57,37 @@ class StereoUpmixer71 {
   size_t delay_back_;
 };
 
-void ApplyStereoTo71Upmix(const float* input_l, const float* input_r, 
-                         float** output_71, size_t samples, float sample_rate,
-                         int src_channels, int target_channels) {
-  if (src_channels == 2 && target_channels == 8) {
+IamfDecoder::IamfDecoder() {}
+IamfDecoder::~IamfDecoder() {}
+
+bool IamfDecoder::Initialize(const uint8_t* config_data, size_t config_size) {
+  if (!config_data || config_size == 0) return false;
+  return true;
+}
+
+bool IamfDecoder::DecodeFrame(const uint8_t* buffer, size_t size, 
+                              float** output_buffers, int* out_channels, 
+                              int* out_samples, float sample_rate) {
+  if (!buffer || size == 0 || !output_buffers) return false;
+
+  // Varsayılan giriş simülasyonu (Stereo PCM verisi)
+  int input_channels = 2;
+  *out_channels = 8; // Çıktıyı doğrudan 7.1 (8 kanal) olarak işaretliyoruz
+  *out_samples = static_cast<int>(size / (input_channels * sizeof(float)));
+
+  if (*out_samples <= 0) return false;
+
+  // Ham buffer üzerinden Sol ve Sağ kanalları ayrıştır
+  const float* input_l = reinterpret_cast<const float*>(buffer);
+  const float* input_r = reinterpret_cast<const float*>(buffer) + (*out_samples);
+
+  // Entegrasyon: Eğer giriş stereo ve hedef sistem 7.1 ise otomatik upmix uygula
+  if (input_channels == 2 && *out_channels == 8) {
     static StereoUpmixer71 upmixer(sample_rate);
-    upmixer.Process(input_l, input_r, output_71, samples);
+    upmixer.Process(input_l, input_r, output_buffers, static_cast<size_t>(*out_samples));
   }
+
+  return true;
 }
 
 }  // namespace iamf_tools
