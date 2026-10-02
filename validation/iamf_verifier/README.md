@@ -151,3 +151,14 @@ If any individual stage detects an anomaly (e.g., bitstream syntax corruption or
 loudness drift exceeding the threshold), that specific stage is marked as
 `[FAIL]` with detailed diagnostics, and the final conclusion reflects `OVERALL
 RESULT: FAIL`.
+
+--------------------------------------------------------------------------------
+
+## Unit Tests
+
+Unit tests for `iamf_verifier` components (such as `codec_inspector`) can be
+run directly with Python without requiring Bazel:
+
+```bash
+PYTHONPATH=. python3 validation/iamf_verifier/tests/codec_inspector_test.py
+```
