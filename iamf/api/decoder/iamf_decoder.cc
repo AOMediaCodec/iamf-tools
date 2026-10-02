@@ -54,4 +54,13 @@ class StereoUpmixer71 {
   size_t delay_back_;
 };
 
+void ApplyStereoTo71Upmix(const float* input_l, const float* input_r, 
+                         float** output_71, size_t samples, float sample_rate,
+                         int src_channels, int target_channels) {
+  if (src_channels == 2 && target_channels == 8) {
+    static StereoUpmixer71 upmixer(sample_rate);
+    upmixer.Process(input_l, input_r, output_71, samples);
+  }
+}
+
 }  // namespace iamf_tools
