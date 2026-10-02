@@ -190,6 +190,18 @@ UserMetadataGenerator::GenerateUserMetadata(
     }
   }
 
+  // An audioProgramme with more audio object groups than an IAMF mix can hold
+  // is skipped rather than rejected, so it is possible to arrive here having
+  // described no audio at all. Encoding that metadata produces a descriptor-
+  // only bitstream that carries nothing and that this project's own tools
+  // cannot parse, so say so instead.
+  if (user_metadata.audio_element_metadata().empty() ||
+      user_metadata.audio_frame_metadata().empty()) {
+    return absl::InvalidArgumentError(
+        "No audio element could be generated from this ADM. Every "
+        "audioProgramme was either empty or larger than an IAMF mix allows.");
+  }
+
   return user_metadata;
 }
 
