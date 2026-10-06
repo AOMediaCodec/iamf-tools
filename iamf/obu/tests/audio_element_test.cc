@@ -1280,6 +1280,52 @@ TEST(ValidateAndWriteObu, SerializesOneObjectAudioElementObu) {
   ValidateObuWriteResults(wb, kExpectedHeader, kExpectedOneObjectPayload);
 }
 
+TEST(ValidateAndWriteObu, SerializesObjectsConfigWithMultiByteUleb128Size) {
+  auto leb_generator =
+      LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
+  ASSERT_NE(leb_generator, nullptr);
+  auto obu = CreateObjectsAudioElementObu(
+      CreateObjectsAudioElementArgs(),
+      GetObjectsConfigExpectOk(1, {0x01, 0x02, 0x03}));
+  ASSERT_THAT(obu, IsOk());
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 0x80 | 17, 0x00});
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `audio_element_id`.
+      0x80 | 1,
+      0x00,
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementObjectBased << 5,
+      // `codec_config_id`.
+      0x80 | 2,
+      0x00,
+      // `num_substreams`.
+      0x80 | 1,
+      0x00,
+      // `audio_substream_ids`
+      0x80 | 3,
+      0x00,
+      // `num_parameters`.
+      0x80 | 0,
+      0x00,
+      // `objects_config`
+      // `objects_config_size` is affected by the `LebGenerator`.
+      0x80 | 4,
+      0x00,
+      // `num_objects`.
+      1,
+      // `objects_config_extension_bytes`.
+      0x01,
+      0x02,
+      0x03,
+  });
+
+  WriteBitBuffer wb(kInitialBufferCapacity, *leb_generator);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
+}
+
 TEST(ValidateAndWriteObu, WritesWithTwoSubstreams) {
   CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
   common_args.substream_ids = {1, 2};
@@ -2279,6 +2325,51 @@ TEST(CreateFromBuffer, OneObjectConfigWithExtensionBytes) {
       ObjectsConfig::Create(1, {0x01, 0x02, 0x03}).value();
   EXPECT_EQ(std::get<ObjectsConfig>(obu.value().config_),
             expected_objects_config);
+}
+
+TEST(CreateFromBuffer, ObjectsConfigWithMultiByteUleb128Size) {
+  std::vector<uint8_t> source = {
+      // `audio_element_id`.
+      1,
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementObjectBased << 5,
+      // `codec_config_id`.
+      2,
+      // `num_substreams`.
+      1,
+      // `audio_substream_ids`
+      3,
+      // `num_parameters`.
+      0,
+      // `objects_config`
+      // `objects_config_size` (128 encoded as 2-byte leb128).
+      0x80,
+      0x01,
+      // `num_objects`.
+      1,
+  };
+  const std::vector<uint8_t> kExpectedExtensionBytes(127, 0xab);
+  source.insert(source.end(), kExpectedExtensionBytes.begin(),
+                kExpectedExtensionBytes.end());
+  const int64_t payload_size = source.size();
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
+  ObuHeader header;
+
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
+
+  ASSERT_THAT(obu, IsOk());
+  ObjectsConfig expected_objects_config =
+      ObjectsConfig::Create(1, kExpectedExtensionBytes).value();
+  EXPECT_EQ(std::get<ObjectsConfig>(obu->config_), expected_objects_config);
+}
+
+TEST(ObjectsConfigCreateFromBuffer, InvalidWhenSizeExceedsMax) {
+  WriteBitBuffer wb(16);
+  ASSERT_THAT(wb.WriteUleb128(kEntireObuSizeMaxTwoMegabytes + 1), IsOk());
+  auto rb =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(wb.bit_buffer()));
+
+  EXPECT_THAT(ObjectsConfig::CreateFromBuffer(*rb), Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, InvalidTooManyParameters) {

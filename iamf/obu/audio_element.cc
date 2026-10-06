@@ -185,10 +185,10 @@ absl::Status WriteObjectsConfig(const ObjectsConfig& objects_config,
   // Validation is not necessary here because the `ObjectsConfig` struct is
   // already validated when it is created.
 
-  // `object_config_size` is the number of bytes in the extension, plus one for
+  // `objects_config_size` is the number of bytes in the extension, plus one for
   // the num_objects field.
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
-      objects_config.GetObjectsConfigExtensionBytesView().size() + 1, 8));
+  RETURN_IF_NOT_OK(wb.WriteUleb128(
+      objects_config.GetObjectsConfigExtensionBytesView().size() + 1));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(objects_config.GetNumObjects(), 8));
   RETURN_IF_NOT_OK(
       wb.WriteUint8Span(objects_config.GetObjectsConfigExtensionBytesView()));
@@ -211,16 +211,17 @@ absl::StatusOr<ObjectsConfig> ObjectsConfig::Create(
 
 absl::StatusOr<ObjectsConfig> ObjectsConfig::CreateFromBuffer(
     ReadBitBuffer& rb) {
-  uint8_t object_config_size;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, object_config_size));
-  if (object_config_size == 0) {
-    return absl::InvalidArgumentError(
-        "Invalid object_config_size = 0. This should be at least 1.");
-  }
+  DecodedUleb128 objects_config_size;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(objects_config_size));
+  // TODO(b/570679219): Update maximum to proper bound, which should be lower
+  // due to the previous fields in the OBU.
+  RETURN_IF_NOT_OK(ValidateInRange(
+      objects_config_size, {DecodedUleb128{1}, kEntireObuSizeMaxTwoMegabytes},
+      "objects_config_size"));
   uint8_t num_objects;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_objects));
   std::vector<uint8_t> objects_config_extension_bytes;
-  objects_config_extension_bytes.resize(object_config_size - 1);
+  objects_config_extension_bytes.resize(objects_config_size - 1);
   RETURN_IF_NOT_OK(
       rb.ReadUint8Span(absl::MakeSpan(objects_config_extension_bytes)));
   return Create(num_objects,
