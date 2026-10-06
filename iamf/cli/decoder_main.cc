@@ -33,6 +33,8 @@
 #include "iamf/include/iamf_tools/iamf_decoder_factory.h"
 #include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
+#include "iamf/cli/iamf_upmixer.cc"
+
 
 // Control input and output files.
 ABSL_FLAG(std::string, input_filename, "", "Filename of the input IAMF file.");
