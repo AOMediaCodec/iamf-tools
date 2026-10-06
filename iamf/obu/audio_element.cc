@@ -512,6 +512,12 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
       return ambisonics_config.ValidateAndWrite(wb);
     }
     case kAudioElementObjectBased:
+      RETURN_IF_NOT_OK(ValidateEqual<DecodedUleb128>(
+          GetNumParameters(), 0,
+          "`num_parameters` for `kAudioElementObjectBased`"));
+      RETURN_IF_NOT_OK(ValidateEqual<DecodedUleb128>(
+          GetNumSubstreams(), 1,
+          "`num_substreams` for `kAudioElementObjectBased`"));
       return WriteObjectsConfig(std::get<ObjectsConfig>(config_), wb);
     default: {
       const auto& extension_config = std::get<ExtensionConfig>(config_);
@@ -580,6 +586,12 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
       return absl::OkStatus();
     }
     case kAudioElementObjectBased: {
+      RETURN_IF_NOT_OK(ValidateEqual<DecodedUleb128>(
+          GetNumParameters(), 0,
+          "`num_parameters` for `kAudioElementObjectBased`"));
+      RETURN_IF_NOT_OK(ValidateEqual<DecodedUleb128>(
+          GetNumSubstreams(), 1,
+          "`num_substreams` for `kAudioElementObjectBased`"));
       auto objects_config = ObjectsConfig::CreateFromBuffer(rb);
       if (!objects_config.ok()) {
         return objects_config.status();
