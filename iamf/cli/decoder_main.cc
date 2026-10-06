@@ -269,18 +269,21 @@ int main(int argc, char** argv) {
       }
       LogSelectedMix(requested_mix_presentation_id, *decoder);
     }
-    if (got_descriptors) {
-      // Should only be called after descriptors are processed. Descriptors may
-      // be processed in this iteration or a subsequent one; we also want to
-      // support the case where we get the entire file at once, and the
-      // descriptors and temporal units are all available in this iteration.
+        if (got_descriptors) {
       int num_temporal_units_processed;
       if (wav_writer == nullptr) {
-        ABSL_LOG(FATAL) << "Wav writer is null";
+        ABSL_LOG_FATAL) << "Wav writer is null";
       }
+
+      // ------ SENİN SUNUCU DOSTU UP-MIXER ENTEGRASYONUN ------
+      // Wav dosyasına yazılmadan hemen önce, hafızadaki veriyi 7.1 yapıyoruz
+      iamf_tools::ApplyStereoTo71Upmix(reusable_sample_buffer);
+      // ------------------------------------------------------
+
       auto status = DumpPendingTemporalUnitsToWav(
           *decoder, reusable_sample_buffer, *wav_writer,
           num_temporal_units_processed);
+
       if (!status.ok()) {
         ABSL_LOG(FATAL) << "Failed to dump pending temporal units to wav: "
                         << status;
