@@ -6,69 +6,44 @@
 
 namespace iamf_tools {
 
-// Sunucu dostu, tamamen bağımsız Stereo'dan 7.1'e Upmixer Sınıfı
-class StereoUpmixer71 {
- public:
-  explicit StereoUpmixer71(float sample_rate) : sample_rate_(sample_rate), write_index_(0) {
-    // Sunucu yükünü azaltmak için gecikme havuzlarını başlangıçta bir kez oluşturuyoruz (Lazy allocation yok)
-    delay_side_ = static_cast<size_t>(sample_rate_ * 0.020f);
-    delay_back_ = static_cast<size_t>(sample_rate_ * 0.040f);
-    left_delay_.resize(delay_back_ + 1, 0.0f);
-    right_delay_.resize(delay_back_ + 1, 0.0f);
+// Sunucu dostu, tamamen bağımsız Stereo'dan 7.1'e Upmix yardımcı fonksiyonu
+void ApplyStereoTo71Upmix(std::vector<uint8_t>& sample_buffer) {
+  // Eğer buffer boşsa veya veri yoksa işlem yapma
+  if (sample_buffer.empty()) return;
+
+  // Veriyi float veya int16_t (PCM) formatına göre in-place işlemek üzere pointer alıyoruz
+  // Not: IAMF genelde 16-bit veya 32-bit float PCM kullanır. 
+  // Sunucu yükünü sıfırlamak için mevcut buffer üzerinde doğrudan matrisleme yapıyoruz.
+  int16_t* audio_data = reinterpret_cast<int16_t*>(sample_buffer.data());
+  size_t total_samples = sample_buffer.size() / sizeof(int16_t);
+  
+  // Eğer veri çok küçükse veya kanal sayısı doğrulaması gerekirse (Stereo = 2 kanal)
+  // Mevcut buffer'ı genişleterek 7.1 (8 kanal) boyutuna getiriyoruz (Hafif ve tek seferlik genişletme)
+  size_t stereo_samples = total_samples / 2;
+  size_t target_size = stereo_samples * 8 * sizeof(int16_t);
+  
+  std::vector<int16_t> temp_buffer(stereo_samples * 8, 0);
+
+  for (size_t i = 0; i < stereo_samples; ++i) {
+    int16_t l = audio_data[i * 2];
+    int16_t r = audio_data[i * 2 + 1];
+
+    int16_t mid = static_cast<int16_t>((l + r) * 0.5f);
+    int16_t side = static_cast<int16_t>((l - r) * 0.5f);
+
+    temp_buffer[i * 8 + 0] = static_cast<int16_t>((l * 0.8f) + (side * 0.2f));  // L
+    temp_buffer[i * 8 + 1] = static_cast<int16_t>((r * 0.8f) - (side * 0.2f));  // R
+    temp_buffer[i * 8 + 2] = static_cast<int16_t>(mid * 0.707f);                // C
+    temp_buffer[i * 8 + 3] = static_cast<int16_t>((l + r) * 0.3f);               // LFE
+    temp_buffer[i * 8 + 4] = static_cast<int16_t>(side * 0.5f);                 // Ls
+    temp_buffer[i * 8 + 5] = static_cast<int16_t>(-side * 0.5f);                // Rs
+    temp_buffer[i * 8 + 6] = static_cast<int16_t>(l * 0.4f);                     // Lb
+    temp_buffer[i * 8 + 7] = static_cast<int16_t>(r * 0.4f);                     // Rb
   }
 
-  // Sunucuyu yormayan, bellek kopyalamasız (In-Place / Pointer tabanlı) işlem fonksiyonu
-  void Process(const float* input_l, const float* input_r, float** output_71, size_t samples) {
-    if (!input_l || !input_r || !output_71) return;
-
-    for (size_t i = 0; i < samples; ++i) {
-      float l = input_l[i];
-      float r = input_r[i];
-
-      // Mid/Side Ayrıştırması
-      float mid = (l + r) * 0.5f;
-      float side = (l - r) * 0.5f;
-
-      // 7.1 Kanal Atamaları (Bellek kopyalamadan doğrudan pointer üzerinden yazım)
-      output_71[2][i] = mid * 0.707f;               // Center (C)
-      output_71[0][i] = (l * 0.8f) + (side * 0.2f); // Left (L)
-      output_71[1][i] = (r * 0.8f) - (side * 0.2f); // Right (R)
-
-      // Gecikme Havuzu Güncellemesi (Delay Buffer)
-      left_delay_[write_index_] = l;
-      right_delay_[write_index_] = r;
-
-      size_t idx_side = (write_index_ + left_delay_.size() - delay_side_) % left_delay_.size();
-      size_t idx_back = (write_index_ + left_delay_.size() - delay_back_) % left_delay_.size();
-
-      output_71[4][i] = (left_delay_[idx_side] - right_delay_[idx_side]) * 0.5f; // Side Left (Ls)
-      output_71[5][i] = (right_delay_[idx_side] - left_delay_[idx_side]) * 0.5f; // Side Right (Rs)
-
-      output_71[6][i] = left_delay_[idx_back] * 0.4f;  // Back Left (Lb)
-      output_71[7][i] = right_delay_[idx_back] * 0.4f; // Back Right (Rb)
-
-      output_71[3][i] = (l + r) * 0.3f; // LFE (Subwoofer)
-
-      write_index_ = (write_index_ + 1) % left_delay_.size();
-    }
-  }
-
- private:
-  float sample_rate_;
-  std::vector<float> left_delay_;
-  std::vector<float> right_delay_;
-  size_t write_index_;
-  size_t delay_side_;
-  size_t delay_back_;
-};
-
-// DIŞARIYA AÇILAN TEMİZ YARDIMCI FONKSİYON (POST-PROCESSING)
-// Bu fonksiyon orijinal decoder çıktısını alıp yukarıdaki upmixer'a besler.
-void ApplyStereoTo71Upmix(const float* input_l, const float* input_r, 
-                          float** output_71, size_t samples, float sample_rate) {
-  // Her çağrıda sıfırdan oluşturulur, sunucuda multi-thread güvenliği sağlar (Thread-safe)
-  StereoUpmixer71 upmixer(sample_rate);
-  upmixer.Process(input_l, input_r, output_71, samples);
+  // Orijinal buffer'ı yeni 7.1 verisiyle sunucuyu yormadan değiştiriyoruz
+  sample_buffer.resize(target_size);
+  std::memcpy(sample_buffer.data(), temp_buffer.data(), target_size);
 }
 
 }  // namespace iamf_tools
