@@ -661,6 +661,11 @@ ObuWithDataGenerator::GenerateAudioElementWithData(
     RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
         audio_element_obu, substream_id_to_labels));
   }
+  if (audio_element_obu.GetAudioElementType() ==
+      AudioElementObu::AudioElementType::kAudioElementObjectBased) {
+    RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeObjectsConfig(
+        audio_element_obu, substream_id_to_labels));
+  }
   auto iter = codec_config_obus.find(audio_element_obu.GetCodecConfigId());
   if (iter == codec_config_obus.end()) {
     return absl::InvalidArgumentError(

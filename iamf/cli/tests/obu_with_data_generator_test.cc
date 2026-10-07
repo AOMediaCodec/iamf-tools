@@ -159,6 +159,49 @@ TEST(GenerateAudioElementWithData,
               Contains(Pair(non_coupled_substream_id, ElementsAre(kA24))));
 }
 
+TEST(GenerateAudioElementWithData, ValidSingleObjectAudioElement) {
+  auto objects_config = ObjectsConfig::Create(/*num_objects=*/1, {});
+  ASSERT_THAT(objects_config, IsOk());
+  auto obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
+      kFirstSubstreamId, *objects_config);
+  ASSERT_THAT(obu, IsOk());
+  CodecConfigsById codec_config_obus;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
+
+  auto audio_element_with_data =
+      ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
+                                                         *obu);
+  ASSERT_THAT(audio_element_with_data, IsOk());
+
+  EXPECT_EQ(audio_element_with_data->obu, *obu);
+  EXPECT_THAT(audio_element_with_data->substream_id_to_labels,
+              UnorderedElementsAre(
+                  Pair(kFirstSubstreamId, ElementsAre(kObjectChannel0))));
+}
+
+TEST(GenerateAudioElementWithData, ValidCoupledObjectsAudioElement) {
+  auto objects_config = ObjectsConfig::Create(/*num_objects=*/2, {});
+  ASSERT_THAT(objects_config, IsOk());
+  auto obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
+      kFirstSubstreamId, *objects_config);
+  ASSERT_THAT(obu, IsOk());
+  CodecConfigsById codec_config_obus;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
+
+  auto audio_element_with_data =
+      ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
+                                                         *obu);
+  ASSERT_THAT(audio_element_with_data, IsOk());
+
+  EXPECT_EQ(audio_element_with_data->obu, *obu);
+  EXPECT_THAT(
+      audio_element_with_data->substream_id_to_labels,
+      UnorderedElementsAre(Pair(
+          kFirstSubstreamId, ElementsAre(kObjectChannel0, kObjectChannel1))));
+}
+
 TEST(GenerateAudioElementWithData, InvalidCodecConfigId) {
   auto obu = AudioElementObu::CreateForScalableChannelLayout(
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kSecondCodecConfigId,
