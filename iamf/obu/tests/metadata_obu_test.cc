@@ -28,6 +28,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr auto kIamfTagsHeader =
     std::to_array<uint8_t>({kObuIaMetadata << 3, 22});
@@ -110,6 +111,15 @@ TEST(CreateFromBuffer, ITUTT35) {
       metadata_itu_t_t35.itu_t_t35_country_code_extension_byte.has_value());
   EXPECT_THAT(metadata_itu_t_t35.itu_t_t35_payload_bytes,
               testing::ElementsAre(0x03, 0x04, 0x05, 0x06, 0x07));
+}
+
+TEST(CreateFromBuffer, UnsupportedMetadataTypeReturnsError) {
+  std::vector<uint8_t> buffer_data = {kMetadataTypeReserved, 0x01, 0x02};
+  const int64_t payload_size = buffer_data.size();
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(buffer_data);
+
+  EXPECT_THAT(MetadataObu::CreateFromBuffer(ObuHeader(), payload_size, *rb),
+              Not(IsOk()));
 }
 
 TEST(ValidateAndWrite, IamfTags) {

@@ -156,22 +156,29 @@ absl::Status MetadataObu::ReadAndValidatePayloadDerived(int64_t payload_size,
   int8_t metadata_type_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(metadata_type, metadata_type_size));
   metadata_type_ = static_cast<MetadataType>(metadata_type);
-  if (metadata_type_ == kMetadataTypeITUT_T35) {
-    if (payload_size < metadata_type_size) {
-      return absl::InvalidArgumentError(
-          "ITUT-T35 metadata must have payload greater than metadata type "
-          "size.");
+  switch (metadata_type_) {
+    case kMetadataTypeITUT_T35: {
+      if (payload_size < metadata_type_size) {
+        return absl::InvalidArgumentError(
+            "ITUT-T35 metadata must have payload greater than metadata type "
+            "size.");
+      }
+      MetadataITUTT35 metadata_itu_t_t35;
+      RETURN_IF_NOT_OK(ReadAndValidateMetadataITUTT35(
+          payload_size, metadata_type_size, rb, metadata_itu_t_t35));
+      metadata_variant_ = std::move(metadata_itu_t_t35);
+      return absl::OkStatus();
     }
-    MetadataITUTT35 metadata_itu_t_t35;
-    RETURN_IF_NOT_OK(ReadAndValidateMetadataITUTT35(
-        payload_size, metadata_type_size, rb, metadata_itu_t_t35));
-    metadata_variant_ = std::move(metadata_itu_t_t35);
-  } else if (metadata_type_ == kMetadataTypeIamfTags) {
-    MetadataIamfTags metadata_iamf_tags;
-    RETURN_IF_NOT_OK(ReadAndValidateMetadataIamfTags(rb, metadata_iamf_tags));
-    metadata_variant_ = std::move(metadata_iamf_tags);
+    case kMetadataTypeIamfTags: {
+      MetadataIamfTags metadata_iamf_tags;
+      RETURN_IF_NOT_OK(ReadAndValidateMetadataIamfTags(rb, metadata_iamf_tags));
+      metadata_variant_ = std::move(metadata_iamf_tags);
+      return absl::OkStatus();
+    }
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unsupported metadata_type= ", metadata_type_));
   }
-  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools
