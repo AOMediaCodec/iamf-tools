@@ -767,6 +767,7 @@ cc_library(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",
+        "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/status",

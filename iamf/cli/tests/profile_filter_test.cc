@@ -25,6 +25,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -36,7 +37,14 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions/cart16_param_definition.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
@@ -1718,6 +1726,207 @@ TEST(FilterProfilesForAudioElement,
               Not(IsOk()));
 
   EXPECT_TRUE(all_known_profiles.empty());
+}
+
+void InitializeDescriptorObusForObjectAudioElement(
+    uint8_t num_objects,
+    const std::vector<RenderingConfigParamDefinition>& param_definitions,
+    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements,
+    MixPresentationObus& mix_presentation_obus) {
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  auto objects_config = ObjectsConfig::Create(num_objects, {});
+  ASSERT_THAT(objects_config, IsOk());
+  auto audio_element_obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      kFirstSubstreamId, *objects_config);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  auto audio_element_with_data =
+      ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
+                                                         *audio_element_obu);
+  ASSERT_THAT(audio_element_with_data, IsOk());
+  audio_elements.emplace(kFirstAudioElementId, *audio_element_with_data);
+
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.rendering_config_param_definitions = param_definitions;
+}
+
+TEST(
+    FilterProfilesForMixPresentation,
+    RemovesAllKnownProfilesWhenNonObjectAudioElementHasRenderingConfigParamDefinitions) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.rendering_config_param_definitions.push_back(
+          RenderingConfigParamDefinition::Create(
+              PolarParamDefinition(ParamDefinition::BaseArgs{}), {}));
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), all_known_profiles),
+      Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(
+    FilterProfilesForMixPresentation,
+    RemovesAllKnownProfilesWhenObjectAudioElementHasNoRenderingConfigParamDefinitions) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, /*param_definitions=*/{}, codec_config_obus,
+      audio_elements, mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), all_known_profiles),
+      Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(
+    FilterProfilesForMixPresentation,
+    RemovesAllKnownProfilesWhenObjectAudioElementHasMultipleRenderingConfigParamDefinitions) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def, polar_param_def}, codec_config_obus,
+      audio_elements, mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), all_known_profiles),
+      Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     KeepsSupportedProfilesForSingleObjectWithValidPositionParamDefinitions) {
+  const std::vector<PositionParamVariant> kValidSingleObjectParamDefs = {
+      PolarParamDefinition(ParamDefinition::BaseArgs{}),
+      Cart8ParamDefinition(ParamDefinition::BaseArgs{}),
+      Cart16ParamDefinition(ParamDefinition::BaseArgs{}),
+  };
+  const absl::flat_hash_set<ProfileVersion> kExpectedSupportedProfiles = {
+      kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
+
+  for (const auto& param_def : kValidSingleObjectParamDefs) {
+    CodecConfigsById codec_config_obus;
+    AudioElementsById audio_elements;
+    MixPresentationObus mix_presentation_obus;
+    InitializeDescriptorObusForObjectAudioElement(
+        /*num_objects=*/1,
+        {RenderingConfigParamDefinition::Create(param_def, {})},
+        codec_config_obus, audio_elements, mix_presentation_obus);
+    absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
+
+    EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                    audio_elements, mix_presentation_obus.front(), profiles),
+                IsOk());
+    EXPECT_EQ(profiles, kExpectedSupportedProfiles);
+  }
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesAllKnownProfilesWhenSingleObjectHasDualPositionParamDefinition) {
+  const std::vector<PositionParamVariant> kDualObjectParamDefs = {
+      DualPolarParamDefinition(ParamDefinition::BaseArgs{}),
+      DualCart8ParamDefinition(ParamDefinition::BaseArgs{}),
+      DualCart16ParamDefinition(ParamDefinition::BaseArgs{}),
+  };
+
+  for (const auto& param_def : kDualObjectParamDefs) {
+    CodecConfigsById codec_config_obus;
+    AudioElementsById audio_elements;
+    MixPresentationObus mix_presentation_obus;
+    InitializeDescriptorObusForObjectAudioElement(
+        /*num_objects=*/1,
+        {RenderingConfigParamDefinition::Create(param_def, {})},
+        codec_config_obus, audio_elements, mix_presentation_obus);
+    absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
+
+    EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                    audio_elements, mix_presentation_obus.front(), profiles),
+                Not(IsOk()));
+    EXPECT_TRUE(profiles.empty());
+  }
+}
+
+TEST(FilterProfilesForMixPresentation,
+     KeepsSupportedProfilesForTwoObjectsWithValidDualPositionParamDefinitions) {
+  const std::vector<PositionParamVariant> kValidDualObjectParamDefs = {
+      DualPolarParamDefinition(ParamDefinition::BaseArgs{}),
+      DualCart8ParamDefinition(ParamDefinition::BaseArgs{}),
+      DualCart16ParamDefinition(ParamDefinition::BaseArgs{}),
+  };
+  const absl::flat_hash_set<ProfileVersion> kExpectedSupportedProfiles = {
+      kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
+
+  for (const auto& param_def : kValidDualObjectParamDefs) {
+    CodecConfigsById codec_config_obus;
+    AudioElementsById audio_elements;
+    MixPresentationObus mix_presentation_obus;
+    InitializeDescriptorObusForObjectAudioElement(
+        /*num_objects=*/2,
+        {RenderingConfigParamDefinition::Create(param_def, {})},
+        codec_config_obus, audio_elements, mix_presentation_obus);
+    absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
+
+    EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                    audio_elements, mix_presentation_obus.front(), profiles),
+                IsOk());
+    EXPECT_EQ(profiles, kExpectedSupportedProfiles);
+  }
+}
+
+TEST(
+    FilterProfilesForMixPresentation,
+    RemovesAllKnownProfilesWhenTwoObjectAudioElementHasSinglePositionParamDefinition) {
+  const std::vector<PositionParamVariant> kSingleObjectParamDefs = {
+      PolarParamDefinition(ParamDefinition::BaseArgs{}),
+      Cart8ParamDefinition(ParamDefinition::BaseArgs{}),
+      Cart16ParamDefinition(ParamDefinition::BaseArgs{}),
+  };
+
+  for (const auto& param_def : kSingleObjectParamDefs) {
+    CodecConfigsById codec_config_obus;
+    AudioElementsById audio_elements;
+    MixPresentationObus mix_presentation_obus;
+    InitializeDescriptorObusForObjectAudioElement(
+        /*num_objects=*/2,
+        {RenderingConfigParamDefinition::Create(param_def, {})},
+        codec_config_obus, audio_elements, mix_presentation_obus);
+    absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
+
+    EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                    audio_elements, mix_presentation_obus.front(), profiles),
+                Not(IsOk()));
+    EXPECT_TRUE(profiles.empty());
+  }
 }
 
 }  // namespace

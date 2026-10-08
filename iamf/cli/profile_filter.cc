@@ -34,6 +34,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
@@ -456,6 +457,84 @@ int GetNumberOfChannels(const AudioElementWithData& audio_element) {
   return num_channels;
 }
 
+absl::Status FilterRenderingConfigParamDefinitions(
+    absl::string_view debugging_context,
+    const AudioElementObu& audio_element_obu,
+    const RenderingConfig& rendering_config,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  const auto& param_definitions =
+      rendering_config.rendering_config_param_definitions;
+  if (audio_element_obu.GetAudioElementType() !=
+      AudioElementObu::kAudioElementObjectBased) {
+    if (!param_definitions.empty()) {
+      return ClearAndReturnError(
+          absl::StrCat(debugging_context, " Audio element ID= ",
+                       audio_element_obu.GetAudioElementId(),
+                       " is not object-based, but its RenderingConfig has ",
+                       param_definitions.size(), " parameter definitions."),
+          profile_versions);
+    }
+    return absl::OkStatus();
+  }
+
+  const auto* objects_config =
+      std::get_if<ObjectsConfig>(&audio_element_obu.config_);
+  if (objects_config == nullptr) {
+    return ClearAndReturnError(
+        absl::StrCat(
+            debugging_context,
+            " Audio element ID= ", audio_element_obu.GetAudioElementId(),
+            " signals that it is an object-based audio element, but it does "
+            "not hold an `ObjectsConfig`."),
+        profile_versions);
+  }
+
+  if (param_definitions.size() != 1) {
+    return ClearAndReturnError(
+        absl::StrCat(debugging_context, " Audio element ID= ",
+                     audio_element_obu.GetAudioElementId(),
+                     " is object-based, so its RenderingConfig must have "
+                     "exactly 1 parameter definition, but has ",
+                     param_definitions.size(), "."),
+        profile_versions);
+  }
+
+  const auto param_definition_type = param_definitions[0].param_definition_type;
+  using enum ParamDefinition::ParameterDefinitionType;
+  switch (objects_config->GetNumObjects()) {
+    case 1:
+      switch (param_definition_type) {
+        case kParameterDefinitionPolar:
+        case kParameterDefinitionCart8:
+        case kParameterDefinitionCart16:
+          return absl::OkStatus();
+        default:
+          break;
+      }
+      break;
+    case 2:
+      switch (param_definition_type) {
+        case kParameterDefinitionDualPolar:
+        case kParameterDefinitionDualCart8:
+        case kParameterDefinitionDualCart16:
+          return absl::OkStatus();
+        default:
+          break;
+      }
+      break;
+    default:
+      break;
+  }
+
+  return ClearAndReturnError(
+      absl::StrCat(debugging_context,
+                   " Audio element ID= ", audio_element_obu.GetAudioElementId(),
+                   " has num_objects= ", objects_config->GetNumObjects(),
+                   " which is incompatible with param_definition_type= ",
+                   param_definition_type, "."),
+      profile_versions);
+}
+
 absl::Status FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
     absl::string_view mix_presentation_id_for_debugging,
     const DescriptorObus::AudioElementsById& audio_elements,
@@ -480,6 +559,9 @@ absl::Status FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
       RETURN_IF_NOT_OK(ProfileFilter::FilterProfilesForAudioElement(
           mix_presentation_id_for_debugging, iter->second.obu,
           profile_versions));
+      RETURN_IF_NOT_OK(FilterRenderingConfigParamDefinitions(
+          mix_presentation_id_for_debugging, iter->second.obu,
+          sub_mix_audio_element.rendering_config, profile_versions));
 
       num_channels_in_mix_presentation += GetNumberOfChannels(iter->second);
     }
