@@ -29,6 +29,7 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/types.h"
@@ -125,6 +126,20 @@ absl::Status GetAndStoreMixPresentationObu(
   ABSL_LOG(INFO) << "Mix Presentation OBU successfully parsed.";
   mix_presentation_obu->PrintObu();
   mix_presentation_obus.push_back(*std::move(mix_presentation_obu));
+  return absl::OkStatus();
+}
+
+absl::Status GetAndStoreMetadataObu(const ObuHeader& header,
+                                    int64_t payload_size,
+                                    DescriptorObus::MetadataObus& metadata_obus,
+                                    ReadBitBuffer& read_bit_buffer) {
+  absl::StatusOr<MetadataObu> metadata_obu =
+      MetadataObu::CreateFromBuffer(header, payload_size, read_bit_buffer);
+  if (!metadata_obu.ok()) {
+    return metadata_obu.status();
+  }
+  metadata_obu->PrintObu();
+  metadata_obus.push_back(*std::move(metadata_obu));
   return absl::OkStatus();
 }
 
@@ -254,9 +269,8 @@ absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
             parsed_obus.mix_presentation_obus, read_bit_buffer);
         break;
       case kObuIaMetadata:
-        // TODO(b/474599807): Handle Metadata OBUs.
-        parsed_obu_status = absl::UnimplementedError(
-            "Found a Metadata OBU while parsing Descriptor OBUs.");
+        parsed_obu_status = GetAndStoreMetadataObu(
+            header, payload_size, parsed_obus.metadata_obus, read_bit_buffer);
         break;
       case kObuIaReserved25:
       case kObuIaReserved26:

@@ -29,6 +29,7 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/tests/obu_test_utils.h"
@@ -694,6 +695,53 @@ TEST(ProcessDescriptorObus, RejectsDescriptorObusWithPartialHeaderFollowing) {
   EXPECT_TRUE(insufficient_data);
   // Expect the reader position to be unchanged since we returned an error.
   EXPECT_EQ(read_bit_buffer->Tell(), start_position);
+}
+
+TEST(ProcessDescriptorObus, CollectsMetadataObus) {
+  const auto metadata_obu_1 = MetadataObu::Create(
+      ObuHeader(), MetadataITUTT35{.itu_t_t35_country_code = 0x01,
+                                   .itu_t_t35_payload_bytes = {0x02, 0x03}});
+  const auto metadata_obu_2 = MetadataObu::Create(
+      ObuHeader(),
+      MetadataIamfTags{.tags = {{.tag_name = "title", .tag_value = "song"}}});
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&metadata_obu_1, &metadata_obu_2});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
+  ASSERT_THAT(parsed_obus, IsOk());
+
+  ASSERT_EQ(parsed_obus->metadata_obus.size(), 2);
+  EXPECT_EQ(parsed_obus->metadata_obus.front().GetMetadataType(),
+            kMetadataTypeITUT_T35);
+  EXPECT_EQ(parsed_obus->metadata_obus.back().GetMetadataType(),
+            kMetadataTypeIamfTags);
+}
+
+TEST(ProcessDescriptorObus, IgnoresMetadataObuWithUnsupportedMetadataType) {
+  const ArbitraryObu unsupported_metadata_obu(
+      kObuIaMetadata, ObuHeader(),
+      /*payload=*/{kMetadataTypeReserved, 0x01, 0x02},
+      ArbitraryObu::kInsertionHookAfterIaSequenceHeader);
+  CodecConfigsById input_codec_configs;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&unsupported_metadata_obu,
+       &input_codec_configs.at(kFirstCodecConfigId)});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
+  ASSERT_THAT(parsed_obus, IsOk());
+
+  EXPECT_THAT(parsed_obus->metadata_obus, IsEmpty());
+  EXPECT_THAT(parsed_obus->codec_config_obus,
+              UnorderedElementsAre(Key(kFirstCodecConfigId)));
 }
 
 }  // namespace

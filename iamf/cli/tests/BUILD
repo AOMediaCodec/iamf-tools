@@ -278,6 +278,7 @@ cc_test(
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
         "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:metadata_obu",
         "//iamf/obu:obu_base",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",

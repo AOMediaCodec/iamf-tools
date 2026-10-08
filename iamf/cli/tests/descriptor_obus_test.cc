@@ -47,6 +47,12 @@ TEST(DescriptorObusConstructor, MixPresentationObusIsEmpty) {
   EXPECT_TRUE(descriptor_obus.mix_presentation_obus.empty());
 }
 
+TEST(DescriptorObusConstructor, MetadataObusIsEmpty) {
+  DescriptorObus descriptor_obus;
+
+  EXPECT_TRUE(descriptor_obus.metadata_obus.empty());
+}
+
 TEST(DescriptorObus, CodecConfigObuPointerStabilityAfterMove) {
   DescriptorObus descriptor_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, descriptor_obus.codec_config_obus);

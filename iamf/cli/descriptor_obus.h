@@ -18,6 +18,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -63,6 +64,17 @@ struct DescriptorObus {
    */
   using MixPresentationObus = std::list<MixPresentationObu>;
 
+  /*!\brief List of Metadata OBUs.
+   *
+   * The IAMF specification allows one or more Metadata OBUs to be included in a
+   * set of Descriptor OBUs.
+   *
+   * The specification uses the order within the bitstream to determine which
+   * tag instances are used when more than the maximum allowed count are
+   * present. This type holds them in a list, which helps preserve their order.
+   */
+  using MetadataObus = std::list<MetadataObu>;
+
   /*!\brief Default constructor. */
   DescriptorObus() = default;
 
@@ -74,6 +86,8 @@ struct DescriptorObus {
   AudioElementsById audio_elements;
   // List of Mix Presentation OBUs processed from the bitstream.
   MixPresentationObus mix_presentation_obus;
+  // List of Metadata OBUs processed from the bitstream.
+  MetadataObus metadata_obus;
 };
 
 }  // namespace iamf_tools
