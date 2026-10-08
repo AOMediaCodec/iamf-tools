@@ -62,7 +62,29 @@ TEST(CreateFromBuffer, ReadsSinglePointStepAnimation) {
   EXPECT_EQ(*data->first_position().distance.start_point_value(), 127);
 }
 
-TEST(CreateFromBuffer, ReadsSinglePointLinearAnimation) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(CreateFromBuffer, ReturnsErrorForNonStepAnimationTypeInSinglePoint) {
+  std::vector<uint8_t> source = {
+      // Byte 0: animation_type (1 = kLinear)
+      0b00000001,
+      // Dummy payload bytes
+      0b00000000,
+      0b10000000,
+      0b10111111,
+      0b10111111,
+      0b01111111,
+      0b10000000,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto data = PolarPositionData::CreateFromBuffer(*buffer, /*is_dual=*/false);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateFromBuffer, DISABLED_ReadsSinglePointLinearAnimation) {
   // Expected values:
   //   `azimuth`   (9-bit signed):   start = 1,  end = 2
   //   `elevation` (8-bit signed):   start = -2, end = -3
@@ -207,7 +229,36 @@ TEST(CreateFromBuffer, ReadsDualPointsStepAnimation) {
   EXPECT_EQ(*data->second_position()->distance.start_point_value(), 64);
 }
 
-TEST(CreateFromBuffer, ReadsDualPointsLinearAnimation) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(CreateFromBuffer, ReturnsErrorForNonStepAnimationTypeInDualPoints) {
+  std::vector<uint8_t> source = {
+      // Byte 0: animation_type (1 = kLinear)
+      0b00000001,
+      // Bytes 1..6: first polar coordinates
+      0b00000000,
+      0b10000000,
+      0b10111111,
+      0b10111111,
+      0b01111111,
+      0b10000000,
+      // Bytes 7..12: second polar coordinates
+      0b11111111,
+      0b11111111,
+      0b10000000,
+      0b10000000,
+      0b11100000,
+      0b00100000,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto data = PolarPositionData::CreateFromBuffer(*buffer, /*is_dual=*/true);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateFromBuffer, DISABLED_ReadsDualPointsLinearAnimation) {
   // Expected values:
   //   first_azimuth: start = 1, end = 2
   //   first_elevation: start = -2, end = -3
@@ -465,6 +516,19 @@ TEST(Create, ReturnsErrorForMismatchingDistanceAnimationType) {
   };
 
   auto data = PolarPositionData::Create(AnimationType::kStep, pos);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(Create, ReturnsErrorForNonStepAnimationType) {
+  PolarPosition pos = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeInterLinear(10),
+      .elevation = AnimatedParameterData<int8_t>::MakeInterLinear(10),
+      .distance = AnimatedParameterData<uint8_t>::MakeInterLinear(10),
+  };
+
+  auto data = PolarPositionData::Create(AnimationType::kInterLinear, pos);
 
   EXPECT_THAT(data, Not(IsOk()));
 }
@@ -758,6 +822,25 @@ TEST(CreateDual, ReturnsErrorForMismatchingSecondAzimuthAnimationType) {
   EXPECT_THAT(data, Not(IsOk()));
 }
 
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(CreateDual, ReturnsErrorForNonStepAnimationType) {
+  PolarPosition first = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeInterLinear(1),
+      .elevation = AnimatedParameterData<int8_t>::MakeInterLinear(2),
+      .distance = AnimatedParameterData<uint8_t>::MakeInterLinear(3),
+  };
+  PolarPosition second = {
+      .azimuth = AnimatedParameterData<int16_t>::MakeInterLinear(4),
+      .elevation = AnimatedParameterData<int8_t>::MakeInterLinear(5),
+      .distance = AnimatedParameterData<uint8_t>::MakeInterLinear(6),
+  };
+
+  auto data =
+      PolarPositionData::CreateDual(AnimationType::kInterLinear, first, second);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
 // ============================================================================
 // Write - Single Point Tests
 // ============================================================================
@@ -788,7 +871,8 @@ TEST(Write, StepAnimationWritesCorrectlyForSinglePoint) {
       }));
 }
 
-TEST(Write, LinearAnimationWritesCorrectlyForSinglePoint) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(Write, DISABLED_LinearAnimationWritesCorrectlyForSinglePoint) {
   PolarPosition pos = {
       .azimuth = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       .elevation = AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
@@ -864,7 +948,8 @@ TEST(Write, StepAnimationWritesCorrectlyForDualPoints) {
                              }));
 }
 
-TEST(Write, LinearAnimationWritesCorrectlyForDualPoints) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(Write, DISABLED_LinearAnimationWritesCorrectlyForDualPoints) {
   PolarPosition first = {
       .azimuth = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       .elevation = AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
@@ -930,7 +1015,8 @@ TEST(AbslStringify, FormatsStepAnimationForSinglePoint) {
             "     start_point_value= 127");
 }
 
-TEST(AbslStringify, FormatsLinearAnimationForSinglePoint) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(AbslStringify, DISABLED_FormatsLinearAnimationForSinglePoint) {
   PolarPosition pos = {
       .azimuth = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       .elevation = AnimatedParameterData<int8_t>::MakeLinear(-2, -3),
@@ -1000,7 +1086,8 @@ TEST(AbslStringify, FormatsStepAnimationForDualPoints) {
             "     start_point_value= 64");
 }
 
-TEST(AbslStringify, FormatsLinearAnimationForDualPoints) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(AbslStringify, DISABLED_FormatsLinearAnimationForDualPoints) {
   PolarPosition first = {
       .azimuth = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       .elevation = AnimatedParameterData<int8_t>::MakeLinear(-2, -3),

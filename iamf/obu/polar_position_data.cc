@@ -37,9 +37,16 @@ int16_t Clip3(int16_t value, int16_t min_val, int16_t max_val) {
   return std::clamp(value, min_val, max_val);
 }
 
+absl::Status ValidateAnimationType(AnimationType animation_type) {
+  // TODO(b/571087734): Update to also allow `AnimationType::kInterLinear` once
+  // dynamic objects are supported.
+  return ValidateEqual(animation_type, AnimationType::kStep, "animation_type");
+}
+
 absl::Status ValidatePosition(AnimationType animation_type,
                               const PolarPosition& position,
                               absl::string_view prefix) {
+  RETURN_IF_NOT_OK(ValidateAnimationType(animation_type));
   RETURN_IF_NOT_OK(
       ValidateEqual(position.azimuth.animation_type(), animation_type,
                     absl::StrCat(prefix, " azimuth animation_type")));
@@ -64,6 +71,7 @@ absl::Status ValidatePosition(AnimationType animation_type,
 
 absl::StatusOr<PolarPosition> ReadPosition(AnimationType animation_type,
                                            ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(ValidateAnimationType(animation_type));
   auto read_azimuth = [](ReadBitBuffer& r, int16_t& val) -> absl::Status {
     RETURN_IF_NOT_OK(r.ReadSigned9(val));
     val = Clip3(val, -180, 180);

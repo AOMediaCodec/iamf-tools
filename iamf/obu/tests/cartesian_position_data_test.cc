@@ -61,7 +61,32 @@ TEST(CreateFromBuffer, ReadsSinglePointStepAnimation8Bit) {
   EXPECT_EQ(*data->first_position().z.start_point_value(), 127);
 }
 
-TEST(CreateFromBuffer, ReadsSinglePointLinearAnimation8Bit) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(CreateFromBuffer, ReturnsErrorForSinglePointNonStepAnimation8Bit) {
+  std::vector<uint8_t> source = {
+      // `animation_type` (1 = kLinear)
+      0x01,
+      // `x` start_value, end_value
+      0x01,
+      0x02,
+      // `y` start_value (-2), end_value (-3)
+      0xfe,
+      0xfd,
+      // `z` start_value (127), end_value (0)
+      0x7f,
+      0x00,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto data = CartesianPositionData::CreateFromBuffer(
+      *buffer, CartesianBitDepth::k8Bit, /*is_dual=*/false);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateFromBuffer, DISABLED_ReadsSinglePointLinearAnimation8Bit) {
   std::vector<uint8_t> source = {
       // `animation_type` (1 = kLinear)
       0x01,
@@ -93,7 +118,8 @@ TEST(CreateFromBuffer, ReadsSinglePointLinearAnimation8Bit) {
   EXPECT_EQ(*data->first_position().z.end_point_value(), 0);
 }
 
-TEST(CreateFromBuffer, ReadsSinglePointBezierAnimation8Bit) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateFromBuffer, DISABLED_ReadsSinglePointBezierAnimation8Bit) {
   std::vector<uint8_t> source = {
       // `animation_type` (2 = kBezier)
       0x02,
@@ -170,7 +196,38 @@ TEST(CreateFromBuffer, ReadsSinglePointStepAnimation16Bit) {
   EXPECT_EQ(*data->first_position().z.start_point_value(), 32767);
 }
 
-TEST(CreateFromBuffer, ReadsSinglePointLinearAnimation16Bit) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(CreateFromBuffer, ReturnsErrorForSinglePointNonStepAnimation16Bit) {
+  std::vector<uint8_t> source = {
+      // `animation_type` (1 = kLinear)
+      0x01,
+      // `x` start_value (1), end_value (2)
+      0x00,
+      0x01,
+      0x00,
+      0x02,
+      // `y` start_value (-2), end_value (-3)
+      0xff,
+      0xfe,
+      0xff,
+      0xfd,
+      // `z` start_value (32767), end_value (0)
+      0x7f,
+      0xff,
+      0x00,
+      0x00,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto data = CartesianPositionData::CreateFromBuffer(
+      *buffer, CartesianBitDepth::k16Bit, /*is_dual=*/false);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateFromBuffer, DISABLED_ReadsSinglePointLinearAnimation16Bit) {
   std::vector<uint8_t> source = {
       // `animation_type` (1 = kLinear)
       0x01,
@@ -208,7 +265,8 @@ TEST(CreateFromBuffer, ReadsSinglePointLinearAnimation16Bit) {
   EXPECT_EQ(*data->first_position().z.end_point_value(), 0);
 }
 
-TEST(CreateFromBuffer, ReadsSinglePointBezierAnimation16Bit) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateFromBuffer, DISABLED_ReadsSinglePointBezierAnimation16Bit) {
   std::vector<uint8_t> source = {
       // `animation_type` (2 = kBezier)
       0x02,
@@ -297,7 +355,41 @@ TEST(CreateFromBuffer, ReadsDualPointStepAnimation8Bit) {
   EXPECT_EQ(*data->second_position()->z.start_point_value(), 6);
 }
 
-TEST(CreateFromBuffer, ReadsDualPointLinearAnimation8Bit) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(CreateFromBuffer, ReturnsErrorForDualPointNonStepAnimation8Bit) {
+  std::vector<uint8_t> source = {
+      // `animation_type` (1 = kLinear)
+      0x01,
+      // `first_x` start, end
+      0x01,
+      0x02,
+      // `first_y` start, end
+      0x03,
+      0x04,
+      // `first_z` start, end
+      0x05,
+      0x06,
+      // `second_x` start, end
+      0x07,
+      0x08,
+      // `second_y` start, end
+      0x09,
+      0x0a,
+      // `second_z` start, end
+      0x0b,
+      0x0c,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto data = CartesianPositionData::CreateFromBuffer(
+      *buffer, CartesianBitDepth::k8Bit, /*is_dual=*/true);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateFromBuffer, DISABLED_ReadsDualPointLinearAnimation8Bit) {
   std::vector<uint8_t> source = {
       // `animation_type` (1 = kLinear)
       0x01,
@@ -382,7 +474,53 @@ TEST(CreateFromBuffer, ReadsDualPointStepAnimation16Bit) {
   EXPECT_EQ(*data->second_position()->z.start_point_value(), 6);
 }
 
-TEST(CreateFromBuffer, ReadsDualPointLinearAnimation16Bit) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(CreateFromBuffer, ReturnsErrorForDualPointNonStepAnimation16Bit) {
+  std::vector<uint8_t> source = {
+      // `animation_type` (1 = kLinear)
+      0x01,
+      // `first_x` start (1), end (2)
+      0x00,
+      0x01,
+      0x00,
+      0x02,
+      // `first_y` start (3), end (4)
+      0x00,
+      0x03,
+      0x00,
+      0x04,
+      // `first_z` start (5), end (6)
+      0x00,
+      0x05,
+      0x00,
+      0x06,
+      // `second_x` start (7), end (8)
+      0x00,
+      0x07,
+      0x00,
+      0x08,
+      // `second_y` start (9), end (10)
+      0x00,
+      0x09,
+      0x00,
+      0x0a,
+      // `second_z` start (11), end (12)
+      0x00,
+      0x0b,
+      0x00,
+      0x0c,
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto data = CartesianPositionData::CreateFromBuffer(
+      *buffer, CartesianBitDepth::k16Bit, /*is_dual=*/true);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateFromBuffer, DISABLED_ReadsDualPointLinearAnimation16Bit) {
   std::vector<uint8_t> source = {
       // `animation_type` (1 = kLinear)
       0x01,
@@ -546,7 +684,22 @@ TEST(Create, CreatesSinglePointStepAnimation8Bit) {
   EXPECT_EQ(*data->first_position().z.start_point_value(), 100);
 }
 
-TEST(Create, CreatesSinglePointLinearAnimation8Bit) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(Create, ReturnsErrorForLinearAnimation8Bit) {
+  CartesianPosition pos{
+      .x = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
+      .y = AnimatedParameterData<int16_t>::MakeLinear(-2, -3),
+      .z = AnimatedParameterData<int16_t>::MakeLinear(127, 0),
+  };
+
+  auto data = CartesianPositionData::Create(AnimationType::kLinear,
+                                            CartesianBitDepth::k8Bit, pos);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(Create, DISABLED_CreatesSinglePointLinearAnimation8Bit) {
   CartesianPosition pos{
       .x = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       .y = AnimatedParameterData<int16_t>::MakeLinear(-2, -3),
@@ -562,7 +715,22 @@ TEST(Create, CreatesSinglePointLinearAnimation8Bit) {
   EXPECT_EQ(*data->first_position().x.end_point_value(), 2);
 }
 
-TEST(Create, CreatesSinglePointBezierAnimation8Bit) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(Create, ReturnsErrorForBezierAnimation8Bit) {
+  CartesianPosition pos{
+      .x = AnimatedParameterData<int16_t>::MakeBezier(1, 2, 3, 5),
+      .y = AnimatedParameterData<int16_t>::MakeBezier(-2, -3, -4, 10),
+      .z = AnimatedParameterData<int16_t>::MakeBezier(127, 0, 50, 15),
+  };
+
+  auto data = CartesianPositionData::Create(AnimationType::kBezier,
+                                            CartesianBitDepth::k8Bit, pos);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(Create, DISABLED_CreatesSinglePointBezierAnimation8Bit) {
   CartesianPosition pos{
       .x = AnimatedParameterData<int16_t>::MakeBezier(1, 2, 3, 5),
       .y = AnimatedParameterData<int16_t>::MakeBezier(-2, -3, -4, 10),
@@ -577,7 +745,22 @@ TEST(Create, CreatesSinglePointBezierAnimation8Bit) {
   EXPECT_EQ(*data->first_position().x.control_point_value(), 3);
 }
 
-TEST(Create, CreatesSinglePointInterLinearAnimation8Bit) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(Create, ReturnsErrorForInterLinearAnimation8Bit) {
+  CartesianPosition pos{
+      .x = AnimatedParameterData<int16_t>::MakeInterLinear(2),
+      .y = AnimatedParameterData<int16_t>::MakeInterLinear(-3),
+      .z = AnimatedParameterData<int16_t>::MakeInterLinear(0),
+  };
+
+  auto data = CartesianPositionData::Create(AnimationType::kInterLinear,
+                                            CartesianBitDepth::k8Bit, pos);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(Create, DISABLED_CreatesSinglePointInterLinearAnimation8Bit) {
   CartesianPosition pos{
       .x = AnimatedParameterData<int16_t>::MakeInterLinear(2),
       .y = AnimatedParameterData<int16_t>::MakeInterLinear(-3),
@@ -733,7 +916,27 @@ TEST(CreateDual, CreatesDualPointStepAnimation8Bit) {
   EXPECT_EQ(*data->second_position()->x.start_point_value(), 4);
 }
 
-TEST(CreateDual, CreatesDualPointLinearAnimation16Bit) {
+// TODO(b/571087734): Remove once dynamic objects are supported.
+TEST(CreateDual, ReturnsErrorForDualPointNonStepAnimation16Bit) {
+  CartesianPosition pos1{
+      .x = AnimatedParameterData<int16_t>::MakeLinear(1000, 2000),
+      .y = AnimatedParameterData<int16_t>::MakeLinear(3000, 4000),
+      .z = AnimatedParameterData<int16_t>::MakeLinear(5000, 6000),
+  };
+  CartesianPosition pos2{
+      .x = AnimatedParameterData<int16_t>::MakeLinear(7000, 8000),
+      .y = AnimatedParameterData<int16_t>::MakeLinear(9000, 10000),
+      .z = AnimatedParameterData<int16_t>::MakeLinear(11000, 12000),
+  };
+
+  auto data = CartesianPositionData::CreateDual(
+      AnimationType::kLinear, CartesianBitDepth::k16Bit, pos1, pos2);
+
+  EXPECT_THAT(data, Not(IsOk()));
+}
+
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(CreateDual, DISABLED_CreatesDualPointLinearAnimation16Bit) {
   CartesianPosition pos1{
       .x = AnimatedParameterData<int16_t>::MakeLinear(1000, 2000),
       .y = AnimatedParameterData<int16_t>::MakeLinear(3000, 4000),
@@ -853,7 +1056,8 @@ TEST(Write, StepAnimationWritesCorrectly8Bit) {
                              }));
 }
 
-TEST(Write, LinearAnimationWritesCorrectly8Bit) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(Write, DISABLED_LinearAnimationWritesCorrectly8Bit) {
   CartesianPosition pos{
       .x = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       .y = AnimatedParameterData<int16_t>::MakeLinear(-2, -3),
@@ -880,7 +1084,8 @@ TEST(Write, LinearAnimationWritesCorrectly8Bit) {
                              }));
 }
 
-TEST(Write, BezierAnimationWritesCorrectly8Bit) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(Write, DISABLED_BezierAnimationWritesCorrectly8Bit) {
   CartesianPosition pos{
       .x = AnimatedParameterData<int16_t>::MakeBezier(1, 2, 3, 5),
       .y = AnimatedParameterData<int16_t>::MakeBezier(-2, -3, -4, 10),
@@ -940,7 +1145,8 @@ TEST(Write, StepAnimationWritesCorrectly16Bit) {
                              }));
 }
 
-TEST(Write, LinearAnimationWritesCorrectly16Bit) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(Write, DISABLED_LinearAnimationWritesCorrectly16Bit) {
   CartesianPosition pos{
       .x = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       .y = AnimatedParameterData<int16_t>::MakeLinear(-2, -3),
@@ -1068,7 +1274,8 @@ TEST(AbslStringify, FormatsStepAnimationForSinglePoint) {
             "     start_point_value= 100");
 }
 
-TEST(AbslStringify, FormatsLinearAnimationForSinglePoint) {
+// TODO(b/571087734): Re-enable once dynamic objects are supported.
+TEST(AbslStringify, DISABLED_FormatsLinearAnimationForSinglePoint) {
   CartesianPosition pos{
       .x = AnimatedParameterData<int16_t>::MakeLinear(1, 2),
       .y = AnimatedParameterData<int16_t>::MakeLinear(-2, -3),

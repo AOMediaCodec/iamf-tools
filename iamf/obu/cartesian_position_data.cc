@@ -33,10 +33,17 @@ namespace iamf_tools {
 
 namespace {
 
+absl::Status ValidateAnimationType(AnimationType animation_type) {
+  // TODO(b/571087734): Update to also allow `AnimationType::kInterLinear` and
+  // `AnimationType::kInterBezier` once dynamic objects are supported.
+  return ValidateEqual(animation_type, AnimationType::kStep, "animation_type");
+}
+
 absl::Status ValidatePosition(AnimationType animation_type,
                               CartesianBitDepth bit_depth,
                               const CartesianPosition& position,
                               absl::string_view prefix) {
+  RETURN_IF_NOT_OK(ValidateAnimationType(animation_type));
   RETURN_IF_NOT_OK(ValidateEqual(position.x.animation_type(), animation_type,
                                  absl::StrCat(prefix, " x animation_type")));
   RETURN_IF_NOT_OK(ValidateEqual(position.y.animation_type(), animation_type,
@@ -63,6 +70,7 @@ absl::Status ValidatePosition(AnimationType animation_type,
 absl::StatusOr<CartesianPosition> ReadPosition(AnimationType animation_type,
                                                CartesianBitDepth bit_depth,
                                                ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(ValidateAnimationType(animation_type));
   auto read_coord = [bit_depth](ReadBitBuffer& r,
                                 int16_t& val) -> absl::Status {
     if (bit_depth == CartesianBitDepth::k8Bit) {
