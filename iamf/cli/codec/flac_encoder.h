@@ -17,6 +17,9 @@
 #include <memory>
 #include <vector>
 
+#include "FLAC/format.h"
+#include "FLAC/ordinals.h"
+#include "FLAC/stream_encoder.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/btree_map.h"
 #include "absl/status/status.h"
@@ -26,9 +29,6 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/substream_channel_count.h"
-#include "include/FLAC/format.h"
-#include "include/FLAC/ordinals.h"
-#include "include/FLAC/stream_encoder.h"
 
 namespace iamf_tools {
 

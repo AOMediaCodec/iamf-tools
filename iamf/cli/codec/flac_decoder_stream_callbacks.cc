@@ -17,15 +17,15 @@
 #include <utility>
 #include <vector>
 
+#include "FLAC/format.h"
+#include "FLAC/ordinals.h"
+#include "FLAC/stream_decoder.h"
 #include "absl/log/absl_log.h"
 #include "absl/types/span.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/types.h"
-#include "include/FLAC/format.h"
-#include "include/FLAC/ordinals.h"
-#include "include/FLAC/stream_decoder.h"
 
 namespace iamf_tools {
 

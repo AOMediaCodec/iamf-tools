@@ -17,11 +17,11 @@
 #include <cstdint>
 #include <vector>
 
+#include "FLAC/format.h"
+#include "FLAC/ordinals.h"
+#include "FLAC/stream_decoder.h"
 #include "absl/types/span.h"
 #include "iamf/obu/types.h"
-#include "include/FLAC/format.h"
-#include "include/FLAC/ordinals.h"
-#include "include/FLAC/stream_decoder.h"
 
 namespace iamf_tools {
 

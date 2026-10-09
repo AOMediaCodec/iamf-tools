@@ -16,13 +16,13 @@
 #include <cstdint>
 #include <vector>
 
+#include "FLAC/format.h"
+#include "FLAC/ordinals.h"
+#include "FLAC/stream_decoder.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/types.h"
-#include "include/FLAC/format.h"
-#include "include/FLAC/ordinals.h"
-#include "include/FLAC/stream_decoder.h"
 
 namespace iamf_tools {
 namespace {

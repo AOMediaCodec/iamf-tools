@@ -88,7 +88,7 @@ cc_test(
         "//iamf/cli/codec:flac_decoder_stream_callbacks",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:types",
-        "@flac//:src",
+        "@flac",
         "@googletest//:gtest_main",
     ],
 )

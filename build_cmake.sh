@@ -93,11 +93,11 @@ _sdk="$(xcrun --show-sdk-path 2>/dev/null || true)"
 [ -n "$_sdk" ] && HDR_PREFIXES="$HDR_PREFIXES $_sdk/usr/include"
 find_hdr() { for p in $HDR_PREFIXES; do [ -e "$p/$1" ] && { printf '%s\n' "$p/$1"; return 0; }; done; return 1; }
 
-mkdir -p "$SRC/shims/flac/include" "$SRC/shims/opus/include" "$SRC/shims/expat/lib"
+mkdir -p "$SRC/shims/flac" "$SRC/shims/opus/include" "$SRC/shims/expat/lib"
 FLAC_H="$(find_hdr FLAC)"     || { echo "S2 FAIL: FLAC headers not found in: $HDR_PREFIXES" >&2; exit 1; }
 OPUS_H="$(find_hdr opus)"     || { echo "S2 FAIL: opus headers not found in: $HDR_PREFIXES" >&2; exit 1; }
 EXPAT_H="$(find_hdr expat.h)" || { echo "S2 FAIL: expat.h not found in: $HDR_PREFIXES" >&2; exit 1; }
-ln -sf "$FLAC_H" "$SRC/shims/flac/include/FLAC"
+ln -sf "$FLAC_H" "$SRC/shims/flac/FLAC"
 for h in "$OPUS_H"/*.h; do ln -sf "$h" "$SRC/shims/opus/include/"; done
 ln -sf "$EXPAT_H" "$SRC/shims/expat/lib/expat.h"
 for extra in expat_external.h expat_config.h; do
@@ -106,7 +106,7 @@ done
 # `ln -sf` to a NONEXISTENT target succeeds and returns 0, so without this check
 # the shim stage cannot fail on a missing dependency -- the error instead surfaces
 # hundreds of lines later as a confusing missing-header compile failure.
-for l in "$SRC/shims/flac/include/FLAC" "$SRC/shims/expat/lib/expat.h"; do
+for l in "$SRC/shims/flac/FLAC" "$SRC/shims/expat/lib/expat.h"; do
   [ -e "$l" ] || { echo "S2 FAIL: dangling shim symlink $l -> $(readlink "$l")" >&2; exit 1; }
 done
 echo "S2 shims OK: FLAC=$FLAC_H opus=$OPUS_H expat=$EXPAT_H"

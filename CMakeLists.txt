@@ -110,7 +110,7 @@ add_library(iamf_core STATIC ${IAMF_SRCS})
 target_include_directories(iamf_core PUBLIC
     ${IAMF}
     ${SRC}/protobuf              # bazel-style "src/google/protobuf/..." includes
-    ${SRC}/shims/flac            # "include/FLAC/..."
+    ${SRC}/shims/flac            # "FLAC/..."
     ${SRC}/shims/opus            # "include/opus.h"
     ${SRC}/shims/expat           # "lib/expat.h"
     ${EIGEN_INC})

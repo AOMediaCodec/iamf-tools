@@ -108,7 +108,7 @@ cc_library(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/types:span",
-        "@flac//:src",
+        "@flac",
     ],
 )
 
@@ -123,7 +123,7 @@ cc_library(
         "//iamf/obu/decoder_config:flac_decoder_config",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/types:span",
-        "@flac//:src",
+        "@flac",
     ],
 )
 
@@ -148,7 +148,7 @@ cc_library(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/synchronization",
         "@abseil-cpp//absl/types:span",
-        "@flac//:src",
+        "@flac",
     ],
 )
 

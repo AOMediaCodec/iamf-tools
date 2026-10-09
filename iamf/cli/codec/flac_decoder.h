@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "FLAC/stream_decoder.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -23,7 +24,6 @@
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/codec/flac_decoder_stream_callbacks.h"
 #include "iamf/obu/substream_channel_count.h"
-#include "include/FLAC/stream_decoder.h"
 namespace iamf_tools {
 
 /*!\brief Decoder for FLAC audio streams.
