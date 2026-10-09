@@ -204,6 +204,12 @@ class ObuProcessor {
    */
   const DescriptorObus::MixPresentationObus& GetMixPresentationObusView() const;
 
+  /*!\brief Gets a view of the Metadata OBUs.
+   *
+   * \return View of the Metadata OBUs.
+   */
+  const DescriptorObus::MetadataObus& GetMetadataObusView() const;
+
  private:
   /*!\brief Models required to render audio for playback.
    *

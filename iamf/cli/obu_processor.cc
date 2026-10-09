@@ -441,6 +441,10 @@ ObuProcessor::GetMixPresentationObusView() const {
   return descriptors_.mix_presentation_obus;
 }
 
+const DescriptorObus::MetadataObus& ObuProcessor::GetMetadataObusView() const {
+  return descriptors_.metadata_obus;
+}
+
 std::unique_ptr<ObuProcessor> absl_nullable ObuProcessor::Create(
     bool is_exhaustive_and_exact, ReadBitBuffer* absl_nonnull read_bit_buffer,
     bool& output_insufficient_data) {

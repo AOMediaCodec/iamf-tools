@@ -41,6 +41,7 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
@@ -1259,6 +1260,27 @@ TEST(Create, Succeeds) {
   EXPECT_THAT(obu_processor->GetCodecConfigsByIdView(), SizeIs(1));
   EXPECT_THAT(obu_processor->GetAudioElementsView(), SizeIs(1));
   EXPECT_THAT(obu_processor->GetMixPresentationObusView(), SizeIs(1));
+}
+
+TEST(Create, CollectsMetadataObus) {
+  const auto metadata_obu = MetadataObu::Create(
+      ObuHeader(),
+      MetadataIamfTags{.tags = {{.tag_name = "title", .tag_value = "song"}}});
+  const auto bitstream =
+      AddSequenceHeaderAndSerializeObusExpectOk({&metadata_obu});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+
+  ASSERT_THAT(obu_processor, NotNull());
+  EXPECT_FALSE(insufficient_data);
+  ASSERT_THAT(obu_processor->GetMetadataObusView(), SizeIs(1));
+  EXPECT_EQ(obu_processor->GetMetadataObusView().front().GetMetadataType(),
+            kMetadataTypeIamfTags);
 }
 
 TEST(Create, SucceedsForTrivialIaSequence) {
