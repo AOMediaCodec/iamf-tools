@@ -169,6 +169,7 @@ absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
   DescriptorObus parsed_obus;
   const int64_t global_position_before_all_obus = read_bit_buffer.Tell();
   bool processed_ia_header = false;
+  bool processed_mix_presentation = false;
   // Tracks whether the stored IA Sequence Header is a redundant copy. If so,
   // a subsequent non-redundant header before any temporal unit is treated as
   // the canonical header (it overrides the redundant one) rather than the
@@ -193,7 +194,17 @@ absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
 
     // Now, we know we were at least able to read obu_type and the total size of
     // the obu.
-    if (ObuHeader::IsTemporalUnitObuType(header_metadata->obu_type)) {
+
+    // Metadata OBUs in Descriptors must be located after the IA Sequence Header
+    // OBU and before the first Mix Presentation OBU. Because Metadata OBUs
+    // may also appear at the start of a Temporal Unit, any Metadata OBU
+    // encountered after a Mix Presentation OBU belongs to a Temporal Unit
+    // rather than the Descriptors.
+    const bool is_temporal_unit_metadata_obu =
+        header_metadata->obu_type == kObuIaMetadata &&
+        processed_mix_presentation;
+    if (ObuHeader::IsTemporalUnitObuType(header_metadata->obu_type) ||
+        is_temporal_unit_metadata_obu) {
       if (is_exhaustive_and_exact) {
         auto error_status = absl::InvalidArgumentError(
             "Descriptor OBUs must not contain a temporal unit OBU when "
@@ -264,6 +275,7 @@ absl::StatusOr<DescriptorObus> DescriptorObuParser::ProcessDescriptorObus(
             parsed_obus.audio_elements, read_bit_buffer);
         break;
       case kObuIaMixPresentation:
+        processed_mix_presentation = true;
         parsed_obu_status = GetAndStoreMixPresentationObu(
             parsed_obus.audio_elements, header, payload_size,
             parsed_obus.mix_presentation_obus, read_bit_buffer);

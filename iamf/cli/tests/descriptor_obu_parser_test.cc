@@ -744,5 +744,71 @@ TEST(ProcessDescriptorObus, IgnoresMetadataObuWithUnsupportedMetadataType) {
               UnorderedElementsAre(Key(kFirstCodecConfigId)));
 }
 
+TEST(ProcessDescriptorObus, RejectsMetadataObuBeforeIaSequenceHeader) {
+  const IASequenceHeaderObu input_ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  const auto metadata_obu = MetadataObu::Create(
+      ObuHeader(), MetadataITUTT35{.itu_t_t35_country_code = 0x01,
+                                   .itu_t_t35_payload_bytes = {0x02, 0x03}});
+  const auto bitstream =
+      SerializeObusExpectOk({&metadata_obu, &input_ia_sequence_header});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
+  EXPECT_FALSE(insufficient_data);
+}
+
+TEST(ProcessDescriptorObus,
+     RejectsMetadataObuAfterMixPresentationWhenIsExhaustiveAndExact) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  const auto metadata_obu = MetadataObu::Create(
+      ObuHeader(), MetadataITUTT35{.itu_t_t35_country_code = 0x01,
+                                   .itu_t_t35_payload_bytes = {0x02, 0x03}});
+  const auto serialized_metadata_obu = SerializeObusExpectOk({&metadata_obu});
+  bitstream.insert(bitstream.end(), serialized_metadata_obu.begin(),
+                   serialized_metadata_obu.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  const auto start_position = read_bit_buffer->Tell();
+  bool insufficient_data;
+
+  EXPECT_THAT(DescriptorObuParser::ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
+  EXPECT_FALSE(insufficient_data);
+  EXPECT_EQ(read_bit_buffer->Tell(), start_position);
+}
+
+TEST(ProcessDescriptorObus,
+     StopsAtMetadataObuAfterMixPresentationWhenNotExhaustive) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  const int64_t descriptors_size = bitstream.size();
+  const auto temporal_unit_metadata_obu = MetadataObu::Create(
+      ObuHeader(), MetadataITUTT35{.itu_t_t35_country_code = 0x01,
+                                   .itu_t_t35_payload_bytes = {0x02, 0x03}});
+  const auto serialized_metadata_obu =
+      SerializeObusExpectOk({&temporal_unit_metadata_obu});
+  bitstream.insert(bitstream.end(), serialized_metadata_obu.begin(),
+                   serialized_metadata_obu.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  auto parsed_obus = DescriptorObuParser::ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/false, *read_bit_buffer, insufficient_data);
+  ASSERT_THAT(parsed_obus, IsOk());
+
+  EXPECT_FALSE(insufficient_data);
+  EXPECT_THAT(parsed_obus->metadata_obus, IsEmpty());
+  EXPECT_EQ(read_bit_buffer->Tell(), descriptors_size * 8);
+}
+
 }  // namespace
 }  // namespace iamf_tools
