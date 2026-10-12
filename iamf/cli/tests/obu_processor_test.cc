@@ -38,6 +38,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/animated_parameter_data.h"
+#include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -1129,6 +1130,111 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsChunkedArbitrarily) {
 
   EXPECT_FALSE(continue_processing);
   EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+}
+
+TEST(ProcessTemporalUnit, CollectsMetadataObu) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  const auto metadata_obu = MetadataObu::Create(
+      ObuHeader(),
+      MetadataITUTT35{.itu_t_t35_country_code = 0xb5,
+                      .itu_t_t35_payload_bytes = {0x01, 0x02, 0x03}});
+  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                kArbitraryAudioFrame);
+  const auto temporal_unit_obus =
+      SerializeObusExpectOk({&metadata_obu, &audio_frame_obu});
+  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
+                   temporal_unit_obus.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  EXPECT_FALSE(continue_processing);
+  ASSERT_TRUE(output_temporal_unit.has_value());
+  EXPECT_THAT(output_temporal_unit->output_audio_frames, SizeIs(1));
+  ASSERT_THAT(output_temporal_unit->output_metadata_obus, SizeIs(1));
+  EXPECT_EQ(
+      output_temporal_unit->output_metadata_obus.front().GetMetadataType(),
+      kMetadataTypeITUT_T35);
+}
+
+TEST(ProcessTemporalUnit, IgnoresRedundantMetadataObu) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  const auto redundant_metadata_obu = MetadataObu::Create(
+      ObuHeader{.obu_redundant_copy = true},
+      MetadataITUTT35{.itu_t_t35_country_code = 0xb5,
+                      .itu_t_t35_payload_bytes = {0x01, 0x02, 0x03}});
+  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                kArbitraryAudioFrame);
+  const auto temporal_unit_obus =
+      SerializeObusExpectOk({&redundant_metadata_obu, &audio_frame_obu});
+  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
+                   temporal_unit_obus.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  EXPECT_FALSE(continue_processing);
+  ASSERT_TRUE(output_temporal_unit.has_value());
+  EXPECT_THAT(output_temporal_unit->output_audio_frames, SizeIs(1));
+  EXPECT_THAT(output_temporal_unit->output_metadata_obus, IsEmpty());
+}
+
+TEST(ProcessTemporalUnit, IgnoresMetadataObuWithUnsupportedMetadataType) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  const ArbitraryObu unsupported_metadata_obu(
+      kObuIaMetadata, ObuHeader(),
+      /*payload=*/{/*metadata_type=*/3, 0x01, 0x02},
+      ArbitraryObu::kInsertionHookAfterDescriptors);
+  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                kArbitraryAudioFrame);
+  const auto temporal_unit_obus =
+      SerializeObusExpectOk({&unsupported_metadata_obu, &audio_frame_obu});
+  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
+                   temporal_unit_obus.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  EXPECT_FALSE(continue_processing);
+  ASSERT_TRUE(output_temporal_unit.has_value());
+  EXPECT_THAT(output_temporal_unit->output_audio_frames, SizeIs(1));
+  EXPECT_THAT(output_temporal_unit->output_metadata_obus, IsEmpty());
 }
 
 // TODO(b/377772983): Test rejecting processing temporal units with mismatching

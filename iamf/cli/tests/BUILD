@@ -532,6 +532,7 @@ cc_test(
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:numeric_utils",
         "//iamf/obu:animated_parameter_data",
+        "//iamf/obu:arbitrary_obu",
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
         "//iamf/obu:ia_sequence_header",

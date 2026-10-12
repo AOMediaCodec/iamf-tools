@@ -53,6 +53,7 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
@@ -239,11 +240,13 @@ absl::Status ProcessTemporalUnitObu(
     std::optional<AudioFrameWithData>& output_audio_frame_with_data,
     std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
     std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
+    std::optional<MetadataObu>& output_metadata_obu,
     bool& continue_processing) {
   continue_processing = true;
   output_audio_frame_with_data.reset();
   output_parameter_block_with_data.reset();
   output_temporal_delimiter.reset();
+  output_metadata_obu.reset();
 
   auto header_metadata = ObuHeader::PeekObuTypeAndTotalObuSize(read_bit_buffer);
   if (!header_metadata.ok()) {
@@ -274,9 +277,9 @@ absl::Status ProcessTemporalUnitObu(
   RETURN_IF_NOT_OK(header.ReadAndValidate(read_bit_buffer, payload_size));
 
   // Typically we should expect {`kObuIaAudioFrameX`,`kObuIaParameterBlock`,
-  // `kObuIaTemporalDelimiter`}. We also want to detect an `kIaSequenceHeader`
-  // which would signal the start of a new IA Sequence, and to gracefully
-  // handle "reserved" OBUs.
+  // `kObuIaTemporalDelimiter`, `kObuIaMetadata`}. We also want to detect an
+  // `kIaSequenceHeader` which would signal the start of a new IA Sequence, and
+  // to gracefully handle "reserved" OBUs.
   absl::Status parsed_obu_status = absl::OkStatus();
   switch (header.obu_type) {
     case kObuIaAudioFrame:
@@ -319,6 +322,21 @@ absl::Status ProcessTemporalUnitObu(
         break;
       }
       output_temporal_delimiter = *temporal_delimiter;
+      break;
+    }
+    case kObuIaMetadata: {
+      if (header.obu_redundant_copy) {
+        ABSL_LOG(INFO) << "Safely ignoring a redundant Metadata OBU.";
+        RETURN_IF_NOT_OK(read_bit_buffer.IgnoreBytes(payload_size));
+        break;
+      }
+      auto metadata_obu =
+          MetadataObu::CreateFromBuffer(header, payload_size, read_bit_buffer);
+      if (!metadata_obu.ok()) {
+        parsed_obu_status = metadata_obu.status();
+        break;
+      }
+      output_metadata_obu = *std::move(metadata_obu);
       break;
     }
     case kObuIaSequenceHeader:
@@ -597,12 +615,13 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
     std::optional<AudioFrameWithData> audio_frame_with_data;
     std::optional<ParameterBlockWithData> parameter_block_with_data;
     std::optional<TemporalDelimiterObu> temporal_delimiter;
+    std::optional<MetadataObu> metadata_obu;
     RETURN_IF_NOT_OK(ProcessTemporalUnitObu(
         descriptors_.audio_elements, descriptors_.codec_config_obus,
         substream_id_to_audio_element_, param_definition_variants_,
         *parameters_manager_, *read_bit_buffer_, *global_timing_module_,
         audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
-        continue_processing));
+        metadata_obu, continue_processing));
 
     // Collect OBUs into a temporal unit.
     bool delimiter_end_condition = false;
@@ -614,6 +633,13 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
       TemporalUnitData::AddDataToCorrectTemporalUnit(
           current_temporal_unit_, next_temporal_unit_,
           *std::move(parameter_block_with_data));
+    } else if (metadata_obu.has_value()) {
+      if (current_temporal_unit_.audio_frames.empty()) {
+        current_temporal_unit_.metadata_obus.push_back(
+            *std::move(metadata_obu));
+      } else {
+        next_temporal_unit_.metadata_obus.push_back(*std::move(metadata_obu));
+      }
     } else if (temporal_delimiter.has_value()) {
       if (current_temporal_unit_.temporal_delimiter.has_value()) {
         delimiter_end_condition = true;
@@ -638,6 +664,8 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
           std::move(current_temporal_unit_.audio_frames);
       output_temporal_unit->output_parameter_blocks =
           std::move(current_temporal_unit_.parameter_blocks);
+      output_temporal_unit->output_metadata_obus =
+          std::move(current_temporal_unit_.metadata_obus);
       if (current_temporal_unit_.timestamp.has_value()) {
         output_temporal_unit->output_timestamp =
             current_temporal_unit_.timestamp.value();

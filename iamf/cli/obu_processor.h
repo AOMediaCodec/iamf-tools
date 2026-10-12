@@ -35,6 +35,7 @@
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/temporal_delimiter.h"
@@ -140,6 +141,7 @@ class ObuProcessor {
   struct OutputTemporalUnit {
     std::list<AudioFrameWithData> output_audio_frames;
     std::list<ParameterBlockWithData> output_parameter_blocks;
+    std::list<MetadataObu> output_metadata_obus;
     InternalTimestamp output_timestamp;
   };
 
@@ -298,17 +300,20 @@ class ObuProcessor {
   struct TemporalUnitData {
     std::list<ParameterBlockWithData> parameter_blocks;
     std::list<AudioFrameWithData> audio_frames;
+    std::list<MetadataObu> metadata_obus;
 
     std::optional<TemporalDelimiterObu> temporal_delimiter;
     std::optional<InternalTimestamp> timestamp;
 
     bool Empty() const {
-      return parameter_blocks.empty() && audio_frames.empty();
+      return parameter_blocks.empty() && audio_frames.empty() &&
+             metadata_obus.empty();
     }
 
     void Clear() {
       audio_frames.clear();
       parameter_blocks.clear();
+      metadata_obus.clear();
       temporal_delimiter.reset();
       timestamp.reset();
     }
@@ -338,6 +343,8 @@ class ObuProcessor {
         return parameter_blocks;
       } else if constexpr (std::is_same_v<T, AudioFrameWithData>) {
         return audio_frames;
+      } else if constexpr (std::is_same_v<T, MetadataObu>) {
+        return metadata_obus;
       }
     }
   };
