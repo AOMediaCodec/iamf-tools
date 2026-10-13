@@ -48,6 +48,7 @@
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/parameter_block.h"
@@ -1132,16 +1133,64 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsChunkedArbitrarily) {
   EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
 }
 
-TEST(ProcessTemporalUnit, CollectsMetadataObu) {
+MetadataObu CreateTestMetadataObu(uint8_t country_code = 0xb5,
+                                  ObuHeader header = ObuHeader()) {
+  return MetadataObu::Create(
+      header, MetadataITUTT35{.itu_t_t35_country_code = country_code,
+                              .itu_t_t35_payload_bytes = {0x01, 0x02, 0x03}});
+}
+
+std::unique_ptr<ParameterBlockObu> CreateTestMixGainParameterBlock(
+    const ParamDefinition& param_definition) {
+  constexpr DecodedUleb128 kDuration = 8;
+  const auto schedule = SubblockSchedule::CreateWithConstantSubblockDuration(
+      kDuration, /*constant_subblock_duration=*/kDuration);
+  EXPECT_THAT(schedule, IsOk());
+  auto parameter_block =
+      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, *schedule);
+  EXPECT_THAT(parameter_block, NotNull());
+  parameter_block->subblocks_[0] = std::make_unique<MixGainParameterData>(
+      AnimatedParameterData<int16_t>::MakeStep(0));
+  return parameter_block;
+}
+
+void ExpectProcessTemporalUnitFailsWithObus(
+    const std::list<const ObuBase*>& temporal_unit_obus) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
-  const auto metadata_obu = MetadataObu::Create(
-      ObuHeader(),
-      MetadataITUTT35{.itu_t_t35_country_code = 0xb5,
-                      .itu_t_t35_payload_bytes = {0x01, 0x02, 0x03}});
-  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
-                                kArbitraryAudioFrame);
+  const auto serialized_obus = SerializeObusExpectOk(temporal_unit_obus);
+  bitstream.insert(bitstream.end(), serialized_obus.begin(),
+                   serialized_obus.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              Not(IsOk()));
+}
+
+TEST(ProcessTemporalUnit, CollectsMetadataObusBeforeAndAfterParameterBlock) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  const auto metadata_obu_1 = CreateTestMetadataObu(0xb5);
+  const auto metadata_obu_2 = CreateTestMetadataObu(0xb6);
+  const MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kCommonMixGainParameterId,
+                                           kCommonParameterRate));
+  const auto parameter_block =
+      CreateTestMixGainParameterBlock(param_definition);
+  const AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                      kArbitraryAudioFrame);
   const auto temporal_unit_obus =
-      SerializeObusExpectOk({&metadata_obu, &audio_frame_obu});
+      SerializeObusExpectOk({&metadata_obu_1, parameter_block.get(),
+                             &metadata_obu_2, &audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
   auto read_bit_buffer =
@@ -1163,22 +1212,31 @@ TEST(ProcessTemporalUnit, CollectsMetadataObu) {
   EXPECT_FALSE(continue_processing);
   ASSERT_TRUE(output_temporal_unit.has_value());
   EXPECT_THAT(output_temporal_unit->output_audio_frames, SizeIs(1));
-  ASSERT_THAT(output_temporal_unit->output_metadata_obus, SizeIs(1));
-  EXPECT_EQ(
-      output_temporal_unit->output_metadata_obus.front().GetMetadataType(),
-      kMetadataTypeITUT_T35);
+  EXPECT_THAT(output_temporal_unit->output_parameter_blocks, SizeIs(1));
+  ASSERT_THAT(output_temporal_unit->output_metadata_obus, SizeIs(2));
+  EXPECT_EQ(std::get<MetadataITUTT35>(
+                output_temporal_unit->output_metadata_obus.front()
+                    .GetMetadataVariant())
+                .itu_t_t35_country_code,
+            0xb5);
+  EXPECT_EQ(std::get<MetadataITUTT35>(
+                output_temporal_unit->output_metadata_obus.back()
+                    .GetMetadataVariant())
+                .itu_t_t35_country_code,
+            0xb6);
 }
 
-TEST(ProcessTemporalUnit, IgnoresRedundantMetadataObu) {
+TEST(ProcessTemporalUnit, CollectsMetadataObusAcrossMultipleTemporalUnits) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
-  const auto redundant_metadata_obu = MetadataObu::Create(
-      ObuHeader{.obu_redundant_copy = true},
-      MetadataITUTT35{.itu_t_t35_country_code = 0xb5,
-                      .itu_t_t35_payload_bytes = {0x01, 0x02, 0x03}});
-  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
-                                kArbitraryAudioFrame);
+  const auto metadata_obu_1 = CreateTestMetadataObu(0xb5);
+  const auto metadata_obu_2 = CreateTestMetadataObu(0xb6);
+  const AudioFrameObu audio_frame_obu_1(ObuHeader(), kFirstSubstreamId,
+                                        kArbitraryAudioFrame);
+  const AudioFrameObu audio_frame_obu_2(ObuHeader(), kFirstSubstreamId,
+                                        kArbitraryAudioFrame);
   const auto temporal_unit_obus =
-      SerializeObusExpectOk({&redundant_metadata_obu, &audio_frame_obu});
+      SerializeObusExpectOk({&metadata_obu_1, &audio_frame_obu_1,
+                             &metadata_obu_2, &audio_frame_obu_2});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
   auto read_bit_buffer =
@@ -1190,29 +1248,106 @@ TEST(ProcessTemporalUnit, IgnoresRedundantMetadataObu) {
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
 
-  std::optional<OutputTemporalUnit> output_temporal_unit;
+  std::optional<OutputTemporalUnit> output_temporal_unit_1;
   bool continue_processing = true;
   EXPECT_THAT(obu_processor->ProcessTemporalUnit(
-                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit_1,
                   continue_processing),
               IsOk());
+  EXPECT_TRUE(continue_processing);
+  ASSERT_TRUE(output_temporal_unit_1.has_value());
+  EXPECT_THAT(output_temporal_unit_1->output_audio_frames, SizeIs(1));
+  ASSERT_THAT(output_temporal_unit_1->output_metadata_obus, SizeIs(1));
+  EXPECT_EQ(std::get<MetadataITUTT35>(
+                output_temporal_unit_1->output_metadata_obus.front()
+                    .GetMetadataVariant())
+                .itu_t_t35_country_code,
+            0xb5);
 
+  std::optional<OutputTemporalUnit> output_temporal_unit_2;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit_2,
+                  continue_processing),
+              IsOk());
   EXPECT_FALSE(continue_processing);
-  ASSERT_TRUE(output_temporal_unit.has_value());
-  EXPECT_THAT(output_temporal_unit->output_audio_frames, SizeIs(1));
-  EXPECT_THAT(output_temporal_unit->output_metadata_obus, IsEmpty());
+  ASSERT_TRUE(output_temporal_unit_2.has_value());
+  EXPECT_THAT(output_temporal_unit_2->output_audio_frames, SizeIs(1));
+  ASSERT_THAT(output_temporal_unit_2->output_metadata_obus, SizeIs(1));
+  EXPECT_EQ(std::get<MetadataITUTT35>(
+                output_temporal_unit_2->output_metadata_obus.front()
+                    .GetMetadataVariant())
+                .itu_t_t35_country_code,
+            0xb6);
 }
 
-TEST(ProcessTemporalUnit, IgnoresMetadataObuWithUnsupportedMetadataType) {
+TEST(ProcessTemporalUnit,
+     CollectsMetadataObusAcrossMultipleDelimitedTemporalUnits) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  const TemporalDelimiterObu temporal_delimiter_obu{ObuHeader()};
+  const auto metadata_obu_1 = CreateTestMetadataObu(0xb5);
+  const auto metadata_obu_2 = CreateTestMetadataObu(0xb6);
+  const AudioFrameObu audio_frame_obu_1(ObuHeader(), kFirstSubstreamId,
+                                        kArbitraryAudioFrame);
+  const AudioFrameObu audio_frame_obu_2(ObuHeader(), kFirstSubstreamId,
+                                        kArbitraryAudioFrame);
+  const auto temporal_unit_obus = SerializeObusExpectOk(
+      {&temporal_delimiter_obu, &metadata_obu_1, &audio_frame_obu_1,
+       &temporal_delimiter_obu, &metadata_obu_2, &audio_frame_obu_2});
+  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
+                   temporal_unit_obus.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit_1;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit_1,
+                  continue_processing),
+              IsOk());
+  EXPECT_TRUE(continue_processing);
+  ASSERT_TRUE(output_temporal_unit_1.has_value());
+  EXPECT_THAT(output_temporal_unit_1->output_audio_frames, SizeIs(1));
+  ASSERT_THAT(output_temporal_unit_1->output_metadata_obus, SizeIs(1));
+  EXPECT_EQ(std::get<MetadataITUTT35>(
+                output_temporal_unit_1->output_metadata_obus.front()
+                    .GetMetadataVariant())
+                .itu_t_t35_country_code,
+            0xb5);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit_2;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit_2,
+                  continue_processing),
+              IsOk());
+  EXPECT_FALSE(continue_processing);
+  ASSERT_TRUE(output_temporal_unit_2.has_value());
+  EXPECT_THAT(output_temporal_unit_2->output_audio_frames, SizeIs(1));
+  ASSERT_THAT(output_temporal_unit_2->output_metadata_obus, SizeIs(1));
+  EXPECT_EQ(std::get<MetadataITUTT35>(
+                output_temporal_unit_2->output_metadata_obus.front()
+                    .GetMetadataVariant())
+                .itu_t_t35_country_code,
+            0xb6);
+}
+
+TEST(ProcessTemporalUnit, IgnoresRedundantAndUnsupportedMetadataObus) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  const auto redundant_metadata_obu =
+      CreateTestMetadataObu(0xb5, ObuHeader{.obu_redundant_copy = true});
   const ArbitraryObu unsupported_metadata_obu(
       kObuIaMetadata, ObuHeader(),
       /*payload=*/{/*metadata_type=*/3, 0x01, 0x02},
       ArbitraryObu::kInsertionHookAfterDescriptors);
-  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
-                                kArbitraryAudioFrame);
-  const auto temporal_unit_obus =
-      SerializeObusExpectOk({&unsupported_metadata_obu, &audio_frame_obu});
+  const AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                      kArbitraryAudioFrame);
+  const auto temporal_unit_obus = SerializeObusExpectOk(
+      {&redundant_metadata_obu, &unsupported_metadata_obu, &audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
   auto read_bit_buffer =
@@ -1235,6 +1370,109 @@ TEST(ProcessTemporalUnit, IgnoresMetadataObuWithUnsupportedMetadataType) {
   ASSERT_TRUE(output_temporal_unit.has_value());
   EXPECT_THAT(output_temporal_unit->output_audio_frames, SizeIs(1));
   EXPECT_THAT(output_temporal_unit->output_metadata_obus, IsEmpty());
+}
+
+TEST(ProcessTemporalUnit, RejectsMetadataObuWithIamfTags) {
+  const auto iamf_tags_metadata_obu = MetadataObu::Create(
+      ObuHeader(),
+      MetadataIamfTags{.tags = {{.tag_name = "title", .tag_value = "song"}}});
+  const AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                      kArbitraryAudioFrame);
+  ExpectProcessTemporalUnitFailsWithObus(
+      {&iamf_tags_metadata_obu, &audio_frame_obu});
+}
+
+TEST(ProcessTemporalUnit, RejectsMetadataObuBeforeTemporalDelimiter) {
+  const auto metadata_obu = CreateTestMetadataObu();
+  const TemporalDelimiterObu temporal_delimiter_obu{ObuHeader()};
+  const AudioFrameObu audio_frame_obu_1(ObuHeader(), kFirstSubstreamId,
+                                        kArbitraryAudioFrame);
+  const AudioFrameObu audio_frame_obu_2(ObuHeader(), kFirstSubstreamId,
+                                        kArbitraryAudioFrame);
+
+  // Metadata OBU before the opening Temporal Delimiter OBU.
+  ExpectProcessTemporalUnitFailsWithObus(
+      {&metadata_obu, &temporal_delimiter_obu, &audio_frame_obu_1});
+  // Metadata OBU between an Audio Frame OBU and the next Temporal Delimiter
+  // OBU.
+  ExpectProcessTemporalUnitFailsWithObus(
+      {&temporal_delimiter_obu, &audio_frame_obu_1, &metadata_obu,
+       &temporal_delimiter_obu, &audio_frame_obu_2});
+}
+
+TEST(ProcessTemporalUnit, RejectsMetadataObuNotFollowedByAudioFrames) {
+  const auto metadata_obu = CreateTestMetadataObu();
+  const TemporalDelimiterObu temporal_delimiter_obu{ObuHeader()};
+  const MixGainParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(kCommonMixGainParameterId,
+                                           kCommonParameterRate));
+  const auto parameter_block =
+      CreateTestMixGainParameterBlock(param_definition);
+  const AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                      kArbitraryAudioFrame);
+
+  // Temporal unit with only a Metadata OBU.
+  ExpectProcessTemporalUnitFailsWithObus({&metadata_obu});
+  // Temporal unit with only a Metadata OBU and a Parameter Block OBU.
+  ExpectProcessTemporalUnitFailsWithObus(
+      {&metadata_obu, parameter_block.get()});
+  // Delimited temporal unit with only a Metadata OBU before the next Temporal
+  // Delimiter OBU.
+  ExpectProcessTemporalUnitFailsWithObus(
+      {&temporal_delimiter_obu, &metadata_obu, &temporal_delimiter_obu,
+       &audio_frame_obu});
+  // Trailing Metadata OBU after an Audio Frame OBU without a Temporal
+  // Delimiter OBU.
+  ExpectProcessTemporalUnitFailsWithObus({&audio_frame_obu, &metadata_obu});
+  // Trailing Metadata OBU after an Audio Frame OBU in a delimited Temporal
+  // Unit.
+  ExpectProcessTemporalUnitFailsWithObus(
+      {&temporal_delimiter_obu, &audio_frame_obu, &metadata_obu});
+}
+
+TEST(ProcessTemporalUnit,
+     RejectsMetadataObuBetweenAudioFramesOfSameTemporalUnit) {
+  CodecConfigsById input_codec_configs;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
+  AudioElementsById audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
+       kFourthSubstreamId},
+      input_codec_configs, audio_elements_with_data);
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&input_codec_configs.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+
+  const AudioFrameObu audio_frame_obu_1(ObuHeader(), kFirstSubstreamId,
+                                        kArbitraryAudioFrame);
+  const auto metadata_obu = CreateTestMetadataObu();
+  const AudioFrameObu audio_frame_obu_2(ObuHeader(), kSecondSubstreamId,
+                                        kArbitraryAudioFrame);
+  const auto temporal_unit_obus = SerializeObusExpectOk(
+      {&audio_frame_obu_1, &metadata_obu, &audio_frame_obu_2});
+  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
+                   temporal_unit_obus.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              Not(IsOk()));
 }
 
 // TODO(b/377772983): Test rejecting processing temporal units with mismatching

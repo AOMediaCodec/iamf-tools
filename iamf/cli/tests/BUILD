@@ -545,6 +545,7 @@ cc_test(
         "//iamf/obu:temporal_delimiter",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:param_definition_variant",
         "//iamf/obu/param_definitions:subblock_schedule",
         "//iamf/obu/tests:obu_test_utils",

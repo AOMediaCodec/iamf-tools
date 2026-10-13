@@ -336,6 +336,13 @@ absl::Status ProcessTemporalUnitObu(
         parsed_obu_status = metadata_obu.status();
         break;
       }
+      // Metadata OBU containing `metadata_iamf_tags` SHALL NOT be placed
+      // within a Temporal Unit.
+      if (metadata_obu->GetMetadataType() == kMetadataTypeIamfTags) {
+        return absl::InvalidArgumentError(
+            "Metadata OBU with `metadata_iamf_tags` is not allowed in a "
+            "Temporal Unit.");
+      }
       output_metadata_obu = *std::move(metadata_obu);
       break;
     }
@@ -387,6 +394,72 @@ absl::Status ProcessTemporalUnitObu(
     RETURN_IF_NOT_OK(read_bit_buffer.Seek(position_before_header));
   }
 
+  return absl::OkStatus();
+}
+
+// Adds `metadata_obu` to `current_metadata_obus` if the current temporal unit
+// has no audio frames yet; otherwise tentatively adds it to
+// `next_metadata_obus`.
+void AddMetadataObuToCorrectTemporalUnit(
+    const std::list<AudioFrameWithData>& current_audio_frames,
+    std::list<MetadataObu>& current_metadata_obus,
+    std::list<MetadataObu>& next_metadata_obus, MetadataObu&& metadata_obu) {
+  if (current_audio_frames.empty()) {
+    current_metadata_obus.push_back(std::move(metadata_obu));
+  } else {
+    next_metadata_obus.push_back(std::move(metadata_obu));
+  }
+}
+
+// Validates that no Metadata OBU was placed between Audio Frame OBUs of the
+// current temporal unit.
+//
+// If `next_metadata_obus` already holds a tentatively added Metadata OBU
+// (placed after the current temporal unit already had audio frames), the new
+// Audio Frame OBU must belong to the next temporal unit (which sets
+// `next_timestamp`). If `next_timestamp` is still unset, the Audio Frame OBU
+// belonged to the current temporal unit, meaning the Metadata OBU was
+// illegally placed between Audio Frame OBUs of the current temporal unit.
+absl::Status ValidateNoMetadataBetweenAudioFrames(
+    const std::list<MetadataObu>& next_metadata_obus,
+    const std::optional<InternalTimestamp>& next_timestamp) {
+  if (!next_metadata_obus.empty() && !next_timestamp.has_value()) {
+    return absl::InvalidArgumentError(
+        "Metadata OBU must not be placed after Audio Frame OBUs in a "
+        "Temporal Unit.");
+  }
+  return absl::OkStatus();
+}
+
+// Validates that no Metadata OBU precedes a Temporal Delimiter OBU in the
+// temporal unit started by that delimiter.
+absl::Status ValidateNoMetadataBeforeTemporalDelimiter(
+    const std::optional<TemporalDelimiterObu>& current_temporal_delimiter,
+    const std::list<MetadataObu>& current_metadata_obus,
+    const std::list<MetadataObu>& next_metadata_obus) {
+  if ((!current_temporal_delimiter.has_value() &&
+       !current_metadata_obus.empty()) ||
+      !next_metadata_obus.empty()) {
+    return absl::InvalidArgumentError(
+        "Metadata OBU must be placed after the Temporal Delimiter OBU and "
+        "before the end of the Temporal Unit.");
+  }
+  return absl::OkStatus();
+}
+
+// Validates that Metadata OBUs are followed by Audio Frame OBUs in the current
+// temporal unit, and that no trailing Metadata OBUs remain at the end of the
+// sequence.
+absl::Status ValidateMetadataFollowedByAudioFrames(
+    const std::list<MetadataObu>& current_metadata_obus,
+    const std::list<AudioFrameWithData>& current_audio_frames,
+    const std::list<MetadataObu>& next_metadata_obus, bool is_end_of_sequence) {
+  if ((!current_metadata_obus.empty() && current_audio_frames.empty()) ||
+      (is_end_of_sequence && !next_metadata_obus.empty())) {
+    return absl::InvalidArgumentError(
+        "Metadata OBU must not be the last OBU of a Temporal Unit and must "
+        "be followed by Audio Frame OBUs.");
+  }
   return absl::OkStatus();
 }
 
@@ -629,22 +702,28 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
       TemporalUnitData::AddDataToCorrectTemporalUnit(
           current_temporal_unit_, next_temporal_unit_,
           *std::move(audio_frame_with_data));
+      RETURN_IF_NOT_OK(ValidateNoMetadataBetweenAudioFrames(
+          next_temporal_unit_.metadata_obus, next_temporal_unit_.timestamp));
     } else if (parameter_block_with_data.has_value()) {
       TemporalUnitData::AddDataToCorrectTemporalUnit(
           current_temporal_unit_, next_temporal_unit_,
           *std::move(parameter_block_with_data));
     } else if (metadata_obu.has_value()) {
-      if (current_temporal_unit_.audio_frames.empty()) {
-        current_temporal_unit_.metadata_obus.push_back(
-            *std::move(metadata_obu));
-      } else {
-        next_temporal_unit_.metadata_obus.push_back(*std::move(metadata_obu));
-      }
+      AddMetadataObuToCorrectTemporalUnit(current_temporal_unit_.audio_frames,
+                                          current_temporal_unit_.metadata_obus,
+                                          next_temporal_unit_.metadata_obus,
+                                          *std::move(metadata_obu));
     } else if (temporal_delimiter.has_value()) {
+      RETURN_IF_NOT_OK(ValidateNoMetadataBeforeTemporalDelimiter(
+          current_temporal_unit_.temporal_delimiter,
+          current_temporal_unit_.metadata_obus,
+          next_temporal_unit_.metadata_obus));
       if (current_temporal_unit_.temporal_delimiter.has_value()) {
         delimiter_end_condition = true;
+        next_temporal_unit_.temporal_delimiter = *temporal_delimiter;
+      } else {
+        current_temporal_unit_.temporal_delimiter = *temporal_delimiter;
       }
-      current_temporal_unit_.temporal_delimiter = *temporal_delimiter;
     }
 
     // The current temporal unit is considered finished if any of the
@@ -653,8 +732,14 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
     // - The timestamp has advanced (i.e. when the next temporal unit gets its
     //   timestamp).
     // - A second temporal delimiter is encountered.
-    if ((!continue_processing && eos_is_end_of_sequence) ||
-        next_temporal_unit_.timestamp.has_value() || delimiter_end_condition) {
+    const bool is_end_of_sequence =
+        !continue_processing && eos_is_end_of_sequence;
+    if (is_end_of_sequence || next_temporal_unit_.timestamp.has_value() ||
+        delimiter_end_condition) {
+      RETURN_IF_NOT_OK(ValidateMetadataFollowedByAudioFrames(
+          current_temporal_unit_.metadata_obus,
+          current_temporal_unit_.audio_frames,
+          next_temporal_unit_.metadata_obus, is_end_of_sequence));
       if (current_temporal_unit_.audio_frames.empty() &&
           current_temporal_unit_.parameter_blocks.empty()) {
         break;
