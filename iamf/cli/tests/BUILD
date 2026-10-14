@@ -801,6 +801,7 @@ cc_test(
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:audio_element",

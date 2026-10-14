@@ -544,6 +544,7 @@ absl::Status FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
     int& num_channels_in_mix_presentation) {
   num_audio_elements_in_mix_presentation = 0;
   num_channels_in_mix_presentation = 0;
+  absl::flat_hash_set<AudioElementObu::AudioElementType> audio_element_types;
   for (const auto& sub_mix : mix_presentation_obu.sub_mixes_) {
     num_audio_elements_in_mix_presentation += sub_mix.audio_elements.size();
     for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
@@ -563,7 +564,20 @@ absl::Status FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
           mix_presentation_id_for_debugging, iter->second.obu,
           sub_mix_audio_element.rendering_config, profile_versions));
 
+      audio_element_types.insert(iter->second.obu.GetAudioElementType());
       num_channels_in_mix_presentation += GetNumberOfChannels(iter->second);
+    }
+  }
+  if (audio_element_types.contains(AudioElementObu::kAudioElementObjectBased) &&
+      audio_element_types.size() > 1) {
+    // Object-based and non-object-based audio elements are not supported in the
+    // same mix-presentation.
+    profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
+    if (profile_versions.empty()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          mix_presentation_id_for_debugging,
+          " mixes object-based and non-object-based audio elements, which is "
+          "not supported by the requested profiles."));
     }
   }
   return absl::OkStatus();

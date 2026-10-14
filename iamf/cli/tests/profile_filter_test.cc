@@ -30,6 +30,7 @@
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
@@ -1927,6 +1928,106 @@ TEST(
                 Not(IsOk()));
     EXPECT_TRUE(profiles.empty());
   }
+}
+
+TEST(
+    FilterProfilesForMixPresentation,
+    KeepsBaseAdvancedProfileWhenMixPresentationHasMultipleObjectAudioElements) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  auto second_objects_config = ObjectsConfig::Create(/*num_objects=*/1, {});
+  ASSERT_THAT(second_objects_config, IsOk());
+  auto second_object_obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kSecondAudioElementId, kAudioElementReserved, kCodecConfigId,
+      kSecondSubstreamId, *second_objects_config);
+  ASSERT_THAT(second_object_obu, IsOk());
+  auto second_object_with_data =
+      ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
+                                                         *second_object_obu);
+  ASSERT_THAT(second_object_with_data, IsOk());
+  audio_elements.emplace(kSecondAudioElementId, *second_object_with_data);
+  auto second_sub_mix_audio_element =
+      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
+  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
+  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
+      second_sub_mix_audio_element);
+  absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              IsOk());
+
+  EXPECT_THAT(profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
+                                             kIamfAdvanced1Profile,
+                                             kIamfAdvanced2Profile));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesBaseAdvancedProfileWhenMixingObjectAndSceneBasedAudioElements) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kSecondAudioElementId, kCodecConfigId, {kSecondSubstreamId},
+      codec_config_obus, audio_elements);
+  auto second_sub_mix_audio_element =
+      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
+  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
+  second_sub_mix_audio_element.rendering_config
+      .rendering_config_param_definitions.clear();
+  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
+      second_sub_mix_audio_element);
+  absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              IsOk());
+
+  EXPECT_THAT(profiles, UnorderedElementsAre(kIamfAdvanced1Profile,
+                                             kIamfAdvanced2Profile));
+}
+
+TEST(
+    FilterProfilesForMixPresentation,
+    FailsForBaseAdvancedProfileOnlyWhenMixingObjectAndChannelBasedAudioElements) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
+      {kSecondSubstreamId}, codec_config_obus, audio_elements);
+  auto second_sub_mix_audio_element =
+      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
+  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
+  second_sub_mix_audio_element.rendering_config
+      .rendering_config_param_definitions.clear();
+  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
+      second_sub_mix_audio_element);
+  absl::flat_hash_set<ProfileVersion> base_advanced_profile = {
+      kIamfBaseAdvancedProfile};
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), base_advanced_profile),
+      Not(IsOk()));
+
+  EXPECT_TRUE(base_advanced_profile.empty());
 }
 
 }  // namespace
