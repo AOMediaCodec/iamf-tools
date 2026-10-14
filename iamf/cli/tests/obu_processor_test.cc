@@ -2348,6 +2348,46 @@ TEST(CreateForRendering,
   EXPECT_THAT(obu_processor, IsNull());
 }
 
+TEST(CreateForRendering, FailsWhenFirstSubMixesUseDifferentCodecConfigs) {
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementsById audio_elements_with_data;
+  AddOneLayerStereoAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
+                                kFirstSubstreamId, codec_config_obus,
+                                audio_elements_with_data);
+  AddOneLayerStereoAudioElement(kSecondCodecConfigId, kSecondAudioElementId,
+                                kSecondSubstreamId, codec_config_obus,
+                                audio_elements_with_data);
+
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&codec_config_obus.at(kFirstCodecConfigId),
+       &codec_config_obus.at(kSecondCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &audio_elements_with_data.at(kSecondAudioElementId).obu,
+       &mix_presentation_obus.front(), &mix_presentation_obus.back()});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      TrimmingSettings{}, insufficient_data);
+
+  EXPECT_FALSE(insufficient_data);
+  EXPECT_THAT(obu_processor, IsNull());
+}
+
 constexpr Layout k5_1_Layout = {
     .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
     .specific_layout = LoudspeakersSsConventionLayout{

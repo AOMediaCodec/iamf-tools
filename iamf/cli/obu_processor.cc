@@ -189,12 +189,51 @@ absl::Status GetAndStoreParameterBlockWithData(
   return absl::OkStatus();
 }
 
+// Validates that all Mix Presentation OBUs use the same Codec Config OBU in
+// their first sub-mix.
+absl::Status ValidateFirstSubMixesUseSameCodecConfig(
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus) {
+  std::optional<DecodedUleb128> first_sub_mix_codec_config_id;
+  for (const auto& mix_presentation_obu : mix_presentation_obus) {
+    if (mix_presentation_obu.sub_mixes_.empty()) {
+      continue;
+    }
+    for (const auto& sub_mix_audio_element :
+         mix_presentation_obu.sub_mixes_.front().audio_elements) {
+      const auto audio_element_iter =
+          audio_elements.find(sub_mix_audio_element.audio_element_id);
+      if (audio_element_iter == audio_elements.end() ||
+          audio_element_iter->second.codec_config == nullptr) {
+        continue;
+      }
+      const DecodedUleb128 codec_config_id =
+          audio_element_iter->second.codec_config->GetCodecConfigId();
+      if (!first_sub_mix_codec_config_id.has_value()) {
+        first_sub_mix_codec_config_id = codec_config_id;
+      } else if (*first_sub_mix_codec_config_id != codec_config_id) {
+        return absl::InvalidArgumentError(
+            "Mix presentations do not use the same Codec Config OBU in their "
+            "first sub-mix.");
+      }
+    }
+  }
+  return absl::OkStatus();
+}
+
 // Returns a list of pointers to the supported mix presentations. Empty if none
 // are supported.
 std::list<MixPresentationObu*> GetSupportedMixPresentations(
     const absl::flat_hash_set<ProfileVersion> requested_profiles,
     const DescriptorObus::AudioElementsById& audio_elements,
     DescriptorObus::MixPresentationObus& mix_presentation_obus) {
+  if (const auto status = ValidateFirstSubMixesUseSameCodecConfig(
+          audio_elements, mix_presentation_obus);
+      !status.ok()) {
+    ABSL_LOG(INFO) << status.message();
+    return {};
+  }
+
   // Find a mix presentation and layout that agrees with the requested profiles.
   std::list<MixPresentationObu*> supported_mix_presentations;
   std::string cumulative_error_message;
