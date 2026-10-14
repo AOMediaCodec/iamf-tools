@@ -15,15 +15,18 @@
 #include <cstdint>
 #include <list>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
@@ -799,6 +802,61 @@ TEST(CreateSimplifiedMixPresentationForRenderingTest,
                                                           /*sub_mix_index=*/0,
                                                           /*layout_index=*/-1),
               Not(IsOk()));
+}
+
+TEST(ContainsObjectBasedAudioElementTest,
+     ReturnsTrueWhenMixPresentationReferencesObjectBasedAudioElement) {
+  DescriptorObus descriptor_obus =
+      GetDescriptorObusWithStereoChannelBased(kAudioElementId);
+  auto objects_config = ObjectsConfig::Create(/*num_objects=*/1, {});
+  ASSERT_THAT(objects_config, IsOk());
+  auto object_obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kAudioElementId2, /*reserved=*/0, kCodecConfigId,
+      kSubstreamId[0], *objects_config);
+  ASSERT_THAT(object_obu, IsOk());
+  descriptor_obus.audio_elements.emplace(
+      kAudioElementId2, AudioElementWithData{.obu = *std::move(object_obu)});
+  MixPresentationObu mix_presentation =
+      CreateMixPresentationObuWithAudioElements(
+          kMixPresentationId1, {{kLayoutA}},
+          {{.audio_element_id = kAudioElementId,
+            .element_mix_gain =
+                MixGainParamDefinition(ParamDefinition::BaseArgs{})},
+           {.audio_element_id = kAudioElementId2,
+            .element_mix_gain =
+                MixGainParamDefinition(ParamDefinition::BaseArgs{})}});
+
+  EXPECT_TRUE(ContainsObjectBasedAudioElement(descriptor_obus.audio_elements,
+                                              mix_presentation));
+}
+
+TEST(ContainsObjectBasedAudioElementTest,
+     ReturnsFalseWhenMixPresentationHasOnlyNonObjectAudioElements) {
+  const DescriptorObus descriptor_obus =
+      GetDescriptorObusWithStereoChannelBased(kAudioElementId);
+  const MixPresentationObu mix_presentation =
+      CreateMixPresentationObuWithAudioElements(
+          kMixPresentationId1, {{kLayoutA}},
+          {{.audio_element_id = kAudioElementId,
+            .element_mix_gain =
+                MixGainParamDefinition(ParamDefinition::BaseArgs{})}});
+
+  EXPECT_FALSE(ContainsObjectBasedAudioElement(descriptor_obus.audio_elements,
+                                               mix_presentation));
+}
+
+TEST(ContainsObjectBasedAudioElementTest,
+     ReturnsFalseWhenAudioElementIsMissingFromMap) {
+  const DescriptorObus::AudioElementsById empty_audio_elements;
+  const MixPresentationObu mix_presentation =
+      CreateMixPresentationObuWithAudioElements(
+          kMixPresentationId1, {{kLayoutA}},
+          {{.audio_element_id = kAudioElementId,
+            .element_mix_gain =
+                MixGainParamDefinition(ParamDefinition::BaseArgs{})}});
+
+  EXPECT_FALSE(
+      ContainsObjectBasedAudioElement(empty_audio_elements, mix_presentation));
 }
 
 }  // namespace

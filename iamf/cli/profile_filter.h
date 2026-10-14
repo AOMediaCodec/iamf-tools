@@ -57,6 +57,25 @@ class ProfileFilter {
       const DescriptorObus::AudioElementsById& audio_elements,
       const MixPresentationObu& mix_presentation_obu,
       absl::flat_hash_set<ProfileVersion>& profile_versions);
+
+  /*!\brief Validates Mix Presentation OBUs against `primary_profile`.
+   *
+   * Enforces sequence-level `primary_profile` ordering and composition
+   * constraints across `mix_presentation_obus`. Does not check whether
+   * individual Mix Presentations are supported by a profile (use
+   * `FilterProfilesForMixPresentation` for per-OBU filtering).
+   *
+   * \param primary_profile Primary profile of the IA Sequence.
+   * \param audio_elements Audio elements in the IA sequence.
+   * \param mix_presentation_obus Mix presentation OBUs in descriptor order.
+   * \return `absl::OkStatus` if the sequence of Mix Presentation OBUs satisfies
+   *         the `primary_profile` constraints, or `absl::InvalidArgumentError`
+   *         if a constraint is violated.
+   */
+  static absl::Status ValidateMixPresentationsForPrimaryProfile(
+      ProfileVersion primary_profile,
+      const DescriptorObus::AudioElementsById& audio_elements,
+      const DescriptorObus::MixPresentationObus& mix_presentation_obus);
 };
 
 }  // namespace iamf_tools

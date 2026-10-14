@@ -50,6 +50,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -224,11 +225,20 @@ absl::Status ValidateFirstSubMixesUseSameCodecConfig(
 // Returns a list of pointers to the supported mix presentations. Empty if none
 // are supported.
 std::list<MixPresentationObu*> GetSupportedMixPresentations(
+    ProfileVersion primary_profile,
     const absl::flat_hash_set<ProfileVersion> requested_profiles,
     const DescriptorObus::AudioElementsById& audio_elements,
     DescriptorObus::MixPresentationObus& mix_presentation_obus) {
   if (const auto status = ValidateFirstSubMixesUseSameCodecConfig(
           audio_elements, mix_presentation_obus);
+      !status.ok()) {
+    ABSL_LOG(INFO) << status.message();
+    return {};
+  }
+
+  if (const auto status =
+          ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
+              primary_profile, audio_elements, mix_presentation_obus);
       !status.ok()) {
     ABSL_LOG(INFO) << status.message();
     return {};
@@ -244,6 +254,17 @@ std::list<MixPresentationObu*> GetSupportedMixPresentations(
         audio_elements, *iter, profiles);
     if (status.ok()) {
       supported_mix_presentations.push_back(&*iter);
+      if (iter == mix_presentation_obus.begin() &&
+          primary_profile == ProfileVersion::kIamfBaseAdvancedProfile &&
+          !requested_profiles.contains(ProfileVersion::kIamfAdvanced1Profile) &&
+          !requested_profiles.contains(ProfileVersion::kIamfAdvanced2Profile) &&
+          ContainsObjectBasedAudioElement(audio_elements, *iter)) {
+        // Per IAMF Spec §4.4, when primary_profile is Base-Advanced, the
+        // decoder does not support Advanced-1/Advanced-2, and the first Mix
+        // Presentation OBU contains an object-based Audio Element, we must use
+        // the first Mix Presentation OBU.
+        break;
+      }
     }
     absl::StrAppend(&cumulative_error_message, status.message(), "\n");
   }
@@ -680,9 +701,10 @@ absl::Status ObuProcessor::InitializeForRendering(
   }
 
   const std::list<MixPresentationObu*> supported_mix_presentations =
-      GetSupportedMixPresentations(desired_profile_versions,
-                                   descriptors_.audio_elements,
-                                   descriptors_.mix_presentation_obus);
+      GetSupportedMixPresentations(
+          descriptors_.ia_sequence_header.GetPrimaryProfile(),
+          desired_profile_versions, descriptors_.audio_elements,
+          descriptors_.mix_presentation_obus);
   if (supported_mix_presentations.empty()) {
     return absl::NotFoundError("No supported mix presentation OBUs found.");
   }

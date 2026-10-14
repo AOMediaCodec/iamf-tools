@@ -32,6 +32,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
@@ -50,8 +51,10 @@
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/temporal_delimiter.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
@@ -2550,6 +2553,181 @@ TEST(CreateForRendering, CanChooseLayoutByMixPresentationIdOnly) {
   absl::StatusOr<DecodedUleb128> output_mix_presentation_id =
       obu_processor->GetOutputMixPresentationId();
   EXPECT_THAT(output_mix_presentation_id,
+              IsOkAndHolds(kSecondMixPresentationId));
+}
+
+void AddSingleObjectAudioElement(DecodedUleb128 codec_config_id,
+                                 DecodedUleb128 audio_element_id,
+                                 DecodedUleb128 substream_id,
+                                 const CodecConfigsById& codec_config_obus,
+                                 AudioElementsById& audio_elements) {
+  auto objects_config = ObjectsConfig::Create(/*num_objects=*/1, {});
+  ASSERT_THAT(objects_config, IsOk());
+  auto audio_element_obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), audio_element_id, /*reserved=*/0, codec_config_id,
+      substream_id, *objects_config);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  auto audio_element_with_data =
+      ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
+                                                         *audio_element_obu);
+  ASSERT_THAT(audio_element_with_data, IsOk());
+  audio_elements.emplace(audio_element_id, *std::move(audio_element_with_data));
+}
+
+RenderingConfigParamDefinition MakeSingleObjectPolarParamDefinition(
+    DecodedUleb128 parameter_id) {
+  return RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(MakeScheduleInParameterBlockBaseArgs(
+          parameter_id, kCommonParameterRate)),
+      {});
+}
+
+TEST(CreateForRendering, FailsWhenMixPresentationsAreInvalidForPrimaryProfile) {
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfBaseAdvancedProfile,
+      ProfileVersion::kIamfBaseAdvancedProfile);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementsById audio_elements_with_data;
+  AddOneLayerStereoAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
+                                kFirstSubstreamId, codec_config_obus,
+                                audio_elements_with_data);
+  AddSingleObjectAudioElement(kFirstCodecConfigId, kSecondAudioElementId,
+                              kSecondSubstreamId, codec_config_obus,
+                              audio_elements_with_data);
+
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  constexpr DecodedUleb128 kPositionParameterId = 1000;
+  mix_presentation_obus.back()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.rendering_config_param_definitions = {
+      MakeSingleObjectPolarParamDefinition(kPositionParameterId)};
+
+  const auto bitstream = SerializeObusExpectOk(
+      {&ia_sequence_header, &codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &audio_elements_with_data.at(kSecondAudioElementId).obu,
+       &mix_presentation_obus.front(), &mix_presentation_obus.back()});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      {ProfileVersion::kIamfBaseAdvancedProfile}, kNoDesiredMixPresentationId,
+      kStereoLayout, /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      TrimmingSettings{}, insufficient_data);
+
+  EXPECT_FALSE(insufficient_data);
+  EXPECT_THAT(obu_processor, IsNull());
+}
+
+TEST(CreateForRendering,
+     UsesFirstMixPresentationForBaseAdvancedDecoderWhenFirstMixHasObjects) {
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfBaseAdvancedProfile,
+      ProfileVersion::kIamfBaseAdvancedProfile);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementsById audio_elements_with_data;
+  AddSingleObjectAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
+                              kFirstSubstreamId, codec_config_obus,
+                              audio_elements_with_data);
+  AddOneLayerStereoAudioElement(kFirstCodecConfigId, kSecondAudioElementId,
+                                kSecondSubstreamId, codec_config_obus,
+                                audio_elements_with_data);
+
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  constexpr DecodedUleb128 kPositionParameterId = 1000;
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.rendering_config_param_definitions = {
+      MakeSingleObjectPolarParamDefinition(kPositionParameterId)};
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+
+  const auto bitstream = SerializeObusExpectOk(
+      {&ia_sequence_header, &codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &audio_elements_with_data.at(kSecondAudioElementId).obu,
+       &mix_presentation_obus.front(), &mix_presentation_obus.back()});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      {ProfileVersion::kIamfBaseAdvancedProfile}, kSecondMixPresentationId,
+      kStereoLayout, /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      TrimmingSettings{}, insufficient_data);
+
+  ASSERT_THAT(obu_processor, NotNull());
+  EXPECT_THAT(obu_processor->GetOutputMixPresentationId(),
+              IsOkAndHolds(kFirstMixPresentationId));
+}
+
+TEST(CreateForRendering,
+     AllowsSecondMixPresentationForAdvanced1DecoderWhenFirstMixIsObjectsOnly) {
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfBaseAdvancedProfile,
+      ProfileVersion::kIamfAdvanced1Profile);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementsById audio_elements_with_data;
+  AddSingleObjectAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
+                              kFirstSubstreamId, codec_config_obus,
+                              audio_elements_with_data);
+  AddOneLayerStereoAudioElement(kFirstCodecConfigId, kSecondAudioElementId,
+                                kSecondSubstreamId, codec_config_obus,
+                                audio_elements_with_data);
+
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  constexpr DecodedUleb128 kPositionParameterId = 1000;
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.rendering_config_param_definitions = {
+      MakeSingleObjectPolarParamDefinition(kPositionParameterId)};
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kFirstAudioElementId, kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  mix_presentation_obus.back()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.rendering_config_param_definitions = {
+      MakeSingleObjectPolarParamDefinition(kPositionParameterId)};
+
+  const auto bitstream = SerializeObusExpectOk(
+      {&ia_sequence_header, &codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &audio_elements_with_data.at(kSecondAudioElementId).obu,
+       &mix_presentation_obus.front(), &mix_presentation_obus.back()});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      {ProfileVersion::kIamfBaseAdvancedProfile,
+       ProfileVersion::kIamfAdvanced1Profile},
+      kSecondMixPresentationId, kStereoLayout,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      TrimmingSettings{}, insufficient_data);
+
+  ASSERT_THAT(obu_processor, NotNull());
+  EXPECT_THAT(obu_processor->GetOutputMixPresentationId(),
               IsOkAndHolds(kSecondMixPresentationId));
 }
 

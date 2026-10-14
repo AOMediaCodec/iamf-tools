@@ -72,6 +72,18 @@ absl::StatusOr<MixPresentationObu> CreateSimplifiedMixPresentationForRendering(
     const MixPresentationObu& mix_presentation, int sub_mix_index,
     int layout_index);
 
+/*!\brief Returns true if `mix_presentation_obu` references an object-based
+ *        Audio Element.
+ *
+ * \param audio_elements Audio elements in the IA sequence.
+ * \param mix_presentation_obu Mix presentation OBU to inspect.
+ * \return True if `mix_presentation_obu` references at least one object-based
+ *         Audio Element in `audio_elements`.
+ */
+bool ContainsObjectBasedAudioElement(
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const MixPresentationObu& mix_presentation_obu);
+
 }  // namespace iamf_tools
 
 #endif  // CLI_OBU_PROCESSOR_UTILS_H_

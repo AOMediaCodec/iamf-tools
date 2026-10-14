@@ -649,6 +649,40 @@ absl::Status FilterProfilesForNumChannels(
   return absl::OkStatus();
 }
 
+// If `mix_presentation_obu` has at most 18 Audio Elements and all of them are
+// recognized by `kIamfBaseAdvancedProfile`, returns the set of
+// `AudioElementType`s in `mix_presentation_obu`; otherwise returns
+// `std::nullopt`.
+std::optional<absl::flat_hash_set<AudioElementObu::AudioElementType>>
+GetBaseAdvancedAudioElementTypes(
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const MixPresentationObu& mix_presentation_obu) {
+  int num_audio_elements = 0;
+  absl::flat_hash_set<AudioElementObu::AudioElementType> audio_element_types;
+  absl::flat_hash_set<ProfileVersion> base_advanced_profile = {
+      ProfileVersion::kIamfBaseAdvancedProfile};
+  for (const auto& sub_mix : mix_presentation_obu.sub_mixes_) {
+    num_audio_elements += sub_mix.audio_elements.size();
+    if (!FilterProfilesForNumAudioElements("", num_audio_elements,
+                                           base_advanced_profile)
+             .ok()) {
+      return std::nullopt;
+    }
+    for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
+      const auto iter =
+          audio_elements.find(sub_mix_audio_element.audio_element_id);
+      if (iter == audio_elements.end() ||
+          !ProfileFilter::FilterProfilesForAudioElement("", iter->second.obu,
+                                                        base_advanced_profile)
+               .ok()) {
+        return std::nullopt;
+      }
+      audio_element_types.insert(iter->second.obu.GetAudioElementType());
+    }
+  }
+  return audio_element_types;
+}
+
 }  // namespace
 
 absl::Status ProfileFilter::FilterProfilesForAudioElement(
@@ -716,6 +750,45 @@ absl::Status ProfileFilter::FilterProfilesForMixPresentation(
   MAYBE_RETURN_IF_NOT_OK(FilterProfilesForNumChannels(
       mix_presentation_id_for_debugging, num_channels_in_mix_presentation,
       profile_versions));
+
+  return absl::OkStatus();
+}
+
+absl::Status ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
+    ProfileVersion primary_profile,
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const DescriptorObus::MixPresentationObus& mix_presentation_obus) {
+  if (primary_profile != ProfileVersion::kIamfBaseAdvancedProfile ||
+      mix_presentation_obus.empty()) {
+    return absl::OkStatus();
+  }
+
+  const auto first_mix_presentation_audio_element_types =
+      GetBaseAdvancedAudioElementTypes(audio_elements,
+                                       mix_presentation_obus.front());
+  if (first_mix_presentation_audio_element_types.has_value() &&
+      first_mix_presentation_audio_element_types->contains(
+          AudioElementObu::kAudioElementObjectBased) &&
+      first_mix_presentation_audio_element_types->size() == 1) {
+    return absl::OkStatus();
+  }
+
+  // The first Mix Presentation is not exclusively object-based, so no
+  // Base-Advanced-compatible Mix Presentation may reference an object-based
+  // Audio Element.
+  for (const auto& mix_presentation_obu : mix_presentation_obus) {
+    const auto mix_presentation_audio_element_types =
+        GetBaseAdvancedAudioElementTypes(audio_elements, mix_presentation_obu);
+    if (mix_presentation_audio_element_types.has_value() &&
+        mix_presentation_audio_element_types->contains(
+            AudioElementObu::kAudioElementObjectBased)) {
+      return absl::InvalidArgumentError(
+          "When primary_profile is kIamfBaseAdvancedProfile and a Mix "
+          "Presentation with at most 18 recognized Audio Elements references "
+          "an object-based Audio Element, the first Mix Presentation OBU must "
+          "reference only object-based Audio Elements.");
+    }
+  }
 
   return absl::OkStatus();
 }

@@ -312,4 +312,21 @@ absl::StatusOr<MixPresentationObu> CreateSimplifiedMixPresentationForRendering(
   return simplified_mix_presentation;
 }
 
+bool ContainsObjectBasedAudioElement(
+    const DescriptorObus::AudioElementsById& audio_elements,
+    const MixPresentationObu& mix_presentation_obu) {
+  for (const auto& sub_mix : mix_presentation_obu.sub_mixes_) {
+    for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
+      const auto iter =
+          audio_elements.find(sub_mix_audio_element.audio_element_id);
+      if (iter != audio_elements.end() &&
+          iter->second.obu.GetAudioElementType() ==
+              AudioElementObu::kAudioElementObjectBased) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace iamf_tools

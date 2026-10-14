@@ -2030,6 +2030,145 @@ TEST(
   EXPECT_TRUE(base_advanced_profile.empty());
 }
 
+TEST(ValidateMixPresentationsForPrimaryProfile,
+     SucceedsWhenFirstMixPresentationIsObjectsOnly) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
+      {kSecondSubstreamId}, codec_config_obus, audio_elements);
+  constexpr DecodedUleb128 kSecondMixPresentationId = 2;
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kFirstAudioElementId, kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus);
+
+  EXPECT_THAT(
+      ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
+          kIamfBaseAdvancedProfile, audio_elements, mix_presentation_obus),
+      IsOk());
+}
+
+TEST(ValidateMixPresentationsForPrimaryProfile,
+     FailsWhenObjectBasedMixPresentationIsSecondAndFirstIsChannelBased) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
+      {kSecondSubstreamId}, codec_config_obus, audio_elements);
+  // Put the channel-based Mix Presentation first and the object-based one
+  // second.
+  mix_presentation_obus.clear();
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus);
+  constexpr DecodedUleb128 kSecondMixPresentationId = 2;
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus);
+
+  EXPECT_THAT(
+      ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
+          kIamfBaseAdvancedProfile, audio_elements, mix_presentation_obus),
+      Not(IsOk()));
+}
+
+TEST(ValidateMixPresentationsForPrimaryProfile,
+     FailsWhenFirstMixPresentationMixesObjectAndChannel) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
+      {kSecondSubstreamId}, codec_config_obus, audio_elements);
+  auto second_sub_mix_audio_element =
+      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
+  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
+  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
+      second_sub_mix_audio_element);
+
+  EXPECT_THAT(
+      ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
+          kIamfBaseAdvancedProfile, audio_elements, mix_presentation_obus),
+      Not(IsOk()));
+}
+
+TEST(ValidateMixPresentationsForPrimaryProfile,
+     SucceedsWhenObjectBasedMixPresentationHasMoreThan18AudioElements) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
+      {kSecondSubstreamId}, codec_config_obus, audio_elements);
+  // First Mix Presentation is channel-based; second has 19 object Audio
+  // Elements (exceeding the 18-Audio-Element limit for Base-Advanced).
+  mix_presentation_obus.clear();
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus);
+  constexpr DecodedUleb128 kSecondMixPresentationId = 2;
+  const std::vector<DecodedUleb128> kNineteenObjectIds(19,
+                                                       kFirstAudioElementId);
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, kNineteenObjectIds, kCommonMixGainParameterId,
+      kCommonMixGainParameterRate, mix_presentation_obus);
+
+  EXPECT_THAT(
+      ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
+          kIamfBaseAdvancedProfile, audio_elements, mix_presentation_obus),
+      IsOk());
+}
+
+TEST(ValidateMixPresentationsForPrimaryProfile,
+     SucceedsWhenPrimaryProfileIsNotBaseAdvanced) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  const auto polar_param_def = RenderingConfigParamDefinition::Create(
+      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+  InitializeDescriptorObusForObjectAudioElement(
+      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
+      {kSecondSubstreamId}, codec_config_obus, audio_elements);
+  auto second_sub_mix_audio_element =
+      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
+  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
+  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
+      second_sub_mix_audio_element);
+
+  EXPECT_THAT(ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
+                  kIamfAdvanced1Profile, audio_elements, mix_presentation_obus),
+              IsOk());
+}
+
 }  // namespace
 
 }  // namespace iamf_tools

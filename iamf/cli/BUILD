@@ -504,6 +504,7 @@ cc_library(
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
+        "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",
