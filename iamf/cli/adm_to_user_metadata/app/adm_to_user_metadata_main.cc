@@ -19,7 +19,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
-#include "absl/flags/usage.h"
+#include "absl/flags/usage.h"  // [internal] Use gloop init_google.
 #include "absl/log/absl_log.h"
 #include "iamf/cli/adm_to_user_metadata/app/adm_to_user_metadata_main_lib.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/user_metadata_generator.h"

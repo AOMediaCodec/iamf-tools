@@ -32,7 +32,7 @@ cc_binary(
         "//iamf/cli/adm_to_user_metadata/iamf:user_metadata_generator",
         "//iamf/obu:ia_sequence_header",
         "@abseil-cpp//absl/flags:flag",
-        "@abseil-cpp//absl/flags:parse",
+        "@abseil-cpp//absl/flags:parse",  # [internal] Use gloop init_google.
         "@abseil-cpp//absl/flags:usage",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/log:flags",
