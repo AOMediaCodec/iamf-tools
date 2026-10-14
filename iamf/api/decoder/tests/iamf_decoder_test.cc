@@ -1359,22 +1359,20 @@ TEST(ResetWithNewMix, ResetWithNewMixClearsStaleChannelReorderer) {
   EXPECT_TRUE(decoder->Decode(temporal_unit.data(), temporal_unit.size()).ok());
 }
 
-// TODO(b/552018947): Update this test once validation for codec configs is
-// updated.
-TEST(InvalidRenderedSamples, FailsWhenRenderedSamplesExceedExpectedFrameSize) {
+TEST(Decode, FailsWhenCodecConfigsHaveDifferentFrameSizes) {
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(
       api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
-  // Generate descriptors manually with two codec configs.
+  // Generate descriptors manually with two codec configs of different frame
+  // sizes so that a common expected frame size cannot be determined.
   const IASequenceHeaderObu ia_sequence_header(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
   CodecConfigsById codec_configs;
-  // Add the first and second codec configurations.
   AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
                      kSampleRate, codec_configs);
-  AddLpcmCodecConfig(/*codec_config_id=*/99, kNumSamplesPerFrame, kBitDepth,
-                     kSampleRate, codec_configs);
+  AddLpcmCodecConfig(/*codec_config_id=*/99, /*num_samples_per_frame=*/16,
+                     kBitDepth, kSampleRate, codec_configs);
   AudioElementsById audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
@@ -1395,12 +1393,9 @@ TEST(InvalidRenderedSamples, FailsWhenRenderedSamplesExceedExpectedFrameSize) {
 
   ASSERT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
   // Execute decoding on the remaining buffer (temporal units), which fails
-  // because the frame size exceeds the expected frame size.
+  // because the expected frame size is not consistent across codec configs.
   EXPECT_FALSE(decoder->Decode({}, 0).ok());
 
-  // Since there are two codec configs, the expected frame size is not uniquely
-  // determined (remains 0). Thus, num_ticks (8) > expected_frame_size (0),
-  // which makes IsTemporalUnitAvailable() return false.
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 

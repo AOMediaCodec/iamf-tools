@@ -218,14 +218,26 @@ void GetSampleRateAndFrameSize(
     const DescriptorObus::CodecConfigsById& output_codec_config_obus,
     std::optional<uint32_t>& output_sample_rate,
     std::optional<uint32_t>& output_frame_size) {
-  if (output_codec_config_obus.size() != 1) {
-    ABSL_LOG(WARNING) << "Expected exactly one codec config OBUs, but found "
-                      << output_codec_config_obus.size();
+  if (output_codec_config_obus.empty()) {
+    ABSL_LOG(WARNING) << "No codec config OBUs found.";
     return;
   }
   const auto& first_codec_config_obu = output_codec_config_obus.begin()->second;
-  output_sample_rate = first_codec_config_obu.GetOutputSampleRate();
-  output_frame_size = first_codec_config_obu.GetNumSamplesPerFrame();
+  const uint32_t common_sample_rate =
+      first_codec_config_obu.GetOutputSampleRate();
+  const uint32_t common_frame_size =
+      first_codec_config_obu.GetNumSamplesPerFrame();
+  for (const auto& [unused_id, codec_config_obu] : output_codec_config_obus) {
+    if (codec_config_obu.GetOutputSampleRate() != common_sample_rate ||
+        codec_config_obu.GetNumSamplesPerFrame() != common_frame_size) {
+      ABSL_LOG(WARNING)
+          << "Codec config OBUs do not have a common sample rate and frame "
+             "size.";
+      return;
+    }
+  }
+  output_sample_rate = common_sample_rate;
+  output_frame_size = common_frame_size;
 }
 
 absl::Status ProcessTemporalUnitObu(

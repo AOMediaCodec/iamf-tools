@@ -1694,7 +1694,8 @@ TEST(GetOutputSampleRate, FailsForTrivialIaSequence) {
   EXPECT_THAT(obu_processor->GetOutputSampleRate(), Not(IsOk()));
 }
 
-TEST(GetOutputSampleRate, FailsForMultipleCodecConfigsById) {
+TEST(GetOutputSampleRate,
+     SucceedsForMultipleCodecConfigsWithSameSampleRateAndFrameSize) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
@@ -1703,6 +1704,54 @@ TEST(GetOutputSampleRate, FailsForMultipleCodecConfigsById) {
                                         codec_config_obus);
   AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
                                         codec_config_obus);
+  const auto buffer = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
+       &codec_config_obus.at(kSecondCodecConfigId)});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputSampleRate(), IsOkAndHolds(kSampleRate));
+}
+
+TEST(GetOutputSampleRate,
+     FailsForMultipleCodecConfigsWithDifferentSampleRates) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(
+      kFirstCodecConfigId, /*sample_rate=*/48000, codec_config_obus);
+  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId,
+                                        /*sample_rate=*/16000,
+                                        codec_config_obus);
+  const auto buffer = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
+       &codec_config_obus.at(kSecondCodecConfigId)});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputSampleRate(), Not(IsOk()));
+}
+
+TEST(GetOutputSampleRate, FailsForMultipleCodecConfigsWithDifferentFrameSizes) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kFirstCodecConfigId, /*num_samples_per_frame=*/8,
+                     kBitDepth, kSampleRate, codec_config_obus);
+  AddLpcmCodecConfig(kSecondCodecConfigId, /*num_samples_per_frame=*/16,
+                     kBitDepth, kSampleRate, codec_config_obus);
   const auto buffer = SerializeObusExpectOk(
       {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
        &codec_config_obus.at(kSecondCodecConfigId)});
@@ -1753,15 +1802,63 @@ TEST(GetOutputFrameSize, FailsForTrivialIaSequence) {
   EXPECT_THAT(obu_processor->GetOutputFrameSize(), Not(IsOk()));
 }
 
-TEST(GetOutputFrameSize, FailsForMultipleCodecConfigsById) {
+TEST(GetOutputFrameSize,
+     SucceedsForMultipleCodecConfigsWithSameSampleRateAndFrameSize) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
   CodecConfigsById codec_config_obus;
-  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+  AddLpcmCodecConfig(kFirstCodecConfigId, kFrameSize, kBitDepth, kSampleRate,
+                     codec_config_obus);
+  AddLpcmCodecConfig(kSecondCodecConfigId, kFrameSize, kBitDepth, kSampleRate,
+                     codec_config_obus);
+  const auto buffer = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
+       &codec_config_obus.at(kSecondCodecConfigId)});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputFrameSize(), IsOkAndHolds(kFrameSize));
+}
+
+TEST(GetOutputFrameSize, FailsForMultipleCodecConfigsWithDifferentSampleRates) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(
+      kFirstCodecConfigId, /*sample_rate=*/48000, codec_config_obus);
+  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId,
+                                        /*sample_rate=*/16000,
                                         codec_config_obus);
-  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
-                                        codec_config_obus);
+  const auto buffer = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
+       &codec_config_obus.at(kSecondCodecConfigId)});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputFrameSize(), Not(IsOk()));
+}
+
+TEST(GetOutputFrameSize, FailsForMultipleCodecConfigsWithDifferentFrameSizes) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kFirstCodecConfigId, /*num_samples_per_frame=*/8,
+                     kBitDepth, kSampleRate, codec_config_obus);
+  AddLpcmCodecConfig(kSecondCodecConfigId, /*num_samples_per_frame=*/16,
+                     kBitDepth, kSampleRate, codec_config_obus);
   const auto buffer = SerializeObusExpectOk(
       {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
        &codec_config_obus.at(kSecondCodecConfigId)});
