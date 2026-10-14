@@ -1029,7 +1029,7 @@ cc_binary(
         ":probe_json",
         "@abseil-cpp//absl/base:log_severity",
         "@abseil-cpp//absl/flags:flag",
-        "@abseil-cpp//absl/flags:parse",
+        "@abseil-cpp//absl/flags:parse",  # [internal] Use gloop init_google.
         "@abseil-cpp//absl/flags:usage",
         "@abseil-cpp//absl/log:flags",
         "@abseil-cpp//absl/log:globals",
