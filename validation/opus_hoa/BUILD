@@ -21,7 +21,7 @@ cc_library(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-        "@libopus",
+        "@opus",
     ],
 )
 

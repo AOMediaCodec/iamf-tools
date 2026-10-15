@@ -185,7 +185,7 @@ cc_test(
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
-        "@libopus",
+        "@opus",
     ],
 )
 

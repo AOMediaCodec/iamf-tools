@@ -91,7 +91,7 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
-        "@libopus",
+        "@opus",
     ],
 )
 
@@ -117,7 +117,7 @@ cc_test(
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/types:span",
         "@google_benchmark//:benchmark_main",
-        "@libopus",
+        "@opus",
     ],
 )
 
@@ -318,7 +318,7 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
-        "@libopus",
+        "@opus",
     ],
 )
 

@@ -211,7 +211,7 @@ cc_library(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-        "@libopus",
+        "@opus",
     ],
 )
 
@@ -237,7 +237,7 @@ cc_library(
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/synchronization",
         "@abseil-cpp//absl/types:span",
-        "@libopus",
+        "@opus",
     ],
 )
 
@@ -249,7 +249,7 @@ cc_library(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:string_view",
-        "@libopus",
+        "@opus",
     ],
 )
 

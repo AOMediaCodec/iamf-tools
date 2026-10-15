@@ -21,6 +21,6 @@ cc_test(
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
-        "@libopus",
+        "@opus",
     ],
 )

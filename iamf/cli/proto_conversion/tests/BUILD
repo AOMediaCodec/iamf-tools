@@ -23,7 +23,7 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@googletest//:gtest_main",
-        "@libopus",
+        "@opus",
     ],
 )
 
