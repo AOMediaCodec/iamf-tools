@@ -236,6 +236,19 @@ cc_library(
 )
 
 cc_library(
+    name = "momentary_loudness_parameter_data",
+    srcs = ["momentary_loudness_parameter_data.cc"],
+    hdrs = ["momentary_loudness_parameter_data.h"],
+    deps = [
+        ":parameter_data",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "obu_base",
     srcs = ["obu_base.cc"],
     hdrs = ["obu_base.h"],
