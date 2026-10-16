@@ -14,35 +14,51 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/momentary_loudness_parameter_data.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/parameter_data.h"
 
 namespace iamf_tools {
 
 absl::Status MomentaryLoudnessParamDefinition::ValidateAndWrite(
-    WriteBitBuffer& /*wb*/) const {
-  return absl::UnimplementedError(
-      "MomentaryLoudnessParamDefinition::ValidateAndWrite is not implemented.");
+    WriteBitBuffer& wb) const {
+  // The common part.
+  RETURN_IF_NOT_OK(ParamDefinition::ValidateAndWrite(wb));
+
+  // No sub-class specific part for Momentary Loudness Parameter Definition.
+  return absl::OkStatus();
 }
 
 absl::Status MomentaryLoudnessParamDefinition::ReadAndValidate(
-    ReadBitBuffer& /*rb*/) {
-  return absl::UnimplementedError(
-      "MomentaryLoudnessParamDefinition::ReadAndValidate is not implemented.");
+    ReadBitBuffer& rb) {
+  // The common part.
+  RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
+
+  // No sub-class specific part for Momentary Loudness Parameter Definition.
+  return absl::OkStatus();
 }
 
 absl::StatusOr<std::unique_ptr<ParameterData>>
 MomentaryLoudnessParamDefinition::CreateParameterDataFromBuffer(
-    ReadBitBuffer& /*rb*/) const {
-  return absl::UnimplementedError(
-      "MomentaryLoudnessParamDefinition::CreateParameterDataFromBuffer is not "
-      "implemented.");
+    ReadBitBuffer& rb) const {
+  auto data = MomentaryLoudnessParameterData::CreateFromBuffer(rb);
+  if (!data.ok()) {
+    return data.status();
+  }
+  return std::make_unique<MomentaryLoudnessParameterData>(*std::move(data));
 }
 
-std::string MomentaryLoudnessParamDefinition::ToString() const { return ""; }
+std::string MomentaryLoudnessParamDefinition::ToString() const {
+  return absl::StrCat("MomentaryLoudnessParamDefinition:\n",
+                      ParamDefinition::ToString());
+}
 
 }  // namespace iamf_tools

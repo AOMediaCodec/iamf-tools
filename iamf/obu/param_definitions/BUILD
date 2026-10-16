@@ -151,9 +151,12 @@ cc_library(
         ":param_definition_base",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/obu:momentary_loudness_parameter_data",
         "//iamf/obu:parameter_data",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
