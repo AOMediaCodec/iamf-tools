@@ -54,8 +54,9 @@ class ParamDefinition {
     kParameterDefinitionDualPolar = 6,
     kParameterDefinitionDualCart8 = 7,
     kParameterDefinitionDualCart16 = 8,
-    // Values in the range of [9, (1 << 32) - 1] are reserved.
-    kParameterDefinitionReservedStart = 9,
+    kParameterDefinitionMomentaryLoudness = 9,
+    // Values in the range of [10, (1 << 32) - 1] are reserved.
+    kParameterDefinitionReservedStart = 10,
     kParameterDefinitionReservedEnd = std::numeric_limits<DecodedUleb128>::max()
   };
 
