@@ -17,6 +17,7 @@
 #include <list>
 #include <numeric>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -24,6 +25,8 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
@@ -88,6 +91,8 @@ constexpr std::array<DecodedUleb128, 25> kFourthOrderAmbisonicsSubstreamIds = {
 constexpr std::array<uint8_t, 0> kEmptyExtensionConfig{};
 
 using enum ProfileVersion;
+
+// TODO(b/573588752): Parameterize tests to reduce size of this file.
 
 // TODO(b/461488730): Diverge behavior of the IAMF v2.0.0 profiles as features
 //                    are added.
@@ -2166,6 +2171,93 @@ TEST(ValidateMixPresentationsForPrimaryProfile,
 
   EXPECT_THAT(ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
                   kIamfAdvanced1Profile, audio_elements, mix_presentation_obus),
+              IsOk());
+}
+
+TEST(ValidateAudioElementsForAdditionalProfile,
+     SucceedsForBaseAdvancedAndAdvanced1WithAtMost18Channels) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      /*num_audio_elements=*/18, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  kIamfBaseAdvancedProfile, audio_elements),
+              IsOk());
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  kIamfAdvanced1Profile, audio_elements),
+              IsOk());
+}
+
+TEST(ValidateAudioElementsForAdditionalProfile,
+     FailsForBaseAdvancedAndAdvanced1WithMoreThan18Channels) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      /*num_audio_elements=*/19, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  kIamfBaseAdvancedProfile, audio_elements),
+              Not(IsOk()));
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  kIamfAdvanced1Profile, audio_elements),
+              Not(IsOk()));
+}
+
+TEST(ValidateAudioElementsForAdditionalProfile,
+     SucceedsForAdvanced2WithAtMost28Channels) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      /*num_audio_elements=*/28, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  kIamfAdvanced2Profile, audio_elements),
+              IsOk());
+}
+
+TEST(ValidateAudioElementsForAdditionalProfile,
+     FailsForAdvanced2WithMoreThan28Channels) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      /*num_audio_elements=*/29, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  kIamfAdvanced2Profile, audio_elements),
+              Not(IsOk()));
+}
+
+TEST(ValidateAudioElementsForAdditionalProfile,
+     IgnoresUnrecognizedAudioElements) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      /*num_audio_elements=*/18, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  // Add an unrecognized reserved Audio Element type; its channels should not
+  // count toward the 18-channel limit.
+  auto unrecognized_obu = AudioElementObu::CreateForExtension(
+      ObuHeader(), /*audio_element_id=*/99,
+      AudioElementObu::kAudioElementEndReserved, /*reserved=*/0, kCodecConfigId,
+      /*audio_substream_ids=*/{99}, /*audio_element_config_bytes=*/{});
+  ASSERT_THAT(unrecognized_obu, IsOk());
+  audio_elements.emplace(
+      99, AudioElementWithData{
+              .obu = *std::move(unrecognized_obu),
+              .substream_id_to_labels = {{99, {ChannelLabel::kMono}}}});
+
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  kIamfBaseAdvancedProfile, audio_elements),
               IsOk());
 }
 

@@ -800,6 +800,8 @@ cc_test(
     srcs = ["profile_filter_test.cc"],
     deps = [
         ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:obu_with_data_generator",
         "//iamf/cli:profile_filter",

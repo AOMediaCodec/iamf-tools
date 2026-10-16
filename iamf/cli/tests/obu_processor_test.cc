@@ -2731,5 +2731,51 @@ TEST(CreateForRendering,
               IsOkAndHolds(kSecondMixPresentationId));
 }
 
+TEST(CreateForRendering,
+     FailsWhenAudioElementsExceedAdditionalProfileChannelLimit) {
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfBaseProfile,
+      ProfileVersion::kIamfBaseAdvancedProfile);
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementsById audio_elements_with_data;
+  std::list<const ObuBase*> obus_to_serialize = {
+      &ia_sequence_header, &codec_config_obus.at(kFirstCodecConfigId)};
+  // Add 10 stereo Audio Elements (20 channels total > 18 limit for
+  // Base-Advanced additional_profile).
+  for (int i = 0; i < 10; ++i) {
+    const DecodedUleb128 audio_element_id = kFirstAudioElementId + i;
+    const DecodedUleb128 substream_id = kFirstSubstreamId + i;
+    AddOneLayerStereoAudioElement(kFirstCodecConfigId, audio_element_id,
+                                  substream_id, codec_config_obus,
+                                  audio_elements_with_data);
+  }
+  for (int i = 0; i < 10; ++i) {
+    obus_to_serialize.push_back(
+        &audio_elements_with_data.at(kFirstAudioElementId + i).obu);
+  }
+
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  obus_to_serialize.push_back(&mix_presentation_obus.front());
+
+  const auto bitstream = SerializeObusExpectOk(obus_to_serialize);
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      {ProfileVersion::kIamfBaseProfile,
+       ProfileVersion::kIamfBaseAdvancedProfile},
+      kNoDesiredMixPresentationId, kStereoLayout,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      TrimmingSettings{}, insufficient_data);
+
+  EXPECT_FALSE(insufficient_data);
+  EXPECT_THAT(obu_processor, IsNull());
+}
+
 }  // namespace
 }  // namespace iamf_tools

@@ -793,4 +793,33 @@ absl::Status ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
   return absl::OkStatus();
 }
 
+absl::Status ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+    ProfileVersion additional_profile,
+    const DescriptorObus::AudioElementsById& audio_elements) {
+  switch (additional_profile) {
+    using enum ProfileVersion;
+    case kIamfBaseAdvancedProfile:
+    case kIamfAdvanced1Profile:
+    case kIamfAdvanced2Profile: {
+      int num_channels = 0;
+      for (const auto& [unused_id, audio_element] : audio_elements) {
+        absl::flat_hash_set<ProfileVersion> profile_versions = {
+            additional_profile};
+        if (FilterProfilesForAudioElement("", audio_element.obu,
+                                          profile_versions)
+                .ok()) {
+          num_channels += GetNumberOfChannels(audio_element);
+        }
+      }
+
+      absl::flat_hash_set<ProfileVersion> profile_versions = {
+          additional_profile};
+      return FilterProfilesForNumChannels("IA Sequence", num_channels,
+                                          profile_versions);
+    }
+    default:
+      return absl::OkStatus();
+  }
+}
+
 }  // namespace iamf_tools

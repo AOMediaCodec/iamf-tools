@@ -699,6 +699,9 @@ absl::Status ObuProcessor::InitializeForRendering(
   if (descriptors_.audio_elements.empty()) {
     return absl::InvalidArgumentError("No audio element OBUs found.");
   }
+  RETURN_IF_NOT_OK(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+      descriptors_.ia_sequence_header.GetAdditionalProfile(),
+      descriptors_.audio_elements));
 
   const std::list<MixPresentationObu*> supported_mix_presentations =
       GetSupportedMixPresentations(

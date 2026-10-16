@@ -76,6 +76,22 @@ class ProfileFilter {
       ProfileVersion primary_profile,
       const DescriptorObus::AudioElementsById& audio_elements,
       const DescriptorObus::MixPresentationObus& mix_presentation_obus);
+
+  /*!\brief Validates Audio Element OBUs against `additional_profile`.
+   *
+   * Enforces sequence-level `additional_profile` total channel count
+   * constraints across all Audio Elements in `audio_elements` recognized by
+   * `additional_profile` (IAMF Spec §4.1).
+   *
+   * \param additional_profile Additional profile of the IA Sequence.
+   * \param audio_elements Audio elements in the IA sequence.
+   * \return `absl::OkStatus` if the Audio Elements satisfy the
+   *         `additional_profile` constraints, or `absl::InvalidArgumentError`
+   *         if a constraint is violated.
+   */
+  static absl::Status ValidateAudioElementsForAdditionalProfile(
+      ProfileVersion additional_profile,
+      const DescriptorObus::AudioElementsById& audio_elements);
 };
 
 }  // namespace iamf_tools
