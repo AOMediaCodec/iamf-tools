@@ -18,21 +18,32 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
 
 absl::StatusOr<MomentaryLoudnessParameterData>
-MomentaryLoudnessParameterData::CreateFromBuffer(ReadBitBuffer& /*rb*/) {
-  return absl::UnimplementedError(
-      "MomentaryLoudnessParameterData::CreateFromBuffer is not implemented.");
+MomentaryLoudnessParameterData::CreateFromBuffer(ReadBitBuffer& rb) {
+  uint8_t momentary_loudness;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, momentary_loudness));
+  uint8_t reserved;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, reserved));
+  return Create(momentary_loudness, reserved);
 }
 
 absl::StatusOr<MomentaryLoudnessParameterData>
-MomentaryLoudnessParameterData::Create(uint8_t /*momentary_loudness*/,
-                                       uint8_t /*reserved*/) {
-  return absl::UnimplementedError(
-      "MomentaryLoudnessParameterData::Create is not implemented.");
+MomentaryLoudnessParameterData::Create(uint8_t momentary_loudness,
+                                       uint8_t reserved) {
+  constexpr uint8_t kMaxMomentaryLoudness = 0b111111;
+  constexpr uint8_t kMaxReserved = 0b11;
+  RETURN_IF_NOT_OK(ValidateInRange(momentary_loudness,
+                                   {uint8_t{0}, kMaxMomentaryLoudness},
+                                   "momentary_loudness"));
+  RETURN_IF_NOT_OK(
+      ValidateInRange(reserved, {uint8_t{0}, kMaxReserved}, "reserved"));
+  return MomentaryLoudnessParameterData(momentary_loudness, reserved);
 }
 
 absl::Status MomentaryLoudnessParameterData::Write(
