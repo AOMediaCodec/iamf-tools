@@ -16,7 +16,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
-#include "absl/flags/usage.h"
+#include "absl/flags/usage.h"  // [internal] Use gloop init_google.
 #include "absl/log/absl_log.h"
 #include "validation/iamf_loudness_comparator/iamf_loudness_comparator.h"
 
