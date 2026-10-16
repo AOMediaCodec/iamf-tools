@@ -12,13 +12,17 @@
 #include "iamf/obu/momentary_loudness_parameter_data.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/tests/test_utils.h"
+#include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
 namespace {
@@ -82,6 +86,26 @@ TEST(CreateFromBuffer, ReturnsErrorWhenBufferIsEmpty) {
 
   EXPECT_THAT(MomentaryLoudnessParameterData::CreateFromBuffer(*buffer),
               Not(IsOk()));
+}
+
+TEST(Write, WritesMomentaryLoudnessAndReserved) {
+  auto data = MomentaryLoudnessParameterData::Create(
+      /*momentary_loudness=*/42, /*reserved=*/3);
+  ASSERT_THAT(data, IsOk());
+
+  WriteBitBuffer wb(1);
+  EXPECT_THAT(data->Write(wb), IsOk());
+  ValidateWriteResults(wb, {0b101010'11});
+}
+
+TEST(ToString, FormatsMomentaryLoudnessAndReserved) {
+  auto data = MomentaryLoudnessParameterData::Create(
+      /*momentary_loudness=*/42, /*reserved=*/3);
+  ASSERT_THAT(data, IsOk());
+
+  EXPECT_EQ(absl::StrCat(*data),
+            "    momentary_loudness= 42\n"
+            "    reserved= 3");
 }
 
 }  // namespace

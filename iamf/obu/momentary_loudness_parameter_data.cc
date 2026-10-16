@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
@@ -46,12 +47,18 @@ MomentaryLoudnessParameterData::Create(uint8_t momentary_loudness,
   return MomentaryLoudnessParameterData(momentary_loudness, reserved);
 }
 
-absl::Status MomentaryLoudnessParameterData::Write(
-    WriteBitBuffer& /*wb*/) const {
-  return absl::UnimplementedError(
-      "MomentaryLoudnessParameterData::Write is not implemented.");
+absl::Status MomentaryLoudnessParameterData::Write(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(momentary_loudness_, 6));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_, 2));
+  return absl::OkStatus();
 }
 
-std::string MomentaryLoudnessParameterData::ToString() const { return ""; }
+std::string MomentaryLoudnessParameterData::ToString() const {
+  // Indent by four spaces so fields nest under `  subblocks[i]` (2 spaces),
+  // which itself nests under `Parameter Block OBU:` (0 spaces) in
+  // `ParameterBlockObu::PrintObu()`.
+  return absl::StrCat("    momentary_loudness= ", momentary_loudness_, "\n",
+                      "    reserved= ", reserved_);
+}
 
 }  // namespace iamf_tools

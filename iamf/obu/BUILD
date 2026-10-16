@@ -247,6 +247,7 @@ cc_library(
         "//iamf/common/utils:validation_utils",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
