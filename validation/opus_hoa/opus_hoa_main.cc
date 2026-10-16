@@ -16,7 +16,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
-#include "absl/flags/usage.h"  // [internal] Use gloop init_google.
+#include "absl/flags/usage.h"
 #include "absl/log/absl_log.h"
 #include "validation/opus_hoa/opus_hoa.h"
 
