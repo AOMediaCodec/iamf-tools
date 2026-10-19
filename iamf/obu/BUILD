@@ -189,6 +189,19 @@ cc_library(
 )
 
 cc_library(
+    name = "loudness_info",
+    srcs = ["loudness_info.cc"],
+    hdrs = ["loudness_info.h"],
+    deps = [
+        "//iamf/common:q_format_or_floating_point",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "metadata_obu",
     srcs = ["metadata_obu.cc"],
     hdrs = ["metadata_obu.h"],
