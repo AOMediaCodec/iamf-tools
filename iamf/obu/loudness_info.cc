@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/loudness_info.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -19,10 +20,12 @@
 #include "absl/status/status.h"
 #include "absl/status/status_macros.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/types.h"
@@ -95,11 +98,86 @@ absl::StatusOr<LoudnessInfo> LoudnessInfo::CreateFromBuffer(ReadBitBuffer& rb) {
   return loudness;
 }
 
-absl::Status LoudnessInfo::ValidateAndWrite(WriteBitBuffer& /*wb*/) const {
-  return absl::UnimplementedError(
-      "LoudnessInfo::ValidateAndWrite is not implemented.");
+absl::Status LoudnessInfo::ValidateAndWrite(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(info_type, 8));
+  RETURN_IF_NOT_OK(wb.WriteSigned16(integrated_loudness.GetQ7_8()));
+  RETURN_IF_NOT_OK(wb.WriteSigned16(digital_peak.GetQ7_8()));
+
+  // TODO(b/575476864): Condition on the optional fields directly once
+  //                    `info_type` is computed dynamically.
+  // Conditionally write `true_peak` based on `info_type`.
+  if ((info_type & kTruePeak) != 0) {
+    RETURN_IF_NOT_OK(ValidateHasValue(true_peak, "`true_peak`"));
+    RETURN_IF_NOT_OK(wb.WriteSigned16(true_peak->GetQ7_8()));
+  }
+  // Conditionally write `anchored_loudness` based on `info_type`.
+  if ((info_type & kAnchoredLoudness) != 0) {
+    RETURN_IF_NOT_OK(
+        ValidateHasValue(anchored_loudness, "`anchored_loudness`"));
+    uint8_t num_anchor_elements;
+    RETURN_IF_NOT_OK(StaticCastIfInRange(
+        "num_anchor_elements", anchored_loudness->anchor_elements.size(),
+        num_anchor_elements));
+    RETURN_IF_NOT_OK(
+        ValidateUniqueAnchorElements(anchored_loudness->anchor_elements));
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_anchor_elements, 8));
+    for (const auto& anchor_element : anchored_loudness->anchor_elements) {
+      RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
+          static_cast<uint8_t>(anchor_element.anchor_element), 8));
+      RETURN_IF_NOT_OK(
+          wb.WriteSigned16(anchor_element.anchored_loudness.GetQ7_8()));
+    }
+  }
+  // Conditionally write `layout_extension` based on `info_type`.
+  if ((info_type & kAnyLayoutExtension) != 0) {
+    RETURN_IF_NOT_OK(ValidateHasValue(layout_extension, "`layout_extension`"));
+    DecodedUleb128 info_type_size;
+    RETURN_IF_NOT_OK(StaticCastIfInRange(
+        "info_type_size", layout_extension->info_type_bytes.size(),
+        info_type_size));
+    RETURN_IF_NOT_OK(ValidateInRange(
+        info_type_size, {DecodedUleb128{0}, kEntireObuSizeMaxTwoMegabytes},
+        "info_type_size"));
+    RETURN_IF_NOT_OK(wb.WriteUleb128(info_type_size));
+    RETURN_IF_NOT_OK(wb.WriteUint8Span(
+        absl::MakeConstSpan(layout_extension->info_type_bytes)));
+  }
+
+  return absl::OkStatus();
 }
 
-std::string LoudnessInfo::ToString() const { return ""; }
+std::string LoudnessInfo::ToString() const {
+  std::string result =
+      absl::StrCat("      loudness:\n", "        info_type= ", info_type, "\n",
+                   "        integrated_loudness= ", integrated_loudness, "\n",
+                   "        digital_peak= ", digital_peak);
+  if (true_peak.has_value()) {
+    absl::StrAppend(&result, "\n        true_peak= ", *true_peak);
+  }
+
+  if (anchored_loudness.has_value()) {
+    absl::StrAppend(&result, "\n        anchored_loudness: \n",
+                    "          num_anchored_loudness= ",
+                    anchored_loudness->anchor_elements.size());
+    for (size_t i = 0; i < anchored_loudness->anchor_elements.size(); ++i) {
+      absl::StrAppend(
+          &result, "\n          anchor_element[", i,
+          "]= ", anchored_loudness->anchor_elements[i].anchor_element,
+          "\n          anchored_loudness[", i,
+          "]= ", anchored_loudness->anchor_elements[i].anchored_loudness);
+    }
+  }
+
+  if (layout_extension.has_value()) {
+    absl::StrAppend(
+        &result, "\n        layout_extension: \n",
+        "          info_type_size= ", layout_extension->info_type_bytes.size());
+    for (size_t i = 0; i < layout_extension->info_type_bytes.size(); ++i) {
+      absl::StrAppend(&result, "\n          info_type_bytes[", i,
+                      "]= ", layout_extension->info_type_bytes[i]);
+    }
+  }
+  return result;
+}
 
 }  // namespace iamf_tools

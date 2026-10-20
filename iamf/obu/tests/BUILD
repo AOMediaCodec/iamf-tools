@@ -195,8 +195,12 @@ cc_test(
     deps = [
         "//iamf/common:q_format_or_floating_point",
         "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils/tests:test_utils",
         "//iamf/obu:loudness_info",
+        "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings",
         "@googletest//:gtest_main",
     ],
 )
