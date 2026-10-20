@@ -189,6 +189,19 @@ cc_test(
 )
 
 cc_test(
+    name = "loudness_info_test",
+    size = "small",
+    srcs = ["loudness_info_test.cc"],
+    deps = [
+        "//iamf/common:q_format_or_floating_point",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/obu:loudness_info",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "metadata_obu_test",
     size = "small",
     srcs = ["metadata_obu_test.cc"],

@@ -193,11 +193,16 @@ cc_library(
     srcs = ["loudness_info.cc"],
     hdrs = ["loudness_info.h"],
     deps = [
+        ":types",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_macros",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
