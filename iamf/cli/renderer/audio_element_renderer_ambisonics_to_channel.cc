@@ -172,8 +172,6 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
     ABSL_LOG(ERROR) << gains.status();
     return nullptr;
   }
-  const std::string gains_map_key =
-      absl::StrCat("A", ambisonics_order, "->", *output_key);
 
   int32_t num_output_channels = 0;
   if (!MixPresentationObu::GetNumChannelsFromLayout(playback_layout,
