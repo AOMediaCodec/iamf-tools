@@ -47,6 +47,7 @@
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
@@ -605,8 +606,9 @@ GetLoudnessCalculatorWhichReturnsIntegratedLoudness(
   auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
   const LoudnessInfo kArbitraryLoudnessInfo = {
       .info_type = 0,
-      .integrated_loudness = integrated_loudness,
-      .digital_peak = 0,
+      .integrated_loudness =
+          QFormatOrFloatingPoint::MakeFromQ7_8(integrated_loudness),
+      .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0),
   };
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kArbitraryLoudnessInfo));
@@ -623,7 +625,7 @@ void ExpectFirstLayoutIntegratedLoudnessIs(
   EXPECT_EQ(mix_presentation_obus.front()
                 .sub_mixes_.front()
                 .layouts.front()
-                .loudness.integrated_loudness,
+                .loudness.integrated_loudness.GetQ7_8(),
             expected_integrated_loudness);
 }
 
@@ -749,8 +751,8 @@ TEST_F(IamfEncoderTest, GetDescriptorObusHasFilledInLoudness) {
   auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
   const LoudnessInfo kArbitraryLoudnessInfo = {
       .info_type = 0,
-      .integrated_loudness = 123,
-      .digital_peak = 456,
+      .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(123),
+      .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(456),
   };
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kArbitraryLoudnessInfo));

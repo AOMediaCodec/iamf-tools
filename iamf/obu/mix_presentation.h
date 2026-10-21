@@ -24,6 +24,7 @@
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
@@ -54,77 +55,6 @@ struct SubMixAudioElement {
   // The gain value to be applied to the rendered audio element signal.
   MixGainParamDefinition element_mix_gain =
       MixGainParamDefinition(ParamDefinition::BaseArgs{});
-};
-
-struct AnchoredLoudnessElement {
-  /*!\brief A 8-bit enum for the associated loudness measurement.
-   *
-   * As defined in ISO-CICP.
-   */
-  enum AnchorElement : uint8_t {
-    kAnchorElementUnknown = 0,
-    kAnchorElementDialogue = 1,
-    kAnchorElementAlbum = 2,
-  };
-
-  friend bool operator==(const AnchoredLoudnessElement& lhs,
-                         const AnchoredLoudnessElement& rhs) = default;
-
-  AnchorElement anchor_element;  // 8 bits.
-  int16_t anchored_loudness;     // Q7.8 format.
-};
-
-struct AnchoredLoudness {
-  friend bool operator==(const AnchoredLoudness& lhs,
-                         const AnchoredLoudness& rhs) = default;
-
-  // `num_anchored_loudness` is implicit based on the size of
-  // `anchor_elements`.
-  std::vector<AnchoredLoudnessElement> anchor_elements = {};
-};
-
-struct LayoutExtension {
-  friend bool operator==(const LayoutExtension& lhs,
-                         const LayoutExtension& rhs) = default;
-
-  // `info_type_size` is implicit based on the size of `info_type_bytes`
-  std::vector<uint8_t> info_type_bytes;
-};
-
-/*!\brief The loudness information for a given audio signal. */
-struct LoudnessInfo {
-  /*!\brief A 8-bit bitmask to determine the included optional loudness types.
-   */
-  enum InfoTypeBitmask : uint8_t {
-    kTruePeak = 0x01,
-    kAnchoredLoudness = 0x02,
-    kLive = 0x04,
-    kInfoTypeBitMask8 = 0x08,
-    kInfoTypeBitMask16 = 0x10,
-    kInfoTypeBitMask32 = 0x20,
-    kInfoTypeBitMask64 = 0x40,
-    kInfoTypeBitMask128 = 0x80,
-    // For backwards compatibility several info types signal the need
-    // for a `layout_extension`.
-    kAnyLayoutExtension = 0xfc,
-  };
-
-  friend bool operator==(const LoudnessInfo& lhs,
-                         const LoudnessInfo& rhs) = default;
-
-  uint8_t info_type;  // Apply `LoudnessInfoTypeBitmask` to identify what types
-                      // of loudness information are included.
-  int16_t integrated_loudness = 0;  // Q7.8 format.
-  int16_t digital_peak = 0;         // Q7.8 format.
-
-  // Present if `(info_type & kTruePeak) != 0`.
-  int16_t true_peak = 0;  // Q7.8 format.
-
-  // Present if `(info_type & kAnchoredLoudness) != 0`.
-  AnchoredLoudness anchored_loudness;
-
-  // Present if `(info_type & kAnyLayoutExtension) != 0`.
-  LayoutExtension layout_extension;
 };
 
 /*!\brief Layout is defined using the sound system convention of ITU2051-3.

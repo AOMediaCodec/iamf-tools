@@ -30,6 +30,7 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/element_gain_offset_config.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/rendering_config.h"
@@ -92,19 +93,24 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                        .rendering_config_param_definitions = {},
                        .rendering_config_extension_bytes = {}},
               }},
-              .layouts = {{.loudness_layout =
-                               {.layout_type =
-                                    Layout::kLayoutTypeLoudspeakersSsConvention,
-                                .specific_layout =
-                                    LoudspeakersSsConventionLayout{
-                                        .sound_system =
-                                            LoudspeakersSsConventionLayout::
-                                                kSoundSystemA_0_2_0,
-                                        .reserved = 0}},
-                           .loudness = {.info_type = LoudnessInfo::kTruePeak,
-                                        .integrated_loudness = 18,
-                                        .digital_peak = 19,
-                                        .true_peak = 20}}}}}),
+              .layouts =
+                  {{.loudness_layout =
+                        {.layout_type =
+                             Layout::kLayoutTypeLoudspeakersSsConvention,
+                         .specific_layout =
+                             LoudspeakersSsConventionLayout{
+                                 .sound_system =
+                                     LoudspeakersSsConventionLayout::
+                                         kSoundSystemA_0_2_0,
+                                 .reserved = 0}},
+                    .loudness = {.info_type = LoudnessInfo::kTruePeak,
+                                 .integrated_loudness =
+                                     QFormatOrFloatingPoint::MakeFromQ7_8(18),
+                                 .digital_peak =
+                                     QFormatOrFloatingPoint::MakeFromQ7_8(19),
+                                 .true_peak =
+                                     QFormatOrFloatingPoint::MakeFromQ7_8(
+                                         20)}}}}}),
         mix_presentation_tags_(std::nullopt) {
     MixGainParamDefinition element_mix_gain(
         MakeScheduleInParameterBlockBaseArgs(/*parameter_id=*/12,
@@ -257,11 +263,11 @@ TEST_F(MixPresentationObuTest,
 
 TEST_F(MixPresentationObuTest, TwoAnchorElements) {
   sub_mixes_[0].layouts[0].loudness.info_type = LoudnessInfo::kAnchoredLoudness;
-  sub_mixes_[0].layouts[0].loudness.anchored_loudness = {
+  sub_mixes_[0].layouts[0].loudness.anchored_loudness = AnchoredLoudness{
       {{.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
-        .anchored_loudness = 20},
+        .anchored_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(20)},
        {.anchor_element = AnchoredLoudnessElement::kAnchorElementDialogue,
-        .anchored_loudness = 21}}};
+        .anchored_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(21)}}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 52};
   expected_payload_ = {
@@ -295,10 +301,11 @@ TEST_F(MixPresentationObuTest, TwoAnchorElements) {
 TEST_F(MixPresentationObuTest, AnchoredAndTruePeak) {
   sub_mixes_[0].layouts[0].loudness.info_type =
       LoudnessInfo::kAnchoredLoudness | LoudnessInfo::kTruePeak;
-  sub_mixes_[0].layouts[0].loudness.true_peak = 22;
-  sub_mixes_[0].layouts[0].loudness.anchored_loudness = {
+  sub_mixes_[0].layouts[0].loudness.true_peak =
+      QFormatOrFloatingPoint::MakeFromQ7_8(22);
+  sub_mixes_[0].layouts[0].loudness.anchored_loudness = AnchoredLoudness{
       {{.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
-        .anchored_loudness = 20}}};
+        .anchored_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(20)}}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 51};
   expected_payload_ = {
@@ -334,11 +341,11 @@ TEST_F(MixPresentationObuTest, AnchoredAndTruePeak) {
 TEST_F(MixPresentationObuTest,
        ValidateAndWriteFailsWithInvalidNonUniqueAnchorElement) {
   sub_mixes_[0].layouts[0].loudness.info_type = LoudnessInfo::kAnchoredLoudness;
-  sub_mixes_[0].layouts[0].loudness.anchored_loudness = {
+  sub_mixes_[0].layouts[0].loudness.anchored_loudness = AnchoredLoudness{
       {{.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
-        .anchored_loudness = 20},
+        .anchored_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(20)},
        {.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
-        .anchored_loudness = 21}}};
+        .anchored_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(21)}}};
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -347,7 +354,8 @@ TEST_F(MixPresentationObuTest,
 
 TEST_F(MixPresentationObuTest, LiveLoudnessInfo) {
   sub_mixes_[0].layouts[0].loudness.info_type = LoudnessInfo::kLive;
-  sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
+  sub_mixes_[0].layouts[0].loudness.layout_extension =
+      LayoutExtension{.info_type_bytes{}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 46};
   expected_payload_ = {
@@ -376,7 +384,8 @@ TEST_F(MixPresentationObuTest, LiveLoudnessInfo) {
 
 TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
   sub_mixes_[0].layouts[0].loudness.info_type = 0x80;
-  sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
+  sub_mixes_[0].layouts[0].loudness.layout_extension =
+      LayoutExtension{.info_type_bytes{}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 46};
   expected_payload_ = {
@@ -404,7 +413,8 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
 TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   // Initialize a test has several `DecodedUleb128` explicitly in the bitstream.
   sub_mixes_[0].layouts[0].loudness.info_type = 0x80;
-  sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
+  sub_mixes_[0].layouts[0].loudness.layout_extension =
+      LayoutExtension{.info_type_bytes{}};
 
   sub_mixes_[0].audio_elements[0].rendering_config = {
       .headphones_rendering_mode =
@@ -467,8 +477,8 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
 
 TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
   sub_mixes_[0].layouts[0].loudness.info_type = 0x80;
-  sub_mixes_[0].layouts[0].loudness.layout_extension = {
-      .info_type_bytes{'e', 'x', 't', 'r', 'a'}};
+  sub_mixes_[0].layouts[0].loudness.layout_extension =
+      LayoutExtension{.info_type_bytes{'e', 'x', 't', 'r', 'a'}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 51};
   expected_payload_ = {
@@ -603,9 +613,12 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                                     LoudspeakersReservedOrBinauralLayout{
                                         .reserved = 0}},
             .loudness = {.info_type = LoudnessInfo::kTruePeak,
-                         .integrated_loudness = 28,
-                         .digital_peak = 29,
-                         .true_peak = 30}},
+                         .integrated_loudness =
+                             QFormatOrFloatingPoint::MakeFromQ7_8(28),
+                         .digital_peak =
+                             QFormatOrFloatingPoint::MakeFromQ7_8(29),
+                         .true_peak =
+                             QFormatOrFloatingPoint::MakeFromQ7_8(30)}},
 
            {.loudness_layout =
                 {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
@@ -615,18 +628,23 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                              kSoundSystemA_0_2_0,
                          .reserved = 0}},
             .loudness = {.info_type = 0,
-                         .integrated_loudness = 31,
-                         .digital_peak = 32,
-                         .true_peak = 0}},
+                         .integrated_loudness =
+                             QFormatOrFloatingPoint::MakeFromQ7_8(31),
+                         .digital_peak =
+                             QFormatOrFloatingPoint::MakeFromQ7_8(32),
+                         .true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0)}},
 
            {.loudness_layout = {.layout_type = Layout::kLayoutTypeBinaural,
                                 .specific_layout =
                                     LoudspeakersReservedOrBinauralLayout{
                                         .reserved = 0}},
             .loudness = {.info_type = LoudnessInfo::kTruePeak,
-                         .integrated_loudness = 34,
-                         .digital_peak = 35,
-                         .true_peak = 36}},
+                         .integrated_loudness =
+                             QFormatOrFloatingPoint::MakeFromQ7_8(34),
+                         .digital_peak =
+                             QFormatOrFloatingPoint::MakeFromQ7_8(35),
+                         .true_peak =
+                             QFormatOrFloatingPoint::MakeFromQ7_8(36)}},
        }});
   MixGainParamDefinition element_mix_gain(MakeScheduleInParameterBlockBaseArgs(
       /*parameter_id=*/22, /*parameter_rate=*/23));
@@ -1515,17 +1533,20 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
                 {.sound_system =
                      LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}));
   EXPECT_EQ(layout.loudness.info_type, LoudnessInfo::kAnchoredLoudness);
-  EXPECT_EQ(layout.loudness.anchored_loudness.anchor_elements.size(), 2);
-  EXPECT_EQ(layout.loudness.anchored_loudness.anchor_elements[0].anchor_element,
-            AnchoredLoudnessElement::kAnchorElementAlbum);
+  ASSERT_TRUE(layout.loudness.anchored_loudness.has_value());
+  EXPECT_EQ(layout.loudness.anchored_loudness->anchor_elements.size(), 2);
   EXPECT_EQ(
-      layout.loudness.anchored_loudness.anchor_elements[0].anchored_loudness,
-      20);
-  EXPECT_EQ(layout.loudness.anchored_loudness.anchor_elements[1].anchor_element,
-            AnchoredLoudnessElement::kAnchorElementDialogue);
+      layout.loudness.anchored_loudness->anchor_elements[0].anchor_element,
+      AnchoredLoudnessElement::kAnchorElementAlbum);
+  EXPECT_EQ(layout.loudness.anchored_loudness->anchor_elements[0]
+                .anchored_loudness.GetQ7_8(),
+            20);
   EXPECT_EQ(
-      layout.loudness.anchored_loudness.anchor_elements[1].anchored_loudness,
-      21);
+      layout.loudness.anchored_loudness->anchor_elements[1].anchor_element,
+      AnchoredLoudnessElement::kAnchorElementDialogue);
+  EXPECT_EQ(layout.loudness.anchored_loudness->anchor_elements[1]
+                .anchored_loudness.GetQ7_8(),
+            21);
 }
 
 TEST(LoudspeakersSsConventionLayoutRead, ReadsSsConventionLayout) {

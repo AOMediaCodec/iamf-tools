@@ -186,6 +186,7 @@ cc_library(
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:element_gain_offset_config",
+        "//iamf/obu:loudness_info",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",

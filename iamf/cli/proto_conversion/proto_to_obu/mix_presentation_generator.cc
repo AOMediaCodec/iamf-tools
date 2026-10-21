@@ -40,6 +40,7 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/element_gain_offset_config.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
@@ -614,17 +615,24 @@ absl::Status MixPresentationGenerator::CopyLoundessLayout(
 absl::Status MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
     const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
     LoudnessInfo& output_loudness) {
+  int16_t integrated_loudness;
   RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
       "LoudnessInfo.integrated_loudness", user_loudness.integrated_loudness(),
-      output_loudness.integrated_loudness));
+      integrated_loudness));
+  output_loudness.integrated_loudness =
+      QFormatOrFloatingPoint::MakeFromQ7_8(integrated_loudness);
+
+  int16_t digital_peak;
   RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
-      "LoudnessInfo.digital_peak", user_loudness.digital_peak(),
-      output_loudness.digital_peak));
+      "LoudnessInfo.digital_peak", user_loudness.digital_peak(), digital_peak));
+  output_loudness.digital_peak =
+      QFormatOrFloatingPoint::MakeFromQ7_8(digital_peak);
 
   if ((output_loudness.info_type & LoudnessInfo::kTruePeak) != 0) {
+    int16_t true_peak;
     RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
-        "LoudnessInfo.true_peak", user_loudness.true_peak(),
-        output_loudness.true_peak));
+        "LoudnessInfo.true_peak", user_loudness.true_peak(), true_peak));
+    output_loudness.true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(true_peak);
   }
 
   return absl::OkStatus();
@@ -644,6 +652,7 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
       user_loudness.anchored_loudness().anchor_elements_size(),
       num_anchored_loudness));
 
+  auto& anchored_loudness = output_loudness.anchored_loudness.emplace();
   for (const auto& metadata_anchor_element :
        user_loudness.anchored_loudness().anchor_elements()) {
     AnchoredLoudnessElement::AnchorElement obu_anchor_element;
@@ -669,8 +678,9 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
     RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
         "AnchorElement.anchored_loudness",
         metadata_anchor_element.anchored_loudness(), obu_anchored_loudness));
-    output_loudness.anchored_loudness.anchor_elements.push_back(
-        {obu_anchor_element, obu_anchored_loudness});
+    anchored_loudness.anchor_elements.push_back(
+        {obu_anchor_element,
+         QFormatOrFloatingPoint::MakeFromQ7_8(obu_anchored_loudness)});
   }
 
   return absl::OkStatus();
@@ -688,12 +698,13 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
                       << "Please remove it.";
   }
 
-  output_loudness.layout_extension.info_type_bytes.resize(
+  auto& layout_extension = output_loudness.layout_extension.emplace();
+  layout_extension.info_type_bytes.resize(
       user_loudness.info_type_bytes().size());
   return StaticCastSpanIfInRange(
       "LoudnessInfo.info_type_bytes",
       absl::MakeConstSpan(user_loudness.info_type_bytes()),
-      absl::MakeSpan(output_loudness.layout_extension.info_type_bytes));
+      absl::MakeSpan(layout_extension.info_type_bytes));
 }
 
 absl::Status MixPresentationGenerator::Generate(

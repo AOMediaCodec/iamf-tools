@@ -21,6 +21,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/common/q_format_or_floating_point.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -30,8 +32,10 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::Not;
 
-const int16_t kMaxLoudness = std::numeric_limits<int16_t>::max();
-const int16_t kMinLoudness = std::numeric_limits<int16_t>::min();
+const auto kMaxLoudness =
+    QFormatOrFloatingPoint::MakeFromQ7_8(std::numeric_limits<int16_t>::max());
+const auto kMinLoudness =
+    QFormatOrFloatingPoint::MakeFromQ7_8(std::numeric_limits<int16_t>::min());
 
 const uint32_t kNumSamplesPerFrame = 1024;
 // Changing this effectively changes the frequencies of the samples; loudness
@@ -108,11 +112,12 @@ TEST(LoudnessCalculatorItu1770_4, AlwaysCopiesAnchoredLoudness) {
   const uint8_t kExpectedNumAnchoredLoudness = 1;
   const auto kExpectedAnchorElement =
       AnchoredLoudnessElement::kAnchorElementDialogue;
-  const int16_t kExpectedDialogueLoudness = 123;
+  const auto kExpectedDialogueLoudness =
+      QFormatOrFloatingPoint::MakeFromQ7_8(123);
   const MixPresentationLayout kLayoutWithAnchoredLoudness = {
       .loudness_layout = kStereoLayout,
       .loudness = {.info_type = LoudnessInfo::kTruePeak,
-                   .anchored_loudness = {
+                   .anchored_loudness = AnchoredLoudness{
                        .anchor_elements = {
                            {.anchor_element = kExpectedAnchorElement,
                             .anchored_loudness = kExpectedDialogueLoudness}}}}};
@@ -123,13 +128,14 @@ TEST(LoudnessCalculatorItu1770_4, AlwaysCopiesAnchoredLoudness) {
   const auto& calculated_loudness = calculator->QueryLoudness();
   ASSERT_THAT(calculated_loudness, IsOk());
 
-  EXPECT_EQ(calculated_loudness->anchored_loudness.anchor_elements.size(),
+  ASSERT_TRUE(calculated_loudness->anchored_loudness.has_value());
+  EXPECT_EQ(calculated_loudness->anchored_loudness->anchor_elements.size(),
             kExpectedNumAnchoredLoudness);
-  ASSERT_FALSE(calculated_loudness->anchored_loudness.anchor_elements.empty());
+  ASSERT_FALSE(calculated_loudness->anchored_loudness->anchor_elements.empty());
   EXPECT_EQ(
-      calculated_loudness->anchored_loudness.anchor_elements[0].anchor_element,
+      calculated_loudness->anchored_loudness->anchor_elements[0].anchor_element,
       kExpectedAnchorElement);
-  EXPECT_EQ(calculated_loudness->anchored_loudness.anchor_elements[0]
+  EXPECT_EQ(calculated_loudness->anchored_loudness->anchor_elements[0]
                 .anchored_loudness,
             kExpectedDialogueLoudness);
 }
@@ -168,8 +174,9 @@ TEST(LoudnessCalculatorItu1770_4, MeasuresLoudnessWithSharpPeak) {
 
   EXPECT_NE((*calculated_loudness).integrated_loudness, kMinLoudness);
   // Digital and true peaks should be 0 dBFS.
-  EXPECT_EQ((*calculated_loudness).true_peak, 0);
-  EXPECT_EQ((*calculated_loudness).digital_peak, 0);
+  ASSERT_TRUE(calculated_loudness->true_peak.has_value());
+  EXPECT_EQ(calculated_loudness->true_peak->GetQ7_8(), 0);
+  EXPECT_EQ(calculated_loudness->digital_peak.GetQ7_8(), 0);
 }
 
 TEST(AccumulateLoudnessForSamples, SucceedsWithExactlyEnoughSamples) {

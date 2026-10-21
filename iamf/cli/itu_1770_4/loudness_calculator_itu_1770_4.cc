@@ -31,8 +31,9 @@
 #include "absl/types/span.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/numeric_utils.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 #include "include/ebur128_analyzer.h"
@@ -50,14 +51,21 @@ constexpr auto kPlanarNonContiguous =
 static_assert(std::is_same<InternalSampleType, double>::value);
 constexpr auto kSampleFormat = loudness::EbuR128Analyzer::DOUBLE;
 
-absl::Status FloatToQ7_8WithDebuggingMessage(float value, int16_t& output,
+absl::Status FloatToQ7_8WithDebuggingMessage(float value,
+                                             QFormatOrFloatingPoint& output,
                                              absl::string_view context) {
-  if (const auto& status = FloatToQ7_8(value, output); !status.ok()) {
+  auto q_format_or_floating_point =
+      QFormatOrFloatingPoint::CreateFromFloatingPoint(value);
+  if (!q_format_or_floating_point.ok()) {
     // Prepend some better context to the error message.
-    return absl::Status(status.code(), absl::StrCat("Failed to set ", context,
-                                                    "`FloatToQ7_8` returned: ",
-                                                    status.message()));
+    return absl::Status(
+        q_format_or_floating_point.status().code(),
+        absl::StrCat("Failed to set ", context,
+                     "`QFormatOrFloatingPoint::CreateFromFloatingPoint` "
+                     "returned: ",
+                     q_format_or_floating_point.status().message()));
   }
+  output = *q_format_or_floating_point;
   return absl::OkStatus();
 }
 
@@ -259,8 +267,10 @@ absl::StatusOr<LoudnessInfo> LoudnessCalculatorItu1770_4::QueryLoudness()
   RETURN_IF_NOT_OK(FloatToQ7_8WithDebuggingMessage(
       calculated_digital_peak, output_loudness.digital_peak, "digital peak"));
   if (IncludeTruePeak(user_provided_loudness_info_.info_type)) {
-    RETURN_IF_NOT_OK(FloatToQ7_8WithDebuggingMessage(
-        calculated_true_peak, output_loudness.true_peak, "true peak"));
+    QFormatOrFloatingPoint true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0);
+    RETURN_IF_NOT_OK(FloatToQ7_8WithDebuggingMessage(calculated_true_peak,
+                                                     true_peak, "true peak"));
+    output_loudness.true_peak = true_peak;
   }
 
   return output_loudness;

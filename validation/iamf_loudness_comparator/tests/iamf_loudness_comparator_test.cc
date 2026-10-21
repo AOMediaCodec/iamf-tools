@@ -68,13 +68,11 @@ MixPresentationObu CreateMixPresentationWithLayouts(
             .integrated_loudness =
                 iamf_tools::QFormatOrFloatingPoint::CreateFromFloatingPoint(
                     info.integrated_loudness)
-                    .value()
-                    .GetQ7_8(),
+                    .value(),
             .digital_peak =
                 iamf_tools::QFormatOrFloatingPoint::CreateFromFloatingPoint(
                     info.digital_peak)
-                    .value()
-                    .GetQ7_8()}};
+                    .value()}};
     sub_mix.layouts.push_back(layout);
   }
   sub_mixes.push_back(sub_mix);

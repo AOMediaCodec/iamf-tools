@@ -198,18 +198,12 @@ ComparisonResult CompareLoudness(absl::Span<const uint8_t> buffer1,
 
         ss << "  Sub-mix " << i << " Layout " << j << " Result: ";
 
-        double integrated1 = iamf_tools::QFormatOrFloatingPoint::MakeFromQ7_8(
-                                 layout1.loudness.integrated_loudness)
-                                 .GetFloatingPoint();
-        double integrated2 = iamf_tools::QFormatOrFloatingPoint::MakeFromQ7_8(
-                                 layout2.loudness.integrated_loudness)
-                                 .GetFloatingPoint();
-        double peak1 = iamf_tools::QFormatOrFloatingPoint::MakeFromQ7_8(
-                           layout1.loudness.digital_peak)
-                           .GetFloatingPoint();
-        double peak2 = iamf_tools::QFormatOrFloatingPoint::MakeFromQ7_8(
-                           layout2.loudness.digital_peak)
-                           .GetFloatingPoint();
+        double integrated1 =
+            layout1.loudness.integrated_loudness.GetFloatingPoint();
+        double integrated2 =
+            layout2.loudness.integrated_loudness.GetFloatingPoint();
+        double peak1 = layout1.loudness.digital_peak.GetFloatingPoint();
+        double peak2 = layout2.loudness.digital_peak.GetFloatingPoint();
 
         double diff_integrated = std::abs(integrated1 - integrated2);
         double diff_peak = std::abs(peak1 - peak2);

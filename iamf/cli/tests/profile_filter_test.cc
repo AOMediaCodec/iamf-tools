@@ -705,7 +705,9 @@ MixPresentationObu MakeMixPresentationObuWithAudioElementIdsInSubmixes(
                         LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
                     .reserved = 0}},
        .loudness = {
-           .info_type = 0, .integrated_loudness = 0, .digital_peak = 0}}};
+           .info_type = 0,
+           .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(0),
+           .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0)}}};
 
   std::vector<MixPresentationSubMix> sub_mixes;
   for (const auto& audio_element_ids : audio_element_ids_in_submix) {

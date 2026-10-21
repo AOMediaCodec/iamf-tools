@@ -1381,9 +1381,11 @@ TEST(Generate, CopiesUserLoudness) {
   auto& first_output_loudness =
       generated_obus.front().sub_mixes_[0].layouts[0].loudness;
   EXPECT_EQ(first_output_loudness.info_type, LoudnessInfo::kTruePeak);
-  EXPECT_EQ(first_output_loudness.integrated_loudness, kIntegratedLoudness);
-  EXPECT_EQ(first_output_loudness.digital_peak, kDigitalPeak);
-  EXPECT_EQ(first_output_loudness.true_peak, kTruePeak);
+  EXPECT_EQ(first_output_loudness.integrated_loudness.GetQ7_8(),
+            kIntegratedLoudness);
+  EXPECT_EQ(first_output_loudness.digital_peak.GetQ7_8(), kDigitalPeak);
+  ASSERT_TRUE(first_output_loudness.true_peak.has_value());
+  EXPECT_EQ(first_output_loudness.true_peak->GetQ7_8(), kTruePeak);
 }
 
 TEST(Generate, InvalidLayoutType) {
@@ -1509,7 +1511,9 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, WithoutTruePeak) {
   // Configure expected data. The function only writes to the
   // integrated loudness and peak loudness fields.
   const LoudnessInfo expected_output_loudness = {
-      .info_type = 0, .integrated_loudness = -99, .digital_peak = -100};
+      .info_type = 0,
+      .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(-99),
+      .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(-100)};
 
   EXPECT_THAT(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
                   user_loudness, output_loudness),
@@ -1536,9 +1540,9 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, WithTruePeak) {
   // integrated loudness and peak loudness fields.
   const LoudnessInfo expected_output_loudness = {
       .info_type = LoudnessInfo::kTruePeak,
-      .integrated_loudness = -99,
-      .digital_peak = -100,
-      .true_peak = -101};
+      .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(-99),
+      .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(-100),
+      .true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(-101)};
 
   EXPECT_THAT(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
                   user_loudness, output_loudness),
@@ -1609,9 +1613,9 @@ TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
   const AnchoredLoudness expected_output_loudness = {
       .anchor_elements = {
           {.anchor_element = AnchoredLoudnessElement::kAnchorElementDialogue,
-           .anchored_loudness = 1000},
+           .anchored_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(1000)},
           {.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
-           .anchored_loudness = 1001}}};
+           .anchored_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(1001)}}};
 
   EXPECT_THAT(MixPresentationGenerator::CopyUserAnchoredLoudness(
                   user_loudness, output_loudness),
@@ -1649,7 +1653,8 @@ TEST(CopyUserLayoutExtension, LiveLoudnessInfoType) {
   EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
                   user_loudness, output_loudness),
               IsOk());
-  EXPECT_TRUE(output_loudness.layout_extension.info_type_bytes.empty());
+  ASSERT_TRUE(output_loudness.layout_extension.has_value());
+  EXPECT_TRUE(output_loudness.layout_extension->info_type_bytes.empty());
 }
 
 TEST(CopyUserLayoutExtension, AllInfoTypeExtensions) {
@@ -1664,7 +1669,8 @@ TEST(CopyUserLayoutExtension, AllInfoTypeExtensions) {
   EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
                   user_loudness, output_loudness),
               IsOk());
-  EXPECT_EQ(output_loudness.layout_extension.info_type_bytes,
+  ASSERT_TRUE(output_loudness.layout_extension.has_value());
+  EXPECT_EQ(output_loudness.layout_extension->info_type_bytes,
             std::vector<uint8_t>({'a', 'b', 'c'}));
 }
 
@@ -1680,7 +1686,8 @@ TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
   EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
                   user_loudness, output_loudness),
               IsOk());
-  EXPECT_EQ(output_loudness.layout_extension.info_type_bytes,
+  ASSERT_TRUE(output_loudness.layout_extension.has_value());
+  EXPECT_EQ(output_loudness.layout_extension->info_type_bytes,
             std::vector<uint8_t>({'a', 'b', 'c'}));
 }
 
@@ -1700,7 +1707,8 @@ TEST(CopyUserLayoutExtension, IgnoresDeprecatedInfoTypeSizeField) {
               IsOk());
   // Regardless the output size is calculated from the
   // `info_type_bytes` field.
-  EXPECT_EQ(output_loudness.layout_extension.info_type_bytes,
+  ASSERT_TRUE(output_loudness.layout_extension.has_value());
+  EXPECT_EQ(output_loudness.layout_extension->info_type_bytes,
             std::vector<uint8_t>({'a', 'b', 'c'}));
 }
 

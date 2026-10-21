@@ -234,6 +234,7 @@ cc_test(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
         "//iamf/obu:element_gain_offset_config",
+        "//iamf/obu:loudness_info",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:rendering_config",

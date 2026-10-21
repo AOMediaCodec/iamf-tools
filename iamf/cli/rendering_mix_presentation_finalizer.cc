@@ -17,6 +17,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -46,6 +47,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -149,8 +151,14 @@ absl::Status ValidateUserLoudness(const LoudnessInfo& user_loudness,
     if (output_loudness.true_peak != user_loudness.true_peak) {
       ABSL_LOG(ERROR) << mix_presentation_sub_mix_layout_index
                       << "Computed true peak different from "
-                      << "user specification: " << output_loudness.true_peak
-                      << " vs " << user_loudness.true_peak;
+                      << "user specification: "
+                      << (output_loudness.true_peak.has_value()
+                              ? absl::StrCat(*output_loudness.true_peak)
+                              : "std::nullopt")
+                      << " vs "
+                      << (user_loudness.true_peak.has_value()
+                              ? absl::StrCat(*user_loudness.true_peak)
+                              : "std::nullopt");
       loudness_matches_user_data = false;
     }
   }

@@ -232,6 +232,7 @@ cc_library(
     srcs = ["mix_presentation.cc"],
     hdrs = ["mix_presentation.h"],
     deps = [
+        ":loudness_info",
         ":obu_base",
         ":obu_header",
         ":rendering_config",
@@ -249,6 +250,7 @@ cc_library(
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_macros",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",

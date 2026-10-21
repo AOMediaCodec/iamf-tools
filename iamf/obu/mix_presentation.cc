@@ -25,6 +25,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/status_macros.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -35,6 +36,7 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
@@ -56,19 +58,6 @@ absl::Status ValidateUniqueAudioElementIds(
 
   return ValidateUnique(collected_audio_element_ids.begin(),
                         collected_audio_element_ids.end(), "Audio element IDs");
-}
-
-absl::Status ValidateUniqueAnchorElements(
-    const std::vector<AnchoredLoudnessElement>& anchor_elements) {
-  std::vector<uint8_t> anchor_elements_as_uint8;
-  anchor_elements_as_uint8.reserve(anchor_elements.size());
-  for (const auto& anchor_element : anchor_elements) {
-    anchor_elements_as_uint8.push_back(
-        static_cast<uint8_t>(anchor_element.anchor_element));
-  }
-  return ValidateUnique(anchor_elements_as_uint8.begin(),
-                        anchor_elements_as_uint8.end(),
-                        "Anchored loudness types");
 }
 
 absl::Status ValidateAndWriteSubMixAudioElement(
@@ -131,40 +120,7 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
   }
 
   // Write the `loudness` portion of a `MixPresentationLayout`.
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layout.loudness.info_type, 8));
-  RETURN_IF_NOT_OK(wb.WriteSigned16(layout.loudness.integrated_loudness));
-  RETURN_IF_NOT_OK(wb.WriteSigned16(layout.loudness.digital_peak));
-
-  // Conditionally write `true_peak` based on `info_type`.
-  if ((layout.loudness.info_type & LoudnessInfo::kTruePeak) != 0) {
-    RETURN_IF_NOT_OK(wb.WriteSigned16(layout.loudness.true_peak));
-  }
-  // Conditionally write `anchored_loudness` based on `info_type`.
-  if ((layout.loudness.info_type & LoudnessInfo::kAnchoredLoudness) != 0) {
-    RETURN_IF_NOT_OK(ValidateUniqueAnchorElements(
-        layout.loudness.anchored_loudness.anchor_elements));
-    const AnchoredLoudness& anchored_loudness =
-        layout.loudness.anchored_loudness;
-    uint8_t num_anchor_elements;
-    RETURN_IF_NOT_OK(StaticCastIfInRange(
-        "num_anchor_elements", anchored_loudness.anchor_elements.size(),
-        num_anchor_elements));
-    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_anchor_elements, 8));
-    for (const auto& anchor_element : anchored_loudness.anchor_elements) {
-      RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
-          static_cast<uint8_t>(anchor_element.anchor_element), 8));
-      RETURN_IF_NOT_OK(wb.WriteSigned16(anchor_element.anchored_loudness));
-    }
-  }
-  // Conditionally write `layout_extension` based on `info_type`.
-  if ((layout.loudness.info_type & LoudnessInfo::kAnyLayoutExtension) != 0) {
-    RETURN_IF_NOT_OK(wb.WriteUleb128(
-        layout.loudness.layout_extension.info_type_bytes.size()));
-    RETURN_IF_NOT_OK(wb.WriteUint8Span(
-        absl::MakeConstSpan(layout.loudness.layout_extension.info_type_bytes)));
-  }
-
-  return absl::OkStatus();
+  return layout.loudness.ValidateAndWrite(wb);
 }
 
 absl::Status ValidateAndWriteSubMix(DecodedUleb128 count_label,
@@ -238,44 +194,7 @@ absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(loudness_layout.ReadAndValidate(rb));
 
   // Read the `loudness` portion of a `MixPresentationLayout`.
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, loudness.info_type));
-  RETURN_IF_NOT_OK(rb.ReadSigned16(loudness.integrated_loudness));
-  RETURN_IF_NOT_OK(rb.ReadSigned16(loudness.digital_peak));
-
-  // Conditionally read `true_peak` based on `info_type`.
-  if (loudness.info_type & LoudnessInfo::kTruePeak) {
-    RETURN_IF_NOT_OK(rb.ReadSigned16(loudness.true_peak));
-  }
-  // Conditionally read `anchored_loudness` based on `info_type`.
-  if (loudness.info_type & LoudnessInfo::kAnchoredLoudness) {
-    uint8_t num_anchored_loudness;
-    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_anchored_loudness));
-
-    for (int i = 0; i < num_anchored_loudness; ++i) {
-      AnchoredLoudnessElement anchor_loudness_element;
-      uint8_t anchor_element;
-      RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, anchor_element));
-      anchor_loudness_element.anchor_element =
-          static_cast<AnchoredLoudnessElement::AnchorElement>(anchor_element);
-      RETURN_IF_NOT_OK(
-          rb.ReadSigned16(anchor_loudness_element.anchored_loudness));
-      loudness.anchored_loudness.anchor_elements.push_back(
-          anchor_loudness_element);
-    }
-    RETURN_IF_NOT_OK(ValidateUniqueAnchorElements(
-        loudness.anchored_loudness.anchor_elements));
-  }
-  // Conditionally read `layout_extension` based on `info_type`.
-  if (loudness.info_type & LoudnessInfo::kAnyLayoutExtension) {
-    DecodedUleb128 info_type_size;
-    RETURN_IF_NOT_OK(rb.ReadULeb128(info_type_size));
-    RETURN_IF_NOT_OK(ValidateInRange(
-        info_type_size, {DecodedUleb128{0}, kEntireObuSizeMaxTwoMegabytes},
-        "info_type_size"));
-    loudness.layout_extension.info_type_bytes.resize(info_type_size);
-    RETURN_IF_NOT_OK(rb.ReadUint8Span(
-        absl::MakeSpan(loudness.layout_extension.info_type_bytes)));
-  }
+  ABSL_ASSIGN_OR_RETURN(loudness, LoudnessInfo::CreateFromBuffer(rb));
 
   return absl::OkStatus();
 }
@@ -790,43 +709,7 @@ void MixPresentationObu::PrintObu() const {
               .Print();
       }
 
-      const auto& loudness = layout.loudness;
-      ABSL_LOG(INFO) << "      loudness:";
-      ABSL_LOG(INFO) << "        info_type= "
-                     << absl::StrCat(loudness.info_type);
-      ABSL_LOG(INFO) << "        integrated_loudness= "
-                     << loudness.integrated_loudness;
-      ABSL_LOG(INFO) << "        digital_peak= " << loudness.digital_peak;
-      if ((loudness.info_type & LoudnessInfo::kTruePeak) != 0) {
-        ABSL_LOG(INFO) << "        true_peak= " << layout.loudness.true_peak;
-      }
-
-      if ((loudness.info_type & LoudnessInfo::kAnchoredLoudness) != 0) {
-        const auto& anchored_loudness = loudness.anchored_loudness;
-        ABSL_LOG(INFO) << "        anchored_loudness: ";
-        ABSL_LOG(INFO) << "          num_anchored_loudness= "
-                       << absl::StrCat(
-                              anchored_loudness.anchor_elements.size());
-        for (size_t l = 0; l < anchored_loudness.anchor_elements.size(); l++) {
-          ABSL_LOG(INFO) << "          anchor_element[" << l << "]= "
-                         << absl::StrCat(anchored_loudness.anchor_elements[l]
-                                             .anchor_element);
-          ABSL_LOG(INFO)
-              << "          anchored_loudness[" << l << "]= "
-              << anchored_loudness.anchor_elements[l].anchored_loudness;
-        }
-      }
-
-      if ((loudness.info_type & LoudnessInfo::kAnyLayoutExtension) != 0) {
-        const auto& layout_extension = loudness.layout_extension;
-        ABSL_LOG(INFO) << "        layout_extension: ";
-        ABSL_LOG(INFO) << "          info_type_size= "
-                       << layout_extension.info_type_bytes.size();
-        for (size_t l = 0; l < layout_extension.info_type_bytes.size(); ++l) {
-          ABSL_LOG(INFO) << "          info_type_bytes[" << l << "]= "
-                         << absl::StrCat(layout_extension.info_type_bytes[l]);
-        }
-      }
+      ABSL_LOG(INFO) << "      loudness: " << layout.loudness;
     }
   }
   if (mix_presentation_tags_.has_value()) {

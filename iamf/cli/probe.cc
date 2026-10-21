@@ -44,6 +44,7 @@
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
@@ -717,6 +718,7 @@ LayoutReport BuildLayoutReport(const Layout& layout) {
   return r;
 }
 
+// TODO(b/576312597): Add unit test coverage for `BuildLoudnessReport`.
 LoudnessInfoReport BuildLoudnessReport(const LoudnessInfo& loud) {
   LoudnessInfoReport r;
   r.info_type = loud.info_type;
@@ -725,20 +727,20 @@ LoudnessInfoReport BuildLoudnessReport(const LoudnessInfo& loud) {
       (loud.info_type & LoudnessInfo::kAnchoredLoudness) != 0;
   r.has_layout_extension =
       (loud.info_type & LoudnessInfo::kAnyLayoutExtension) != 0;
-  r.integrated_loudness = Q7_8ToFloat(loud.integrated_loudness);
-  r.digital_peak = Q7_8ToFloat(loud.digital_peak);
-  if (r.true_peak_present) {
-    r.true_peak = Q7_8ToFloat(loud.true_peak);
+  r.integrated_loudness = loud.integrated_loudness.GetFloatingPoint();
+  r.digital_peak = loud.digital_peak.GetFloatingPoint();
+  if (r.true_peak_present && loud.true_peak.has_value()) {
+    r.true_peak = loud.true_peak->GetFloatingPoint();
   }
-  if (r.anchored_loudness_present) {
+  if (r.anchored_loudness_present && loud.anchored_loudness.has_value()) {
     r.anchored_loudness_elements.reserve(
-        loud.anchored_loudness.anchor_elements.size());
-    for (const auto& e : loud.anchored_loudness.anchor_elements) {
+        loud.anchored_loudness->anchor_elements.size());
+    for (const auto& e : loud.anchored_loudness->anchor_elements) {
       r.anchored_loudness_elements.push_back({
           .anchor_element = AnchorElementToString(e.anchor_element),
           .anchor_element_raw = static_cast<uint8_t>(e.anchor_element),
-          .anchored_loudness_q7_8 = e.anchored_loudness,
-          .anchored_loudness = Q7_8ToFloat(e.anchored_loudness),
+          .anchored_loudness_q7_8 = e.anchored_loudness.GetQ7_8(),
+          .anchored_loudness = e.anchored_loudness.GetFloatingPoint(),
       });
     }
   }

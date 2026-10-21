@@ -47,7 +47,9 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/cli/wav_writer.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
@@ -416,15 +418,17 @@ TEST_F(FinalizerTest, SamplesAreTrimmedFromWavFile) {
 
 const LoudnessInfo kExpectedMinimumLoudnessInfo = {
     .info_type = 0,
-    .integrated_loudness = std::numeric_limits<int16_t>::min(),
-    .digital_peak = std::numeric_limits<int16_t>::min(),
+    .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(
+        std::numeric_limits<int16_t>::min()),
+    .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(
+        std::numeric_limits<int16_t>::min()),
 };
 
 const LoudnessInfo kArbitraryLoudnessInfo = {
     .info_type = LoudnessInfo::kTruePeak,
-    .integrated_loudness = 123,
-    .digital_peak = 456,
-    .true_peak = 789,
+    .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(123),
+    .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(456),
+    .true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(789),
 };
 
 TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
