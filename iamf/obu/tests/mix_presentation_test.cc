@@ -103,8 +103,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                                      LoudspeakersSsConventionLayout::
                                          kSoundSystemA_0_2_0,
                                  .reserved = 0}},
-                    .loudness = {.info_type = LoudnessInfo::kTruePeak,
-                                 .integrated_loudness =
+                    .loudness = {.integrated_loudness =
                                      QFormatOrFloatingPoint::MakeFromQ7_8(18),
                                  .digital_peak =
                                      QFormatOrFloatingPoint::MakeFromQ7_8(19),
@@ -416,8 +415,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                                 .specific_layout =
                                     LoudspeakersReservedOrBinauralLayout{
                                         .reserved = 0}},
-            .loudness = {.info_type = LoudnessInfo::kTruePeak,
-                         .integrated_loudness =
+            .loudness = {.integrated_loudness =
                              QFormatOrFloatingPoint::MakeFromQ7_8(28),
                          .digital_peak =
                              QFormatOrFloatingPoint::MakeFromQ7_8(29),
@@ -431,8 +429,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                          .sound_system = LoudspeakersSsConventionLayout::
                              kSoundSystemA_0_2_0,
                          .reserved = 0}},
-            .loudness = {.info_type = 0,
-                         .integrated_loudness =
+            .loudness = {.integrated_loudness =
                              QFormatOrFloatingPoint::MakeFromQ7_8(31),
                          .digital_peak =
                              QFormatOrFloatingPoint::MakeFromQ7_8(32)}},
@@ -441,8 +438,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                                 .specific_layout =
                                     LoudspeakersReservedOrBinauralLayout{
                                         .reserved = 0}},
-            .loudness = {.info_type = LoudnessInfo::kTruePeak,
-                         .integrated_loudness =
+            .loudness = {.integrated_loudness =
                              QFormatOrFloatingPoint::MakeFromQ7_8(34),
                          .digital_peak =
                              QFormatOrFloatingPoint::MakeFromQ7_8(35),
@@ -1335,7 +1331,7 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
             LoudspeakersSsConventionLayout(
                 {.sound_system =
                      LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}));
-  EXPECT_EQ(layout.loudness.info_type, LoudnessInfo::kAnchoredLoudness);
+  EXPECT_EQ(layout.loudness.GetInfoType(), LoudnessInfo::kAnchoredLoudness);
   ASSERT_TRUE(layout.loudness.anchored_loudness.has_value());
   EXPECT_EQ(layout.loudness.anchored_loudness->anchor_elements.size(), 2);
   EXPECT_EQ(

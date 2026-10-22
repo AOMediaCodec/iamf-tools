@@ -603,7 +603,6 @@ GetLoudnessCalculatorWhichReturnsIntegratedLoudness(
       std::make_unique<MockLoudnessCalculatorFactory>();
   auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
   const LoudnessInfo kArbitraryLoudnessInfo = {
-      .info_type = 0,
       .integrated_loudness =
           QFormatOrFloatingPoint::MakeFromQ7_8(integrated_loudness),
       .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0),
@@ -746,7 +745,6 @@ TEST_F(IamfEncoderTest, GetDescriptorObusHasFilledInLoudness) {
       std::make_unique<MockLoudnessCalculatorFactory>();
   auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
   const LoudnessInfo kArbitraryLoudnessInfo = {
-      .info_type = 0,
       .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(123),
       .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(456),
   };

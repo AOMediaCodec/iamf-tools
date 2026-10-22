@@ -56,16 +56,17 @@ absl::StatusOr<QFormatOrFloatingPoint> ReadQ7_8(ReadBitBuffer& rb) {
 
 absl::StatusOr<LoudnessInfo> LoudnessInfo::CreateFromBuffer(ReadBitBuffer& rb) {
   LoudnessInfo loudness;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, loudness.info_type));
+  uint8_t info_type;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, info_type));
   ABSL_ASSIGN_OR_RETURN(loudness.integrated_loudness, ReadQ7_8(rb));
   ABSL_ASSIGN_OR_RETURN(loudness.digital_peak, ReadQ7_8(rb));
 
   // Conditionally read `true_peak` based on `info_type`.
-  if ((loudness.info_type & kTruePeak) != 0) {
+  if ((info_type & kTruePeak) != 0) {
     ABSL_ASSIGN_OR_RETURN(loudness.true_peak, ReadQ7_8(rb));
   }
   // Conditionally read `anchored_loudness` based on `info_type`.
-  if ((loudness.info_type & kAnchoredLoudness) != 0) {
+  if ((info_type & kAnchoredLoudness) != 0) {
     uint8_t num_anchored_loudness;
     RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_anchored_loudness));
 
@@ -83,14 +84,14 @@ absl::StatusOr<LoudnessInfo> LoudnessInfo::CreateFromBuffer(ReadBitBuffer& rb) {
         ValidateUniqueAnchorElements(anchored_loudness.anchor_elements));
   }
   // Conditionally read `layout_extension` based on `info_type`.
-  if ((loudness.info_type & kAnyLayoutExtension) != 0) {
+  if ((info_type & kAnyLayoutExtension) != 0) {
     DecodedUleb128 info_type_size;
     RETURN_IF_NOT_OK(rb.ReadULeb128(info_type_size));
     RETURN_IF_NOT_OK(ValidateInRange(
         info_type_size, {DecodedUleb128{0}, kEntireObuSizeMaxTwoMegabytes},
         "info_type_size"));
     LayoutExtension& layout_extension = loudness.layout_extension.emplace();
-    layout_extension.info_type = loudness.info_type & kAnyLayoutExtension;
+    layout_extension.info_type = info_type & kAnyLayoutExtension;
     layout_extension.info_type_bytes.resize(info_type_size);
     RETURN_IF_NOT_OK(
         rb.ReadUint8Span(absl::MakeSpan(layout_extension.info_type_bytes)));

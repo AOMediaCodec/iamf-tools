@@ -705,7 +705,6 @@ MixPresentationObu MakeMixPresentationObuWithAudioElementIdsInSubmixes(
                         LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
                     .reserved = 0}},
        .loudness = {
-           .info_type = 0,
            .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(0),
            .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0)}}};
 

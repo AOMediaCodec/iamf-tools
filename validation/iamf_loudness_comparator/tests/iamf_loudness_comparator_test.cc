@@ -64,7 +64,6 @@ MixPresentationObu CreateMixPresentationWithLayouts(
                                     .sound_system = info.sound_system,
                                     .reserved = 0}},
         .loudness = {
-            .info_type = 0,
             .integrated_loudness =
                 iamf_tools::QFormatOrFloatingPoint::CreateFromFloatingPoint(
                     info.integrated_loudness)

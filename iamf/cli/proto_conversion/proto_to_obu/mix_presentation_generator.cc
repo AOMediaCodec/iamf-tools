@@ -443,8 +443,6 @@ absl::Status FillLayouts(
     MixPresentationLayout layout;
     RETURN_IF_NOT_OK(MixPresentationGenerator::CopyLoundessLayout(
         input_layout.loudness_layout(), layout.loudness_layout));
-    RETURN_IF_NOT_OK(MixPresentationGenerator::CopyInfoType(
-        input_layout.loudness(), layout.loudness.info_type));
     RETURN_IF_NOT_OK(
         MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
             input_layout.loudness(), layout.loudness));

@@ -121,10 +121,6 @@ class LoudnessInfo {
     sink.Append(loudness_info.ToString());
   }
 
-  // TODO(b/575476864): Remove `info_type` shortly once all callers are migrated
-  //                    to `GetInfoType()` and `LayoutExtension::info_type`.
-  uint8_t info_type;  // Apply `LoudnessInfoTypeBitmask` to identify what types
-                      // of loudness information are included.
   QFormatOrFloatingPoint integrated_loudness =
       QFormatOrFloatingPoint::MakeFromQ7_8(0);
   QFormatOrFloatingPoint digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0);

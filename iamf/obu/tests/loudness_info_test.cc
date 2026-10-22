@@ -47,9 +47,7 @@ const QFormatOrFloatingPoint kAnchoredLoudness1 =
 
 TEST(ValidateAndWrite, WritesMinimalLoudnessInfo) {
   const LoudnessInfo loudness_info = {
-      .info_type = 0,
-      .integrated_loudness = kIntegratedLoudness,
-      .digital_peak = kDigitalPeak};
+      .integrated_loudness = kIntegratedLoudness, .digital_peak = kDigitalPeak};
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
       // `info_type`.
       0,
@@ -69,8 +67,6 @@ TEST(ValidateAndWrite, WritesMinimalLoudnessInfo) {
 
 TEST(ValidateAndWrite, WritesAllOptionalFields) {
   const LoudnessInfo loudness_info = {
-      .info_type = LoudnessInfo::kTruePeak | LoudnessInfo::kAnchoredLoudness |
-                   LoudnessInfo::kInfoTypeBitMask128,
       .integrated_loudness = kIntegratedLoudness,
       .digital_peak = kDigitalPeak,
       .true_peak = kTruePeak,
@@ -124,7 +120,6 @@ TEST(ValidateAndWrite, WritesAllOptionalFields) {
 
 TEST(ValidateAndWrite, ReturnsErrorWhenAnchorElementsAreNotUnique) {
   const LoudnessInfo loudness_info = {
-      .info_type = LoudnessInfo::kAnchoredLoudness,
       .integrated_loudness = kIntegratedLoudness,
       .digital_peak = kDigitalPeak,
       .anchored_loudness = AnchoredLoudness{
@@ -140,7 +135,6 @@ TEST(ValidateAndWrite, ReturnsErrorWhenAnchorElementsAreNotUnique) {
 
 TEST(ValidateAndWrite, ReturnsErrorWhenTooManyAnchorElements) {
   const LoudnessInfo loudness_info = {
-      .info_type = LoudnessInfo::kAnchoredLoudness,
       .integrated_loudness = kIntegratedLoudness,
       .digital_peak = kDigitalPeak,
       .anchored_loudness = AnchoredLoudness{
@@ -155,7 +149,6 @@ TEST(ValidateAndWrite, ReturnsErrorWhenTooManyAnchorElements) {
 
 TEST(ValidateAndWrite, ReturnsErrorWhenInfoTypeSizeExceedsMaxObuSize) {
   const LoudnessInfo loudness_info = {
-      .info_type = LoudnessInfo::kInfoTypeBitMask128,
       .integrated_loudness = kIntegratedLoudness,
       .digital_peak = kDigitalPeak,
       .layout_extension =
@@ -169,7 +162,6 @@ TEST(ValidateAndWrite, ReturnsErrorWhenInfoTypeSizeExceedsMaxObuSize) {
 
 TEST(ValidateAndWrite, ReturnsErrorWhenLayoutExtensionHasNoExtensionBits) {
   const LoudnessInfo loudness_info = {
-      .info_type = 0,
       .integrated_loudness = kIntegratedLoudness,
       .digital_peak = kDigitalPeak,
       .layout_extension =
@@ -359,8 +351,6 @@ TEST(GetInfoType, IncludesLayoutExtensionBitsAndMasksNonExtensionBits) {
 
 TEST(ToString, FormatsFieldsAndSupportsAbslStringify) {
   const LoudnessInfo loudness_info = {
-      .info_type = LoudnessInfo::kTruePeak | LoudnessInfo::kAnchoredLoudness |
-                   LoudnessInfo::kInfoTypeBitMask128,
       .integrated_loudness = kIntegratedLoudness,
       .digital_peak = kDigitalPeak,
       .true_peak = kTruePeak,
