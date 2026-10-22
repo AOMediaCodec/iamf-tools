@@ -180,6 +180,7 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/obu:element_gain_offset_config",
+        "//iamf/obu:loudness_info",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",

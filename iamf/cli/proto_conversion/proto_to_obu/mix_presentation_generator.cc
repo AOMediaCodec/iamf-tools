@@ -615,6 +615,9 @@ absl::Status MixPresentationGenerator::CopyLoundessLayout(
 absl::Status MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
     const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
     LoudnessInfo& output_loudness) {
+  uint8_t loudness_info_type;
+  RETURN_IF_NOT_OK(CopyInfoType(user_loudness, loudness_info_type));
+
   int16_t integrated_loudness;
   RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
       "LoudnessInfo.integrated_loudness", user_loudness.integrated_loudness(),
@@ -628,7 +631,7 @@ absl::Status MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
   output_loudness.digital_peak =
       QFormatOrFloatingPoint::MakeFromQ7_8(digital_peak);
 
-  if ((output_loudness.info_type & LoudnessInfo::kTruePeak) != 0) {
+  if ((loudness_info_type & LoudnessInfo::kTruePeak) != 0) {
     int16_t true_peak;
     RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
         "LoudnessInfo.true_peak", user_loudness.true_peak(), true_peak));
@@ -641,7 +644,9 @@ absl::Status MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
 absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
     const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
     LoudnessInfo& output_loudness) {
-  if ((output_loudness.info_type & LoudnessInfo::kAnchoredLoudness) == 0) {
+  uint8_t loudness_info_type;
+  RETURN_IF_NOT_OK(CopyInfoType(user_loudness, loudness_info_type));
+  if ((loudness_info_type & LoudnessInfo::kAnchoredLoudness) == 0) {
     // Not using anchored loudness.
     return absl::OkStatus();
   }
@@ -689,7 +694,9 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
 absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
     const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
     LoudnessInfo& output_loudness) {
-  if ((output_loudness.info_type & LoudnessInfo::kAnyLayoutExtension) == 0) {
+  uint8_t loudness_info_type;
+  RETURN_IF_NOT_OK(CopyInfoType(user_loudness, loudness_info_type));
+  if ((loudness_info_type & LoudnessInfo::kAnyLayoutExtension) == 0) {
     // Not using layout extension.
     return absl::OkStatus();
   }
@@ -699,6 +706,8 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
   }
 
   auto& layout_extension = output_loudness.layout_extension.emplace();
+  layout_extension.info_type =
+      loudness_info_type & LoudnessInfo::kAnyLayoutExtension;
   layout_extension.info_type_bytes.resize(
       user_loudness.info_type_bytes().size());
   return StaticCastSpanIfInRange(

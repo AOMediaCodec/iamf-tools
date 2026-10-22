@@ -34,6 +34,7 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/element_gain_offset_config.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
@@ -1380,7 +1381,7 @@ TEST(Generate, CopiesUserLoudness) {
 
   auto& first_output_loudness =
       generated_obus.front().sub_mixes_[0].layouts[0].loudness;
-  EXPECT_EQ(first_output_loudness.info_type, LoudnessInfo::kTruePeak);
+  EXPECT_EQ(first_output_loudness.GetInfoType(), LoudnessInfo::kTruePeak);
   EXPECT_EQ(first_output_loudness.integrated_loudness.GetQ7_8(),
             kIntegratedLoudness);
   EXPECT_EQ(first_output_loudness.digital_peak.GetQ7_8(), kDigitalPeak);
@@ -1496,8 +1497,7 @@ TEST(CopyInfoType, SeveralLoudnessTypes) {
 }
 
 TEST(CopyUserIntegratedLoudnessAndPeaks, WithoutTruePeak) {
-  // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type = 0};
+  LoudnessInfo output_loudness = {};
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
@@ -1511,7 +1511,6 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, WithoutTruePeak) {
   // Configure expected data. The function only writes to the
   // integrated loudness and peak loudness fields.
   const LoudnessInfo expected_output_loudness = {
-      .info_type = 0,
       .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(-99),
       .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(-100)};
 
@@ -1522,13 +1521,13 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, WithoutTruePeak) {
 }
 
 TEST(CopyUserIntegratedLoudnessAndPeaks, WithTruePeak) {
-  // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kTruePeak};
+  LoudnessInfo output_loudness = {};
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
+        info_type_bit_masks: [ LOUDNESS_INFO_TYPE_TRUE_PEAK ]
         integrated_loudness: -99
         digital_peak: -100
         # `true_peak` is included when `info_type & kTruePeak == 1`.
@@ -1539,7 +1538,6 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, WithTruePeak) {
   // Configure expected data. The function only writes to the
   // integrated loudness and peak loudness fields.
   const LoudnessInfo expected_output_loudness = {
-      .info_type = LoudnessInfo::kTruePeak,
       .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(-99),
       .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(-100),
       .true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(-101)};
@@ -1552,7 +1550,7 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, WithTruePeak) {
 
 TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesIntegratedLoudness) {
   // Configure valid prerequisites.
-  LoudnessInfo output_loudness = {.info_type = 0};
+  LoudnessInfo output_loudness;
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
   user_loudness.set_digital_peak(0);
 
@@ -1566,7 +1564,7 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesIntegratedLoudness) {
 
 TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesDigitalPeak) {
   // Configure valid prerequisites.
-  LoudnessInfo output_loudness = {.info_type = 0};
+  LoudnessInfo output_loudness;
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
   user_loudness.set_integrated_loudness(0);
 
@@ -1580,8 +1578,10 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesDigitalPeak) {
 
 TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesTruePeak) {
   // Configure valid prerequisites.
-  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kTruePeak};
+  LoudnessInfo output_loudness;
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.add_info_type_bit_masks(
+      iamf_tools_cli_proto::LOUDNESS_INFO_TYPE_TRUE_PEAK);
   user_loudness.set_integrated_loudness(0);
   user_loudness.set_digital_peak(0);
 
@@ -1594,13 +1594,13 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesTruePeak) {
 }
 
 TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
-  // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kAnchoredLoudness};
+  LoudnessInfo output_loudness;
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
+        info_type_bit_masks: [ LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS ]
         anchored_loudness {
           anchor_elements:
           [ { anchor_element: ANCHOR_TYPE_DIALOGUE anchored_loudness: 1000 }
@@ -1624,13 +1624,13 @@ TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
 }
 
 TEST(CopyUserAnchoredLoudness, IllegalUnknownAnchorElementEnum) {
-  // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kAnchoredLoudness};
+  LoudnessInfo output_loudness;
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
+        info_type_bit_masks: [ LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS ]
         anchored_loudness {
           anchor_elements:
           [ { anchor_element: ANCHOR_TYPE_NOT_DEFINED anchored_loudness: 1000 }
@@ -1643,61 +1643,73 @@ TEST(CopyUserAnchoredLoudness, IllegalUnknownAnchorElementEnum) {
 }
 
 TEST(CopyUserLayoutExtension, LiveLoudnessInfoType) {
-  // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kLive};
+  LoudnessInfo output_loudness;
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.add_info_type_bit_masks(
+      iamf_tools_cli_proto::LOUDNESS_INFO_TYPE_LIVE);
   user_loudness.set_info_type_bytes("");
 
   EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
                   user_loudness, output_loudness),
               IsOk());
-  ASSERT_TRUE(output_loudness.layout_extension.has_value());
-  EXPECT_TRUE(output_loudness.layout_extension->info_type_bytes.empty());
+  EXPECT_EQ(output_loudness.layout_extension,
+            (LayoutExtension{.info_type = LoudnessInfo::kLive,
+                             .info_type_bytes = {}}));
 }
 
 TEST(CopyUserLayoutExtension, AllInfoTypeExtensions) {
-  // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type =
-                                      LoudnessInfo::kAnyLayoutExtension};
+  LoudnessInfo output_loudness;
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
-  user_loudness.set_info_type_bytes("abc");
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        info_type_bit_masks: [
+          LOUDNESS_INFO_TYPE_LIVE,
+          LOUDNESS_INFO_TYPE_RESERVED_8,
+          LOUDNESS_INFO_TYPE_RESERVED_16,
+          LOUDNESS_INFO_TYPE_RESERVED_32,
+          LOUDNESS_INFO_TYPE_RESERVED_64,
+          LOUDNESS_INFO_TYPE_RESERVED_128
+        ]
+        info_type_bytes: "abc"
+      )pb",
+      &user_loudness));
 
   EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
                   user_loudness, output_loudness),
               IsOk());
-  ASSERT_TRUE(output_loudness.layout_extension.has_value());
-  EXPECT_EQ(output_loudness.layout_extension->info_type_bytes,
-            std::vector<uint8_t>({'a', 'b', 'c'}));
+  EXPECT_EQ(output_loudness.layout_extension,
+            (LayoutExtension{.info_type = LoudnessInfo::kAnyLayoutExtension,
+                             .info_type_bytes = {'a', 'b', 'c'}}));
 }
 
 TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
-  // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type =
-                                      LoudnessInfo::kInfoTypeBitMask128};
+  LoudnessInfo output_loudness;
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.add_info_type_bit_masks(
+      iamf_tools_cli_proto::LOUDNESS_INFO_TYPE_RESERVED_128);
   user_loudness.set_info_type_bytes("abc");
 
   EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
                   user_loudness, output_loudness),
               IsOk());
-  ASSERT_TRUE(output_loudness.layout_extension.has_value());
-  EXPECT_EQ(output_loudness.layout_extension->info_type_bytes,
-            std::vector<uint8_t>({'a', 'b', 'c'}));
+  EXPECT_EQ(output_loudness.layout_extension,
+            (LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
+                             .info_type_bytes = {'a', 'b', 'c'}}));
 }
 
 TEST(CopyUserLayoutExtension, IgnoresDeprecatedInfoTypeSizeField) {
-  // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type =
-                                      LoudnessInfo::kInfoTypeBitMask128};
+  LoudnessInfo output_loudness;
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.add_info_type_bit_masks(
+      iamf_tools_cli_proto::LOUDNESS_INFO_TYPE_RESERVED_128);
   // Set up a non-sensical value for the deprecated field.
   user_loudness.set_info_type_size(std::numeric_limits<uint32_t>::max());
   user_loudness.set_info_type_bytes("abc");
@@ -1707,9 +1719,9 @@ TEST(CopyUserLayoutExtension, IgnoresDeprecatedInfoTypeSizeField) {
               IsOk());
   // Regardless the output size is calculated from the
   // `info_type_bytes` field.
-  ASSERT_TRUE(output_loudness.layout_extension.has_value());
-  EXPECT_EQ(output_loudness.layout_extension->info_type_bytes,
-            std::vector<uint8_t>({'a', 'b', 'c'}));
+  EXPECT_EQ(output_loudness.layout_extension,
+            (LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
+                             .info_type_bytes = {'a', 'b', 'c'}}));
 }
 
 TEST(Generate, CopiesRenderingConfigWithElementGainOffsetValueQ78) {
