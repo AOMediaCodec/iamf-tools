@@ -33,9 +33,7 @@
 namespace iamf_tools {
 namespace {
 
-using ::absl_testing::IsOk;
 using ::iamf_tools_cli_proto::UserMetadata;
-using ::testing::Not;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -78,7 +76,7 @@ void AddAudioElement(UserMetadata& user_metadata) {
   ASSERT_THAT(builder.PopulateAudioElementMetadata(
                   kAudioElementId, kCodecConfigId, IamfInputLayout::kStereo,
                   *audio_element_metadata),
-              IsOk());
+              absl_testing::IsOk());
   audio_element_metadata->set_audio_substream_ids(0, kStereoSubstreamId);
 }
 
@@ -137,8 +135,7 @@ TEST(CreateFileGeneratingIamfEncoder, SucceedsWithSimpleConfig) {
   ASSERT_TRUE(user_metadata.SerializeToString(&user_metadata_string));
   auto iamf_encoder = api::IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
       user_metadata_string, GetAndCleanupOutputFileName("output.iamf"));
-  EXPECT_THAT(iamf_encoder, IsOk());
-  EXPECT_NE(*iamf_encoder, nullptr);
+  EXPECT_NE(iamf_encoder, nullptr);
 }
 
 TEST(CreateFileGeneratingIamfEncoder, FailsWithInvalidLebGenerator) {
@@ -156,7 +153,7 @@ TEST(CreateFileGeneratingIamfEncoder, FailsWithInvalidLebGenerator) {
   ASSERT_TRUE(user_metadata.SerializeToString(&user_metadata_string));
   auto iamf_encoder = api::IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
       user_metadata_string, GetAndCleanupOutputFileName("output.iamf"));
-  EXPECT_THAT(iamf_encoder, Not(IsOk()));
+  EXPECT_EQ(iamf_encoder, nullptr);
 }
 
 TEST(CreateIamfEncoder, SucceedsWithSimpleConfig) {
@@ -170,8 +167,12 @@ TEST(CreateIamfEncoder, SucceedsWithSimpleConfig) {
   ASSERT_TRUE(user_metadata.SerializeToString(&user_metadata_string));
   auto iamf_encoder =
       api::IamfEncoderFactory::CreateIamfEncoder(user_metadata_string);
-  EXPECT_THAT(iamf_encoder, IsOk());
-  EXPECT_NE(*iamf_encoder, nullptr);
+  EXPECT_NE(iamf_encoder, nullptr);
+}
+
+TEST(CreateIamfEncoder, FailsOnEmptyMetadata) {
+  auto iamf_encoder = api::IamfEncoderFactory::CreateIamfEncoder("");
+  EXPECT_EQ(iamf_encoder, nullptr);
 }
 
 }  // namespace

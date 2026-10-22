@@ -13,9 +13,8 @@
 #define INCLUDE_IAMF_TOOLS_IAMF_ENCODER_FACTORY_H_
 
 #include <memory>
+#include <string_view>
 
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "iamf_encoder_interface.h"
 
 namespace iamf_tools {
@@ -33,11 +32,11 @@ class IamfEncoderFactory {
    * \param serialized_user_metadata Input user metadata describing the IAMF
    *        stream, which is serialized as a `UserMetadata` protocol buffer.
    * \param output_file_name File name to write the IAMF file to.
-   * \return Encoder on success, or a specific status on failure.
+   * \return Encoder on success, or `nullptr` on failure.
    */
-  static absl::StatusOr<std::unique_ptr<IamfEncoderInterface>>
-  CreateFileGeneratingIamfEncoder(absl::string_view serialized_user_metadata,
-                                  absl::string_view output_file_name);
+  static std::unique_ptr<IamfEncoderInterface> CreateFileGeneratingIamfEncoder(
+      std::string_view serialized_user_metadata,
+      std::string_view output_file_name);
 
   /*!\brief Factory function to create an encoder for streaming IAMF.
    *
@@ -45,10 +44,10 @@ class IamfEncoderFactory {
    *
    * \param serialized_user_metadata Input user metadata describing the IAMF
    *        stream, which is serialized as a `UserMetadata` protocol buffer.
-   * \return Encoder on success, or a specific status on failure.
+   * \return Encoder on success, or `nullptr` on failure.
    */
-  static absl::StatusOr<std::unique_ptr<IamfEncoderInterface>>
-  CreateIamfEncoder(absl::string_view serialized_user_metadata);
+  static std::unique_ptr<IamfEncoderInterface> CreateIamfEncoder(
+      std::string_view serialized_user_metadata);
 
   IamfEncoderFactory() = delete;
 };

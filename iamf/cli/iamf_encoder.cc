@@ -64,6 +64,7 @@
 #include "iamf/cli/temporal_unit_view.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -79,6 +80,15 @@ namespace {
 
 using ::iamf_tools_cli_proto::ChannelLabelMessage;
 using ::iamf_tools_cli_proto::ParameterBlockObuMetadata;
+
+api::IamfStatus AbslToIamfStatus(const absl::Status& absl_status) {
+  if (absl_status.ok()) {
+    return api::IamfStatus::OkStatus();
+  } else {
+    return api::IamfStatus::ErrorStatus(
+        absl_status.ToString(absl::StatusToStringMode::kDefault));
+  }
+}
 
 absl::Status InitAudioFrameDecoderForAllAudioElements(
     const DescriptorObus::AudioElementsById& audio_elements,
@@ -426,12 +436,12 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
       std::move(streaming_obu_sequencer)));
 }
 
-absl::Status IamfEncoder::GetDescriptorObus(
+api::IamfStatus IamfEncoder::GetDescriptorObus(
     bool redundant_copy, std::vector<uint8_t>& descriptor_obus,
     bool& output_obus_are_finalized) const {
   if (redundant_copy) {
     // TODO(b/424474611): Implement this path, to facilitate streaming.
-    return absl::UnimplementedError(
+    return api::IamfStatus::ErrorStatus(
         "Redundant copy requested, but not implemented by this encoder.");
   }
   // Grab the latest from the streaming sequencer.
@@ -439,7 +449,7 @@ absl::Status IamfEncoder::GetDescriptorObus(
       streaming_obu_sequencer_->GetSerializedDescriptorObus();
   descriptor_obus = {descriptor_obus_span.begin(), descriptor_obus_span.end()};
   output_obus_are_finalized = sequencers_finalized_;
-  return absl::OkStatus();
+  return api::IamfStatus::OkStatus();
 }
 
 uint32_t IamfEncoder::GetEncoderDelay() const {
@@ -469,7 +479,7 @@ absl::Status IamfEncoder::GetInputTimestamp(
   return absl::OkStatus();
 }
 
-absl::Status IamfEncoder::Encode(
+api::IamfStatus IamfEncoder::Encode(
     const api::IamfTemporalUnitData& temporal_unit_data) {
   // Parameter blocks need to cover any delayed or trimmed frames. They may be
   // needed even if `finalize_encode_called_` is true.
@@ -478,12 +488,15 @@ absl::Status IamfEncoder::Encode(
     ParameterBlockObuMetadata parameter_block_metadata;
     if (!parameter_block_metadata.ParseFromString(
             raw_parameter_block_metadata)) {
-      return absl::InvalidArgumentError(
+      return api::IamfStatus::ErrorStatus(
           "Failed to deserialize a `ParameterBlockObuMetadata` protocol "
           "buffer.");
     }
-    RETURN_IF_NOT_OK(
-        parameter_block_generator_.AddMetadata(parameter_block_metadata));
+    if (const absl::Status status =
+            parameter_block_generator_.AddMetadata(parameter_block_metadata);
+        !status.ok()) {
+      return AbslToIamfStatus(status);
+    }
   }
 
   if (finalize_encode_called_) {
@@ -494,7 +507,7 @@ absl::Status IamfEncoder::Encode(
              "`FinalizeEncode()` drops the audio samples.";
     }
 
-    return absl::OkStatus();
+    return api::IamfStatus::OkStatus();
   }
 
   // TODO(b/428968283): Validate that the input labels are consistent with the
@@ -504,13 +517,13 @@ absl::Status IamfEncoder::Encode(
     for (const auto& [label, samples] : labeled_samples) {
       ChannelLabelMessage channel_label_message;
       if (!channel_label_message.ParseFromString(label)) {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Failed to deserialize `ChannelLabelMessage` protocol buffer."));
+        return api::IamfStatus::ErrorStatus(
+            "Failed to deserialize `ChannelLabelMessage` protocol buffer.");
       }
       auto internal_label = ChannelLabelUtils::ProtoToLabel(
           channel_label_message.channel_label());
       if (!internal_label.ok()) {
-        return internal_label.status();
+        return AbslToIamfStatus(internal_label.status());
       }
 
       if (samples.empty()) {
@@ -529,20 +542,26 @@ absl::Status IamfEncoder::Encode(
     }
   }
 
-  return absl::OkStatus();
+  return api::IamfStatus::OkStatus();
 }
 
-absl::Status IamfEncoder::OutputTemporalUnit(
+api::IamfStatus IamfEncoder::OutputTemporalUnit(
     std::vector<uint8_t>& temporal_unit_obus) {
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<ArbitraryObu> temporal_unit_arbitrary_obus;
 
   // Generate mix gain and demixing parameter blocks.
-  RETURN_IF_NOT_OK(parameter_block_generator_.GenerateDemixing(
-      *global_timing_module_, temp_demixing_parameter_blocks_));
-  RETURN_IF_NOT_OK(parameter_block_generator_.GenerateMixGain(
-      *global_timing_module_, temp_mix_gain_parameter_blocks_));
+  if (const absl::Status status = parameter_block_generator_.GenerateDemixing(
+          *global_timing_module_, temp_demixing_parameter_blocks_);
+      !status.ok()) {
+    return AbslToIamfStatus(status);
+  }
+  if (const absl::Status status = parameter_block_generator_.GenerateMixGain(
+          *global_timing_module_, temp_mix_gain_parameter_blocks_);
+      !status.ok()) {
+    return AbslToIamfStatus(status);
+  }
 
   // Add the newly generated demixing parameter blocks to the parameters
   // manager so they can be easily queried by the audio frame generator.
@@ -557,17 +576,27 @@ absl::Status IamfEncoder::OutputTemporalUnit(
       if (samples.empty()) {
         continue;
       }
-      RETURN_IF_NOT_OK(
-          audio_frame_generator_->AddSamples(audio_element_id, label, samples));
+      if (const absl::Status status = audio_frame_generator_->AddSamples(
+              audio_element_id, label, samples);
+          !status.ok()) {
+        return AbslToIamfStatus(status);
+      }
     }
   }
   ClearSamples(id_to_labeled_samples_);
 
   if (finalize_encode_called_) {
-    RETURN_IF_NOT_OK(audio_frame_generator_->Finalize());
+    if (const absl::Status status = audio_frame_generator_->Finalize();
+        !status.ok()) {
+      return AbslToIamfStatus(status);
+    }
   }
 
-  RETURN_IF_NOT_OK(audio_frame_generator_->OutputFrames(audio_frames));
+  if (const absl::Status status =
+          audio_frame_generator_->OutputFrames(audio_frames);
+      !status.ok()) {
+    return AbslToIamfStatus(status);
+  }
   if (audio_frames.empty()) {
     // Some audio codec will only output an encoded frame after the next
     // frame "pushes" the old one out. So we wait until the next iteration to
@@ -585,28 +614,34 @@ absl::Status IamfEncoder::OutputTemporalUnit(
       // Carefully close them before writing out Arbitrary OBUs, which may
       // marked as erronous.
       if (!GeneratingTemporalUnits()) {
-        RETURN_IF_NOT_OK(FinalizeDescriptors(
-            validate_user_loudness_, mix_presentation_finalizer_,
-            mix_presentation_obus_, mix_presentation_obus_finalized_));
+        if (const absl::Status status = FinalizeDescriptors(
+                validate_user_loudness_, mix_presentation_finalizer_,
+                mix_presentation_obus_, mix_presentation_obus_finalized_);
+            !status.ok()) {
+          return AbslToIamfStatus(status);
+        }
       }
 
       if (!temporal_unit_arbitrary_obus.empty()) {
-        RETURN_IF_NOT_OK(PushTemporalUnitToObuSequencers(
-            parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
-            obu_sequencers_, *streaming_obu_sequencer_, temporal_unit_obus));
+        if (const absl::Status status = PushTemporalUnitToObuSequencers(
+                parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
+                obu_sequencers_, *streaming_obu_sequencer_, temporal_unit_obus);
+            !status.ok()) {
+          return AbslToIamfStatus(status);
+        }
       }
 
       if (!GeneratingTemporalUnits()) {
         // The final extraneous OBUs have been pushed out. Take this opportunity
         // to finalize the sequencers.
-        return FinalizeObuSequencers(
+        return AbslToIamfStatus(FinalizeObuSequencers(
             ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
             *audio_elements_, mix_presentation_obus_,
             descriptor_arbitrary_obus_, obu_sequencers_,
-            *streaming_obu_sequencer_, sequencers_finalized_);
+            *streaming_obu_sequencer_, sequencers_finalized_));
       }
     }
-    return absl::OkStatus();
+    return api::IamfStatus::OkStatus();
   }
   // All generated audio frame should be in the same temporal unit; they all
   // have the same timestamps.
@@ -618,7 +653,10 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   // Decode the audio frames in place. The decoded samples are required to
   // determine the demixed frames.
   for (auto& audio_frame : audio_frames) {
-    RETURN_IF_NOT_OK(audio_frame_decoder_.Decode(audio_frame));
+    if (const absl::Status status = audio_frame_decoder_.Decode(audio_frame);
+        !status.ok()) {
+      return AbslToIamfStatus(status);
+    }
     ABSL_CHECK_EQ(output_start_timestamp, audio_frame.start_timestamp);
     ABSL_CHECK_EQ(output_end_timestamp, audio_frame.end_timestamp);
   }
@@ -628,19 +666,22 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   const auto id_to_labeled_frame =
       demixing_manager_.DemixOriginalAudioSamples(audio_frames);
   if (!id_to_labeled_frame.ok()) {
-    return id_to_labeled_frame.status();
+    return AbslToIamfStatus(id_to_labeled_frame.status());
   }
   const auto id_to_labeled_decoded_frame =
       demixing_manager_.DemixDecodedAudioSamples(audio_frames);
   if (!id_to_labeled_decoded_frame.ok()) {
-    return id_to_labeled_decoded_frame.status();
+    return AbslToIamfStatus(id_to_labeled_decoded_frame.status());
   }
 
   // Recon gain parameter blocks are generated based on the original and
   // demixed audio frames.
-  RETURN_IF_NOT_OK(parameter_block_generator_.GenerateReconGain(
-      *id_to_labeled_frame, *id_to_labeled_decoded_frame,
-      *global_timing_module_, temp_recon_gain_parameter_blocks_));
+  if (const absl::Status status = parameter_block_generator_.GenerateReconGain(
+          *id_to_labeled_frame, *id_to_labeled_decoded_frame,
+          *global_timing_module_, temp_recon_gain_parameter_blocks_);
+      !status.ok()) {
+    return AbslToIamfStatus(status);
+  }
 
   // Move all generated parameter blocks belonging to this temporal unit to
   // the output.
@@ -667,48 +708,60 @@ absl::Status IamfEncoder::OutputTemporalUnit(
     first_temporal_unit_for_debugging_ = true;
   }
 
-  RETURN_IF_NOT_OK(mix_presentation_finalizer_.PushTemporalUnit(
-      *id_to_labeled_frame, output_start_timestamp, output_end_timestamp,
-      parameter_blocks));
-  RETURN_IF_NOT_OK(PushTemporalUnitToObuSequencers(
-      parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
-      obu_sequencers_, *streaming_obu_sequencer_, temporal_unit_obus));
+  if (const absl::Status status = mix_presentation_finalizer_.PushTemporalUnit(
+          *id_to_labeled_frame, output_start_timestamp, output_end_timestamp,
+          parameter_blocks);
+      !status.ok()) {
+    return AbslToIamfStatus(status);
+  }
+  if (const absl::Status status = PushTemporalUnitToObuSequencers(
+          parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
+          obu_sequencers_, *streaming_obu_sequencer_, temporal_unit_obus);
+      !status.ok()) {
+    return AbslToIamfStatus(status);
+  }
 
   if (GeneratingTemporalUnits()) {
-    return absl::OkStatus();
+    return api::IamfStatus::OkStatus();
   }
   // The final data OBUs have been pushed out. Take this opportunity to
   // finalize the IA Sequence.
-  RETURN_IF_NOT_OK(FinalizeDescriptors(
-      validate_user_loudness_, mix_presentation_finalizer_,
-      mix_presentation_obus_, mix_presentation_obus_finalized_));
-  return FinalizeObuSequencers(
+  if (const absl::Status status = FinalizeDescriptors(
+          validate_user_loudness_, mix_presentation_finalizer_,
+          mix_presentation_obus_, mix_presentation_obus_finalized_);
+      !status.ok()) {
+    return AbslToIamfStatus(status);
+  }
+  return AbslToIamfStatus(FinalizeObuSequencers(
       ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
       *audio_elements_, mix_presentation_obus_, descriptor_arbitrary_obus_,
-      obu_sequencers_, *streaming_obu_sequencer_, sequencers_finalized_);
+      obu_sequencers_, *streaming_obu_sequencer_, sequencers_finalized_));
 }
 
-absl::Status IamfEncoder::FinalizeEncode() {
+api::IamfStatus IamfEncoder::FinalizeEncode() {
   if (finalize_encode_called_) {
     ABSL_LOG_FIRST_N(WARNING, 3)
         << "Calling `FinalizeEncode()` multiple times has no effect.";
-    return absl::OkStatus();
+    return api::IamfStatus::OkStatus();
   }
   finalize_encode_called_ = true;
   if (GeneratingTemporalUnits()) {
     // There are some data OBUs left to generate.
-    return absl::OkStatus();
+    return api::IamfStatus::OkStatus();
   }
 
   // This is a trivial IA sequence. Take this opportunity to finalize the IA
   // Sequence.
-  RETURN_IF_NOT_OK(FinalizeDescriptors(
-      validate_user_loudness_, mix_presentation_finalizer_,
-      mix_presentation_obus_, mix_presentation_obus_finalized_));
-  return FinalizeObuSequencers(
+  if (const absl::Status status = FinalizeDescriptors(
+          validate_user_loudness_, mix_presentation_finalizer_,
+          mix_presentation_obus_, mix_presentation_obus_finalized_);
+      !status.ok()) {
+    return AbslToIamfStatus(status);
+  }
+  return AbslToIamfStatus(FinalizeObuSequencers(
       ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
       *audio_elements_, mix_presentation_obus_, descriptor_arbitrary_obus_,
-      obu_sequencers_, *streaming_obu_sequencer_, sequencers_finalized_);
+      obu_sequencers_, *streaming_obu_sequencer_, sequencers_finalized_));
 }
 
 const DescriptorObus::AudioElementsById& IamfEncoder::GetAudioElements() const {

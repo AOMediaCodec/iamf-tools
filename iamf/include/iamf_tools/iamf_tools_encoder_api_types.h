@@ -13,10 +13,9 @@
 #define INCLUDE_IAMF_TOOLS_IAMF_TOOLS_ENCODER_API_TYPES_H_
 
 #include <cstdint>
+#include <span>
 #include <string>
-
-#include "absl/container/flat_hash_map.h"
-#include "absl/types/span.h"
+#include <unordered_map>
 
 namespace iamf_tools {
 namespace api {
@@ -24,15 +23,15 @@ namespace api {
 // Audio channels for this audio element, mapped by a serialized
 // `ChannelLabelMessage` protocol buffer.
 using IamfAudioElementData =
-    absl::flat_hash_map<std::string, absl::Span<const double>>;
+    std::unordered_map<std::string, std::span<const double>>;
 
 struct IamfTemporalUnitData {
   // Mapping of parameter block IDs to serialized `ParameterBlockObuMetadata`
   // protocol buffer starting in this temporal unit.
-  absl::flat_hash_map<uint32_t, std::string> parameter_block_id_to_metadata;
+  std::unordered_map<uint32_t, std::string> parameter_block_id_to_metadata;
 
   // All audio elements for this temporal unit.
-  absl::flat_hash_map<uint32_t, IamfAudioElementData> audio_element_id_to_data;
+  std::unordered_map<uint32_t, IamfAudioElementData> audio_element_id_to_data;
 };
 
 }  // namespace api

@@ -15,7 +15,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/status/status.h"
+#include "iamf_tools_api_types.h"
 #include "iamf_tools_encoder_api_types.h"
 
 namespace iamf_tools {
@@ -34,8 +34,12 @@ namespace api {
  *  // without following the extra streaming control flow.
  *  if (streaming) {
  *    bool kNoRedundantCopy = false;
- *    RETURN_IF_NOT_OK(
- *        encoder->GetDescriptorObus(kNoRedundantCopy, descriptor_obus));
+ *    bool output_obus_are_finalized = false;
+ *    IamfStatus status = encoder->GetDescriptorObus(
+ *        kNoRedundantCopy, descriptor_obus, output_obus_are_finalized);
+ *    if (!status.ok()) {
+ *      // Handle error.
+ *    }
  *    // Broadcast the "initial" descriptor OBUs, to allow consumers to sync.
  *  }
  *  // If not streaming, it is safe to skip the call. Safe to use anyway.
@@ -44,8 +48,8 @@ namespace api {
  *  // multi-dimensionality. Hardcode 1024 samples per frame. The same
  *  // backing allocation can be used for each frame.
  *  using ChannelLabel::Label;
- *  const absl::Span<const double> kEmptyFrame;
- * IamfTemporalUnitData temporal_unit_data = {
+ *  const std::span<const double> kEmptyFrame;
+ *  IamfTemporalUnitData temporal_unit_data = {
  *      .parameter_block_id_to_metadata = {},
  *      .audio_element_id_to_data =
  *          {
@@ -55,7 +59,7 @@ namespace api {
  *  };
  *  // Reusable buffer. It will grow towards the maximum size of an output
  *  //  temporal unit.
- *  std::vector<uint8_> temporal_unit_obus;
+ *  std::vector<uint8_t> temporal_unit_obus;
  *
  *  // Repeat descriptors every so often to help clients sync. In practice,
  *  // an API user would determine something based on their use case. For
@@ -64,9 +68,13 @@ namespace api {
  *  while (encoder->GeneratingTemporalUnits()) {
  *    if (streaming && iteration_count % kDescriptorRepeatInterval == 0) {
  *      bool kRedundantCopy = true;
+ *      bool output_obus_are_finalized = false;
  *      // Broadcast the redundant descriptor OBUs.
- *      RETURN_IF_NOT_OK(
- *          encoder->GetDescriptorObus(kRedundantCopy, descriptor_obus));
+ *      IamfStatus status = encoder->GetDescriptorObus(
+ *          kRedundantCopy, descriptor_obus, output_obus_are_finalized);
+ *      if (!status.ok()) {
+ *        // Handle error.
+ *      }
  *    }
  *
  *    // Fill `temporal_unit_data` for this frame.
@@ -81,7 +89,10 @@ namespace api {
  *      // Fill the slot in `temporal_unit_data` for this parameter block.
  *    }
  *
- *    RETURN_IF_NOT_OK(encoder->Encode(temporal_unit_data));
+ *    IamfStatus status = encoder->Encode(temporal_unit_data);
+ *    if (!status.ok()) {
+ *      // Handle error.
+ *    }
  *
  *    if (done_receiving_all_audio) {
  *      encoder->FinalizeEncode();
@@ -97,8 +108,12 @@ namespace api {
  *  // Data generation is done. Perform some cleanup.
  *  if (streaming) {
  *    bool kNoRedundantCopy = false;
- *    RETURN_IF_NOT_OK(
- *        encoder->GetDescriptorObus(kNoRedundantCopy, descriptor_obus));
+ *    bool output_obus_are_finalized = false;
+ *    IamfStatus status = encoder->GetDescriptorObus(
+ *        kNoRedundantCopy, descriptor_obus, output_obus_are_finalized);
+ *    if (!status.ok()) {
+ *      // Handle error.
+ *    }
  *    // If any consumers require accurate descriptors (loudness), notify them.
  *  }
  *  // Otherwise, they were already flushed to file.
@@ -128,9 +143,10 @@ class IamfEncoderInterface {
    * \param descriptor_obus Finalized OBUs.
    * \param output_obus_are_finalized `true` when the output OBUs are
    *        finalized. `false` otherwise.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * \return `IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
    */
-  virtual absl::Status GetDescriptorObus(
+  virtual IamfStatus GetDescriptorObus(
       bool redundant_copy, std::vector<uint8_t>& descriptor_obus,
       bool& output_obus_are_finalized) const = 0;
 
@@ -158,16 +174,18 @@ class IamfEncoderInterface {
    * configured based on the `CodecConfigObu` metadata at encoder creation.
    *
    * \param temporal_unit_data Temporal unit to add.
+   * \return `IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
    */
-  virtual absl::Status Encode(
-      const IamfTemporalUnitData& temporal_unit_data) = 0;
+  virtual IamfStatus Encode(const IamfTemporalUnitData& temporal_unit_data) = 0;
 
   /*!\brief Outputs data OBUs corresponding to one temporal unit.
    *
    * \param temporal_unit_obus Output OBUs corresponding to this temporal unit.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * \return `IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
    */
-  virtual absl::Status OutputTemporalUnit(
+  virtual IamfStatus OutputTemporalUnit(
       std::vector<uint8_t>& temporal_unit_obus) = 0;
 
   /*!\brief Finalizes the process of adding samples.
@@ -177,8 +195,11 @@ class IamfEncoderInterface {
    *
    * After this is called, the encoder should be flushed (with
    * `OutputTemporalUnit`) until `GeneratingTemporalUnits` returns false.
+   *
+   * \return `IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
    */
-  virtual absl::Status FinalizeEncode() = 0;
+  virtual IamfStatus FinalizeEncode() = 0;
 };
 
 }  // namespace api

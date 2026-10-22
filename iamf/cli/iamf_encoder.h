@@ -42,6 +42,7 @@
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/include/iamf_tools/iamf_encoder_interface.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -143,9 +144,10 @@ class IamfEncoder : public api::IamfEncoderInterface {
    * \param descriptor_obus Finalized OBUs.
    * \param output_obus_are_finalized `true` when the output OBUs are
    *        finalized. `false` otherwise.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * \return `api::IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
    */
-  absl::Status GetDescriptorObus(
+  api::IamfStatus GetDescriptorObus(
       bool redundant_copy, std::vector<uint8_t>& descriptor_obus,
       bool& output_obus_are_finalized) const override;
 
@@ -184,16 +186,19 @@ class IamfEncoder : public api::IamfEncoderInterface {
    * configured based on the `CodecConfigObu` metadata at encoder creation.
    *
    * \param temporal_unit_data Temporal unit to add.
+   * \return `api::IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
    */
-  absl::Status Encode(
+  api::IamfStatus Encode(
       const api::IamfTemporalUnitData& temporal_unit_data) override;
 
   /*!\brief Outputs data OBUs corresponding to one temporal unit.
    *
    * \param temporal_unit_obus Output OBUs corresponding to this temporal unit.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * \return `api::IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
    */
-  absl::Status OutputTemporalUnit(
+  api::IamfStatus OutputTemporalUnit(
       std::vector<uint8_t>& temporal_unit_obus) override;
 
   /*!\brief Finalizes the process of encoding.
@@ -201,9 +206,10 @@ class IamfEncoder : public api::IamfEncoderInterface {
    * This will signal the underlying codecs to flush all remaining samples,
    * as well as trim samples from the end.
    *
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * \return `api::IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
    */
-  absl::Status FinalizeEncode() override;
+  api::IamfStatus FinalizeEncode() override;
 
   /*!\brief Outputs a const reference to the Audio Elements.
    *

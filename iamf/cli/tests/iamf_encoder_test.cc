@@ -16,12 +16,11 @@
 #include <list>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -49,6 +48,7 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
@@ -66,7 +66,6 @@ using ::absl::MakeConstSpan;
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
-using ::absl_testing::StatusIs;
 using ::iamf_tools_cli_proto::ChannelLabelMessage;
 using ::iamf_tools_cli_proto::UserMetadata;
 using ::testing::_;
@@ -258,7 +257,7 @@ void AddParameterBlockAtTimestamp(InternalTimestamp start_timestamp,
 }
 
 api::IamfTemporalUnitData MakeStereoTemporalUnitData(
-    absl::Span<const double> samples) {
+    std::span<const double> samples) {
   using enum ::iamf_tools_cli_proto::ChannelLabel;
   ChannelLabelMessage left_label;
   left_label.set_channel_label(CHANNEL_LABEL_L_2);
@@ -324,10 +323,10 @@ TEST_F(IamfEncoderTest, GetRedundatantDescriptorObusIsUnimplemented) {
   std::vector<uint8_t> output_obus;
   bool get_descriptors_obus_are_finalized;
 
-  EXPECT_THAT(
-      iamf_encoder.GetDescriptorObus(kRedundantCopy, output_obus,
-                                     get_descriptors_obus_are_finalized),
-      StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_FALSE(iamf_encoder
+                   .GetDescriptorObus(kRedundantCopy, output_obus,
+                                      get_descriptors_obus_are_finalized)
+                   .ok());
 }
 
 TEST_F(IamfEncoderTest, CreateGeneratesDescriptorObus) {
@@ -337,10 +336,10 @@ TEST_F(IamfEncoderTest, CreateGeneratesDescriptorObus) {
   // Get the serialized descriptor OBUs.
   std::vector<uint8_t> output_obus;
   bool get_descriptors_obus_are_finalized;
-  EXPECT_THAT(
-      iamf_encoder.GetDescriptorObus(kNoRedundantCopy, output_obus,
-                                     get_descriptors_obus_are_finalized),
-      IsOk());
+  EXPECT_TRUE(iamf_encoder
+                  .GetDescriptorObus(kNoRedundantCopy, output_obus,
+                                     get_descriptors_obus_are_finalized)
+                  .ok());
 
   // Parse them back as a "trivial" IA Sequence.
   auto rb =
@@ -406,17 +405,16 @@ TEST_F(IamfEncoderTest,
       kDoesNotInvalidateBitstream);
   auto iamf_encoder = CreateExpectOk();
   // Push the first temporal unit.
-  EXPECT_THAT(iamf_encoder.Encode(
-                  MakeStereoTemporalUnitData(MakeConstSpan(kEightZeroSamples))),
-              IsOk());
+  EXPECT_TRUE(
+      iamf_encoder.Encode(MakeStereoTemporalUnitData(kEightZeroSamples)).ok());
   const AudioFrameObu kExpectedAudioFrame(
       ObuHeader(), kStereoSubstreamId,
       MakeConstSpan(kEightCoupled16BitPcmSamples));
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
 
   // Arbitrary OBUs come out based on their insertion hook.
   std::vector<uint8_t> output_obus;
-  EXPECT_THAT(iamf_encoder.OutputTemporalUnit(output_obus), IsOk());
+  EXPECT_TRUE(iamf_encoder.OutputTemporalUnit(output_obus).ok());
 
   // TODO(b/329705373): Use `CollectObusFromIaSequence()` once Arbitrary OBUs
   //                    can be parsed back.
@@ -432,7 +430,7 @@ TEST_F(IamfEncoderTest, OutputTemporalUnitFailsForExtranousArbitraryObus) {
   AddArbitraryObuForFirstTick(user_metadata_, kInvalidatesBitstream);
   auto iamf_encoder = CreateExpectOk();
   // Ok, this is is a trivial IA Sequence.
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
 
   // Normally all temporal units must have an audio frame, extraneous arbitrary
   // OBUs may be present and are signalled as if data OBUs are still available.
@@ -441,7 +439,7 @@ TEST_F(IamfEncoderTest, OutputTemporalUnitFailsForExtranousArbitraryObus) {
   EXPECT_TRUE(iamf_encoder.GeneratingTemporalUnits());
 
   std::vector<uint8_t> output_obus;
-  EXPECT_THAT(iamf_encoder.OutputTemporalUnit(output_obus), Not(IsOk()));
+  EXPECT_FALSE(iamf_encoder.OutputTemporalUnit(output_obus).ok());
   // TODO(b/278865608): Find a way to test these arbitrary OBUs are serialized
   //                   (for the test suite). The backing sequencer detects they
   //                   are invalid, and aborts before they can be observed.
@@ -456,9 +454,10 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   auto iamf_encoder = CreateExpectOk();
   std::vector<uint8_t> output_obus;
   bool unused_output_obus_are_finalized = false;
-  EXPECT_THAT(iamf_encoder.GetDescriptorObus(kNoRedundantCopy, output_obus,
-                                             unused_output_obus_are_finalized),
-              IsOk());
+  EXPECT_TRUE(iamf_encoder
+                  .GetDescriptorObus(kNoRedundantCopy, output_obus,
+                                     unused_output_obus_are_finalized)
+                  .ok());
   // Configure a buffer, so we can parse the descriptor and each temporal unit
   // in separate chunks. To examine the raw output is expected.
   auto rb = StreamBasedReadBitBuffer::Create(1024);
@@ -474,8 +473,7 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
   bool continue_processing = true;
   int iteration = 0;
-  auto temporal_unit_data =
-      MakeStereoTemporalUnitData(MakeConstSpan(kEightZeroSamples));
+  auto temporal_unit_data = MakeStereoTemporalUnitData(kEightZeroSamples);
   while (iamf_encoder.GeneratingTemporalUnits()) {
     std::string serialized_metadata;
     ASSERT_TRUE(
@@ -483,15 +481,15 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
             &serialized_metadata));
     temporal_unit_data.parameter_block_id_to_metadata[kParameterBlockId] =
         serialized_metadata;
-    EXPECT_THAT(iamf_encoder.Encode(temporal_unit_data), IsOk());
+    EXPECT_TRUE(iamf_encoder.Encode(temporal_unit_data).ok());
 
     // Signal stopping adding samples at the second iteration.
     if (iteration == 1) {
-      EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+      EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
     }
 
     // Output.
-    EXPECT_THAT(iamf_encoder.OutputTemporalUnit(output_obus), IsOk());
+    EXPECT_TRUE(iamf_encoder.OutputTemporalUnit(output_obus).ok());
     EXPECT_THAT(rb->PushBytes(MakeConstSpan(output_obus)), IsOk());
     EXPECT_THAT(obu_processor->ProcessTemporalUnit(
                     /*eos_is_end_of_sequence=*/true, output_temporal_unit,
@@ -521,25 +519,25 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   IamfEncoder iamf_encoder = std::move(iamf_encoder_to_move_from);
   std::vector<uint8_t> output_obus;
   bool unused_output_obus_are_finalized = false;
-  EXPECT_THAT(iamf_encoder.GetDescriptorObus(kNoRedundantCopy, output_obus,
-                                             unused_output_obus_are_finalized),
-              IsOk());
+  EXPECT_TRUE(iamf_encoder
+                  .GetDescriptorObus(kNoRedundantCopy, output_obus,
+                                     unused_output_obus_are_finalized)
+                  .ok());
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   ASSERT_NE(rb, nullptr);
   EXPECT_THAT(rb->PushBytes(MakeConstSpan(output_obus)), IsOk());
 
   // Use many parts of the API, to make sure the move did not break anything.
   EXPECT_TRUE(iamf_encoder.GeneratingTemporalUnits());
-  auto temporal_unit_data =
-      MakeStereoTemporalUnitData(MakeConstSpan(kEightZeroSamples));
+  auto temporal_unit_data = MakeStereoTemporalUnitData(kEightZeroSamples);
   std::string serialized_metadata;
   ASSERT_TRUE(user_metadata_.parameter_block_metadata(0).SerializeToString(
       &serialized_metadata));
   temporal_unit_data.parameter_block_id_to_metadata.emplace(
       kParameterBlockId, serialized_metadata);
-  EXPECT_THAT(iamf_encoder.Encode(temporal_unit_data), IsOk());
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
-  EXPECT_THAT(iamf_encoder.OutputTemporalUnit(output_obus), IsOk());
+  EXPECT_TRUE(iamf_encoder.Encode(temporal_unit_data).ok());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
+  EXPECT_TRUE(iamf_encoder.OutputTemporalUnit(output_obus).ok());
   EXPECT_THAT(rb->PushBytes(MakeConstSpan(output_obus)), IsOk());
 
   // Collect the full IA Sequence.
@@ -561,10 +559,10 @@ TEST_F(IamfEncoderTest, CallingFinalizeEncodeTwiceSucceeds) {
   SetupDescriptorObus();
   auto iamf_encoder = CreateExpectOk();
   // The first call is OK.
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
 
   // There is nothing to finalize a second time, the calls safely do nothing.
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
 }
 
 TEST_F(
@@ -584,7 +582,7 @@ TEST_F(
           .layouts.front()
           .loudness;
   EXPECT_FALSE(obus_are_finalized);
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
   EXPECT_FALSE(iamf_encoder.GeneratingTemporalUnits());
 
   EXPECT_EQ(iamf_encoder.GetMixPresentationObus(obus_are_finalized)
@@ -638,7 +636,7 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterTrivialIaSequence) {
 
   // `FinalizeEncode()` may trigger loudness finalization for trivial or
   // frame-aligned IA Sequences.
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
 
   EXPECT_FALSE(iamf_encoder.GeneratingTemporalUnits());
   bool obus_are_finalized = false;
@@ -656,15 +654,14 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterAlignedIaSequence) {
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
   auto iamf_encoder = CreateExpectOk();
   // Make stereo data with frame-aligned data.
-  EXPECT_THAT(iamf_encoder.Encode(
-                  MakeStereoTemporalUnitData(MakeConstSpan(kEightZeroSamples))),
-              IsOk());
+  EXPECT_TRUE(
+      iamf_encoder.Encode(MakeStereoTemporalUnitData(kEightZeroSamples)).ok());
   std::vector<uint8_t> unused_output_obus;
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
   EXPECT_TRUE(iamf_encoder.GeneratingTemporalUnits());
 
   // Outputting the final temporal unit of an aligned IA Sequence.
-  EXPECT_THAT(iamf_encoder.OutputTemporalUnit(unused_output_obus), IsOk());
+  EXPECT_TRUE(iamf_encoder.OutputTemporalUnit(unused_output_obus).ok());
 
   // Now that no temporal units remain, the descriptors are reported as
   // finalized.
@@ -685,10 +682,9 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterFinalOutputTemporalUnit) {
   auto iamf_encoder = CreateExpectOk();
   // Make stereo data with a single sample for each channel, to force a
   // non-frame aligned IA sequence.
-  constexpr auto kOneSample = MakeConstSpan(kEightZeroSamples).first(1);
-  EXPECT_THAT(iamf_encoder.Encode(MakeStereoTemporalUnitData(kOneSample)),
-              IsOk());
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  constexpr auto kOneSample = std::span(kEightZeroSamples).first(1);
+  EXPECT_TRUE(iamf_encoder.Encode(MakeStereoTemporalUnitData(kOneSample)).ok());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
   // Despite `FinalizeEncode()` being called, there are data OBUs to push
   // out. Loudness is intentionally not yet finalized.
   EXPECT_TRUE(iamf_encoder.GeneratingTemporalUnits());
@@ -700,7 +696,7 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterFinalOutputTemporalUnit) {
 
   // Outputting the final temporal unit triggers loudness finalization.
   std::vector<uint8_t> unused_output_obus;
-  EXPECT_THAT(iamf_encoder.OutputTemporalUnit(unused_output_obus), IsOk());
+  EXPECT_TRUE(iamf_encoder.OutputTemporalUnit(unused_output_obus).ok());
 
   EXPECT_FALSE(iamf_encoder.GeneratingTemporalUnits());
   ExpectFirstLayoutIntegratedLoudnessIs(
@@ -717,7 +713,7 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterArbitraryDataObus) {
   loudness_calculator_factory_ =
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
   auto iamf_encoder = CreateExpectOk();
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
 
   // As a special case, when there are extra "data" arbitrary OBUs. Loudness is
   // not computed until all are generated.
@@ -732,7 +728,7 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterArbitraryDataObus) {
   std::vector<uint8_t> unused_output_obus;
   // The last temporal unit is invalid, because there is an extraneous arbitrary
   // OBU. Regardless, loudness is finalized.
-  EXPECT_THAT(iamf_encoder.OutputTemporalUnit(unused_output_obus), Not(IsOk()));
+  EXPECT_FALSE(iamf_encoder.OutputTemporalUnit(unused_output_obus).ok());
 
   // After the last data OBUs are generated, loudness is finalized.
   EXPECT_FALSE(iamf_encoder.GeneratingTemporalUnits());
@@ -761,7 +757,7 @@ TEST_F(IamfEncoderTest, GetDescriptorObusHasFilledInLoudness) {
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   auto iamf_encoder = CreateExpectOk();
-  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.FinalizeEncode().ok());
   EXPECT_FALSE(iamf_encoder.GeneratingTemporalUnits());
 
   bool obus_are_finalized = false;

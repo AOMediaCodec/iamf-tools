@@ -45,18 +45,22 @@ std::vector<uint8_t> descriptor_obus;
 bool streaming = ...;
 if (streaming) {
   bool kNoRedundantCopy = false;
+  bool output_obus_are_finalized = false;
   // Broadcast the first set of descriptor OBUs, to allow consumers to sync.
   // Using `CreateFileGeneratingEncoder` automatically handles descriptors. If
   // not streaming it is safe to skip the call.
-  RETURN_IF_NOT_OK(
-      encoder->GetDescriptorObus(kNoRedundantCopy, descriptor_obus));
+  IamfStatus status = encoder->GetDescriptorObus(
+      kNoRedundantCopy, descriptor_obus, output_obus_are_finalized);
+  if (!status.ok()) {
+    // Handle error.
+  }
 }
 
 // Reusable input buffer. Hardcode an LFE and stereo audio element to show
 // multi-dimensionality. Hardcode 1024 samples per frame. The same
 // backing allocation can be used for each frame.
 using ChannelLabel::Label;
-const absl::Span<const double> kEmptyFrame;
+const std::span<const double> kEmptyFrame;
 IamfTemporalUnitData temporal_unit_data = {
     .parameter_block_id_to_metadata = {},
     .audio_element_id_to_data =
@@ -67,7 +71,7 @@ IamfTemporalUnitData temporal_unit_data = {
 };
 // Reusable buffer. It will grow towards the maximum size of an output
 //  temporal unit.
-std::vector<uint8_> temporal_unit_obus;
+std::vector<uint8_t> temporal_unit_obus;
 // Repeat descriptors every so often to help clients sync. In practice,
 // an API user would determine something based on their use case. For
 // example to aim for ~5 seconds of output audio between descriptors.
@@ -82,9 +86,13 @@ Process temporal units until this is no more input audio.
 while (encoder->GeneratingTemporalUnits()) {
   if (streaming && iteration_count % kDescriptorRepeatInterval == 0) {
     bool kRedundantCopy = true;
+    bool output_obus_are_finalized = false;
     // Broadcast the redundant descriptor OBUs.
-    RETURN_IF_NOT_OK(
-        encoder->GetDescriptorObus(kRedundantCopy, descriptor_obus));
+    IamfStatus status = encoder->GetDescriptorObus(
+        kRedundantCopy, descriptor_obus, output_obus_are_finalized);
+    if (!status.ok()) {
+      // Handle error.
+    }
   }
   // Fill `temporal_unit_data` for this frame.
   for (each audio element) {
@@ -98,7 +106,10 @@ while (encoder->GeneratingTemporalUnits()) {
     // Fill the slot in `temporal_unit_data` for this parameter block.
   }
 
-  RETURN_IF_NOT_OK(encoder->Encode(temporal_unit_data));
+  IamfStatus status = encoder->Encode(temporal_unit_data);
+  if (!status.ok()) {
+    // Handle error.
+  }
 
   if (done_receiving_all_audio) {
     encoder->FinalizeEncode();
@@ -119,8 +130,12 @@ while (encoder->GeneratingTemporalUnits()) {
 // Data generation is done. Perform some cleanup.
 if (streaming) {
   bool kNoRedundantCopy = false;
-  RETURN_IF_NOT_OK(
-      encoder->GetDescriptorObus(kNoRedundantCopy, descriptor_obus));
+  bool output_obus_are_finalized = false;
+  IamfStatus status = encoder->GetDescriptorObus(
+      kNoRedundantCopy, descriptor_obus, output_obus_are_finalized);
+  if (!status.ok()) {
+    // Handle error.
+  }
   // If any consumers require accurate descriptors (loudness), notify them.
 }
 // Otherwise, they were flushed to file after the last temporal unit was output.

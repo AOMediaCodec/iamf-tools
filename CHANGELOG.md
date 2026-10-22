@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-22
+
+### Changed
+
+-   Changed the encoder API to remove Abseil dependencies, preferring to use std
+    types or `IamfStatus` so that consumers of the library do not have to depend
+    on Abseil directly.
+
 ## [3.0.0] - 2026-09-28
 
 ### Added

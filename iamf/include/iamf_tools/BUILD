@@ -50,9 +50,7 @@ cc_library(
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:proto_utils",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/strings:string_view",
+        "@abseil-cpp//absl/log:absl_log",
     ],
 )
 
@@ -64,8 +62,8 @@ cc_library(
         "//iamf/cli:__pkg__",
     ],
     deps = [
+        ":iamf_tools_api_types",
         ":iamf_tools_encoder_api_types",
-        "@abseil-cpp//absl/status",
     ],
 )
 
@@ -87,10 +85,6 @@ cc_library(
         "//iamf/api:__subpackages__",
         "//iamf/cli:__pkg__",
         "//iamf/cli/tests:__pkg__",
-    ],
-    deps = [
-        "@abseil-cpp//absl/container:flat_hash_map",
-        "@abseil-cpp//absl/types:span",
     ],
 )
 

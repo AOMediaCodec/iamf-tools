@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <list>
 #include <memory>
+#include <span>
 #include <string>
 #include <system_error>
 #include <type_traits>
@@ -25,7 +26,6 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/iamf_encoder.h"
@@ -42,6 +42,7 @@
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
@@ -149,7 +150,7 @@ absl::Status LabeledSamplesToAudioElementData(
     }
 
     audio_element_data[serialized_channel_label_message] =
-        absl::Span<const double>(samples);
+        std::span<const double>(samples);
   }
   return absl::OkStatus();
 }
@@ -211,7 +212,10 @@ absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
           serialized_metadata;
     }
 
-    RETURN_IF_NOT_OK(iamf_encoder.Encode(temporal_unit_data));
+    if (const api::IamfStatus status = iamf_encoder.Encode(temporal_unit_data);
+        !status.ok()) {
+      return absl::UnknownError(status.error_message);
+    }
 
     // In this program we always use up all samples from a WAV file, so we
     // call `IamfEncoder::FinalizeEncode()` only when there is no more
@@ -222,15 +226,21 @@ absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
       //                    there is a better way to determine the parameter
       //                    block start timestamps.
       temporal_unit_data.parameter_block_id_to_metadata.clear();
-      RETURN_IF_NOT_OK(iamf_encoder.FinalizeEncode());
+      if (const api::IamfStatus status = iamf_encoder.FinalizeEncode();
+          !status.ok()) {
+        return absl::UnknownError(status.error_message);
+      }
     }
 
     // In a streaming based application these serialized OBUs would be useful.
     // Here we throw them away and rely on the `ObuSequencer`s to handle output
     // (such as to a .iamf file).
     std::vector<uint8_t> unused_temporal_unit_obus;
-    RETURN_IF_NOT_OK(
-        iamf_encoder.OutputTemporalUnit(unused_temporal_unit_obus));
+    if (const api::IamfStatus status =
+            iamf_encoder.OutputTemporalUnit(unused_temporal_unit_obus);
+        !status.ok()) {
+      return absl::UnknownError(status.error_message);
+    }
   }
   ABSL_LOG(INFO)
       << "\n============================= END of Generating Data OBUs"

@@ -312,6 +312,7 @@ cc_library(
         "//iamf/cli/proto_conversion:channel_label_utils",
         "//iamf/cli/proto_conversion:output_audio_format_utils",
         "//iamf/common/utils:macros",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/include/iamf_tools:iamf_tools_encoder_api_types",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
@@ -319,7 +320,6 @@ cc_library(
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
-        "@abseil-cpp//absl/types:span",
         "@protobuf",
     ],
 )
@@ -406,6 +406,7 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
         "//iamf/include/iamf_tools:iamf_encoder_interface",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/include/iamf_tools:iamf_tools_encoder_api_types",
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:ia_sequence_header",

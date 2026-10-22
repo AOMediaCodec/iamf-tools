@@ -13,11 +13,11 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
+#include "absl/log/absl_log.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/iamf_encoder.h"
 #include "iamf/cli/obu_sequencer_base.h"
@@ -31,14 +31,15 @@
 namespace iamf_tools {
 namespace api {
 
-absl::StatusOr<std::unique_ptr<IamfEncoderInterface>>
+std::unique_ptr<IamfEncoderInterface>
 IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
-    absl::string_view serialized_user_metadata,
-    absl::string_view output_file_name) {
+    std::string_view serialized_user_metadata,
+    std::string_view output_file_name) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   if (!user_metadata.ParseFromString(serialized_user_metadata)) {
-    return absl::InvalidArgumentError(
-        "Failed to deserialize a `UserMetadata` protocol buffer.");
+    ABSL_LOG(ERROR)
+        << "Failed to deserialize a `UserMetadata` protocol buffer.";
+    return nullptr;
   }
 
   // Create an encoder, which is pre-configured with enough functionality to
@@ -46,8 +47,8 @@ IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
   const auto leb_generator =
       CreateLebGenerator(user_metadata.test_vector_metadata().leb_generator());
   if (leb_generator == nullptr) {
-    return absl::InvalidArgumentError(
-        "Invalid LebGenerator settings in user metadata.");
+    ABSL_LOG(ERROR) << "Invalid LebGenerator settings in user metadata.";
+    return nullptr;
   }
   const IamfEncoder::ObuSequencerFactory obu_sequencer_factory = [&]() {
     std::vector<std::unique_ptr<ObuSequencerBase>> obu_sequencers;
@@ -58,29 +59,39 @@ IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
         *leb_generator));
     return obu_sequencers;
   };
-  return IamfEncoder::Create(
+  auto iamf_encoder = IamfEncoder::Create(
       user_metadata, CreateLayoutRendererFactory().get(),
       CreateLoudnessCalculatorFactory().get(),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       obu_sequencer_factory);
+  if (!iamf_encoder.ok()) {
+    ABSL_LOG(ERROR) << "Failed to create encoder: " << iamf_encoder.status();
+    return nullptr;
+  }
+  return *std::move(iamf_encoder);
 }
 
-absl::StatusOr<std::unique_ptr<IamfEncoderInterface>>
-IamfEncoderFactory::CreateIamfEncoder(
-    absl::string_view serialized_user_metadata) {
+std::unique_ptr<IamfEncoderInterface> IamfEncoderFactory::CreateIamfEncoder(
+    std::string_view serialized_user_metadata) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   if (!user_metadata.ParseFromString(serialized_user_metadata)) {
-    return absl::InvalidArgumentError(
-        "Failed to deserialize a `UserMetadata` protocol buffer.");
+    ABSL_LOG(ERROR)
+        << "Failed to deserialize a `UserMetadata` protocol buffer.";
+    return nullptr;
   }
 
   // Create an encoder, which is pre-configured with enough functionality to
   // measure loudness.
-  return IamfEncoder::Create(
+  auto iamf_encoder = IamfEncoder::Create(
       user_metadata, CreateLayoutRendererFactory().get(),
       CreateLoudnessCalculatorFactory().get(),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       IamfEncoder::CreateNoObuSequencers);
+  if (!iamf_encoder.ok()) {
+    ABSL_LOG(ERROR) << "Failed to create encoder: " << iamf_encoder.status();
+    return nullptr;
+  }
+  return *std::move(iamf_encoder);
 }
 
 }  // namespace api
