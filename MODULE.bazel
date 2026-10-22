@@ -6,7 +6,7 @@
 
 module(
     name = "iamf_tools",
-    version = "1.0.0",
+    version = "3.0.0",
 )
 
 # Bazel central registry dependencies.
@@ -85,4 +85,3 @@ git_repository(
     commit = "ee76460efbdb147e26d804c798949c23f174460b",
     remote = "https://android.googlesource.com/platform/external/aac",
 )
-
