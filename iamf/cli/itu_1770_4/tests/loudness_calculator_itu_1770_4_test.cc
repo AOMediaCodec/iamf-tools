@@ -53,7 +53,6 @@ const Layout kMonoLayout = {
         .sound_system = LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0}};
 
 const LoudnessInfo kLoudnessInfoWithMaxLoudness = {
-    .info_type = LoudnessInfo::kTruePeak,
     .integrated_loudness = kMaxLoudness,
     .digital_peak = kMaxLoudness,
     .true_peak = kMaxLoudness};
@@ -116,8 +115,7 @@ TEST(LoudnessCalculatorItu1770_4, AlwaysCopiesAnchoredLoudness) {
       QFormatOrFloatingPoint::MakeFromQ7_8(123);
   const MixPresentationLayout kLayoutWithAnchoredLoudness = {
       .loudness_layout = kStereoLayout,
-      .loudness = {.info_type = LoudnessInfo::kTruePeak,
-                   .anchored_loudness = AnchoredLoudness{
+      .loudness = {.anchored_loudness = AnchoredLoudness{
                        .anchor_elements = {
                            {.anchor_element = kExpectedAnchorElement,
                             .anchored_loudness = kExpectedDialogueLoudness}}}}};

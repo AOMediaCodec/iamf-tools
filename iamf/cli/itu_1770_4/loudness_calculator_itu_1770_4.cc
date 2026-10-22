@@ -69,10 +69,6 @@ absl::Status FloatToQ7_8WithDebuggingMessage(float value,
   return absl::OkStatus();
 }
 
-bool IncludeTruePeak(uint8_t info_type) {
-  return info_type & LoudnessInfo::kTruePeak;
-}
-
 // Returns the channel weights as per Table 4 and Table 5 of ITU-1770-4 when the
 // channels are ordered according to the `iamf-tools` output order (see
 // iamf/cli/testdata/README#Output-wav-files).
@@ -201,7 +197,7 @@ LoudnessCalculatorItu1770_4::CreateForLayout(
   const size_t num_channels = weights->size();
 
   const bool enable_true_peak_measurement =
-      IncludeTruePeak(layout.loudness.info_type);
+      layout.loudness.true_peak.has_value();
   ABSL_VLOG(1) << "Creating AudioLoudness1770:";
   ABSL_VLOG(1) << "  num_channels= " << num_channels;
   ABSL_VLOG(1) << "  sample_rate= " << rendered_sample_rate;
@@ -266,7 +262,7 @@ absl::StatusOr<LoudnessInfo> LoudnessCalculatorItu1770_4::QueryLoudness()
       "integrated loudness"));
   RETURN_IF_NOT_OK(FloatToQ7_8WithDebuggingMessage(
       calculated_digital_peak, output_loudness.digital_peak, "digital peak"));
-  if (IncludeTruePeak(user_provided_loudness_info_.info_type)) {
+  if (user_provided_loudness_info_.true_peak.has_value()) {
     QFormatOrFloatingPoint true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0);
     RETURN_IF_NOT_OK(FloatToQ7_8WithDebuggingMessage(calculated_true_peak,
                                                      true_peak, "true peak"));

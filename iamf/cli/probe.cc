@@ -721,18 +721,16 @@ LayoutReport BuildLayoutReport(const Layout& layout) {
 // TODO(b/576312597): Add unit test coverage for `BuildLoudnessReport`.
 LoudnessInfoReport BuildLoudnessReport(const LoudnessInfo& loud) {
   LoudnessInfoReport r;
-  r.info_type = loud.info_type;
-  r.true_peak_present = (loud.info_type & LoudnessInfo::kTruePeak) != 0;
-  r.anchored_loudness_present =
-      (loud.info_type & LoudnessInfo::kAnchoredLoudness) != 0;
-  r.has_layout_extension =
-      (loud.info_type & LoudnessInfo::kAnyLayoutExtension) != 0;
+  r.info_type = loud.GetInfoType();
+  r.true_peak_present = loud.true_peak.has_value();
+  r.anchored_loudness_present = loud.anchored_loudness.has_value();
+  r.has_layout_extension = loud.layout_extension.has_value();
   r.integrated_loudness = loud.integrated_loudness.GetFloatingPoint();
   r.digital_peak = loud.digital_peak.GetFloatingPoint();
-  if (r.true_peak_present && loud.true_peak.has_value()) {
+  if (loud.true_peak.has_value()) {
     r.true_peak = loud.true_peak->GetFloatingPoint();
   }
-  if (r.anchored_loudness_present && loud.anchored_loudness.has_value()) {
+  if (loud.anchored_loudness.has_value()) {
     r.anchored_loudness_elements.reserve(
         loud.anchored_loudness->anchor_elements.size());
     for (const auto& e : loud.anchored_loudness->anchor_elements) {

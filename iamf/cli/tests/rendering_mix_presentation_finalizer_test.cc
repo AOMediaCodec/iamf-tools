@@ -417,7 +417,6 @@ TEST_F(FinalizerTest, SamplesAreTrimmedFromWavFile) {
 // =========== Tests for finalized OBUs ===========
 
 const LoudnessInfo kExpectedMinimumLoudnessInfo = {
-    .info_type = 0,
     .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(
         std::numeric_limits<int16_t>::min()),
     .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(
@@ -425,7 +424,6 @@ const LoudnessInfo kExpectedMinimumLoudnessInfo = {
 };
 
 const LoudnessInfo kArbitraryLoudnessInfo = {
-    .info_type = LoudnessInfo::kTruePeak,
     .integrated_loudness = QFormatOrFloatingPoint::MakeFromQ7_8(123),
     .digital_peak = QFormatOrFloatingPoint::MakeFromQ7_8(456),
     .true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(789),

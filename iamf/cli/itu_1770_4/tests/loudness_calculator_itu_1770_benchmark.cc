@@ -11,6 +11,7 @@
  */
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "absl/log/absl_check.h"
@@ -19,6 +20,7 @@
 #include "benchmark/benchmark.h"
 #include "iamf/cli/itu_1770_4/loudness_calculator_itu_1770_4.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -38,8 +40,10 @@ static MixPresentationLayout GetSoundSystemLayout(
                                   LoudspeakersSsConventionLayout{
                                       .sound_system = sound_system}},
           .loudness = {
-              .info_type = static_cast<uint8_t>(
-                  measure_true_peak ? LoudnessInfo::kTruePeak : 0),
+              .true_peak = measure_true_peak
+                               ? std::make_optional(
+                                     QFormatOrFloatingPoint::MakeFromQ7_8(0))
+                               : std::nullopt,
           }};
 }
 

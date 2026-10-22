@@ -147,20 +147,18 @@ absl::Status ValidateUserLoudness(const LoudnessInfo& user_loudness,
     loudness_matches_user_data = false;
   }
 
-  if (output_loudness.info_type & LoudnessInfo::kTruePeak) {
-    if (output_loudness.true_peak != user_loudness.true_peak) {
-      ABSL_LOG(ERROR) << mix_presentation_sub_mix_layout_index
-                      << "Computed true peak different from "
-                      << "user specification: "
-                      << (output_loudness.true_peak.has_value()
-                              ? absl::StrCat(*output_loudness.true_peak)
-                              : "std::nullopt")
-                      << " vs "
-                      << (user_loudness.true_peak.has_value()
-                              ? absl::StrCat(*user_loudness.true_peak)
-                              : "std::nullopt");
-      loudness_matches_user_data = false;
-    }
+  if (output_loudness.true_peak != user_loudness.true_peak) {
+    ABSL_LOG(ERROR) << mix_presentation_sub_mix_layout_index
+                    << "Computed true peak different from "
+                    << "user specification: "
+                    << (output_loudness.true_peak.has_value()
+                            ? absl::StrCat(*output_loudness.true_peak)
+                            : "std::nullopt")
+                    << " vs "
+                    << (user_loudness.true_peak.has_value()
+                            ? absl::StrCat(*user_loudness.true_peak)
+                            : "std::nullopt");
+    loudness_matches_user_data = false;
   }
 
   // Anchored loudness and layout extension are copied from the user input
