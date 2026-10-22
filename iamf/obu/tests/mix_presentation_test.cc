@@ -263,9 +263,9 @@ TEST_F(MixPresentationObuTest,
 
 TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   // Initialize a test has several `DecodedUleb128` explicitly in the bitstream.
-  sub_mixes_[0].layouts[0].loudness.info_type = 0x80;
-  sub_mixes_[0].layouts[0].loudness.layout_extension =
-      LayoutExtension{.info_type_bytes{}};
+  sub_mixes_[0].layouts[0].loudness.true_peak = std::nullopt;
+  sub_mixes_[0].layouts[0].loudness.layout_extension = LayoutExtension{
+      .info_type = LoudnessInfo::kInfoTypeBitMask128, .info_type_bytes = {}};
 
   sub_mixes_[0].audio_elements[0].rendering_config = {
       .headphones_rendering_mode =
@@ -435,8 +435,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                          .integrated_loudness =
                              QFormatOrFloatingPoint::MakeFromQ7_8(31),
                          .digital_peak =
-                             QFormatOrFloatingPoint::MakeFromQ7_8(32),
-                         .true_peak = QFormatOrFloatingPoint::MakeFromQ7_8(0)}},
+                             QFormatOrFloatingPoint::MakeFromQ7_8(32)}},
 
            {.loudness_layout = {.layout_type = Layout::kLayoutTypeBinaural,
                                 .specific_layout =

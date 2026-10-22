@@ -114,21 +114,14 @@ uint8_t LoudnessInfo::GetInfoType() const {
 }
 
 absl::Status LoudnessInfo::ValidateAndWrite(WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(info_type, 8));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(GetInfoType(), 8));
   RETURN_IF_NOT_OK(wb.WriteSigned16(integrated_loudness.GetQ7_8()));
   RETURN_IF_NOT_OK(wb.WriteSigned16(digital_peak.GetQ7_8()));
 
-  // TODO(b/575476864): Condition on the optional fields directly once
-  //                    `info_type` is computed dynamically.
-  // Conditionally write `true_peak` based on `info_type`.
-  if ((info_type & kTruePeak) != 0) {
-    RETURN_IF_NOT_OK(ValidateHasValue(true_peak, "`true_peak`"));
+  if (true_peak.has_value()) {
     RETURN_IF_NOT_OK(wb.WriteSigned16(true_peak->GetQ7_8()));
   }
-  // Conditionally write `anchored_loudness` based on `info_type`.
-  if ((info_type & kAnchoredLoudness) != 0) {
-    RETURN_IF_NOT_OK(
-        ValidateHasValue(anchored_loudness, "`anchored_loudness`"));
+  if (anchored_loudness.has_value()) {
     uint8_t num_anchor_elements;
     RETURN_IF_NOT_OK(StaticCastIfInRange(
         "num_anchor_elements", anchored_loudness->anchor_elements.size(),
@@ -143,9 +136,10 @@ absl::Status LoudnessInfo::ValidateAndWrite(WriteBitBuffer& wb) const {
           wb.WriteSigned16(anchor_element.anchored_loudness.GetQ7_8()));
     }
   }
-  // Conditionally write `layout_extension` based on `info_type`.
-  if ((info_type & kAnyLayoutExtension) != 0) {
-    RETURN_IF_NOT_OK(ValidateHasValue(layout_extension, "`layout_extension`"));
+  if (layout_extension.has_value()) {
+    RETURN_IF_NOT_OK(
+        ValidateNotEqual(layout_extension->info_type & kAnyLayoutExtension, 0,
+                         "layout_extension->info_type & kAnyLayoutExtension"));
     DecodedUleb128 info_type_size;
     RETURN_IF_NOT_OK(StaticCastIfInRange(
         "info_type_size", layout_extension->info_type_bytes.size(),
@@ -163,9 +157,9 @@ absl::Status LoudnessInfo::ValidateAndWrite(WriteBitBuffer& wb) const {
 
 std::string LoudnessInfo::ToString() const {
   std::string result =
-      absl::StrCat("      loudness:\n", "        info_type= ", info_type, "\n",
-                   "        integrated_loudness= ", integrated_loudness, "\n",
-                   "        digital_peak= ", digital_peak);
+      absl::StrCat("      loudness:\n", "        info_type= ", GetInfoType(),
+                   "\n", "        integrated_loudness= ", integrated_loudness,
+                   "\n", "        digital_peak= ", digital_peak);
   if (true_peak.has_value()) {
     absl::StrAppend(&result, "\n        true_peak= ", *true_peak);
   }

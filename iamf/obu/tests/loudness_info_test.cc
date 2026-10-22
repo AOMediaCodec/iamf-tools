@@ -83,7 +83,9 @@ TEST(ValidateAndWrite, WritesAllOptionalFields) {
                    {.anchor_element =
                         AnchoredLoudnessElement::kAnchorElementDialogue,
                     .anchored_loudness = kAnchoredLoudness1}}},
-      .layout_extension = LayoutExtension{.info_type_bytes = {'a', 'b'}}};
+      .layout_extension =
+          LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
+                          .info_type_bytes = {'a', 'b'}}};
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
       // `info_type`.
       LoudnessInfo::kTruePeak | LoudnessInfo::kAnchoredLoudness |
@@ -118,39 +120,6 @@ TEST(ValidateAndWrite, WritesAllOptionalFields) {
   EXPECT_THAT(loudness_info.ValidateAndWrite(wb), IsOk());
 
   ValidateWriteResults(wb, kExpectedPayload);
-}
-
-TEST(ValidateAndWrite, ReturnsErrorWhenTruePeakIsMissing) {
-  const LoudnessInfo loudness_info = {
-      .info_type = LoudnessInfo::kTruePeak,
-      .integrated_loudness = kIntegratedLoudness,
-      .digital_peak = kDigitalPeak,
-      .true_peak = std::nullopt};
-  WriteBitBuffer wb(0);
-
-  EXPECT_THAT(loudness_info.ValidateAndWrite(wb), Not(IsOk()));
-}
-
-TEST(ValidateAndWrite, ReturnsErrorWhenAnchoredLoudnessIsMissing) {
-  const LoudnessInfo loudness_info = {
-      .info_type = LoudnessInfo::kAnchoredLoudness,
-      .integrated_loudness = kIntegratedLoudness,
-      .digital_peak = kDigitalPeak,
-      .anchored_loudness = std::nullopt};
-  WriteBitBuffer wb(0);
-
-  EXPECT_THAT(loudness_info.ValidateAndWrite(wb), Not(IsOk()));
-}
-
-TEST(ValidateAndWrite, ReturnsErrorWhenLayoutExtensionIsMissing) {
-  const LoudnessInfo loudness_info = {
-      .info_type = LoudnessInfo::kLive,
-      .integrated_loudness = kIntegratedLoudness,
-      .digital_peak = kDigitalPeak,
-      .layout_extension = std::nullopt};
-  WriteBitBuffer wb(0);
-
-  EXPECT_THAT(loudness_info.ValidateAndWrite(wb), Not(IsOk()));
 }
 
 TEST(ValidateAndWrite, ReturnsErrorWhenAnchorElementsAreNotUnique) {
@@ -190,8 +159,21 @@ TEST(ValidateAndWrite, ReturnsErrorWhenInfoTypeSizeExceedsMaxObuSize) {
       .integrated_loudness = kIntegratedLoudness,
       .digital_peak = kDigitalPeak,
       .layout_extension =
-          LayoutExtension{.info_type_bytes = std::vector<uint8_t>(
+          LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
+                          .info_type_bytes = std::vector<uint8_t>(
                               kEntireObuSizeMaxTwoMegabytes + 1, 0)}};
+  WriteBitBuffer wb(0);
+
+  EXPECT_THAT(loudness_info.ValidateAndWrite(wb), Not(IsOk()));
+}
+
+TEST(ValidateAndWrite, ReturnsErrorWhenLayoutExtensionHasNoExtensionBits) {
+  const LoudnessInfo loudness_info = {
+      .info_type = 0,
+      .integrated_loudness = kIntegratedLoudness,
+      .digital_peak = kDigitalPeak,
+      .layout_extension =
+          LayoutExtension{.info_type = 0, .info_type_bytes = {'a'}}};
   WriteBitBuffer wb(0);
 
   EXPECT_THAT(loudness_info.ValidateAndWrite(wb), Not(IsOk()));
@@ -388,7 +370,9 @@ TEST(ToString, FormatsFieldsAndSupportsAbslStringify) {
                   {{.anchor_element =
                         AnchoredLoudnessElement::kAnchorElementAlbum,
                     .anchored_loudness = kAnchoredLoudness1}}},
-      .layout_extension = LayoutExtension{.info_type_bytes = {'a'}}};
+      .layout_extension =
+          LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
+                          .info_type_bytes = {'a'}}};
 
   const std::string result = loudness_info.ToString();
 
