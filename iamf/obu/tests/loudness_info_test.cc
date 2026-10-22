@@ -213,7 +213,7 @@ TEST(CreateFromBuffer, ReadsMinimalLoudnessInfo) {
   const auto loudness_info = LoudnessInfo::CreateFromBuffer(*rb);
 
   ASSERT_THAT(loudness_info, IsOk());
-  EXPECT_EQ(loudness_info->info_type, 0);
+  EXPECT_EQ(loudness_info->GetInfoType(), 0);
   EXPECT_EQ(loudness_info->integrated_loudness, kIntegratedLoudness);
   EXPECT_EQ(loudness_info->digital_peak, kDigitalPeak);
   EXPECT_EQ(loudness_info->true_peak, std::nullopt);
@@ -257,9 +257,9 @@ TEST(CreateFromBuffer, ReadsAllOptionalFields) {
   const auto loudness_info = LoudnessInfo::CreateFromBuffer(*rb);
 
   ASSERT_THAT(loudness_info, IsOk());
-  EXPECT_EQ(loudness_info->info_type, LoudnessInfo::kTruePeak |
-                                          LoudnessInfo::kAnchoredLoudness |
-                                          LoudnessInfo::kInfoTypeBitMask128);
+  EXPECT_EQ(loudness_info->GetInfoType(),
+            LoudnessInfo::kTruePeak | LoudnessInfo::kAnchoredLoudness |
+                LoudnessInfo::kInfoTypeBitMask128);
   EXPECT_EQ(loudness_info->integrated_loudness, kIntegratedLoudness);
   EXPECT_EQ(loudness_info->digital_peak, kDigitalPeak);
   EXPECT_EQ(loudness_info->true_peak, kTruePeak);
@@ -273,7 +273,8 @@ TEST(CreateFromBuffer, ReadsAllOptionalFields) {
                    AnchoredLoudnessElement::kAnchorElementDialogue,
                .anchored_loudness = kAnchoredLoudness1}}}));
   EXPECT_EQ(loudness_info->layout_extension,
-            (LayoutExtension{.info_type_bytes = {'a', 'b'}}));
+            (LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
+                             .info_type_bytes = {'a', 'b'}}));
   EXPECT_FALSE(rb->IsDataAvailable());
 }
 
@@ -335,6 +336,43 @@ TEST(CreateFromBuffer, ReturnsErrorWhenBufferIsExhausted) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(kPayload);
 
   EXPECT_THAT(LoudnessInfo::CreateFromBuffer(*rb), Not(IsOk()));
+}
+
+TEST(GetInfoType, ReturnsZeroWhenNoOptionalFieldsArePresent) {
+  const LoudnessInfo loudness_info = {
+      .integrated_loudness = kIntegratedLoudness, .digital_peak = kDigitalPeak};
+
+  EXPECT_EQ(loudness_info.GetInfoType(), 0);
+}
+
+TEST(GetInfoType, SetsTruePeakBitWhenTruePeakIsPresent) {
+  const LoudnessInfo loudness_info = {
+      .integrated_loudness = kIntegratedLoudness,
+      .digital_peak = kDigitalPeak,
+      .true_peak = kTruePeak};
+
+  EXPECT_EQ(loudness_info.GetInfoType(), LoudnessInfo::kTruePeak);
+}
+
+TEST(GetInfoType, SetsAnchoredLoudnessBitWhenAnchoredLoudnessIsPresent) {
+  const LoudnessInfo loudness_info = {
+      .integrated_loudness = kIntegratedLoudness,
+      .digital_peak = kDigitalPeak,
+      .anchored_loudness = AnchoredLoudness{}};
+
+  EXPECT_EQ(loudness_info.GetInfoType(), LoudnessInfo::kAnchoredLoudness);
+}
+
+TEST(GetInfoType, IncludesLayoutExtensionBitsAndMasksNonExtensionBits) {
+  const LoudnessInfo loudness_info = {
+      .integrated_loudness = kIntegratedLoudness,
+      .digital_peak = kDigitalPeak,
+      .layout_extension = LayoutExtension{
+          .info_type = LoudnessInfo::kLive | LoudnessInfo::kInfoTypeBitMask128 |
+                       LoudnessInfo::kTruePeak}};
+
+  EXPECT_EQ(loudness_info.GetInfoType(),
+            LoudnessInfo::kLive | LoudnessInfo::kInfoTypeBitMask128);
 }
 
 TEST(ToString, FormatsFieldsAndSupportsAbslStringify) {

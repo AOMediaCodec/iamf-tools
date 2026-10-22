@@ -90,12 +90,27 @@ absl::StatusOr<LoudnessInfo> LoudnessInfo::CreateFromBuffer(ReadBitBuffer& rb) {
         info_type_size, {DecodedUleb128{0}, kEntireObuSizeMaxTwoMegabytes},
         "info_type_size"));
     LayoutExtension& layout_extension = loudness.layout_extension.emplace();
+    layout_extension.info_type = loudness.info_type & kAnyLayoutExtension;
     layout_extension.info_type_bytes.resize(info_type_size);
     RETURN_IF_NOT_OK(
         rb.ReadUint8Span(absl::MakeSpan(layout_extension.info_type_bytes)));
   }
 
   return loudness;
+}
+
+uint8_t LoudnessInfo::GetInfoType() const {
+  uint8_t computed_info_type = 0;
+  if (true_peak.has_value()) {
+    computed_info_type |= kTruePeak;
+  }
+  if (anchored_loudness.has_value()) {
+    computed_info_type |= kAnchoredLoudness;
+  }
+  if (layout_extension.has_value()) {
+    computed_info_type |= (layout_extension->info_type & kAnyLayoutExtension);
+  }
+  return computed_info_type;
 }
 
 absl::Status LoudnessInfo::ValidateAndWrite(WriteBitBuffer& wb) const {

@@ -57,6 +57,12 @@ struct LayoutExtension {
   friend bool operator==(const LayoutExtension& lhs,
                          const LayoutExtension& rhs) = default;
 
+  // Stores the bits of `info_type` corresponding to `kAnyLayoutExtension`. This
+  // is needed because multiple bits in `kAnyLayoutExtension` can trigger the
+  // presence of `layout_extension`, so `layout_extension.has_value()` alone is
+  // not sufficient to reconstruct those bits in `LoudnessInfo::GetInfoType()`.
+  uint8_t info_type = 0;
+
   // `info_type_size` is implicit based on the size of `info_type_bytes`
   std::vector<uint8_t> info_type_bytes;
 };
@@ -97,6 +103,12 @@ class LoudnessInfo {
    */
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
 
+  /*!\brief Gets the `info_type` bitfield computed from the present fields.
+   *
+   * \return `info_type` bitfield.
+   */
+  uint8_t GetInfoType() const;
+
   /*!\brief Returns string representation of `LoudnessInfo`.
    *
    * \return String representation of `LoudnessInfo`.
@@ -109,9 +121,8 @@ class LoudnessInfo {
     sink.Append(loudness_info.ToString());
   }
 
-  // TODO(b/575476864): Hide `info_type` behind a getter / compute it
-  //                    dynamically based on the presence of the optional
-  //                    fields.
+  // TODO(b/575476864): Remove `info_type` shortly once all callers are migrated
+  //                    to `GetInfoType()` and `LayoutExtension::info_type`.
   uint8_t info_type;  // Apply `LoudnessInfoTypeBitmask` to identify what types
                       // of loudness information are included.
   QFormatOrFloatingPoint integrated_loudness =
