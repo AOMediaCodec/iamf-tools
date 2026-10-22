@@ -11,12 +11,14 @@
  */
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <istream>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/adm_to_user_metadata/adm/bw64_reader.h"
@@ -37,31 +39,58 @@ constexpr char kAudioPackFormatIdFor3OA[] = "AP_00040003";
 // DirectSpeakers (0001) and layout as LFE (1FFF).
 constexpr char kAudioPackFormatIdForLfe[] = "AP_00011FFF";
 
-void ModifyAdmToPanObjectsTo3OAAndSeparateLfe(
+absl::Status ModifyAdmToPanObjectsTo3OAAndSeparateLfe(
     const ProfileVersion profile_version, const int lfe_count,
     ADM& adm_metadata) {
   using enum ProfileVersion;
+  auto& audio_objects = adm_metadata.audio_objects;
+
+  // `ParseXmlToAdm` drops audioObjects it cannot validate and returns OK, so
+  // this list can be empty on a file that parsed successfully. Both branches
+  // below index element 0 and rewrite its first `audioPackFormatIDRef`.
+  if (audio_objects.empty()) {
+    return absl::NotFoundError("No audioObject present.");
+  }
+  if (audio_objects[0].audio_pack_format_id_refs.empty()) {
+    return absl::InvalidArgumentError(
+        "The first audioObject has no `audioPackFormatIDRef`.");
+  }
+
   if (profile_version == kIamfBaseProfile) {
     // For IA Base Profile, max channels allowed per mix is 18, hence pan all
     // audio objects(both channel beds and objects) to 3OA (16 channels).
-    adm_metadata.audio_objects.erase(adm_metadata.audio_objects.begin() + 1,
-                                     adm_metadata.audio_objects.end());
-    adm_metadata.audio_objects[0].audio_pack_format_id_refs[0] =
-        kAudioPackFormatIdFor3OA;
+    audio_objects.resize(1);
+    audio_objects[0].audio_pack_format_id_refs[0] = kAudioPackFormatIdFor3OA;
   } else if (profile_version == kIamfBaseEnhancedProfile) {
     // For IA Base Enhanced Profile, max channels allowed per mix is 28, hence
     // pan all non-LFE channels(both channel beds and objects) in the to 3OA (16
-    // channels) and keep the LFE(s) as separate audio element(s).
-    adm_metadata.audio_objects.erase(
-        adm_metadata.audio_objects.begin() + 1 + lfe_count,
-        adm_metadata.audio_objects.end());
-    adm_metadata.audio_objects[0].audio_pack_format_id_refs[0] =
-        kAudioPackFormatIdFor3OA;
+    // channels) and keep the LFE(s) as separate audio element(s). This needs
+    // one audioObject for the ambisonics element and one per LFE channel.
+    if (lfe_count < 0) {
+      return absl::InvalidArgumentError(
+          "LFE channel count must not be negative.");
+    }
+    const size_t num_required_audio_objects =
+        1 + static_cast<size_t>(lfe_count);
+    if (audio_objects.size() < num_required_audio_objects) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "IA Base Enhanced Profile needs one audioObject for the ambisonics "
+          "element and one per LFE channel; the ADM has ",
+          audio_objects.size(), " audioObject(s) for ", lfe_count,
+          " LFE channel(s)."));
+    }
+    audio_objects.resize(num_required_audio_objects);
+    audio_objects[0].audio_pack_format_id_refs[0] = kAudioPackFormatIdFor3OA;
     for (int lfe_index = 1; lfe_index <= lfe_count; ++lfe_index) {
-      adm_metadata.audio_objects[lfe_index].audio_pack_format_id_refs[0] =
+      if (audio_objects[lfe_index].audio_pack_format_id_refs.empty()) {
+        return absl::InvalidArgumentError(
+            "An audioObject has no `audioPackFormatIDRef`.");
+      }
+      audio_objects[lfe_index].audio_pack_format_id_refs[0] =
           kAudioPackFormatIdForLfe;
     }
   }
+  return absl::OkStatus();
 }
 
 }  // namespace
@@ -88,8 +117,8 @@ GenerateUserMetadataAndSpliceWavFiles(
   ADM adm_metadata = reader->adm_;
 
   if (reader->adm_.file_type == kAdmFileTypeDolby) {
-    ModifyAdmToPanObjectsTo3OAAndSeparateLfe(profile_version, lfe_count,
-                                             adm_metadata);
+    RETURN_IF_NOT_OK(ModifyAdmToPanObjectsTo3OAAndSeparateLfe(
+        profile_version, lfe_count, adm_metadata));
   }
 
   // Generate the user metadata.
