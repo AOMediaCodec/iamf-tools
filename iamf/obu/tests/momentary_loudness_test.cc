@@ -12,13 +12,17 @@
 #include "iamf/obu/momentary_loudness.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/tests/test_utils.h"
+#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/momentary_loudness_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/tests/obu_test_utils.h"
@@ -249,6 +253,88 @@ TEST(CreateFromBuffer, ReturnsErrorWhenBufferHasFewerCountsThanIndicated) {
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
 
   EXPECT_THAT(MomentaryLoudness::CreateFromBuffer(*rb), Not(IsOk()));
+}
+
+TEST(Write, SerializesSingleBinPair) {
+  const auto momentary_loudness = MomentaryLoudness::Create(
+      CreateValidParamDefinition(), /*bin_width_minus_one=*/63,
+      /*first_bin_center=*/32, /*reserved_momentary_loudness=*/0,
+      /*count=*/{24, 5});
+  ASSERT_THAT(momentary_loudness, IsOk());
+  WriteBitBuffer wb(16);
+
+  EXPECT_THAT(momentary_loudness->Write(wb), IsOk());
+
+  ValidateWriteResults(
+      wb, {
+              // `momentary_loudness_param_def`:
+              0x7f,  // `parameter_id` = 127
+              0x80,
+              0xf7,
+              0x02,  // `parameter_rate` = 48000
+              0x00,  // `param_definition_mode` (1) = 0, `reserved` (7) = 0
+              0x80,
+              0x08,  // `duration` = 1024
+              0x80,
+              0x08,  // `constant_subblock_duration` = 1024
+                     // `num_bin_pairs_minus_one` (3) = 0, `bin_width_minus_one`
+                     // (6) = 63, `first_bin_center` (6) = 32,
+                     // `reserved_momentary_loudness` (1) = 0:
+              0b000'11111,
+              0b1'100000'0,
+              // `count`:
+              24,
+              5,
+          });
+}
+
+TEST(Write, RoundTripsWithCreateFromBuffer) {
+  const MomentaryLoudnessParamDefinition param_def(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/5, /*parameter_rate=*/48000, /*duration=*/960));
+  const auto original = MomentaryLoudness::Create(
+      param_def, /*bin_width_minus_one=*/3, /*first_bin_center=*/28,
+      /*reserved_momentary_loudness=*/1, /*count=*/{100, 200, 300, 400});
+  ASSERT_THAT(original, IsOk());
+  WriteBitBuffer wb(32);
+  ASSERT_THAT(original->Write(wb), IsOk());
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(wb.bit_buffer()));
+
+  const auto round_tripped = MomentaryLoudness::CreateFromBuffer(*rb);
+
+  ASSERT_THAT(round_tripped, IsOk());
+  EXPECT_EQ(*round_tripped, *original);
+}
+
+TEST(ToString, FormatsFieldsAndSupportsAbslStringify) {
+  const MomentaryLoudnessParamDefinition param_def(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1, /*duration=*/10));
+  const auto momentary_loudness = MomentaryLoudness::Create(
+      param_def, /*bin_width_minus_one=*/2, /*first_bin_center=*/32,
+      /*reserved_momentary_loudness=*/1, /*count=*/{10, 20});
+  ASSERT_THAT(momentary_loudness, IsOk());
+
+  const std::string result = momentary_loudness->ToString();
+
+  EXPECT_EQ(absl::StrCat(*momentary_loudness), result);
+  EXPECT_EQ(result,
+            "MomentaryLoudnessParamDefinition:\n"
+            "  parameter_type= 9\n"
+            "  parameter_id= 1\n"
+            "  parameter_rate= 1\n"
+            "  param_definition_mode= 0\n"
+            "  reserved= 0\n"
+            "  duration= 10\n"
+            "  constant_subblock_duration= 10\n"
+            "  num_subblocks= 1\n"
+            "num_bin_pairs_minus_one= 0\n"
+            "bin_width_minus_one= 2\n"
+            "first_bin_center= 32\n"
+            "reserved_momentary_loudness= 1\n"
+            "count[0]= 10\n"
+            "count[1]= 20");
 }
 
 }  // namespace

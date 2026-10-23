@@ -18,6 +18,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
@@ -87,11 +88,29 @@ absl::StatusOr<MomentaryLoudness> MomentaryLoudness::Create(
       std::vector<DecodedUleb128>(count.begin(), count.end()));
 }
 
-absl::Status MomentaryLoudness::Write(WriteBitBuffer& /*wb*/) const {
-  return absl::UnimplementedError(
-      "MomentaryLoudness::Write is not implemented.");
+absl::Status MomentaryLoudness::Write(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(momentary_loudness_param_def_.ValidateAndWrite(wb));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_bin_pairs_minus_one(), 3));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(bin_width_minus_one_, 6));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(first_bin_center_, 6));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_momentary_loudness_, 1));
+  for (const DecodedUleb128 count_value : count_) {
+    RETURN_IF_NOT_OK(wb.WriteUleb128(count_value));
+  }
+  return absl::OkStatus();
 }
 
-std::string MomentaryLoudness::ToString() const { return ""; }
+std::string MomentaryLoudness::ToString() const {
+  std::string result = absl::StrCat(
+      momentary_loudness_param_def_, "\n",
+      "num_bin_pairs_minus_one= ", num_bin_pairs_minus_one(), "\n",
+      "bin_width_minus_one= ", bin_width_minus_one_, "\n",
+      "first_bin_center= ", first_bin_center_, "\n",
+      "reserved_momentary_loudness= ", reserved_momentary_loudness_);
+  for (size_t i = 0; i < count_.size(); ++i) {
+    absl::StrAppend(&result, "\ncount[", i, "]= ", count_[i]);
+  }
+  return result;
+}
 
 }  // namespace iamf_tools
