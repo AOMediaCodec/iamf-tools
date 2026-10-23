@@ -247,6 +247,23 @@ cc_test(
 )
 
 cc_test(
+    name = "momentary_loudness_test",
+    size = "small",
+    srcs = ["momentary_loudness_test.cc"],
+    deps = [
+        ":obu_test_utils",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/obu:momentary_loudness",
+        "//iamf/obu:types",
+        "//iamf/obu/param_definitions:momentary_loudness_param_definition",
+        "//iamf/obu/param_definitions:param_definition_base",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "obu_base_test",
     srcs = ["obu_base_test.cc"],
     deps = [
