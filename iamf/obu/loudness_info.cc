@@ -140,20 +140,31 @@ absl::Status LoudnessInfo::ValidateAndWrite(WriteBitBuffer& wb) const {
           wb.WriteSigned16(anchor_element.anchored_loudness.GetQ7_8()));
     }
   }
-  if (layout_extension.has_value()) {
-    RETURN_IF_NOT_OK(
-        ValidateNotEqual(layout_extension->info_type & kAnyLayoutExtension, 0,
-                         "layout_extension->info_type & kAnyLayoutExtension"));
+  // Per IAMF spec, `momentary_loudness` and `layout_extension` share a single
+  // `info_type_size` prefix. Write them to a temporary buffer first to compute
+  // their combined byte size before writing `info_type_size` and the payload.
+  if (momentary_loudness.has_value() || layout_extension.has_value()) {
+    constexpr int64_t kInitialBufferSize = 64;
+    WriteBitBuffer temp_wb(kInitialBufferSize, wb.leb_generator_);
+    if (momentary_loudness.has_value()) {
+      RETURN_IF_NOT_OK(momentary_loudness->Write(temp_wb));
+    }
+    if (layout_extension.has_value()) {
+      RETURN_IF_NOT_OK(ValidateNotEqual(
+          layout_extension->info_type & kAnyLayoutExtension, 0,
+          "layout_extension->info_type & kAnyLayoutExtension"));
+      RETURN_IF_NOT_OK(temp_wb.WriteUint8Span(
+          absl::MakeConstSpan(layout_extension->info_type_bytes)));
+    }
     DecodedUleb128 info_type_size;
     RETURN_IF_NOT_OK(StaticCastIfInRange(
-        "info_type_size", layout_extension->info_type_bytes.size(),
-        info_type_size));
+        "info_type_size", temp_wb.bit_buffer().size(), info_type_size));
     RETURN_IF_NOT_OK(ValidateInRange(
         info_type_size, {DecodedUleb128{0}, kEntireObuSizeMaxTwoMegabytes},
         "info_type_size"));
     RETURN_IF_NOT_OK(wb.WriteUleb128(info_type_size));
-    RETURN_IF_NOT_OK(wb.WriteUint8Span(
-        absl::MakeConstSpan(layout_extension->info_type_bytes)));
+    RETURN_IF_NOT_OK(
+        wb.WriteUint8Span(absl::MakeConstSpan(temp_wb.bit_buffer())));
   }
 
   return absl::OkStatus();

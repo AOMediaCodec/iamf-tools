@@ -78,6 +78,48 @@ TEST(ValidateAndWrite, WritesMinimalLoudnessInfo) {
   ValidateWriteResults(wb, kExpectedPayload);
 }
 
+TEST(ValidateAndWrite, WritesMomentaryLoudness) {
+  const LoudnessInfo loudness_info = {
+      .integrated_loudness = kIntegratedLoudness,
+      .digital_peak = kDigitalPeak,
+      .momentary_loudness = CreateMomentaryLoudness()};
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `info_type`.
+      LoudnessInfo::kMomentaryLoudness,
+      // `integrated_loudness`.
+      0,
+      18,
+      // `digital_peak`.
+      0,
+      19,
+      // `info_type_size`.
+      13,
+      // `momentary_loudness`:
+      // `momentary_loudness_param_def`:
+      0x7f,  // `parameter_id` = 127
+      0x80,
+      0xf7,
+      0x02,  // `parameter_rate` = 48000
+      0x00,  // `param_definition_mode` (1) = 0, `reserved` (7) = 0
+      0x80,
+      0x08,  // `duration` = 1024
+      0x80,
+      0x08,  // `constant_subblock_duration` = 1024
+      // `num_bin_pairs_minus_one` (3) = 0, `bin_width_minus_one` (6) = 63,
+      // `first_bin_center` (6) = 32, `reserved_momentary_loudness` (1) = 0.
+      0b000'11111,
+      0b1'100000'0,
+      // `count`.
+      24,
+      5,
+  });
+  WriteBitBuffer wb(0);
+
+  EXPECT_THAT(loudness_info.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
 TEST(ValidateAndWrite, WritesAllOptionalFields) {
   const LoudnessInfo loudness_info = {
       .integrated_loudness = kIntegratedLoudness,
@@ -92,13 +134,14 @@ TEST(ValidateAndWrite, WritesAllOptionalFields) {
                    {.anchor_element =
                         AnchoredLoudnessElement::kAnchorElementDialogue,
                     .anchored_loudness = kAnchoredLoudness1}}},
+      .momentary_loudness = CreateMomentaryLoudness(),
       .layout_extension =
           LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
                           .info_type_bytes = {'a', 'b'}}};
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
       // `info_type`.
       LoudnessInfo::kTruePeak | LoudnessInfo::kAnchoredLoudness |
-          LoudnessInfo::kInfoTypeBitMask128,
+          LoudnessInfo::kMomentaryLoudness | LoudnessInfo::kInfoTypeBitMask128,
       // `integrated_loudness`.
       0,
       18,
@@ -118,8 +161,26 @@ TEST(ValidateAndWrite, WritesAllOptionalFields) {
       AnchoredLoudnessElement::kAnchorElementDialogue,
       0,
       21,
-      // `info_type_size`.
-      2,
+      // `info_type_size` (13 momentary_loudness bytes + 2 info_type_bytes).
+      15,
+      // `momentary_loudness`:
+      // `momentary_loudness_param_def`:
+      0x7f,  // `parameter_id` = 127
+      0x80,
+      0xf7,
+      0x02,  // `parameter_rate` = 48000
+      0x00,  // `param_definition_mode` (1) = 0, `reserved` (7) = 0
+      0x80,
+      0x08,  // `duration` = 1024
+      0x80,
+      0x08,  // `constant_subblock_duration` = 1024
+      // `num_bin_pairs_minus_one` (3) = 0, `bin_width_minus_one` (6) = 63,
+      // `first_bin_center` (6) = 32, `reserved_momentary_loudness` (1) = 0.
+      0b000'11111,
+      0b1'100000'0,
+      // `count`.
+      24,
+      5,
       // `info_type_bytes`.
       'a',
       'b',
