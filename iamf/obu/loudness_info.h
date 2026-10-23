@@ -22,6 +22,7 @@
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/momentary_loudness.h"
 
 namespace iamf_tools {
 
@@ -76,6 +77,7 @@ class LoudnessInfo {
     kTruePeak = 0x01,
     kAnchoredLoudness = 0x02,
     kLive = 0x04,
+    kMomentaryLoudness = 0x08,
     kInfoTypeBitMask8 = 0x08,
     kInfoTypeBitMask16 = 0x10,
     kInfoTypeBitMask32 = 0x20,
@@ -130,6 +132,9 @@ class LoudnessInfo {
 
   // Present if `(info_type & kAnchoredLoudness) != 0`.
   std::optional<AnchoredLoudness> anchored_loudness;
+
+  // Present if `(info_type & kMomentaryLoudness) != 0`.
+  std::optional<MomentaryLoudness> momentary_loudness;
 
   // Present if `(info_type & kAnyLayoutExtension) != 0`.
   std::optional<LayoutExtension> layout_extension;

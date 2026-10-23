@@ -25,6 +25,9 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/momentary_loudness.h"
+#include "iamf/obu/param_definitions/momentary_loudness_param_definition.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -44,6 +47,16 @@ const QFormatOrFloatingPoint kAnchoredLoudness0 =
     QFormatOrFloatingPoint::MakeFromQ7_8(20);
 const QFormatOrFloatingPoint kAnchoredLoudness1 =
     QFormatOrFloatingPoint::MakeFromQ7_8(21);
+
+MomentaryLoudness CreateMomentaryLoudness() {
+  const MomentaryLoudnessParamDefinition param_def(
+      MakeOneSubblockParamDefinitionBaseArgs(
+          /*parameter_id=*/127, /*parameter_rate=*/48000, /*duration=*/1024));
+  auto momentary_loudness = MomentaryLoudness::Create(
+      param_def, /*bin_width_minus_one=*/63, /*first_bin_center=*/32,
+      /*reserved_momentary_loudness=*/0, /*count=*/{24, 5});
+  return *momentary_loudness;
+}
 
 TEST(ValidateAndWrite, WritesMinimalLoudnessInfo) {
   const LoudnessInfo loudness_info = {
@@ -337,6 +350,15 @@ TEST(GetInfoType, SetsAnchoredLoudnessBitWhenAnchoredLoudnessIsPresent) {
   EXPECT_EQ(loudness_info.GetInfoType(), LoudnessInfo::kAnchoredLoudness);
 }
 
+TEST(GetInfoType, SetsMomentaryLoudnessBitWhenMomentaryLoudnessIsPresent) {
+  const LoudnessInfo loudness_info = {
+      .integrated_loudness = kIntegratedLoudness,
+      .digital_peak = kDigitalPeak,
+      .momentary_loudness = CreateMomentaryLoudness()};
+
+  EXPECT_EQ(loudness_info.GetInfoType(), LoudnessInfo::kMomentaryLoudness);
+}
+
 TEST(GetInfoType, IncludesLayoutExtensionBitsAndMasksNonExtensionBits) {
   const LoudnessInfo loudness_info = {
       .integrated_loudness = kIntegratedLoudness,
@@ -360,6 +382,7 @@ TEST(ToString, FormatsFieldsAndSupportsAbslStringify) {
                   {{.anchor_element =
                         AnchoredLoudnessElement::kAnchorElementAlbum,
                     .anchored_loudness = kAnchoredLoudness1}}},
+      .momentary_loudness = CreateMomentaryLoudness(),
       .layout_extension =
           LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
                           .info_type_bytes = {'a'}}};
@@ -367,8 +390,10 @@ TEST(ToString, FormatsFieldsAndSupportsAbslStringify) {
   const std::string result = loudness_info.ToString();
 
   EXPECT_EQ(absl::StrCat(loudness_info), result);
-  EXPECT_THAT(result, HasSubstr("info_type= 131"));
+  EXPECT_THAT(result, HasSubstr("info_type= 139"));
   EXPECT_THAT(result, HasSubstr("anchor_element[0]= 2"));
+  EXPECT_THAT(result, HasSubstr("momentary_loudness:"));
+  EXPECT_THAT(result, HasSubstr("first_bin_center= 32"));
   EXPECT_THAT(result, HasSubstr("info_type_bytes[0]= 97"));
 }
 

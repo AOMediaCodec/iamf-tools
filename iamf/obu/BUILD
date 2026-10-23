@@ -193,6 +193,7 @@ cc_library(
     srcs = ["loudness_info.cc"],
     hdrs = ["loudness_info.h"],
     deps = [
+        ":momentary_loudness",
         ":types",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/common:read_bit_buffer",

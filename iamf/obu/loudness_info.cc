@@ -108,6 +108,9 @@ uint8_t LoudnessInfo::GetInfoType() const {
   if (anchored_loudness.has_value()) {
     computed_info_type |= kAnchoredLoudness;
   }
+  if (momentary_loudness.has_value()) {
+    computed_info_type |= kMomentaryLoudness;
+  }
   if (layout_extension.has_value()) {
     computed_info_type |= (layout_extension->info_type & kAnyLayoutExtension);
   }
@@ -176,6 +179,11 @@ std::string LoudnessInfo::ToString() const {
           "\n          anchored_loudness[", i,
           "]= ", anchored_loudness->anchor_elements[i].anchored_loudness);
     }
+  }
+
+  if (momentary_loudness.has_value()) {
+    absl::StrAppend(&result, "\n        momentary_loudness:\n",
+                    *momentary_loudness);
   }
 
   if (layout_extension.has_value()) {
