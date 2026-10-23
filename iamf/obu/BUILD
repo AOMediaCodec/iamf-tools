@@ -258,6 +258,21 @@ cc_library(
 )
 
 cc_library(
+    name = "momentary_loudness",
+    srcs = ["momentary_loudness.cc"],
+    hdrs = ["momentary_loudness.h"],
+    deps = [
+        ":types",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/obu/param_definitions:momentary_loudness_param_definition",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "momentary_loudness_parameter_data",
     srcs = ["momentary_loudness_parameter_data.cc"],
     hdrs = ["momentary_loudness_parameter_data.h"],
