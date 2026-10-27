@@ -45,7 +45,10 @@ using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using MixPresentationObus = DescriptorObus::MixPresentationObus;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
-constexpr uint32_t kNumSamplesPerFrame = 8;
+
+// TODO(b/576563728): This number may be smaller once the true frame size
+//                    limitation is found.
+constexpr uint32_t kNumSamplesPerFrame = 32;
 constexpr uint32_t kBitDepth = 16;
 constexpr DecodedUleb128 kSampleRate = 48000;
 constexpr DecodedUleb128 kFirstAudioElementId = 2;
