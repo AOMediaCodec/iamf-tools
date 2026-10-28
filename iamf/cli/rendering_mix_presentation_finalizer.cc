@@ -26,7 +26,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/any_invocable.h"
-#include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_macros.h"
@@ -431,12 +430,16 @@ GetRenderedSamplesAndPostProcessor(
 
 absl::StatusOr<RenderingMixPresentationFinalizer>
 RenderingMixPresentationFinalizer::Create(
-    const LayoutRendererFactory* absl_nullable layout_renderer_factory,
+    std::optional<TrimmingSettings> trimming_settings,
     const LoudnessCalculatorFactoryBase* absl_nullable
         loudness_calculator_factory,
     const DescriptorObus::AudioElementsById& audio_elements,
     const SampleProcessorFactory& sample_processor_factory,
     const DescriptorObus::MixPresentationObus& mix_presentation_obus) {
+  const std::unique_ptr<LayoutRendererFactory> layout_renderer_factory =
+      trimming_settings.has_value()
+          ? std::make_unique<LayoutRendererFactory>(*trimming_settings)
+          : nullptr;
   const bool rendering_enabled = layout_renderer_factory != nullptr;
   if (!rendering_enabled) {
     ABSL_LOG(INFO) << "Rendering is safely disabled.";

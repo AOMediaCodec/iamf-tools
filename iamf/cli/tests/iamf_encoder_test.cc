@@ -28,7 +28,6 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/iamf_components.h"
-#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
@@ -283,10 +282,9 @@ class IamfEncoderTest : public ::testing::Test {
   }
 
   IamfEncoder CreateExpectOk() {
-    auto iamf_encoder =
-        IamfEncoder::Create(user_metadata_, layout_renderer_factory_.get(),
-                            loudness_calculator_factory_.get(),
-                            sample_processor_factory_, obu_sequencer_factory_);
+    auto iamf_encoder = IamfEncoder::Create(
+        user_metadata_, trimming_settings_, loudness_calculator_factory_.get(),
+        sample_processor_factory_, obu_sequencer_factory_);
     EXPECT_THAT(iamf_encoder, IsOkAndHolds(NotNull()));
     // Most users can use the `IamfEncoder` on the heap. For convenience, we
     // check that it is valid and unwrap it.
@@ -297,8 +295,7 @@ class IamfEncoderTest : public ::testing::Test {
   // Default some dependencies to be based on the real `IamfComponents`
   // implementations. And generally disable wav writing since it is not needed
   // for most tests.
-  std::unique_ptr<LayoutRendererFactory> layout_renderer_factory_ =
-      CreateLayoutRendererFactory();
+  std::optional<TrimmingSettings> trimming_settings_ = TrimmingSettings{};
   std::unique_ptr<LoudnessCalculatorFactoryBase> loudness_calculator_factory_ =
       CreateLoudnessCalculatorFactory();
   RenderingMixPresentationFinalizer::SampleProcessorFactory
@@ -311,7 +308,7 @@ TEST_F(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
   user_metadata_.Clear();
 
   EXPECT_THAT(
-      IamfEncoder::Create(user_metadata_, layout_renderer_factory_.get(),
+      IamfEncoder::Create(user_metadata_, trimming_settings_,
                           loudness_calculator_factory_.get(),
                           sample_processor_factory_, obu_sequencer_factory_),
       Not(IsOk()));
@@ -571,7 +568,7 @@ TEST_F(
   SetupDescriptorObus();
   // Configuring the encoder with null factories is permitted, which disables
   // rendering and loudness measurements.
-  layout_renderer_factory_ = nullptr;
+  trimming_settings_ = std::nullopt;
   loudness_calculator_factory_ = nullptr;
   auto iamf_encoder = CreateExpectOk();
   bool obus_are_finalized = false;

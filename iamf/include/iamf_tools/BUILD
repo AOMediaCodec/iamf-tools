@@ -50,6 +50,7 @@ cc_library(
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:proto_utils",
+        "//iamf/obu:types",
         "@abseil-cpp//absl/log:absl_log",
     ],
 )

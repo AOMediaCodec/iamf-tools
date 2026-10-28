@@ -29,7 +29,6 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"
-#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_streaming_iamf.h"
@@ -39,7 +38,6 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
-#include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/include/iamf_tools/iamf_encoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
@@ -105,8 +103,9 @@ class IamfEncoder : public api::IamfEncoderInterface {
   /*!\brief Factory function to create an `IamfEncoder`.
    *
    * \param user_metadata Input user metadata describing the IAMF stream.
-   * \param layout_renderer_factory Factory to create layout renderers for use
-   *        in measuring the loudness.
+   * \param trimming_settings Trimming settings to configure the rendering,
+   *        or `std::nullopt` to disable rendering. This is for creating
+   *        layout renderers to measure loudness.
    * \param loudness_calculator_factory Factory to create loudness calculators
    *        to measure the loudness of the output layouts.
    * \param sample_processor_factory Factory to create processors for use after
@@ -116,7 +115,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
    */
   static absl::StatusOr<std::unique_ptr<IamfEncoder>> Create(
       const iamf_tools_cli_proto::UserMetadata& user_metadata,
-      const LayoutRendererFactory* absl_nullable layout_renderer_factory,
+      std::optional<TrimmingSettings> trimming_settings,
       const LoudnessCalculatorFactoryBase* absl_nullable
           loudness_calculator_factory,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&

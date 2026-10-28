@@ -18,6 +18,7 @@
 #include <limits>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,7 +35,6 @@
 #include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/labeled_frame.h"
-#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -176,8 +176,8 @@ class FinalizerTest : public ::testing::Test {
 
   RenderingMixPresentationFinalizer CreateFinalizerExpectOk() {
     auto finalizer = RenderingMixPresentationFinalizer::Create(
-        layout_renderer_factory_.get(), loudness_calculator_factory_.get(),
-        audio_elements_, sample_processor_factory_, obus_to_finalize_);
+        trimming_settings_, loudness_calculator_factory_.get(), audio_elements_,
+        sample_processor_factory_, obus_to_finalize_);
     EXPECT_THAT(finalizer, IsOk());
     return *std::move(finalizer);
   }
@@ -232,8 +232,7 @@ class FinalizerTest : public ::testing::Test {
   iamf_tools_cli_proto::OutputAudioFormat output_audio_format_ =
       iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC;
   bool validate_loudness_ = kDontValidateLoudness;
-  std::unique_ptr<LayoutRendererFactory> layout_renderer_factory_ =
-      std::make_unique<LayoutRendererFactory>(TrimmingSettings{});
+  std::optional<TrimmingSettings> trimming_settings_ = TrimmingSettings{};
   std::unique_ptr<LoudnessCalculatorFactoryBase> loudness_calculator_factory_;
   // Custom `Finalize` arguments.
   RenderingMixPresentationFinalizer::SampleProcessorFactory
@@ -246,8 +245,8 @@ class FinalizerTest : public ::testing::Test {
 };
 
 // =Tests that the create function does not crash with various modes disabled.=
-TEST_F(FinalizerTest, CreateDoesNotCrashWhenLayoutRendererFactoryIsNullptr) {
-  layout_renderer_factory_ = nullptr;
+TEST_F(FinalizerTest, CreateDoesNotCrashWhenRenderingDisabled) {
+  trimming_settings_ = std::nullopt;
 
   CreateFinalizerExpectOk();
 }
@@ -287,7 +286,7 @@ TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
 
   EXPECT_THAT(
       RenderingMixPresentationFinalizer::Create(
-          layout_renderer_factory_.get(), loudness_calculator_factory_.get(),
+          trimming_settings_, loudness_calculator_factory_.get(),
           audio_elements_, sample_processor_factory_, obus_to_finalize_),
       Not(IsOk()));
 }
@@ -306,14 +305,14 @@ TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
   EXPECT_TRUE(std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
 }
 
-TEST_F(FinalizerTest, DoesNotCreateFilesWhenLayoutRenderingFactoryIsNullptr) {
+TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingDisabled) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
   const std::filesystem::path output_directory =
       GetAndCreateOutputDirectory("");
-  layout_renderer_factory_ = nullptr;
+  trimming_settings_ = std::nullopt;
   std::list<ParameterBlockWithData> parameter_blocks;
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -616,27 +615,11 @@ TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
 }
 
 //============== Various modes fallback to preserving loudness. ==============
-TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderFactoryIsNullptr) {
+TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderingDisabled) {
   PrepareObusForOneSamplePassThroughMono();
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
-  layout_renderer_factory_ = nullptr;
-  auto finalizer = CreateFinalizerExpectOk();
-
-  validate_loudness_ = kDontValidateLoudness;
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
-  ASSERT_FALSE(finalized_obus_.empty());
-  EXPECT_EQ(finalized_obus_.front().sub_mixes_[0].layouts[0].loudness,
-            kArbitraryLoudnessInfo);
-}
-
-TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderingIsNotSupported) {
-  PrepareObusForOneSamplePassThroughMono();
-  obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
-      kArbitraryLoudnessInfo;
-  layout_renderer_factory_ = nullptr;
-  loudness_calculator_factory_ =
-      std::make_unique<AlwaysNullLoudnessCalculatorFactory>();
+  trimming_settings_ = std::nullopt;
   auto finalizer = CreateFinalizerExpectOk();
 
   validate_loudness_ = kDontValidateLoudness;
@@ -879,7 +862,7 @@ TEST_F(FinalizerTest,
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   // Disable rendering.
-  layout_renderer_factory_ = nullptr;
+  trimming_settings_ = std::nullopt;
 
   auto finalizer = CreateFinalizerExpectOk();
 

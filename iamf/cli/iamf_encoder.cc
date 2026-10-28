@@ -27,7 +27,6 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_frame_decoder.h"
@@ -38,7 +37,6 @@
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"
-#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_streaming_iamf.h"
@@ -59,7 +57,6 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/mix_presentation_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
-#include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/temporal_unit_view.h"
 #include "iamf/common/utils/macros.h"
@@ -258,7 +255,7 @@ IamfEncoder::CreateNoObuSequencers() {
 
 absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const LayoutRendererFactory* absl_nullable layout_renderer_factory,
+    std::optional<TrimmingSettings> trimming_settings,
     const LoudnessCalculatorFactoryBase* absl_nullable
         loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
@@ -312,7 +309,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   // Initialize a mix presentation mix presentation finalizer. Requires
   // rendering data for every submix to accurately compute loudness.
   auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(
-      layout_renderer_factory, loudness_calculator_factory, *audio_elements,
+      trimming_settings, loudness_calculator_factory, *audio_elements,
       sample_processor_factory, mix_presentation_obus);
   if (!mix_presentation_finalizer.ok()) {
     return mix_presentation_finalizer.status();

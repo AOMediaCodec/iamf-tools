@@ -39,7 +39,6 @@
 #include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
-#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/obu_processor_utils.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -969,10 +968,9 @@ ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
   // Create the mix presentation finalizer which is used to render the output
   // files. We neither trust the user-provided loudness, nor care about the
   // calculated loudness.
-  const LayoutRendererFactory layout_renderer_factory(trimming_settings);
   absl::StatusOr<RenderingMixPresentationFinalizer> mix_presentation_finalizer =
       RenderingMixPresentationFinalizer::Create(
-          &layout_renderer_factory, /*loudness_calculator_factory=*/nullptr,
+          trimming_settings, /*loudness_calculator_factory=*/nullptr,
           audio_elements,
           RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
           {simplified_mix_presentation});

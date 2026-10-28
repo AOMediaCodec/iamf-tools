@@ -17,22 +17,12 @@
 #include <string>
 #include <vector>
 
-#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 
 namespace iamf_tools {
-
-/*!\brief Creates an instance of `LayoutRendererFactory`.
- *
- * This is useful for binding different kinds of layout renderer factories in
- * an IAMF Encoder.
- *
- * \return Unique pointer to the created layout renderer factory.
- */
-std::unique_ptr<LayoutRendererFactory> CreateLayoutRendererFactory();
 
 /*!\brief Creates an instance of `LoudnessCalculatorFactoryBase`.
  *

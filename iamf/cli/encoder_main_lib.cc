@@ -304,7 +304,7 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   };
 
   auto iamf_encoder =
-      IamfEncoder::Create(user_metadata, CreateLayoutRendererFactory().get(),
+      IamfEncoder::Create(user_metadata, TrimmingSettings{},
                           CreateLoudnessCalculatorFactory().get(),
                           sample_processor_factory, obu_sequencer_factory);
   if (!iamf_encoder.ok()) {

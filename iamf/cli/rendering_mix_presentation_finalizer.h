@@ -27,7 +27,6 @@
 #include "absl/types/span.h"
 #include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
-#include "iamf/cli/layout_renderer_factory.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -135,8 +134,8 @@ class RenderingMixPresentationFinalizer {
    * Rendering metadata is extracted from the mix presentation OBUs, which will
    * be used to render the mix presentations in PushTemporalUnit.
    *
-   * \param layout_renderer_factory Factory to create layout renderers, or
-   *        `nullptr` to disable rendering.
+   * \param trimming_settings Trimming settings to configure the rendering,
+   *        or `std::nullopt` to disable rendering.
    * \param loudness_calculator_factory Factory to create loudness calculators
    *        or `nullptr` to disable loudness calculation.
    * \param audio_elements Audio elements with data.
@@ -147,7 +146,7 @@ class RenderingMixPresentationFinalizer {
    *         specific status on failure.
    */
   static absl::StatusOr<RenderingMixPresentationFinalizer> Create(
-      const LayoutRendererFactory* absl_nullable layout_renderer_factory,
+      std::optional<TrimmingSettings> trimming_settings,
       const LoudnessCalculatorFactoryBase* absl_nullable
           loudness_calculator_factory,
       const DescriptorObus::AudioElementsById& audio_elements,
