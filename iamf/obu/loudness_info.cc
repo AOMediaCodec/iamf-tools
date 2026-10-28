@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -28,6 +29,7 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/momentary_loudness.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -83,18 +85,39 @@ absl::StatusOr<LoudnessInfo> LoudnessInfo::CreateFromBuffer(ReadBitBuffer& rb) {
     RETURN_IF_NOT_OK(
         ValidateUniqueAnchorElements(anchored_loudness.anchor_elements));
   }
-  // Conditionally read `layout_extension` based on `info_type`.
-  if ((info_type & kAnyLayoutExtension) != 0) {
+  // Conditionally read `momentary_loudness` and `layout_extension` based on
+  // `info_type`. Per IAMF spec, both share a single `info_type_size` prefix.
+  if ((info_type & (kMomentaryLoudness | kAnyLayoutExtension)) != 0) {
     DecodedUleb128 info_type_size;
     RETURN_IF_NOT_OK(rb.ReadULeb128(info_type_size));
     RETURN_IF_NOT_OK(ValidateInRange(
         info_type_size, {DecodedUleb128{0}, kEntireObuSizeMaxTwoMegabytes},
         "info_type_size"));
-    LayoutExtension& layout_extension = loudness.layout_extension.emplace();
-    layout_extension.info_type = info_type & kAnyLayoutExtension;
-    layout_extension.info_type_bytes.resize(info_type_size);
-    RETURN_IF_NOT_OK(
-        rb.ReadUint8Span(absl::MakeSpan(layout_extension.info_type_bytes)));
+
+    const int64_t position_after_info_type_size = rb.Tell();
+    if ((info_type & kMomentaryLoudness) != 0) {
+      ABSL_ASSIGN_OR_RETURN(loudness.momentary_loudness,
+                            MomentaryLoudness::CreateFromBuffer(rb));
+    }
+    const int64_t momentary_loudness_size =
+        (rb.Tell() - position_after_info_type_size) / 8;
+    const uint8_t remaining_extension_info_type =
+        info_type & (kAnyLayoutExtension & ~kMomentaryLoudness);
+    if (remaining_extension_info_type != 0) {
+      RETURN_IF_NOT_OK(Validate(static_cast<int64_t>(info_type_size),
+                                std::greater_equal{}, momentary_loudness_size,
+                                "info_type_size >= "));
+      LayoutExtension& layout_extension = loudness.layout_extension.emplace();
+      layout_extension.info_type = remaining_extension_info_type;
+      layout_extension.info_type_bytes.resize(
+          static_cast<int64_t>(info_type_size) - momentary_loudness_size);
+      RETURN_IF_NOT_OK(
+          rb.ReadUint8Span(absl::MakeSpan(layout_extension.info_type_bytes)));
+    } else {
+      RETURN_IF_NOT_OK(ValidateEqual(static_cast<int64_t>(info_type_size),
+                                     momentary_loudness_size,
+                                     "info_type_size"));
+    }
   }
 
   return loudness;

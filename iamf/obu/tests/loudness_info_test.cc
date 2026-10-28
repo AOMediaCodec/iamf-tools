@@ -266,6 +266,49 @@ TEST(CreateFromBuffer, ReadsMinimalLoudnessInfo) {
   EXPECT_EQ(loudness_info->digital_peak, kDigitalPeak);
   EXPECT_EQ(loudness_info->true_peak, std::nullopt);
   EXPECT_EQ(loudness_info->anchored_loudness, std::nullopt);
+  EXPECT_EQ(loudness_info->momentary_loudness, std::nullopt);
+  EXPECT_EQ(loudness_info->layout_extension, std::nullopt);
+  EXPECT_FALSE(rb->IsDataAvailable());
+}
+
+TEST(CreateFromBuffer, ReadsMomentaryLoudness) {
+  constexpr auto kPayload = std::to_array<uint8_t>({
+      // `info_type`.
+      LoudnessInfo::kMomentaryLoudness,
+      // `integrated_loudness`.
+      0,
+      18,
+      // `digital_peak`.
+      0,
+      19,
+      // `info_type_size`.
+      13,
+      // `momentary_loudness`:
+      // `momentary_loudness_param_def`:
+      0x7f,  // `parameter_id` = 127
+      0x80,
+      0xf7,
+      0x02,  // `parameter_rate` = 48000
+      0x00,  // `param_definition_mode` (1) = 0, `reserved` (7) = 0
+      0x80,
+      0x08,  // `duration` = 1024
+      0x80,
+      0x08,  // `constant_subblock_duration` = 1024
+      // `num_bin_pairs_minus_one` (3) = 0, `bin_width_minus_one` (6) = 63,
+      // `first_bin_center` (6) = 32, `reserved_momentary_loudness` (1) = 0.
+      0b000'11111,
+      0b1'100000'0,
+      // `count`.
+      24,
+      5,
+  });
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(kPayload);
+
+  const auto loudness_info = LoudnessInfo::CreateFromBuffer(*rb);
+
+  ASSERT_THAT(loudness_info, IsOk());
+  EXPECT_EQ(loudness_info->GetInfoType(), LoudnessInfo::kMomentaryLoudness);
+  EXPECT_EQ(loudness_info->momentary_loudness, CreateMomentaryLoudness());
   EXPECT_EQ(loudness_info->layout_extension, std::nullopt);
   EXPECT_FALSE(rb->IsDataAvailable());
 }
@@ -274,7 +317,7 @@ TEST(CreateFromBuffer, ReadsAllOptionalFields) {
   constexpr auto kPayload = std::to_array<uint8_t>({
       // `info_type`.
       LoudnessInfo::kTruePeak | LoudnessInfo::kAnchoredLoudness |
-          LoudnessInfo::kInfoTypeBitMask128,
+          LoudnessInfo::kMomentaryLoudness | LoudnessInfo::kInfoTypeBitMask128,
       // `integrated_loudness`.
       0,
       18,
@@ -294,8 +337,26 @@ TEST(CreateFromBuffer, ReadsAllOptionalFields) {
       AnchoredLoudnessElement::kAnchorElementDialogue,
       0,
       21,
-      // `info_type_size`.
-      2,
+      // `info_type_size` (13 momentary_loudness bytes + 2 info_type_bytes).
+      15,
+      // `momentary_loudness`:
+      // `momentary_loudness_param_def`:
+      0x7f,  // `parameter_id` = 127
+      0x80,
+      0xf7,
+      0x02,  // `parameter_rate` = 48000
+      0x00,  // `param_definition_mode` (1) = 0, `reserved` (7) = 0
+      0x80,
+      0x08,  // `duration` = 1024
+      0x80,
+      0x08,  // `constant_subblock_duration` = 1024
+      // `num_bin_pairs_minus_one` (3) = 0, `bin_width_minus_one` (6) = 63,
+      // `first_bin_center` (6) = 32, `reserved_momentary_loudness` (1) = 0.
+      0b000'11111,
+      0b1'100000'0,
+      // `count`.
+      24,
+      5,
       // `info_type_bytes`.
       'a',
       'b',
@@ -307,6 +368,7 @@ TEST(CreateFromBuffer, ReadsAllOptionalFields) {
   ASSERT_THAT(loudness_info, IsOk());
   EXPECT_EQ(loudness_info->GetInfoType(),
             LoudnessInfo::kTruePeak | LoudnessInfo::kAnchoredLoudness |
+                LoudnessInfo::kMomentaryLoudness |
                 LoudnessInfo::kInfoTypeBitMask128);
   EXPECT_EQ(loudness_info->integrated_loudness, kIntegratedLoudness);
   EXPECT_EQ(loudness_info->digital_peak, kDigitalPeak);
@@ -320,10 +382,88 @@ TEST(CreateFromBuffer, ReadsAllOptionalFields) {
               {.anchor_element =
                    AnchoredLoudnessElement::kAnchorElementDialogue,
                .anchored_loudness = kAnchoredLoudness1}}}));
+  EXPECT_EQ(loudness_info->momentary_loudness, CreateMomentaryLoudness());
   EXPECT_EQ(loudness_info->layout_extension,
             (LayoutExtension{.info_type = LoudnessInfo::kInfoTypeBitMask128,
                              .info_type_bytes = {'a', 'b'}}));
   EXPECT_FALSE(rb->IsDataAvailable());
+}
+
+TEST(CreateFromBuffer,
+     ReturnsErrorWhenInfoTypeSizeIsSmallerThanMomentaryLoudnessSize) {
+  constexpr auto kPayload = std::to_array<uint8_t>({
+      // `info_type`.
+      LoudnessInfo::kMomentaryLoudness | LoudnessInfo::kInfoTypeBitMask128,
+      // `integrated_loudness`.
+      0,
+      18,
+      // `digital_peak`.
+      0,
+      19,
+      // `info_type_size` = 12 (smaller than the 13-byte `momentary_loudness`).
+      12,
+      // `momentary_loudness` (13 bytes):
+      // `momentary_loudness_param_def`:
+      0x7f,  // `parameter_id` = 127
+      0x80,
+      0xf7,
+      0x02,  // `parameter_rate` = 48000
+      0x00,  // `param_definition_mode` (1) = 0, `reserved` (7) = 0
+      0x80,
+      0x08,  // `duration` = 1024
+      0x80,
+      0x08,  // `constant_subblock_duration` = 1024
+      // `num_bin_pairs_minus_one` (3) = 0, `bin_width_minus_one` (6) = 63,
+      // `first_bin_center` (6) = 32, `reserved_momentary_loudness` (1) = 0.
+      0b000'11111,
+      0b1'100000'0,
+      // `count`.
+      24,
+      5,
+  });
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(kPayload);
+
+  EXPECT_THAT(LoudnessInfo::CreateFromBuffer(*rb), Not(IsOk()));
+}
+
+TEST(CreateFromBuffer,
+     ReturnsErrorWhenExtraBytesPresentWithoutOtherExtensionBits) {
+  constexpr auto kPayload = std::to_array<uint8_t>({
+      // `info_type` has only `kMomentaryLoudness` set.
+      LoudnessInfo::kMomentaryLoudness,
+      // `integrated_loudness`.
+      0,
+      18,
+      // `digital_peak`.
+      0,
+      19,
+      // `info_type_size` = 14 (1 byte larger than the 13-byte
+      // `momentary_loudness`).
+      14,
+      // `momentary_loudness` (13 bytes):
+      // `momentary_loudness_param_def`:
+      0x7f,  // `parameter_id` = 127
+      0x80,
+      0xf7,
+      0x02,  // `parameter_rate` = 48000
+      0x00,  // `param_definition_mode` (1) = 0, `reserved` (7) = 0
+      0x80,
+      0x08,  // `duration` = 1024
+      0x80,
+      0x08,  // `constant_subblock_duration` = 1024
+      // `num_bin_pairs_minus_one` (3) = 0, `bin_width_minus_one` (6) = 63,
+      // `first_bin_center` (6) = 32, `reserved_momentary_loudness` (1) = 0.
+      0b000'11111,
+      0b1'100000'0,
+      // `count`.
+      24,
+      5,
+      // Extra byte not accounted for by any extension bit.
+      'a',
+  });
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(kPayload);
+
+  EXPECT_THAT(LoudnessInfo::CreateFromBuffer(*rb), Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ReturnsErrorWhenAnchorElementsAreNotUnique) {
