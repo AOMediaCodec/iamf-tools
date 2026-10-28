@@ -65,9 +65,11 @@ git_repository(
 )
 
 git_repository(
-    name = "com_google_obr",
-    commit = "478dc7c752d5eccae534635139ff0253eee3a14a",
-    remote = "https://github.com/google/obr.git",
+    name = "aom_oar_obr",
+    remote = "https://github.com/AOMediaCodec/oar.git",
+    commit = "a7a5cc890ee088e71ff6dc13628e6e7fe74a1481",
+    strip_prefix = "src/renderer/obr/obr_capi/obr",
+    sparse_checkout_patterns = ["src/renderer/obr/obr_capi/obr/**"],
 )
 
 # PFFFT, transitive dependency needed by OBR.

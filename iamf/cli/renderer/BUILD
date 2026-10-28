@@ -73,9 +73,9 @@ cc_library(
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:string_view",
         "@abseil-cpp//absl/types:span",
-        "@com_google_obr//obr/audio_buffer",
-        "@com_google_obr//obr/renderer:audio_element_type",
-        "@com_google_obr//obr/renderer:obr_impl",
+        "@aom_oar_obr//obr/audio_buffer",
+        "@aom_oar_obr//obr/renderer:audio_element_type",
+        "@aom_oar_obr//obr/renderer:obr_impl",
     ],
 )
 
