@@ -43,6 +43,7 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/momentary_loudness_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
@@ -602,6 +603,18 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     EXPECT_THAT(generator.AddMetadata(metadata), Not(IsOk()));
   }
+}
+
+TEST(Initialize, IgnoresMomentaryLoudnessParamDefinition) {
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants = {
+          {kParameterId, MomentaryLoudnessParamDefinition(
+                             MakeOneSubblockParamDefinitionBaseArgs(
+                                 kParameterId, kParameterRate, kDuration))}};
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
+                                    param_definition_variants);
+
+  EXPECT_THAT(generator.Initialize(/*audio_elements=*/{}), IsOk());
 }
 
 TEST(GenerateMixGainParameterBlocks, IgnoresMismatchedAnimationType) {

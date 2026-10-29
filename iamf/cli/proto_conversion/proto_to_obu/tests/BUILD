@@ -225,6 +225,7 @@ cc_test(
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "//iamf/obu/param_definitions:momentary_loudness_param_definition",
         "//iamf/obu/param_definitions:param_definition_variant",
         "//iamf/obu/tests:obu_test_utils",
         "@abseil-cpp//absl/container:flat_hash_map",

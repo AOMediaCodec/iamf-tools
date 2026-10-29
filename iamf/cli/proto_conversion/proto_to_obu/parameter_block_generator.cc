@@ -599,8 +599,11 @@ absl::Status ParameterBlockGenerator::Initialize(
       case kParameterDefinitionDualPolar:
       case kParameterDefinitionDualCart8:
       case kParameterDefinitionDualCart16:
+      case kParameterDefinitionMomentaryLoudness:
         // TODO(b/469407874): Support position parameter blocks fully in this
         //                    class.
+        // TODO(b/479171358): Support momentary loudness parameter blocks fully
+        //                    in this class.
         ABSL_LOG(WARNING) << "Ignoring parameter definition of type= "
                           << *param_definition_type
                           << " with parameter ID= " << parameter_id;
