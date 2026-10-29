@@ -718,7 +718,6 @@ LayoutReport BuildLayoutReport(const Layout& layout) {
   return r;
 }
 
-// TODO(b/576312597): Add unit test coverage for `BuildLoudnessReport`.
 LoudnessInfoReport BuildLoudnessReport(const LoudnessInfo& loud) {
   LoudnessInfoReport r;
   r.info_type = loud.GetInfoType();

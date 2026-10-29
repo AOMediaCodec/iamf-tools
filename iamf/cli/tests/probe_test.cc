@@ -32,6 +32,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
@@ -39,6 +40,7 @@
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
@@ -348,6 +350,59 @@ TEST(Probe, ReportsRenderingConfigParamDefinitions) {
   EXPECT_EQ(dual_polar_report.dual_polar->second.default_azimuth, 90);
   EXPECT_EQ(dual_polar_report.dual_polar->second.default_elevation, 45);
   EXPECT_EQ(dual_polar_report.dual_polar->second.default_distance, 127);
+}
+
+TEST(Probe, PopulatesLoudnessInfoReport) {
+  const IASequenceHeaderObu sequence_header(ObuHeader(),
+                                            ProfileVersion::kIamfSimpleProfile,
+                                            ProfileVersion::kIamfBaseProfile);
+  DescriptorObus::CodecConfigsById codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  DescriptorObus::AudioElementsById audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
+                                                {kSubstreamId}, codec_configs,
+                                                audio_elements);
+  DescriptorObus::MixPresentationObus mix_presentations;
+  AddMixPresentationObuWithAudioElementIds(kMixPresentationId,
+                                           {kAudioElementId}, kParameterId,
+                                           kParameterRate, mix_presentations);
+  mix_presentations.front().sub_mixes_[0].layouts[0].loudness = LoudnessInfo{
+      .integrated_loudness =
+          *QFormatOrFloatingPoint::CreateFromFloatingPoint(-16.0f),
+      .digital_peak = *QFormatOrFloatingPoint::CreateFromFloatingPoint(-2.0f),
+      .true_peak = *QFormatOrFloatingPoint::CreateFromFloatingPoint(-1.0f),
+      .anchored_loudness = AnchoredLoudness{
+          .anchor_elements = {
+              {.anchor_element =
+                   AnchoredLoudnessElement::kAnchorElementDialogue,
+               .anchored_loudness =
+                   QFormatOrFloatingPoint::MakeFromQ7_8(256)}}}};
+  auto data = SerializeObusExpectOk(
+      {&sequence_header, &codec_configs.at(kCodecConfigId),
+       &audio_elements.at(kAudioElementId).obu, &mix_presentations.front()});
+  AppendAudioFrame(kSubstreamId, &data);
+
+  const auto report = Probe(absl::MakeConstSpan(data));
+
+  ASSERT_THAT(report, IsOk());
+  ASSERT_EQ(report->mix_presentations.size(), 1u);
+  ASSERT_EQ(report->mix_presentations.front().sub_mixes.size(), 1u);
+  ASSERT_EQ(report->mix_presentations.front().sub_mixes.front().layouts.size(),
+            1u);
+  const auto& loudness =
+      report->mix_presentations.front().sub_mixes.front().layouts[0].loudness;
+  EXPECT_TRUE(loudness.true_peak_present);
+  EXPECT_TRUE(loudness.anchored_loudness_present);
+  EXPECT_FLOAT_EQ(loudness.integrated_loudness, -16.0f);
+  EXPECT_FLOAT_EQ(loudness.digital_peak, -2.0f);
+  ASSERT_TRUE(loudness.true_peak.has_value());
+  EXPECT_FLOAT_EQ(*loudness.true_peak, -1.0f);
+  ASSERT_EQ(loudness.anchored_loudness_elements.size(), 1u);
+  EXPECT_EQ(loudness.anchored_loudness_elements[0].anchor_element, "dialogue");
+  EXPECT_EQ(loudness.anchored_loudness_elements[0].anchor_element_raw, 1);
+  EXPECT_EQ(loudness.anchored_loudness_elements[0].anchored_loudness_q7_8, 256);
+  EXPECT_FLOAT_EQ(loudness.anchored_loudness_elements[0].anchored_loudness,
+                  1.0f);
 }
 
 TEST(Probe, ComputesNumChannelsAcrossScalableLayers) {
