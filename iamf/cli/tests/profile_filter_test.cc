@@ -13,8 +13,6 @@
 
 #include <array>
 #include <cstdint>
-#include <initializer_list>
-#include <list>
 #include <numeric>
 #include <optional>
 #include <utility>
@@ -29,9 +27,6 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/obu_with_data_generator.h"
-#include "iamf/cli/proto/ia_sequence_header.pb.h"
-#include "iamf/cli/proto/obu_header.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/q_format_or_floating_point.h"
@@ -62,8 +57,8 @@ using CodecConfigsById = DescriptorObus::CodecConfigsById;
 using MixPresentationObus = DescriptorObus::MixPresentationObus;
 using ::testing::Not;
 using ::testing::UnorderedElementsAre;
-
-using ::absl::MakeConstSpan;
+using ::testing::Values;
+using ::testing::ValuesIn;
 
 constexpr DecodedUleb128 kCodecConfigId = 1;
 constexpr DecodedUleb128 kSecondCodecConfigId = 2;
@@ -77,11 +72,6 @@ constexpr DecodedUleb128 kFirstMixPresentationId = 1;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 const uint32_t kCommonMixGainParameterRate = kSampleRate;
 const uint8_t kAudioElementReserved = 0;
-const int kOneLayer = 1;
-
-const std::array<DecodedUleb128, 28> kSubstreamIds = {
-    0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
-    14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
 
 constexpr std::array<DecodedUleb128, 1> kZerothOrderAmbisonicsSubstreamId{100};
 constexpr std::array<DecodedUleb128, 25> kFourthOrderAmbisonicsSubstreamIds = {
@@ -92,12 +82,16 @@ constexpr std::array<uint8_t, 0> kEmptyExtensionConfig{};
 
 using enum ProfileVersion;
 
-// TODO(b/573588752): Parameterize tests to reduce size of this file.
-
 // TODO(b/461488730): Diverge behavior of the IAMF v2.0.0 profiles as features
 //                    are added.
 const absl::flat_hash_set<ProfileVersion> kAllKnownProfileVersions = {
     kIamfSimpleProfile,       kIamfBaseProfile,      kIamfBaseEnhancedProfile,
+    kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
+
+const absl::flat_hash_set<ProfileVersion> kV1ProfileVersions = {
+    kIamfSimpleProfile, kIamfBaseProfile, kIamfBaseEnhancedProfile};
+
+const absl::flat_hash_set<ProfileVersion> kV2ProfileVersions = {
     kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
 
 const ScalableChannelLayoutConfig kOneLayerStereoConfig = {
@@ -137,14 +131,13 @@ TEST(FilterProfilesForAudioElement,
       ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
       kFirstSubstreamId, *ObjectsConfig::Create(1, {}));
   ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> supported_profiles = {
-      kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
+  absl::flat_hash_set<ProfileVersion> supported_profiles = kV2ProfileVersions;
 
   EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
                   "", *audio_element_obu, supported_profiles),
               IsOk());
 
-  EXPECT_EQ(supported_profiles, supported_profiles);
+  EXPECT_EQ(supported_profiles, kV2ProfileVersions);
 }
 
 TEST(FilterProfilesForAudioElement,
@@ -158,10 +151,8 @@ TEST(FilterProfilesForAudioElement,
   EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
                   "", *audio_element_obu, input_profiles),
               IsOk());
-  absl::flat_hash_set<ProfileVersion> expected_supported_profiles = {
-      kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
 
-  EXPECT_EQ(input_profiles, expected_supported_profiles);
+  EXPECT_EQ(input_profiles, kV2ProfileVersions);
 }
 
 TEST(FilterProfilesForAudioElement,
@@ -170,8 +161,7 @@ TEST(FilterProfilesForAudioElement,
       ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
       kFirstSubstreamId, *ObjectsConfig::Create(1, {}));
   ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> input_profiles = {
-      kIamfSimpleProfile, kIamfBaseProfile, kIamfBaseEnhancedProfile};
+  absl::flat_hash_set<ProfileVersion> input_profiles = kV1ProfileVersions;
 
   EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
                   "", *audio_element_obu, input_profiles),
@@ -266,297 +256,6 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
-     RemovesSimpleProfileWhenFirstLayerIsExpandedLayout) {
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerExpandedLayoutLFEConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, simple_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(simple_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesSimpleProfileForReservedAudioElementType) {
-  auto audio_element_obu = AudioElementObu::CreateForExtension(
-      ObuHeader(), kFirstAudioElementId,
-      AudioElementObu::kAudioElementBeginReserved, kAudioElementReserved,
-      kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, simple_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(simple_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesSimpleProfileForReservedAmbisonicsMode) {
-  auto audio_element_obu = AudioElementObu::CreateForExtension(
-      ObuHeader(), kFirstAudioElementId,
-      AudioElementObu::kAudioElementSceneBased, kAudioElementReserved,
-      kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, simple_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(simple_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseProfileWhenFirstLayerIsExpandedLayout) {
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerExpandedLayoutLFEConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseProfileForReservedAudioElementType) {
-  auto audio_element_obu = AudioElementObu::CreateForExtension(
-      ObuHeader(), kFirstAudioElementId,
-      AudioElementObu::kAudioElementBeginReserved, kAudioElementReserved,
-      kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseProfileForReservedAmbisonicsMode) {
-  auto audio_element_obu = AudioElementObu::CreateForExtension(
-      ObuHeader(), kFirstAudioElementId,
-      AudioElementObu::kAudioElementSceneBased, kAudioElementReserved,
-      kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayout10_2_9_3) {
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayout10_2_9_3Config = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = 1,
-           .coupled_substream_count = 1,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayout10_2_9_3}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerExpandedLayout10_2_9_3Config);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutLfePair) {
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutLfePairConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = 1,
-           .coupled_substream_count = 1,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutLfePair}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerExpandedLayoutLfePairConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutBottom3Ch) {
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutBottom3ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = 1,
-           .coupled_substream_count = 1,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerExpandedLayoutBottom3ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayout7_1_5_4Ch) {
-  constexpr DecodedUleb128 kNumSubstreams = 10;
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayout7_1_5_4ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = kNumSubstreams,
-           .coupled_substream_count = 7,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
-      kOneLayerExpandedLayout7_1_5_4ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutBottom4Ch) {
-  constexpr DecodedUleb128 kNumSubstreams = 2;
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutBottom4ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = kNumSubstreams,
-           .coupled_substream_count = 2,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutBottom4Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
-      kOneLayerExpandedLayoutBottom4ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutTop1Ch) {
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutTop1ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = 1,
-           .coupled_substream_count = 0,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutTop1Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerExpandedLayoutTop1ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutTop5Ch) {
-  constexpr DecodedUleb128 kNumSubstreams = 3;
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutTop5ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = kNumSubstreams,
-           .coupled_substream_count = 2,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutTop5Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
-      kOneLayerExpandedLayoutTop5ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutReserved20) {
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutReserved20Config = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = 1,
-           .coupled_substream_count = 1,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutReserved20}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerExpandedLayoutReserved20Config);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForAudioElement,
      KeepsBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutLFE) {
   auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
       ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
@@ -573,11 +272,17 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileForReservedAudioElementType) {
-  auto audio_element_obu = AudioElementObu::CreateForExtension(
-      ObuHeader(), kFirstAudioElementId,
-      AudioElementObu::kAudioElementBeginReserved, kAudioElementReserved,
-      kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
+     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutReserved20) {
+  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutReserved20Config = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = 1,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutReserved20}}};
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      {kFirstSubstreamId}, kOneLayerExpandedLayoutReserved20Config);
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
@@ -590,20 +295,26 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileForReservedAmbisonicsMode) {
-  auto audio_element_obu = AudioElementObu::CreateForExtension(
-      ObuHeader(), kFirstAudioElementId,
-      AudioElementObu::kAudioElementSceneBased, kAudioElementReserved,
-      kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
+     RemovesAllKnownProfilesWhenExpandedLayoutIsSignalledButNotPresent) {
+  const ScalableChannelLayoutConfig kInvalidExpandedLayout = {
+      .channel_audio_layer_configs = {{
+          .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+          .substream_count = 1,
+          .coupled_substream_count = 1,
+          .expanded_loudspeaker_layout = std::nullopt,
+      }}};
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kCodecConfigId,
+      {kFirstSubstreamId}, kInvalidExpandedLayout);
   ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
 
   EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, base_enhanced_profile),
+                  "", *audio_element_obu, all_known_profiles),
               Not(IsOk()));
 
-  EXPECT_TRUE(base_enhanced_profile.empty());
+  EXPECT_TRUE(all_known_profiles.empty());
 }
 
 void InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
@@ -631,23 +342,6 @@ void InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
 
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
-      kCommonMixGainParameterId, kCommonMixGainParameterRate,
-      mix_presentation_obus);
-}
-
-void InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
-    CodecConfigsById& codec_config_obus, AudioElementsById& audio_elements,
-    MixPresentationObus& mix_presentation_obus) {
-  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
-                                        codec_config_obus);
-  AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
-      codec_config_obus, audio_elements);
-  AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kSecondAudioElementId, kCodecConfigId, {kSecondSubstreamId},
-      codec_config_obus, audio_elements);
-  AddMixPresentationObuWithAudioElementIds(
-      kFirstMixPresentationId, {kFirstAudioElementId, kSecondAudioElementId},
       kCommonMixGainParameterId, kCommonMixGainParameterRate,
       mix_presentation_obus);
 }
@@ -755,23 +449,6 @@ void InitializeDescriptorObusWithNSubmixes(
 }
 
 TEST(FilterProfilesForMixPresentation,
-     RemovesSimpleProfileWhenThereAreTwoSubmixes) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
-                                        mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile),
-      Not(IsOk()));
-
-  EXPECT_TRUE(simple_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
      AllKnownProfilesDoNotSupportMultipleCodecConfigsInTheFirstSubmix) {
   CodecConfigsById codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
@@ -828,197 +505,7 @@ TEST(FilterProfilesForMixPresentation,
           all_known_profiles),
       IsOk());
 
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
-}
-
-TEST(FilterProfilesForAudioElement, SomeProfilesSupport10_2_9_3ExpandedLayout) {
-  constexpr uint8_t kNumSubstreams = 16;
-  const ScalableChannelLayoutConfig kExpandedLayout10_2_9_3Config = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = kNumSubstreams,
-           .coupled_substream_count = 8,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayout10_2_9_3}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
-      kExpandedLayout10_2_9_3Config);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, all_known_profiles),
-              IsOk());
-
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
-}
-
-TEST(FilterProfilesForAudioElement, SomeProfilesSupportLfePairExpandedLayout) {
-  const ScalableChannelLayoutConfig kExpandedLayoutLfePairConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = 2,
-           .coupled_substream_count = 0,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutLfePair}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId, kSecondSubstreamId}, kExpandedLayoutLfePairConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, all_known_profiles),
-              IsOk());
-
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
-}
-
-TEST(FilterProfilesForAudioElement,
-     SomeProfilesSupportBottom3ChExpandedLayout) {
-  const ScalableChannelLayoutConfig kBottom3ChExpandedLayoutConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = 2,
-           .coupled_substream_count = 1,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId, kSecondSubstreamId}, kBottom3ChExpandedLayoutConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, all_known_profiles),
-              IsOk());
-
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
-}
-
-TEST(FilterProfilesForAudioElement,
-     SomeProfilesSupport7_1_5_4ChExpandedLayout) {
-  constexpr uint8_t kNumSubstreams = 10;
-  const ScalableChannelLayoutConfig kExpandedLayout7_1_5_4ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = kNumSubstreams,
-           .coupled_substream_count = 7,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
-      kExpandedLayout7_1_5_4ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, all_known_profiles),
-              IsOk());
-
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
-}
-
-TEST(FilterProfilesForAudioElement,
-     SomeProfilesSupportBottom4ChExpandedLayout) {
-  constexpr uint8_t kNumSubstreams = 2;
-  const ScalableChannelLayoutConfig kExpandedLayoutBottom4ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = kNumSubstreams,
-           .coupled_substream_count = 2,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutBottom4Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
-      kExpandedLayoutBottom4ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, all_known_profiles),
-              IsOk());
-
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
-}
-
-TEST(FilterProfilesForAudioElement, SomeProfilesSupportTop1ChExpandedLayout) {
-  constexpr uint8_t kNumSubstreams = 1;
-  const ScalableChannelLayoutConfig kExpandedLayoutTop1ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = kNumSubstreams,
-           .coupled_substream_count = 0,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutTop1Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
-      kExpandedLayoutTop1ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, all_known_profiles),
-              IsOk());
-
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
-}
-
-TEST(FilterProfilesForAudioElement, SomeProfilesSupportTop5ChExpandedLayout) {
-  constexpr uint8_t kNumSubstreams = 3;
-  const ScalableChannelLayoutConfig kExpandedLayoutTop5ChConfig = {
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = kNumSubstreams,
-           .coupled_substream_count = 2,
-           .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutTop5Ch}}};
-
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
-      kExpandedLayoutTop5ChConfig);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, all_known_profiles),
-              IsOk());
-
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
+  EXPECT_EQ(all_known_profiles, kV2ProfileVersions);
 }
 
 TEST(FilterProfilesForMixPresentation,
@@ -1051,9 +538,7 @@ TEST(FilterProfilesForMixPresentation,
           mix_presentation_with_different_bit_depths, all_known_profiles),
       IsOk());
 
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
+  EXPECT_EQ(all_known_profiles, kV2ProfileVersions);
 }
 
 TEST(FilterProfilesForMixPresentation,
@@ -1076,9 +561,7 @@ TEST(FilterProfilesForMixPresentation,
           audio_elements, mix_presentation_obus.front(), all_known_profiles),
       IsOk());
 
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
+  EXPECT_EQ(all_known_profiles, kV2ProfileVersions);
 }
 
 TEST(FilterProfilesForMixPresentation,
@@ -1214,207 +697,6 @@ TEST(FilterProfilesForMixPresentation,
   EXPECT_TRUE(all_known_profiles.empty());
 }
 
-TEST(FilterProfilesForMixPresentation,
-     KeepsSimpleProfileWhenThereIsOnlyOneAudioElement) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile),
-      IsOk());
-
-  EXPECT_TRUE(simple_profile.contains(kIamfSimpleProfile));
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesSimpleProfileWhenThereAreMultipleAudioElements) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile),
-      Not(IsOk()));
-  EXPECT_TRUE(simple_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesSimpleProfileWhenThereAreMoreThanSixteenChannels) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile),
-      Not(IsOk()));
-  EXPECT_TRUE(simple_profile.empty());
-}
-
-TEST(
-    FilterProfilesForMixPresentation,
-    RemovesSimpleProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  mix_presentation_obus.front()
-      .sub_mixes_.front()
-      .audio_elements.front()
-      .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile),
-      Not(IsOk()));
-
-  EXPECT_TRUE(simple_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesSimpleProfileWithReservedHeadphonesRenderingMode3) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  mix_presentation_obus.front()
-      .sub_mixes_.front()
-      .audio_elements.front()
-      .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeReserved3;
-  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), simple_profile),
-      Not(IsOk()));
-
-  EXPECT_TRUE(simple_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesBaseProfileWhenThereAreTwoSubmixes) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
-                                        mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                  audio_elements, mix_presentation_obus.front(), base_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     KeepsBaseProfileWhenThereIsOnlyOneAudioElement) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                  audio_elements, mix_presentation_obus.front(), base_profile),
-              IsOk());
-
-  EXPECT_TRUE(base_profile.contains(kIamfBaseProfile));
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesBaseProfileWhenThereAreMoreThanEighteenChannels) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                  audio_elements, mix_presentation_obus.front(), base_profile),
-              Not(IsOk()));
-  EXPECT_TRUE(base_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesBaseProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  mix_presentation_obus.front()
-      .sub_mixes_.front()
-      .audio_elements.front()
-      .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                  audio_elements, mix_presentation_obus.front(), base_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesBaseProfileWithReservedHeadphonesRenderingMode3) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  mix_presentation_obus.front()
-      .sub_mixes_.front()
-      .audio_elements.front()
-      .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeReserved3;
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                  audio_elements, mix_presentation_obus.front(), base_profile),
-              Not(IsOk()));
-
-  EXPECT_TRUE(base_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesBaseEnhancedProfileWhenThereAreTwoSubmixes) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
-                                        mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
-      Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
 TEST(FilterProfilesForMixPresentation, SomeProfilesSupportTwoSubmixes) {
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
@@ -1429,9 +711,7 @@ TEST(FilterProfilesForMixPresentation, SomeProfilesSupportTwoSubmixes) {
           audio_elements, mix_presentation_obus.front(), all_known_profiles),
       IsOk());
 
-  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                                       kIamfAdvanced1Profile,
-                                                       kIamfAdvanced2Profile));
+  EXPECT_EQ(all_known_profiles, kV2ProfileVersions);
 }
 
 TEST(FilterProfilesForMixPresentation,
@@ -1453,40 +733,6 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
-     KeepsBaseEnhancedProfileWhenThereAreTwoAudioElements) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                  audio_elements, mix_presentation_obus.front(), base_profile),
-              IsOk());
-
-  EXPECT_TRUE(base_profile.contains(kIamfBaseProfile));
-}
-
-TEST(FilterProfilesForMixPresentation,
-     KeepsBaseEnhancedProfileWhenThereIsOnlyOneAudioElement) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
-      IsOk());
-
-  EXPECT_TRUE(base_enhanced_profile.contains(kIamfBaseEnhancedProfile));
-}
-
-TEST(FilterProfilesForMixPresentation,
      KeepsBaseEnhancedProfileWithAFourthOrderAmbisonicsAudioElement) {
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
@@ -1502,173 +748,6 @@ TEST(FilterProfilesForMixPresentation,
       IsOk());
 
   EXPECT_TRUE(base_enhanced_profile.contains(kIamfBaseEnhancedProfile));
-}
-
-TEST(FilterProfilesForMixPresentation,
-     KeepsBaseEnhancedProfileWhenThereAreTwentyEightOrFewerAudioElements) {
-  const int kNumAudioElements = 28;
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      kNumAudioElements, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
-      IsOk());
-
-  EXPECT_TRUE(base_enhanced_profile.contains(kIamfBaseEnhancedProfile));
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemoveBaseEnhancedProfileWhenThereAreMoreThanTwentyEightAudioElements) {
-  const int kNumAudioElements = 29;
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      kNumAudioElements, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
-      Not(IsOk()));
-
-  EXPECT_FALSE(base_enhanced_profile.contains(kIamfBaseEnhancedProfile));
-}
-
-TEST(
-    FilterProfilesForMixPresentation,
-    RemovesBaseEnhancedProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  mix_presentation_obus.front()
-      .sub_mixes_.front()
-      .audio_elements.front()
-      .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
-      Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesBaseEnhancedProfileWithReservedHeadphonesRenderingMode3) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
-      codec_config_obus, audio_elements, mix_presentation_obus);
-  mix_presentation_obus.front()
-      .sub_mixes_.front()
-      .audio_elements.front()
-      .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeReserved3;
-  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
-      kIamfBaseEnhancedProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_enhanced_profile),
-      Not(IsOk()));
-
-  EXPECT_TRUE(base_enhanced_profile.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesAllKnownProfilesThatDoNotMeetRequirements) {
-  const int kNumAudioElements = 28;
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      kNumAudioElements, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> profiles_to_filter =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), profiles_to_filter),
-      IsOk());
-
-  EXPECT_TRUE(profiles_to_filter.contains(kIamfBaseEnhancedProfile));
-}
-
-TEST(FilterProfilesForMixPresentation,
-     KeepsBaseAdvancedProfileWhenThereAreEighteenOrFewerAudioElements) {
-  const int kNumAudioElements = 18;
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      kNumAudioElements, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> base_advanced_profile = {
-      kIamfBaseAdvancedProfile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), base_advanced_profile),
-      IsOk());
-
-  EXPECT_TRUE(base_advanced_profile.contains(kIamfBaseAdvancedProfile));
-}
-
-TEST(FilterProfilesForMixPresentation,
-     KeepsAdvanced1ProfileWhenThereAreEighteenOrFewerAudioElements) {
-  const int kNumAudioElements = 18;
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      kNumAudioElements, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> advanced1_profile = {
-      kIamfAdvanced1Profile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), advanced1_profile),
-      IsOk());
-
-  EXPECT_TRUE(advanced1_profile.contains(kIamfAdvanced1Profile));
-}
-
-TEST(FilterProfilesForMixPresentation,
-     KeepsAdvanced2ProfileWhenThereAreTwentyEightOrFewerAudioElements) {
-  const int kNumAudioElements = 28;
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      kNumAudioElements, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> advanced2_profile = {
-      kIamfAdvanced2Profile};
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), advanced2_profile),
-      IsOk());
-
-  EXPECT_TRUE(advanced2_profile.contains(kIamfAdvanced2Profile));
 }
 
 TEST(FilterProfilesForMixPresentation,
@@ -1692,6 +771,26 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
+     RemovesAllKnownProfilesThatDoNotMeetRequirements) {
+  const int kNumAudioElements = 28;
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      kNumAudioElements, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> profiles_to_filter =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), profiles_to_filter),
+      IsOk());
+
+  EXPECT_TRUE(profiles_to_filter.contains(kIamfBaseEnhancedProfile));
+}
+
+TEST(FilterProfilesForMixPresentation,
      RemovesAllKnownProfilesWhenThereIsAnUnknownAudioElement) {
   constexpr DecodedUleb128 kUnknownAudioElementId = 1000;
   const AudioElementsById kNoAudioElements;
@@ -1712,28 +811,18 @@ TEST(FilterProfilesForMixPresentation,
   EXPECT_TRUE(all_known_profiles.empty());
 }
 
-TEST(FilterProfilesForAudioElement,
-     RemovesAllKnownProfilesWhenExpandedLayoutIsSignalledButNotPresent) {
-  const ScalableChannelLayoutConfig kInvalidExpandedLayout = {
-      .channel_audio_layer_configs = {{
-          .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-          .substream_count = 1,
-          .coupled_substream_count = 1,
-          .expanded_loudspeaker_layout = std::nullopt,
-      }}};
-  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kCodecConfigId,
-      {kFirstSubstreamId}, kInvalidExpandedLayout);
-  ASSERT_THAT(audio_element_obu, IsOk());
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
-                  "", *audio_element_obu, all_known_profiles),
-              Not(IsOk()));
-
-  EXPECT_TRUE(all_known_profiles.empty());
-}
+const auto kPolarParam = RenderingConfigParamDefinition::Create(
+    PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+const auto kCart8Param = RenderingConfigParamDefinition::Create(
+    Cart8ParamDefinition(ParamDefinition::BaseArgs{}), {});
+const auto kCart16Param = RenderingConfigParamDefinition::Create(
+    Cart16ParamDefinition(ParamDefinition::BaseArgs{}), {});
+const auto kDualPolarParam = RenderingConfigParamDefinition::Create(
+    DualPolarParamDefinition(ParamDefinition::BaseArgs{}), {});
+const auto kDualCart8Param = RenderingConfigParamDefinition::Create(
+    DualCart8ParamDefinition(ParamDefinition::BaseArgs{}), {});
+const auto kDualCart16Param = RenderingConfigParamDefinition::Create(
+    DualCart16ParamDefinition(ParamDefinition::BaseArgs{}), {});
 
 void InitializeDescriptorObusForObjectAudioElement(
     uint8_t num_objects,
@@ -1764,6 +853,19 @@ void InitializeDescriptorObusForObjectAudioElement(
       .rendering_config.rendering_config_param_definitions = param_definitions;
 }
 
+void AppendAudioElementToFirstSubmix(
+    DecodedUleb128 audio_element_id,
+    const std::vector<RenderingConfigParamDefinition>& param_definitions,
+    MixPresentationObu& mix_presentation_obu) {
+  auto sub_mix_audio_element =
+      mix_presentation_obu.sub_mixes_.front().audio_elements.front();
+  sub_mix_audio_element.audio_element_id = audio_element_id;
+  sub_mix_audio_element.rendering_config.rendering_config_param_definitions =
+      param_definitions;
+  mix_presentation_obu.sub_mixes_.front().audio_elements.push_back(
+      sub_mix_audio_element);
+}
+
 TEST(
     FilterProfilesForMixPresentation,
     RemovesAllKnownProfilesWhenNonObjectAudioElementHasRenderingConfigParamDefinitions) {
@@ -1776,8 +878,7 @@ TEST(
       .sub_mixes_.front()
       .audio_elements.front()
       .rendering_config.rendering_config_param_definitions.push_back(
-          RenderingConfigParamDefinition::Create(
-              PolarParamDefinition(ParamDefinition::BaseArgs{}), {}));
+          kPolarParam);
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
       kAllKnownProfileVersions;
 
@@ -1787,153 +888,6 @@ TEST(
       Not(IsOk()));
 
   EXPECT_TRUE(all_known_profiles.empty());
-}
-
-TEST(
-    FilterProfilesForMixPresentation,
-    RemovesAllKnownProfilesWhenObjectAudioElementHasNoRenderingConfigParamDefinitions) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, /*param_definitions=*/{}, codec_config_obus,
-      audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), all_known_profiles),
-      Not(IsOk()));
-
-  EXPECT_TRUE(all_known_profiles.empty());
-}
-
-TEST(
-    FilterProfilesForMixPresentation,
-    RemovesAllKnownProfilesWhenObjectAudioElementHasMultipleRenderingConfigParamDefinitions) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
-  InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def, polar_param_def}, codec_config_obus,
-      audio_elements, mix_presentation_obus);
-  absl::flat_hash_set<ProfileVersion> all_known_profiles =
-      kAllKnownProfileVersions;
-
-  EXPECT_THAT(
-      ProfileFilter::FilterProfilesForMixPresentation(
-          audio_elements, mix_presentation_obus.front(), all_known_profiles),
-      Not(IsOk()));
-
-  EXPECT_TRUE(all_known_profiles.empty());
-}
-
-TEST(FilterProfilesForMixPresentation,
-     KeepsSupportedProfilesForSingleObjectWithValidPositionParamDefinitions) {
-  const std::vector<PositionParamVariant> kValidSingleObjectParamDefs = {
-      PolarParamDefinition(ParamDefinition::BaseArgs{}),
-      Cart8ParamDefinition(ParamDefinition::BaseArgs{}),
-      Cart16ParamDefinition(ParamDefinition::BaseArgs{}),
-  };
-  const absl::flat_hash_set<ProfileVersion> kExpectedSupportedProfiles = {
-      kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
-
-  for (const auto& param_def : kValidSingleObjectParamDefs) {
-    CodecConfigsById codec_config_obus;
-    AudioElementsById audio_elements;
-    MixPresentationObus mix_presentation_obus;
-    InitializeDescriptorObusForObjectAudioElement(
-        /*num_objects=*/1,
-        {RenderingConfigParamDefinition::Create(param_def, {})},
-        codec_config_obus, audio_elements, mix_presentation_obus);
-    absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
-
-    EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                    audio_elements, mix_presentation_obus.front(), profiles),
-                IsOk());
-    EXPECT_EQ(profiles, kExpectedSupportedProfiles);
-  }
-}
-
-TEST(FilterProfilesForMixPresentation,
-     RemovesAllKnownProfilesWhenSingleObjectHasDualPositionParamDefinition) {
-  const std::vector<PositionParamVariant> kDualObjectParamDefs = {
-      DualPolarParamDefinition(ParamDefinition::BaseArgs{}),
-      DualCart8ParamDefinition(ParamDefinition::BaseArgs{}),
-      DualCart16ParamDefinition(ParamDefinition::BaseArgs{}),
-  };
-
-  for (const auto& param_def : kDualObjectParamDefs) {
-    CodecConfigsById codec_config_obus;
-    AudioElementsById audio_elements;
-    MixPresentationObus mix_presentation_obus;
-    InitializeDescriptorObusForObjectAudioElement(
-        /*num_objects=*/1,
-        {RenderingConfigParamDefinition::Create(param_def, {})},
-        codec_config_obus, audio_elements, mix_presentation_obus);
-    absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
-
-    EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                    audio_elements, mix_presentation_obus.front(), profiles),
-                Not(IsOk()));
-    EXPECT_TRUE(profiles.empty());
-  }
-}
-
-TEST(FilterProfilesForMixPresentation,
-     KeepsSupportedProfilesForTwoObjectsWithValidDualPositionParamDefinitions) {
-  const std::vector<PositionParamVariant> kValidDualObjectParamDefs = {
-      DualPolarParamDefinition(ParamDefinition::BaseArgs{}),
-      DualCart8ParamDefinition(ParamDefinition::BaseArgs{}),
-      DualCart16ParamDefinition(ParamDefinition::BaseArgs{}),
-  };
-  const absl::flat_hash_set<ProfileVersion> kExpectedSupportedProfiles = {
-      kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
-
-  for (const auto& param_def : kValidDualObjectParamDefs) {
-    CodecConfigsById codec_config_obus;
-    AudioElementsById audio_elements;
-    MixPresentationObus mix_presentation_obus;
-    InitializeDescriptorObusForObjectAudioElement(
-        /*num_objects=*/2,
-        {RenderingConfigParamDefinition::Create(param_def, {})},
-        codec_config_obus, audio_elements, mix_presentation_obus);
-    absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
-
-    EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                    audio_elements, mix_presentation_obus.front(), profiles),
-                IsOk());
-    EXPECT_EQ(profiles, kExpectedSupportedProfiles);
-  }
-}
-
-TEST(
-    FilterProfilesForMixPresentation,
-    RemovesAllKnownProfilesWhenTwoObjectAudioElementHasSinglePositionParamDefinition) {
-  const std::vector<PositionParamVariant> kSingleObjectParamDefs = {
-      PolarParamDefinition(ParamDefinition::BaseArgs{}),
-      Cart8ParamDefinition(ParamDefinition::BaseArgs{}),
-      Cart16ParamDefinition(ParamDefinition::BaseArgs{}),
-  };
-
-  for (const auto& param_def : kSingleObjectParamDefs) {
-    CodecConfigsById codec_config_obus;
-    AudioElementsById audio_elements;
-    MixPresentationObus mix_presentation_obus;
-    InitializeDescriptorObusForObjectAudioElement(
-        /*num_objects=*/2,
-        {RenderingConfigParamDefinition::Create(param_def, {})},
-        codec_config_obus, audio_elements, mix_presentation_obus);
-    absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
-
-    EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
-                    audio_elements, mix_presentation_obus.front(), profiles),
-                Not(IsOk()));
-    EXPECT_TRUE(profiles.empty());
-  }
 }
 
 TEST(
@@ -1942,10 +896,8 @@ TEST(
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
   InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      /*num_objects=*/1, {kPolarParam}, codec_config_obus, audio_elements,
       mix_presentation_obus);
   auto second_objects_config = ObjectsConfig::Create(/*num_objects=*/1, {});
   ASSERT_THAT(second_objects_config, IsOk());
@@ -1958,20 +910,15 @@ TEST(
                                                          *second_object_obu);
   ASSERT_THAT(second_object_with_data, IsOk());
   audio_elements.emplace(kSecondAudioElementId, *second_object_with_data);
-  auto second_sub_mix_audio_element =
-      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
-  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
-  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
-      second_sub_mix_audio_element);
+  AppendAudioElementToFirstSubmix(kSecondAudioElementId, {kPolarParam},
+                                  mix_presentation_obus.front());
   absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
 
   EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
                   audio_elements, mix_presentation_obus.front(), profiles),
               IsOk());
 
-  EXPECT_THAT(profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
-                                             kIamfAdvanced1Profile,
-                                             kIamfAdvanced2Profile));
+  EXPECT_EQ(profiles, kV2ProfileVersions);
 }
 
 TEST(FilterProfilesForMixPresentation,
@@ -1979,21 +926,14 @@ TEST(FilterProfilesForMixPresentation,
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
   InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      /*num_objects=*/1, {kPolarParam}, codec_config_obus, audio_elements,
       mix_presentation_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kSecondAudioElementId, kCodecConfigId, {kSecondSubstreamId},
       codec_config_obus, audio_elements);
-  auto second_sub_mix_audio_element =
-      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
-  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
-  second_sub_mix_audio_element.rendering_config
-      .rendering_config_param_definitions.clear();
-  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
-      second_sub_mix_audio_element);
+  AppendAudioElementToFirstSubmix(kSecondAudioElementId, {},
+                                  mix_presentation_obus.front());
   absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
 
   EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
@@ -2010,21 +950,14 @@ TEST(
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
   InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      /*num_objects=*/1, {kPolarParam}, codec_config_obus, audio_elements,
       mix_presentation_obus);
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
       {kSecondSubstreamId}, codec_config_obus, audio_elements);
-  auto second_sub_mix_audio_element =
-      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
-  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
-  second_sub_mix_audio_element.rendering_config
-      .rendering_config_param_definitions.clear();
-  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
-      second_sub_mix_audio_element);
+  AppendAudioElementToFirstSubmix(kSecondAudioElementId, {},
+                                  mix_presentation_obus.front());
   absl::flat_hash_set<ProfileVersion> base_advanced_profile = {
       kIamfBaseAdvancedProfile};
 
@@ -2041,10 +974,8 @@ TEST(ValidateMixPresentationsForPrimaryProfile,
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
   InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      /*num_objects=*/1, {kPolarParam}, codec_config_obus, audio_elements,
       mix_presentation_obus);
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
@@ -2066,10 +997,8 @@ TEST(ValidateMixPresentationsForPrimaryProfile,
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
   InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      /*num_objects=*/1, {kPolarParam}, codec_config_obus, audio_elements,
       mix_presentation_obus);
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
@@ -2098,19 +1027,14 @@ TEST(ValidateMixPresentationsForPrimaryProfile,
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
   InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      /*num_objects=*/1, {kPolarParam}, codec_config_obus, audio_elements,
       mix_presentation_obus);
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
       {kSecondSubstreamId}, codec_config_obus, audio_elements);
-  auto second_sub_mix_audio_element =
-      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
-  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
-  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
-      second_sub_mix_audio_element);
+  AppendAudioElementToFirstSubmix(kSecondAudioElementId, {},
+                                  mix_presentation_obus.front());
 
   EXPECT_THAT(
       ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
@@ -2123,10 +1047,8 @@ TEST(ValidateMixPresentationsForPrimaryProfile,
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
   InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      /*num_objects=*/1, {kPolarParam}, codec_config_obus, audio_elements,
       mix_presentation_obus);
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
@@ -2156,85 +1078,18 @@ TEST(ValidateMixPresentationsForPrimaryProfile,
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
-  const auto polar_param_def = RenderingConfigParamDefinition::Create(
-      PolarParamDefinition(ParamDefinition::BaseArgs{}), {});
   InitializeDescriptorObusForObjectAudioElement(
-      /*num_objects=*/1, {polar_param_def}, codec_config_obus, audio_elements,
+      /*num_objects=*/1, {kPolarParam}, codec_config_obus, audio_elements,
       mix_presentation_obus);
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kStereo, kSecondAudioElementId, kCodecConfigId,
       {kSecondSubstreamId}, codec_config_obus, audio_elements);
-  auto second_sub_mix_audio_element =
-      mix_presentation_obus.front().sub_mixes_.front().audio_elements.front();
-  second_sub_mix_audio_element.audio_element_id = kSecondAudioElementId;
-  mix_presentation_obus.front().sub_mixes_.front().audio_elements.push_back(
-      second_sub_mix_audio_element);
+  AppendAudioElementToFirstSubmix(kSecondAudioElementId, {},
+                                  mix_presentation_obus.front());
 
   EXPECT_THAT(ProfileFilter::ValidateMixPresentationsForPrimaryProfile(
                   kIamfAdvanced1Profile, audio_elements, mix_presentation_obus),
               IsOk());
-}
-
-TEST(ValidateAudioElementsForAdditionalProfile,
-     SucceedsForBaseAdvancedAndAdvanced1WithAtMost18Channels) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      /*num_audio_elements=*/18, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-
-  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
-                  kIamfBaseAdvancedProfile, audio_elements),
-              IsOk());
-  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
-                  kIamfAdvanced1Profile, audio_elements),
-              IsOk());
-}
-
-TEST(ValidateAudioElementsForAdditionalProfile,
-     FailsForBaseAdvancedAndAdvanced1WithMoreThan18Channels) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      /*num_audio_elements=*/19, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-
-  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
-                  kIamfBaseAdvancedProfile, audio_elements),
-              Not(IsOk()));
-  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
-                  kIamfAdvanced1Profile, audio_elements),
-              Not(IsOk()));
-}
-
-TEST(ValidateAudioElementsForAdditionalProfile,
-     SucceedsForAdvanced2WithAtMost28Channels) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      /*num_audio_elements=*/28, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-
-  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
-                  kIamfAdvanced2Profile, audio_elements),
-              IsOk());
-}
-
-TEST(ValidateAudioElementsForAdditionalProfile,
-     FailsForAdvanced2WithMoreThan28Channels) {
-  CodecConfigsById codec_config_obus;
-  AudioElementsById audio_elements;
-  MixPresentationObus mix_presentation_obus;
-  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
-      /*num_audio_elements=*/29, codec_config_obus, audio_elements,
-      mix_presentation_obus);
-
-  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
-                  kIamfAdvanced2Profile, audio_elements),
-              Not(IsOk()));
 }
 
 TEST(ValidateAudioElementsForAdditionalProfile,
@@ -2261,6 +1116,378 @@ TEST(ValidateAudioElementsForAdditionalProfile,
                   kIamfBaseAdvancedProfile, audio_elements),
               IsOk());
 }
+
+// Begin parameterized tests.
+
+using FilterProfilesForAudioElementV1ProfileTest =
+    ::testing::TestWithParam<ProfileVersion>;
+
+TEST_P(FilterProfilesForAudioElementV1ProfileTest,
+       RemovesProfileForReservedAudioElementType) {
+  auto audio_element_obu = AudioElementObu::CreateForExtension(
+      ObuHeader(), kFirstAudioElementId,
+      AudioElementObu::kAudioElementBeginReserved, kAudioElementReserved,
+      kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam()};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+TEST_P(FilterProfilesForAudioElementV1ProfileTest,
+       RemovesProfileForReservedAmbisonicsMode) {
+  auto audio_element_obu = AudioElementObu::CreateForExtension(
+      ObuHeader(), kFirstAudioElementId,
+      AudioElementObu::kAudioElementSceneBased, kAudioElementReserved,
+      kCodecConfigId, {kFirstSubstreamId}, kEmptyExtensionConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam()};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(V1Profiles, FilterProfilesForAudioElementV1ProfileTest,
+                         ValuesIn(kV1ProfileVersions));
+
+using FilterProfilesForAudioElementSimpleAndBaseProfileTest =
+    ::testing::TestWithParam<ProfileVersion>;
+
+TEST_P(FilterProfilesForAudioElementSimpleAndBaseProfileTest,
+       RemovesProfileWhenFirstLayerIsExpandedLayout) {
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      {kFirstSubstreamId}, kOneLayerExpandedLayoutLFEConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam()};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(SimpleAndBaseProfiles,
+                         FilterProfilesForAudioElementSimpleAndBaseProfileTest,
+                         Values(kIamfSimpleProfile, kIamfBaseProfile));
+
+using FilterProfilesForAudioElementV2ExpandedLayoutTest =
+    ::testing::TestWithParam<
+        ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>;
+
+TEST_P(FilterProfilesForAudioElementV2ExpandedLayoutTest,
+       RemovesBaseEnhancedProfileWhenFirstLayerIsV2ExpandedLayout) {
+  const ScalableChannelLayoutConfig config = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = 1,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout = GetParam()}}};
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      {kFirstSubstreamId}, config);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, base_enhanced_profile),
+              Not(IsOk()));
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
+
+TEST_P(FilterProfilesForAudioElementV2ExpandedLayoutTest,
+       SomeProfilesSupportV2ExpandedLayout) {
+  const ScalableChannelLayoutConfig config = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = 1,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout = GetParam()}}};
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      {kFirstSubstreamId}, config);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, all_known_profiles),
+              IsOk());
+
+  EXPECT_EQ(all_known_profiles, kV2ProfileVersions);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    V2ExpandedLayouts, FilterProfilesForAudioElementV2ExpandedLayoutTest,
+    Values(ChannelAudioLayerConfig::kExpandedLayout10_2_9_3,
+           ChannelAudioLayerConfig::kExpandedLayoutLfePair,
+           ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch,
+           ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch,
+           ChannelAudioLayerConfig::kExpandedLayoutBottom4Ch,
+           ChannelAudioLayerConfig::kExpandedLayoutTop1Ch,
+           ChannelAudioLayerConfig::kExpandedLayoutTop5Ch));
+
+using FilterProfilesForMixPresentationV1ProfileTest =
+    ::testing::TestWithParam<ProfileVersion>;
+
+TEST_P(FilterProfilesForMixPresentationV1ProfileTest,
+       RemovesProfileWhenThereAreTwoSubmixes) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
+                                        mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam()};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+TEST_P(FilterProfilesForMixPresentationV1ProfileTest,
+       RemovesProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam()};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+TEST_P(FilterProfilesForMixPresentationV1ProfileTest,
+       RemovesProfileWithReservedHeadphonesRenderingMode3) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeReserved3;
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam()};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(V1Profiles,
+                         FilterProfilesForMixPresentationV1ProfileTest,
+                         ValuesIn(kV1ProfileVersions));
+
+using FilterProfilesForMixPresentationFourthOrderAmbisonicsUnsupportedTest =
+    ::testing::TestWithParam<ProfileVersion>;
+
+TEST_P(FilterProfilesForMixPresentationFourthOrderAmbisonicsUnsupportedTest,
+       RemovesProfileWhenFourthOrderAmbisonicsExceedsMaxChannels) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam()};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SimpleAndBaseProfiles,
+    FilterProfilesForMixPresentationFourthOrderAmbisonicsUnsupportedTest,
+    Values(kIamfSimpleProfile, kIamfBaseProfile));
+
+struct ProfileAndMaxCountTestCase {
+  ProfileVersion profile;
+  int max_count;
+};
+
+using FilterProfilesForMixPresentationAudioElementLimitTest =
+    ::testing::TestWithParam<ProfileAndMaxCountTestCase>;
+
+TEST_P(FilterProfilesForMixPresentationAudioElementLimitTest,
+       KeepsProfileAtMaxAudioElementLimit) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      GetParam().max_count, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam().profile};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              IsOk());
+
+  EXPECT_TRUE(profiles.contains(GetParam().profile));
+}
+
+TEST_P(FilterProfilesForMixPresentationAudioElementLimitTest,
+       RemovesProfileAboveMaxAudioElementLimit) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      GetParam().max_count + 1, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> profiles = {GetParam().profile};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AudioElementLimits, FilterProfilesForMixPresentationAudioElementLimitTest,
+    ValuesIn<ProfileAndMaxCountTestCase>({
+        {.profile = kIamfSimpleProfile, .max_count = 1},
+        {.profile = kIamfBaseProfile, .max_count = 2},
+        {.profile = kIamfBaseEnhancedProfile, .max_count = 28},
+        {.profile = kIamfBaseAdvancedProfile, .max_count = 18},
+        {.profile = kIamfAdvanced1Profile, .max_count = 18},
+        {.profile = kIamfAdvanced2Profile, .max_count = 28},
+    }));
+
+struct ObjectParamTestCase {
+  uint8_t num_objects;
+  std::vector<RenderingConfigParamDefinition> param_definitions;
+};
+
+using FilterProfilesForMixPresentationValidObjectParamTest =
+    ::testing::TestWithParam<ObjectParamTestCase>;
+
+TEST_P(FilterProfilesForMixPresentationValidObjectParamTest,
+       KeepsSupportedProfilesForObjectsWithValidPositionParamDefinition) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForObjectAudioElement(
+      GetParam().num_objects, GetParam().param_definitions, codec_config_obus,
+      audio_elements, mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              IsOk());
+
+  EXPECT_EQ(profiles, kV2ProfileVersions);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ValidObjectParamDefinitions,
+    FilterProfilesForMixPresentationValidObjectParamTest,
+    ValuesIn<ObjectParamTestCase>({
+        {.num_objects = 1, .param_definitions = {kPolarParam}},
+        {.num_objects = 1, .param_definitions = {kCart8Param}},
+        {.num_objects = 1, .param_definitions = {kCart16Param}},
+        {.num_objects = 2, .param_definitions = {kDualPolarParam}},
+        {.num_objects = 2, .param_definitions = {kDualCart8Param}},
+        {.num_objects = 2, .param_definitions = {kDualCart16Param}},
+    }));
+
+using FilterProfilesForMixPresentationInvalidObjectParamTest =
+    ::testing::TestWithParam<ObjectParamTestCase>;
+
+TEST_P(FilterProfilesForMixPresentationInvalidObjectParamTest,
+       RemovesAllKnownProfilesForObjectsWithInvalidPositionParamDefinitions) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForObjectAudioElement(
+      GetParam().num_objects, GetParam().param_definitions, codec_config_obus,
+      audio_elements, mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> profiles = kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements, mix_presentation_obus.front(), profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(profiles.empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidObjectParamDefinitions,
+    FilterProfilesForMixPresentationInvalidObjectParamTest,
+    ValuesIn<ObjectParamTestCase>({
+        {.num_objects = 1, .param_definitions = {}},
+        {.num_objects = 1, .param_definitions = {kPolarParam, kPolarParam}},
+        {.num_objects = 1, .param_definitions = {kDualPolarParam}},
+        {.num_objects = 1, .param_definitions = {kDualCart8Param}},
+        {.num_objects = 1, .param_definitions = {kDualCart16Param}},
+        {.num_objects = 2, .param_definitions = {kPolarParam}},
+        {.num_objects = 2, .param_definitions = {kCart8Param}},
+        {.num_objects = 2, .param_definitions = {kCart16Param}},
+    }));
+
+using ValidateAudioElementsForAdditionalProfileChannelLimitTest =
+    ::testing::TestWithParam<ProfileAndMaxCountTestCase>;
+
+TEST_P(ValidateAudioElementsForAdditionalProfileChannelLimitTest,
+       ValidatesAtMaxChannelLimit) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      GetParam().max_count, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  GetParam().profile, audio_elements),
+              IsOk());
+}
+
+TEST_P(ValidateAudioElementsForAdditionalProfileChannelLimitTest,
+       RejectsAboveMaxChannelLimit) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  MixPresentationObus mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      GetParam().max_count + 1, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+
+  EXPECT_THAT(ProfileFilter::ValidateAudioElementsForAdditionalProfile(
+                  GetParam().profile, audio_elements),
+              Not(IsOk()));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ChannelLimits, ValidateAudioElementsForAdditionalProfileChannelLimitTest,
+    ValuesIn<ProfileAndMaxCountTestCase>({
+        {.profile = kIamfBaseAdvancedProfile, .max_count = 18},
+        {.profile = kIamfAdvanced1Profile, .max_count = 18},
+        {.profile = kIamfAdvanced2Profile, .max_count = 28},
+    }));
 
 }  // namespace
 
