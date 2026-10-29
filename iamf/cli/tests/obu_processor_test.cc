@@ -46,9 +46,12 @@
 #include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/momentary_loudness.h"
+#include "iamf/obu/momentary_loudness_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/momentary_loudness_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
@@ -706,6 +709,77 @@ TEST(ProcessTemporalUnit, SkipsStrayParameterBlocks) {
   EXPECT_FALSE(continue_processing);
   EXPECT_TRUE(output_temporal_unit->output_parameter_blocks.empty());
   EXPECT_THAT(output_temporal_unit->output_audio_frames, SizeIs(1));
+}
+
+TEST(ProcessTemporalUnit, ProcessesMomentaryLoudnessParameterBlock) {
+  CodecConfigsById codec_configs;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_configs);
+  AudioElementsById audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
+      codec_configs, audio_elements_with_data);
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  constexpr DecodedUleb128 kMomentaryLoudnessParameterId = 1000;
+  constexpr DecodedUleb128 kParameterBlockDuration = 8;
+  const MomentaryLoudnessParamDefinition param_definition(
+      MakeOneSubblockParamDefinitionBaseArgs(kMomentaryLoudnessParameterId,
+                                             kCommonParameterRate,
+                                             kParameterBlockDuration));
+  auto momentary_loudness = MomentaryLoudness::Create(
+      param_definition, /*bin_width_minus_one=*/0, /*first_bin_center=*/0,
+      /*reserved_momentary_loudness=*/0, /*count=*/{1, 2});
+  ASSERT_THAT(momentary_loudness, IsOk());
+  mix_presentation_obus.front()
+      .sub_mixes_[0]
+      .layouts[0]
+      .loudness.momentary_loudness = *momentary_loudness;
+
+  auto parameter_block =
+      ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
+  ASSERT_THAT(parameter_block, NotNull());
+  auto momentary_loudness_data = MomentaryLoudnessParameterData::Create(
+      /*momentary_loudness=*/42, /*reserved=*/0);
+  ASSERT_THAT(momentary_loudness_data, IsOk());
+  parameter_block->subblocks_[0] =
+      std::make_unique<MomentaryLoudnessParameterData>(
+          *momentary_loudness_data);
+  const AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                      kArbitraryAudioFrame);
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&codec_configs.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front(), parameter_block.get(),
+       &audio_frame_obu});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  EXPECT_FALSE(continue_processing);
+  ASSERT_TRUE(output_temporal_unit.has_value());
+  ASSERT_THAT(output_temporal_unit->output_parameter_blocks, SizeIs(1));
+  const auto& output_parameter_block =
+      *output_temporal_unit->output_parameter_blocks.front().obu;
+  EXPECT_EQ(output_parameter_block.parameter_id_,
+            kMomentaryLoudnessParameterId);
+  ASSERT_THAT(output_parameter_block.subblocks_, SizeIs(1));
+  EXPECT_EQ(*static_cast<const MomentaryLoudnessParameterData*>(
+                output_parameter_block.subblocks_[0].get()),
+            *momentary_loudness_data);
 }
 
 TEST(ProcessTemporalUnit, SkipsStrayAudioFrames) {

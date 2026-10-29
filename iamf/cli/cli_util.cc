@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -155,6 +156,14 @@ absl::Status CollectAndValidateParamDefinitions(
       }
       RETURN_IF_NOT_OK(InsertParamDefinitionAndCheckEquivalence(
           sub_mix.output_mix_gain, param_definition_variants));
+      for (const auto& layout : sub_mix.layouts) {
+        if (layout.loudness.momentary_loudness.has_value()) {
+          RETURN_IF_NOT_OK(InsertParamDefinitionAndCheckEquivalence(
+              layout.loudness.momentary_loudness
+                  ->momentary_loudness_param_def(),
+              param_definition_variants));
+        }
+      }
     }
   }
 

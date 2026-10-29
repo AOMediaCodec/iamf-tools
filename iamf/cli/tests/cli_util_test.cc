@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
+#include <optional>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -35,8 +36,10 @@
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/momentary_loudness.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/extended_param_definition.h"
+#include "iamf/obu/param_definitions/momentary_loudness_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
@@ -299,6 +302,66 @@ TEST(CollectAndValidateParamDefinitions,
 
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> result;
   EXPECT_THAT(CollectAndValidateParamDefinitions(audio_elements,
+                                                 mix_presentation_obus, result),
+              Not(IsOk()));
+}
+
+TEST(CollectAndValidateParamDefinitions,
+     CollectsMomentaryLoudnessParamDefinition) {
+  constexpr DecodedUleb128 kMomentaryLoudnessParameterId = 127;
+  constexpr DecodedUleb128 kDuration = 100;
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
+      mix_presentation_obus);
+  const MomentaryLoudnessParamDefinition expected_param_def(
+      MakeOneSubblockParamDefinitionBaseArgs(kMomentaryLoudnessParameterId,
+                                             kParameterRate, kDuration));
+  auto momentary_loudness = MomentaryLoudness::Create(
+      expected_param_def, /*bin_width_minus_one=*/0, /*first_bin_center=*/0,
+      /*reserved_momentary_loudness=*/0, /*count=*/{1, 2});
+  ASSERT_THAT(momentary_loudness, IsOk());
+  mix_presentation_obus.back()
+      .sub_mixes_[0]
+      .layouts[0]
+      .loudness.momentary_loudness = *momentary_loudness;
+
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> result;
+  EXPECT_THAT(CollectAndValidateParamDefinitions(/*audio_elements=*/{},
+                                                 mix_presentation_obus, result),
+              IsOk());
+
+  auto iter = result.find(kMomentaryLoudnessParameterId);
+  ASSERT_NE(iter, result.end());
+  EXPECT_EQ(iter->second, ParamDefinitionVariant(expected_param_def));
+}
+
+TEST(CollectAndValidateParamDefinitions,
+     IsInvalidWhenMomentaryLoudnessParamDefinitionsAreNotEquivalent) {
+  constexpr DecodedUleb128 kMomentaryLoudnessParameterId = 127;
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
+      mix_presentation_obus);
+  auto& layouts = mix_presentation_obus.back().sub_mixes_[0].layouts;
+  layouts.push_back(layouts[0]);
+  auto first_momentary_loudness = MomentaryLoudness::Create(
+      MomentaryLoudnessParamDefinition(MakeOneSubblockParamDefinitionBaseArgs(
+          kMomentaryLoudnessParameterId, kParameterRate, /*duration=*/100)),
+      /*bin_width_minus_one=*/0, /*first_bin_center=*/0,
+      /*reserved_momentary_loudness=*/0, /*count=*/{1, 2});
+  ASSERT_THAT(first_momentary_loudness, IsOk());
+  auto second_momentary_loudness = MomentaryLoudness::Create(
+      MomentaryLoudnessParamDefinition(MakeOneSubblockParamDefinitionBaseArgs(
+          kMomentaryLoudnessParameterId, kParameterRate, /*duration=*/200)),
+      /*bin_width_minus_one=*/0, /*first_bin_center=*/0,
+      /*reserved_momentary_loudness=*/0, /*count=*/{1, 2});
+  ASSERT_THAT(second_momentary_loudness, IsOk());
+  layouts[0].loudness.momentary_loudness = *first_momentary_loudness;
+  layouts[1].loudness.momentary_loudness = *second_momentary_loudness;
+
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> result;
+  EXPECT_THAT(CollectAndValidateParamDefinitions(/*audio_elements=*/{},
                                                  mix_presentation_obus, result),
               Not(IsOk()));
 }
