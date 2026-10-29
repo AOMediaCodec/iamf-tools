@@ -35,6 +35,7 @@ absl::Status ValidateSpecificParamDefinition(
   switch (param_definition.GetType()) {
     case kParameterDefinitionDemixing:
     case kParameterDefinitionReconGain:
+    case kParameterDefinitionMomentaryLoudness:
       RETURN_IF_NOT_OK(ValidateEqual(
           param_definition.GetParamDefinitionMode(),
           ParamDefinition::kModeScheduleInParamDefinition,

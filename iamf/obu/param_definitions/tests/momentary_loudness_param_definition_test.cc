@@ -81,6 +81,32 @@ TEST(ValidateAndWrite, SucceedsWithValidData) {
   ValidateWriteResults(wb, expected_data);
 }
 
+TEST(Validate, ReturnsErrorWhenParamDefinitionModeIsOne) {
+  const MomentaryLoudnessParamDefinition param_definition(
+      MakeScheduleInParameterBlockBaseArgs(/*parameter_id=*/1,
+                                           /*parameter_rate=*/1));
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
+TEST(Validate, ReturnsErrorWhenDurationDoesNotEqualConstantSubblockDuration) {
+  const MomentaryLoudnessParamDefinition param_definition(
+      MakeConstantSubblocksParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1, /*duration=*/10,
+          /*constant_subblock_duration=*/5));
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
+TEST(Validate, ReturnsErrorWithVariableSubblockDurations) {
+  const MomentaryLoudnessParamDefinition param_definition(
+      MakeVariableSubblocksParamDefinitionBaseArgs(
+          /*parameter_id=*/1, /*parameter_rate=*/1,
+          /*subblock_durations=*/{5, 5}));
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
 TEST(CreateParameterDataFromBuffer, SucceedsWithValidPayload) {
   MomentaryLoudnessParamDefinition param_definition(
       GetMomentaryLoudnessParamDefinitionArgs());
