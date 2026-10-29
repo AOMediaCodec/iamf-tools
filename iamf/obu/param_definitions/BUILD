@@ -194,6 +194,7 @@ cc_library(
         ":dual_polar_param_definition",
         ":extended_param_definition",
         ":mix_gain_param_definition",
+        ":momentary_loudness_param_definition",
         ":polar_param_definition",
         ":recon_gain_param_definition",
     ],
