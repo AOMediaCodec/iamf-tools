@@ -121,31 +121,12 @@ std::string GetFirstSubmixFirstLayoutExpectedPath() {
 
 class FinalizerTest : public ::testing::Test {
  public:
-  void InitPrerequisiteObusForMonoInput(DecodedUleb128 audio_element_id) {
-    AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
-                                          codec_configs_);
-    AddScalableAudioElementWithSubstreamIds(
-        IamfInputLayout::kMono, audio_element_id, kCodecConfigId,
-        kMonoSubstreamIds, codec_configs_, audio_elements_);
-  }
-
   void InitPrerequisiteObusForStereoInput(DecodedUleb128 audio_element_id) {
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_configs_);
     AddScalableAudioElementWithSubstreamIds(
         IamfInputLayout::kStereo, audio_element_id, kCodecConfigId,
         kStereoSubstreamIds, codec_configs_, audio_elements_);
-  }
-
-  void AddMixPresentationObuForMonoOutput(DecodedUleb128 mix_presentation_id) {
-    AddMixPresentationObuWithAudioElementIds(
-        mix_presentation_id, {kAudioElementId},
-        /*common_parameter_id=*/999, kCommonParameterRate, obus_to_finalize_);
-    obus_to_finalize_.back().sub_mixes_[0].layouts[0].loudness_layout = {
-        .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-        .specific_layout = LoudspeakersSsConventionLayout{
-            .sound_system =
-                LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0}};
   }
 
   void AddMixPresentationObuForStereoOutput(
@@ -155,23 +136,18 @@ class FinalizerTest : public ::testing::Test {
         /*common_parameter_id=*/999, kCommonParameterRate, obus_to_finalize_);
   }
 
-  void AddLabeledFrame(DecodedUleb128 audio_element_id,
-                       const LabelSamplesMap& label_to_samples,
-                       uint32_t samples_to_trim_at_end = 0,
-                       uint32_t samples_to_trim_at_start = 0) {
-    IdLabeledFrameMap id_to_labeled_frame;
-    id_to_labeled_frame[audio_element_id] = {
-        .samples_to_trim_at_end = samples_to_trim_at_end,
-        .samples_to_trim_at_start = samples_to_trim_at_start,
-        .label_to_samples = label_to_samples};
-    ordered_labeled_frames_.push_back(id_to_labeled_frame);
-  }
-
-  void PrepareObusForOneSamplePassThroughMono() {
-    InitPrerequisiteObusForMonoInput(kAudioElementId);
-    AddMixPresentationObuForMonoOutput(kMixPresentationId);
-    const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
-    AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  void PrepareObusForLabelToSamples(const LabelSamplesMap& label_to_samples,
+                                    uint32_t samples_to_trim_at_end = 0,
+                                    uint32_t samples_to_trim_at_start = 0) {
+    if (label_to_samples.contains(kMono)) {
+      InitPrerequisiteObusForMonoInput(kAudioElementId);
+      AddMixPresentationObuForMonoOutput(kMixPresentationId);
+    } else {
+      InitPrerequisiteObusForStereoInput(kAudioElementId);
+      AddMixPresentationObuForStereoOutput(kMixPresentationId);
+    }
+    AddLabeledFrame(kAudioElementId, label_to_samples, samples_to_trim_at_end,
+                    samples_to_trim_at_start);
   }
 
   RenderingMixPresentationFinalizer CreateFinalizerExpectOk() {
@@ -242,6 +218,38 @@ class FinalizerTest : public ::testing::Test {
   std::vector<IdLabeledFrameMap> ordered_labeled_frames_;
 
   MixPresentationObus finalized_obus_;
+
+ private:
+  void InitPrerequisiteObusForMonoInput(DecodedUleb128 audio_element_id) {
+    AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                          codec_configs_);
+    AddScalableAudioElementWithSubstreamIds(
+        IamfInputLayout::kMono, audio_element_id, kCodecConfigId,
+        kMonoSubstreamIds, codec_configs_, audio_elements_);
+  }
+
+  void AddMixPresentationObuForMonoOutput(DecodedUleb128 mix_presentation_id) {
+    AddMixPresentationObuWithAudioElementIds(
+        mix_presentation_id, {kAudioElementId},
+        /*common_parameter_id=*/999, kCommonParameterRate, obus_to_finalize_);
+    obus_to_finalize_.back().sub_mixes_[0].layouts[0].loudness_layout = {
+        .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+        .specific_layout = LoudspeakersSsConventionLayout{
+            .sound_system =
+                LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0}};
+  }
+
+  void AddLabeledFrame(DecodedUleb128 audio_element_id,
+                       const LabelSamplesMap& label_to_samples,
+                       uint32_t samples_to_trim_at_end = 0,
+                       uint32_t samples_to_trim_at_start = 0) {
+    IdLabeledFrameMap id_to_labeled_frame;
+    id_to_labeled_frame[audio_element_id] = {
+        .samples_to_trim_at_end = samples_to_trim_at_end,
+        .samples_to_trim_at_start = samples_to_trim_at_start,
+        .label_to_samples = label_to_samples};
+    ordered_labeled_frames_.push_back(id_to_labeled_frame);
+  }
 };
 
 // =Tests that the create function does not crash with various modes disabled.=
@@ -259,22 +267,21 @@ TEST_F(FinalizerTest,
 }
 
 TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
-  // The first audio element references an LPCM codec config.
-  CodecConfigObuMetadatas metadata;
-  metadata.Add(CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
-      kCodecConfigId, 960));
-  constexpr uint32_t kSecondCodecConfigId = kCodecConfigId + 1;
-  metadata.Add(CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
-      kSecondCodecConfigId, 1920));
-  CodecConfigGenerator generator(metadata);
-  ASSERT_THAT(generator.Generate(codec_configs_), IsOk());
-
+  // The first audio element references an LPCM codec config with number
+  // of samples per frame = 960.
+  AddLpcmCodecConfig(kCodecConfigId, 960, kBitDepth, kSampleRate,
+                     codec_configs_);
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kMono, kAudioElementId, kCodecConfigId,
       kMonoSubstreamIds, codec_configs_, audio_elements_);
+
   // The second audio element references a codec Config with a different
-  // number of samples per frame.
+  // number of samples per frame (1920).
   constexpr DecodedUleb128 kStereoAudioElementId = kAudioElementId + 1;
+  constexpr uint32_t kSecondCodecConfigId = kCodecConfigId + 1;
+  AddLpcmCodecConfig(kSecondCodecConfigId, 1920, kBitDepth, kSampleRate,
+                     codec_configs_);
+
   AddScalableAudioElementWithSubstreamIds(
       IamfInputLayout::kStereo, kStereoAudioElementId, kSecondCodecConfigId,
       kStereoSubstreamIds, codec_configs_, audio_elements_);
@@ -292,10 +299,7 @@ TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
 }
 
 TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kL2, {0}}, {kR2, {2}}});
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
 
@@ -306,10 +310,7 @@ TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
 }
 
 TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingDisabled) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kL2, {0}}, {kR2, {2}}});
   const std::filesystem::path output_directory =
       GetAndCreateOutputDirectory("");
   trimming_settings_ = std::nullopt;
@@ -324,10 +325,7 @@ TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingDisabled) {
 // =========== Tests on output rendered wav file properties ===========
 
 TEST_F(FinalizerTest, UsesCodecConfigBitDepthWhenOverrideIsNotSet) {
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kMono, {0, 1}}});
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
@@ -340,10 +338,7 @@ TEST_F(FinalizerTest, UsesCodecConfigBitDepthWhenOverrideIsNotSet) {
 }
 
 TEST_F(FinalizerTest, OverridesBitDepthWhenRequested) {
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kMono, {0, 1}}});
   output_audio_format_ =
       iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO;
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
@@ -359,11 +354,8 @@ TEST_F(FinalizerTest, OverridesBitDepthWhenRequested) {
 }
 
 TEST_F(FinalizerTest, InvalidWhenFrameIsLargerThanNumSamplesPerFrame) {
-  const LabelSamplesMap kInvalidLabelToSamplesWithTooManySamples = {
-      {kMono, std::vector<InternalSampleType>(kNumSamplesPerFrame + 1, 0)}};
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  AddLabeledFrame(kAudioElementId, kInvalidLabelToSamplesWithTooManySamples);
+  PrepareObusForLabelToSamples(
+      {{kMono, std::vector<InternalSampleType>(kNumSamplesPerFrame + 1, 0)}});
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -374,10 +366,7 @@ TEST_F(FinalizerTest, InvalidWhenFrameIsLargerThanNumSamplesPerFrame) {
 
 TEST_F(FinalizerTest, WavFileHasExpectedProperties) {
   const std::vector<InternalSampleType> kFourSamples = {1, 2, 3, 4};
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kMono, kFourSamples}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kMono, kFourSamples}});
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
@@ -397,11 +386,9 @@ TEST_F(FinalizerTest, SamplesAreTrimmedFromWavFile) {
   constexpr int kNumSamplesToTrimFromEnd = 1;
   constexpr int kExpectedNumSamples = 1;
   const std::vector<InternalSampleType> kFourSamples = {1, 2, 3, 4};
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kMono, kFourSamples}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples, kNumSamplesToTrimFromStart,
-                  kNumSamplesToTrimFromEnd);
+  PrepareObusForLabelToSamples({{kMono, kFourSamples}},
+                               kNumSamplesToTrimFromStart,
+                               kNumSamplesToTrimFromEnd);
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
@@ -429,7 +416,7 @@ const LoudnessInfo kArbitraryLoudnessInfo = {
 };
 
 TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
-  PrepareObusForOneSamplePassThroughMono();
+  PrepareObusForLabelToSamples({{kMono, {0}}});
 
   // A factory can be used to omit generating wav files.
   sample_processor_factory_ =
@@ -449,7 +436,7 @@ TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
 }
 
 TEST_F(FinalizerTest, ForwardsArgumentsToSampleProcessorFactory) {
-  PrepareObusForOneSamplePassThroughMono();
+  PrepareObusForLabelToSamples({{kMono, {0}}});
   // Rendering needs to be initialized to create wav files.
   // We expect arguments to be forwarded from the OBUs to the wav writer
   // factory.
@@ -475,11 +462,7 @@ TEST_F(FinalizerTest, ForwardsArgumentsToSampleProcessorFactory) {
 TEST_F(FinalizerTest, PushTemporalUnitDelegatesToSampleProcessor) {
   const std::vector<std::vector<InternalSampleType>>
       kExpectedPassthroughSamples = {{0.0, 1.0}};
-  const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kMono, {0.0, 1.0}}});
   constexpr auto kNoOutputSamples = 0;
   auto mock_sample_processor = std::make_unique<MockSampleProcessor>(
       codec_configs_.at(kCodecConfigId).GetNumSamplesPerFrame(),
@@ -502,8 +485,7 @@ TEST_F(FinalizerTest, PushTemporalUnitDelegatesToSampleProcessor) {
 
 TEST_F(FinalizerTest,
        FinalizePushingTemporalUnitsDelegatesToSampleProcessorFlush) {
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kMono, {0.0, 1.0}}});
   constexpr auto kNoOutputSamples = 0;
   auto mock_sample_processor = std::make_unique<MockSampleProcessor>(
       codec_configs_.at(kCodecConfigId).GetNumSamplesPerFrame(),
@@ -522,7 +504,7 @@ TEST_F(FinalizerTest,
 }
 
 TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
-  PrepareObusForOneSamplePassThroughMono();
+  PrepareObusForLabelToSamples({{kMono, {0}}});
   // We expect arguments to be forwarded from the OBUs to the loudness
   // calculator factory.
   auto mock_loudness_calculator_factory =
@@ -543,15 +525,10 @@ TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
 }
 
 TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
-  const LoudnessInfo kMockCalculatedLoudness = kArbitraryLoudnessInfo;
   const LoudnessInfo kMismatchingUserLoudness = kExpectedMinimumLoudnessInfo;
   const std::vector<std::vector<InternalSampleType>>
       kExpectedPassthroughSamples = {{0.0, 1.0}};
-  const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kMono, {0.0, 1.0}}});
 
   // We expect arguments to be forwarded from the OBUs to the loudness
   // calculator factory.
@@ -584,7 +561,7 @@ TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
 TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
   const LoudnessInfo kMockCalculatedLoudness = kArbitraryLoudnessInfo;
   const LoudnessInfo kMismatchingUserLoudness = kExpectedMinimumLoudnessInfo;
-  PrepareObusForOneSamplePassThroughMono();
+  PrepareObusForLabelToSamples({{kMono, {0}}});
 
   auto mock_loudness_calculator_factory =
       std::make_unique<MockLoudnessCalculatorFactory>();
@@ -616,7 +593,7 @@ TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
 
 //============== Various modes fallback to preserving loudness. ==============
 TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderingDisabled) {
-  PrepareObusForOneSamplePassThroughMono();
+  PrepareObusForLabelToSamples({{kMono, {0}}});
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
   trimming_settings_ = std::nullopt;
@@ -630,7 +607,7 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderingDisabled) {
 }
 
 TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryIsNullPtr) {
-  PrepareObusForOneSamplePassThroughMono();
+  PrepareObusForLabelToSamples({{kMono, {0}}});
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
   loudness_calculator_factory_ = nullptr;
@@ -644,7 +621,7 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryIsNullPtr) {
 }
 
 TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryReturnsNullPtr) {
-  PrepareObusForOneSamplePassThroughMono();
+  PrepareObusForLabelToSamples({{kMono, {0}}});
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
   loudness_calculator_factory_ =
@@ -659,8 +636,7 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryReturnsNullPtr) {
 }
 
 TEST_F(FinalizerTest, CreateSucceedsWithValidInput) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -685,12 +661,8 @@ TEST_F(FinalizerTest,
 
 TEST_F(FinalizerTest,
        PushingIsNotAllowedAnyTimeAfterFinalizePushingTemporalUnits) {
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {
-      {kMono, Int32ToInternalSampleType({100, 900})}};
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {{100}, {900}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples(
+      {{kMono, Int32ToInternalSampleType({100, 900})}});
   auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(finalizer.PushTemporalUnit(ordered_labeled_frames_[0], kStartTime,
                                          kEndTime, parameter_blocks_),
@@ -713,8 +685,7 @@ TEST_F(FinalizerTest,
 TEST_F(
     FinalizerTest,
     GetPostProcessedSamplesAsSpanCanBeUsedBeforeOrAfterGetFinalizedMixPresentationObus) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
 
@@ -731,8 +702,7 @@ TEST_F(
 }
 
 TEST_F(FinalizerTest, GetFinalizedMixPresentationObusMayNotBeCalledTwice) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
 
@@ -745,7 +715,7 @@ TEST_F(FinalizerTest, GetFinalizedMixPresentationObusMayNotBeCalledTwice) {
               Not(IsOk()));
 }
 
-TEST_F(FinalizerTest, GetFinalizedMixPresentationObusReturnsObusInSameorder) {
+TEST_F(FinalizerTest, GetFinalizedMixPresentationObusReturnsObusInSameOrder) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   constexpr DecodedUleb128 kFirstMixPresentationId = 100;
   constexpr DecodedUleb128 kSecondMixPresentationId = 99;
@@ -767,10 +737,7 @@ TEST_F(FinalizerTest, GetFinalizedMixPresentationObusReturnsObusInSameorder) {
 // TODO(b/380110994): Add more tests for PushTemporalUnit. Check that rendered
 // output is written to wav file appropriately.
 TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kL2, {0}}, {kR2, {2}}});
 
   ASSERT_EQ(ordered_labeled_frames_.size(), 1);
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
@@ -782,10 +749,7 @@ TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
 }
 
 TEST_F(FinalizerTest, FullIterativeRenderingSucceedsWithValidInput) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kL2, {0}}, {kR2, {2}}});
 
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
 
@@ -811,10 +775,7 @@ TEST_F(FinalizerTest, FullIterativeRenderingSucceedsWithValidInput) {
 }
 
 TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kL2, {0}}, {kR2, {2}}});
 
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
 
@@ -847,9 +808,7 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
 
 TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanReturnsEmptySpanAfterCreate) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   auto finalizer = CreateFinalizerExpectOk();
 
   EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
@@ -859,8 +818,7 @@ TEST_F(FinalizerTest,
 
 TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanReturnsErrorWithRenderingDisabled) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   // Disable rendering.
   trimming_settings_ = std::nullopt;
 
@@ -874,8 +832,7 @@ TEST_F(FinalizerTest,
 
 TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanReturnsErrorWithUnknownMixPresentationId) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   const DecodedUleb128 kUnknownMixPresentationId = kMixPresentationId + 1;
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -888,8 +845,7 @@ TEST_F(FinalizerTest,
 
 TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanReturnsErrorWithUnknownLayoutIndex) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   const int kUnknownLayoutIndex = kFirstLayoutIndex + 1;
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -901,8 +857,7 @@ TEST_F(FinalizerTest,
 
 TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanReturnsErrorWithUnknownSubmixIndex) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   const int kUnknownSubmixIndex = kFirstSubmixIndex + 1;
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -915,8 +870,7 @@ TEST_F(FinalizerTest,
 TEST_F(
     FinalizerTest,
     GetPostProcessedSamplesAsSpanReturnsEmptySpanWhenFinalizedWithNoPostProcessor) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   sample_processor_factory_ =
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
 
@@ -930,14 +884,9 @@ TEST_F(
 
 TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanPrioritizesPostProcessedSamples) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0.0, 0.1}},
-                                           {kR2, {0.2, 0.3}}};
-
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
-  const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {{0.1},
-                                                                         {0.3}};
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
+  const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {{1.0},
+                                                                         {3.0}};
   // We expect the post-processor to be called with the rendered samples.
   sample_processor_factory_ =
       [](DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
@@ -961,13 +910,9 @@ TEST_F(FinalizerTest,
 
 TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanReturnsFallsBackToRenderedSamples) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {{kL2, {0.0, 0.1}},
-                                           {kR2, {0.2, 0.3}}};
   const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {
-      {0.0, 0.1}, {0.2, 0.3}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+      {0.0, 1.0}, {2.0, 3.0}};
+  PrepareObusForLabelToSamples({{kL2, {0.0, 1.0}}, {kR2, {2.0, 3.0}}});
   sample_processor_factory_ =
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
   auto finalizer = CreateFinalizerExpectOk();
@@ -986,8 +931,6 @@ TEST_F(FinalizerTest,
 
 TEST_F(FinalizerTest,
        DelayedSamplesAreAvailableAfterFinalizePushingTemporalUnits) {
-  InitPrerequisiteObusForMonoInput(kAudioElementId);
-  AddMixPresentationObuForMonoOutput(kMixPresentationId);
   sample_processor_factory_ =
       [](DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
          int /*layout_index*/, const Layout& /*layout*/, int num_channels,
@@ -995,11 +938,10 @@ TEST_F(FinalizerTest,
         return std::make_unique<OneFrameDelayer>(num_samples_per_frame,
                                                  num_channels);
       };
-  const LabelSamplesMap kLabelToSamples = {{kMono, {0.1, 0.9}}};
   const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {
-      {0.1, 0.9}};
+      {1.0, 9.0}};
   const std::vector<std::vector<InternalSampleType>> kEmptySamples = {{}};
-  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+  PrepareObusForLabelToSamples({{kMono, {1.0, 9.0}}});
   auto finalizer = CreateFinalizerExpectOk();
 
   // The post-processor has delay. So samples are not available immediately.

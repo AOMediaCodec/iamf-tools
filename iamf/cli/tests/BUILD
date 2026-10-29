@@ -507,14 +507,20 @@ cc_test(
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:descriptor_obus",
-        "//iamf/cli:layout_renderer_factory",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
         "@googletest//:gtest_main",
-    ],
+    ] + select({
+        "//iamf/cli:oar_used": [
+            "//iamf/cli:oar_layout_renderer_factory",
+        ],
+        "//conditions:default": [
+            "//iamf/cli:layout_renderer_factory",
+        ],
+    }),
 )
 
 cc_test(

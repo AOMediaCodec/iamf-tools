@@ -150,6 +150,58 @@ cc_test(
 )
 
 cc_test(
+    name = "oar_layout_renderer_test",
+    srcs = ["oar_layout_renderer_test.cc"],
+    deps = [
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixing_manager",
+        "//iamf/cli:descriptor_obus",
+        "//iamf/cli:labeled_frame",
+        "//iamf/cli:obu_with_data_generator",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli/renderer:oar_layout_renderer",
+        "//iamf/obu:ambisonics_config",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "//iamf/obu/decoder_config:lpcm_decoder_config",
+        "//iamf/obu/param_definitions:demixing_param_definition",
+        "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "//iamf/obu/tests:obu_test_utils",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "oar_wrapper_test",
+    srcs = ["oar_wrapper_test.cc"],
+    deps = [
+        "//iamf/cli/renderer:oar_wrapper",
+        "//iamf/obu:ambisonics_config",
+        "//iamf/obu:animated_parameter_data",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:rendering_config",
+        "//iamf/obu:types",
+        "//iamf/obu/param_definitions:demixing_param_definition",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "renderer_utils_test",
     srcs = ["renderer_utils_test.cc"],
     deps = [
