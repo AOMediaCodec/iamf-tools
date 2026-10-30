@@ -2,6 +2,13 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 package(default_visibility = ["//iamf/cli:__subpackages__"])
 
+exports_files(
+    srcs = [
+        "oar_wrapper.h",
+    ],
+    visibility = ["//iamf/cli:__subpackages__"],
+)
+
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "audio_element_renderer_ambisonics_to_channel",
@@ -266,7 +273,7 @@ cc_library(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-        "@oar",
+        "@aom-roar//include:roar",
     ],
 )
 

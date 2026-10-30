@@ -9,7 +9,6 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-
 #include "iamf/cli/renderer/oar_wrapper.h"
 
 #include <cstdint>
@@ -43,26 +42,27 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/rendering_config.h"
+#include "include/roar.h"
 
-extern "C" {
+struct RoarDeleter {
+  void operator()(roar_t* roar) { roar_destroy(roar); }
+};
 
-#include "include/animation.h"
-#include "include/oar.h"
-#include "include/oar_base.h"
-#include "include/oar_metadata.h"
-
-}  // extern "C"
+struct Oar {
+  std::unique_ptr<roar_t, RoarDeleter> roar;
+  Oar(roar_config_t* roar_config) : roar(roar_create(roar_config)) {}
+};
 
 namespace iamf_tools {
 
 // `liboar` uses integer return values extensively, where 0 means success.
 constexpr int kOarSuccess = 0;
-const size_t OarWrapper::kMaxNumObjects = def_max_number_of_objects;
+const size_t OarWrapper::kMaxNumObjects = ROAR_MAX_NUMBER_OF_OBJECTS;
 
 namespace {
 
 absl::Status FillTargetLayout(const Layout& iamf_layout,
-                              oar_layout_t& target_layout) {
+                              roar_layout_t& target_layout) {
   switch (iamf_layout.layout_type) {
     using enum Layout::LayoutType;
     case kLayoutTypeLoudspeakersSsConvention: {
@@ -75,23 +75,23 @@ absl::Status FillTargetLayout(const Layout& iamf_layout,
       }
       using enum LoudspeakersSsConventionLayout::SoundSystem;
       static const absl::NoDestructor<absl::flat_hash_map<
-          LoudspeakersSsConventionLayout::SoundSystem, oar_layout_t>>
+          LoudspeakersSsConventionLayout::SoundSystem, roar_layout_t>>
           kSoundSystemToOarLayout({
-              {kSoundSystemA_0_2_0, ck_oar_layout_sound_system_a_020},
-              {kSoundSystemB_0_5_0, ck_oar_layout_sound_system_b_050},
-              {kSoundSystemC_2_5_0, ck_oar_layout_sound_system_c_250},
-              {kSoundSystemD_4_5_0, ck_oar_layout_sound_system_d_450},
-              {kSoundSystemE_4_5_1, ck_oar_layout_sound_system_e_451},
-              {kSoundSystemF_3_7_0, ck_oar_layout_sound_system_f_370},
-              {kSoundSystemG_4_9_0, ck_oar_layout_sound_system_g_490},
-              {kSoundSystemH_9_10_3, ck_oar_layout_sound_system_h_9a3},
-              {kSoundSystemI_0_7_0, ck_oar_layout_sound_system_i_070},
-              {kSoundSystemJ_4_7_0, ck_oar_layout_sound_system_j_470},
-              {kSoundSystem10_2_7_0, ck_oar_layout_712},
-              {kSoundSystem11_2_3_0, ck_oar_layout_312},
-              {kSoundSystem12_0_1_0, ck_oar_layout_mono},
-              {kSoundSystem13_6_9_0, ck_oar_layout_916},
-              {kSoundSystem14_5_7_4, ck_oar_layout_7154},
+              {kSoundSystemA_0_2_0, ck_roar_layout_sound_system_a_020},
+              {kSoundSystemB_0_5_0, ck_roar_layout_sound_system_b_050},
+              {kSoundSystemC_2_5_0, ck_roar_layout_sound_system_c_250},
+              {kSoundSystemD_4_5_0, ck_roar_layout_sound_system_d_450},
+              {kSoundSystemE_4_5_1, ck_roar_layout_sound_system_e_451},
+              {kSoundSystemF_3_7_0, ck_roar_layout_sound_system_f_370},
+              {kSoundSystemG_4_9_0, ck_roar_layout_sound_system_g_490},
+              {kSoundSystemH_9_10_3, ck_roar_layout_sound_system_h_9a3},
+              {kSoundSystemI_0_7_0, ck_roar_layout_sound_system_i_070},
+              {kSoundSystemJ_4_7_0, ck_roar_layout_sound_system_j_470},
+              {kSoundSystem10_2_7_0, ck_roar_layout_712},
+              {kSoundSystem11_2_3_0, ck_roar_layout_312},
+              {kSoundSystem12_0_1_0, ck_roar_layout_mono},
+              {kSoundSystem13_6_9_0, ck_roar_layout_916},
+              {kSoundSystem14_5_7_4, ck_roar_layout_7154},
           });
 
       const auto& target_layout_result =
@@ -110,7 +110,7 @@ absl::Status FillTargetLayout(const Layout& iamf_layout,
         return absl::InvalidArgumentError(
             "Specific layout inconsistent with binaural layout type.");
       }
-      target_layout = ck_oar_layout_binaural;
+      target_layout = ck_roar_layout_binaural;
       break;
     case kLayoutTypeReserved0:
     case kLayoutTypeReserved1:
@@ -122,7 +122,7 @@ absl::Status FillTargetLayout(const Layout& iamf_layout,
   return absl::OkStatus();
 }
 
-absl::StatusOr<oar_layout_t> LookupOarLayoutFromScalableLoudspeakerLayout(
+absl::StatusOr<roar_layout_t> LookupOarLayoutFromScalableLoudspeakerLayout(
     const ChannelAudioLayerConfig& layer_config) {
   using enum ChannelAudioLayerConfig::LoudspeakerLayout;
   if (layer_config.loudspeaker_layout == kLayoutExpanded) {
@@ -133,28 +133,28 @@ absl::StatusOr<oar_layout_t> LookupOarLayoutFromScalableLoudspeakerLayout(
 
     using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
     static const absl::NoDestructor<absl::flat_hash_map<
-        ChannelAudioLayerConfig::ExpandedLoudspeakerLayout, oar_layout_t>>
+        ChannelAudioLayerConfig::ExpandedLoudspeakerLayout, roar_layout_t>>
         kExpandedLoudspeakerLayoutToOarLayout({
-            {kExpandedLayoutLFE, ck_oar_layout_lfe},
-            {kExpandedLayoutStereoS, ck_oar_layout_stereo_s},
-            {kExpandedLayoutStereoSS, ck_oar_layout_stereo_ss},
-            {kExpandedLayoutStereoRS, ck_oar_layout_stereo_rs},
-            {kExpandedLayoutStereoTF, ck_oar_layout_stereo_tf},
-            {kExpandedLayoutStereoTB, ck_oar_layout_stereo_tb},
-            {kExpandedLayoutTop4Ch, ck_oar_layout_top_4ch},
-            {kExpandedLayout9_1_6_ch, ck_oar_layout_916},
-            {kExpandedLayout3_0_ch, ck_oar_layout_3ch},
-            {kExpandedLayoutStereoF, ck_oar_layout_stereo_f},
-            {kExpandedLayoutStereoSi, ck_oar_layout_stereo_si},
-            {kExpandedLayoutStereoTpSi, ck_oar_layout_stereo_tpsi},
-            {kExpandedLayoutTop6Ch, ck_oar_layout_top_6ch},
-            {kExpandedLayout10_2_9_3, ck_oar_layout_a293},
-            {kExpandedLayoutLfePair, ck_oar_layout_lfe_pair},
-            {kExpandedLayoutBottom3Ch, ck_oar_layout_bottom_3ch},
-            {kExpandedLayout7_1_5_4Ch, ck_oar_layout_7154},
-            {kExpandedLayoutBottom4Ch, ck_oar_layout_bottom_4ch},
-            {kExpandedLayoutTop1Ch, ck_oar_layout_top_1ch},
-            {kExpandedLayoutTop5Ch, ck_oar_layout_top_5ch},
+            {kExpandedLayoutLFE, ck_roar_layout_lfe},
+            {kExpandedLayoutStereoS, ck_roar_layout_stereo_s},
+            {kExpandedLayoutStereoSS, ck_roar_layout_stereo_ss},
+            {kExpandedLayoutStereoRS, ck_roar_layout_stereo_rs},
+            {kExpandedLayoutStereoTF, ck_roar_layout_stereo_tf},
+            {kExpandedLayoutStereoTB, ck_roar_layout_stereo_tb},
+            {kExpandedLayoutTop4Ch, ck_roar_layout_top_4ch},
+            {kExpandedLayout9_1_6_ch, ck_roar_layout_916},
+            {kExpandedLayout3_0_ch, ck_roar_layout_3ch},
+            {kExpandedLayoutStereoF, ck_roar_layout_stereo_f},
+            {kExpandedLayoutStereoSi, ck_roar_layout_stereo_si},
+            {kExpandedLayoutStereoTpSi, ck_roar_layout_stereo_tpsi},
+            {kExpandedLayoutTop6Ch, ck_roar_layout_top_6ch},
+            {kExpandedLayout10_2_9_3, ck_roar_layout_a293},
+            {kExpandedLayoutLfePair, ck_roar_layout_lfe_pair},
+            {kExpandedLayoutBottom3Ch, ck_roar_layout_bottom_3ch},
+            {kExpandedLayout7_1_5_4Ch, ck_roar_layout_7154},
+            {kExpandedLayoutBottom4Ch, ck_roar_layout_bottom_4ch},
+            {kExpandedLayoutTop1Ch, ck_roar_layout_top_1ch},
+            {kExpandedLayoutTop5Ch, ck_roar_layout_top_5ch},
         });
 
     return LookupInMap(*kExpandedLoudspeakerLayoutToOarLayout,
@@ -162,18 +162,18 @@ absl::StatusOr<oar_layout_t> LookupOarLayoutFromScalableLoudspeakerLayout(
                        "OAR's layout type for `ExpandedLoudspeakerLayout`");
   }
   static const absl::NoDestructor<absl::flat_hash_map<
-      ChannelAudioLayerConfig::LoudspeakerLayout, oar_layout_t>>
+      ChannelAudioLayerConfig::LoudspeakerLayout, roar_layout_t>>
       kLoudspeakerLayoutToOarLayout({
-          {kLayoutMono, ck_oar_layout_mono},
-          {kLayoutStereo, ck_oar_layout_stereo},
-          {kLayout5_1_ch, ck_oar_layout_51},
-          {kLayout5_1_2_ch, ck_oar_layout_512},
-          {kLayout5_1_4_ch, ck_oar_layout_514},
-          {kLayout7_1_ch, ck_oar_layout_71},
-          {kLayout7_1_2_ch, ck_oar_layout_712},
-          {kLayout7_1_4_ch, ck_oar_layout_714},
-          {kLayout3_1_2_ch, ck_oar_layout_312},
-          {kLayoutBinaural, ck_oar_layout_binaural},
+          {kLayoutMono, ck_roar_layout_mono},
+          {kLayoutStereo, ck_roar_layout_stereo},
+          {kLayout5_1_ch, ck_roar_layout_51},
+          {kLayout5_1_2_ch, ck_roar_layout_512},
+          {kLayout5_1_4_ch, ck_roar_layout_514},
+          {kLayout7_1_ch, ck_roar_layout_71},
+          {kLayout7_1_2_ch, ck_roar_layout_712},
+          {kLayout7_1_4_ch, ck_roar_layout_714},
+          {kLayout3_1_2_ch, ck_roar_layout_312},
+          {kLayoutBinaural, ck_roar_layout_binaural},
       });
 
   return LookupInMap(*kLoudspeakerLayoutToOarLayout,
@@ -181,7 +181,7 @@ absl::StatusOr<oar_layout_t> LookupOarLayoutFromScalableLoudspeakerLayout(
                      "OAR's layout type for `LoudspeakerLayout`");
 }
 
-absl::StatusOr<oar_hoa_t> LookupOarOrderFromAmbisonicsConfig(
+absl::StatusOr<roar_hoa_t> LookupOarOrderFromAmbisonicsConfig(
     const AmbisonicsConfig& ambisonics_config) {
   const auto mode = ambisonics_config.GetAmbisonicsMode();
   if (mode != AmbisonicsConfig::kAmbisonicsModeMono &&
@@ -194,13 +194,13 @@ absl::StatusOr<oar_hoa_t> LookupOarOrderFromAmbisonicsConfig(
   RETURN_IF_NOT_OK(GetAmbisonicsOrder(ambisonics_config.GetOutputChannelCount(),
                                       ambisonics_order));
 
-  static const absl::NoDestructor<absl::flat_hash_map<int, oar_hoa_t>>
+  static const absl::NoDestructor<absl::flat_hash_map<int, roar_hoa_t>>
       kAmbisonicsOrderToOarOrder({
-          {0, ck_oar_zoa},
-          {1, ck_oar_1oa},
-          {2, ck_oar_2oa},
-          {3, ck_oar_3oa},
-          {4, ck_oar_4oa},
+          {0, ck_roar_zoa},
+          {1, ck_roar_1oa},
+          {2, ck_roar_2oa},
+          {3, ck_roar_3oa},
+          {4, ck_roar_4oa},
       });
   return LookupInMap(*kAmbisonicsOrderToOarOrder, ambisonics_order,
                      "OAR's ambisonics order for `AmbisonicsConfig`");
@@ -208,7 +208,7 @@ absl::StatusOr<oar_hoa_t> LookupOarOrderFromAmbisonicsConfig(
 
 absl::Status FillSceneBasedConfig(
     const AudioElementObu::AudioElementConfig& audio_element_config,
-    oar_audio_element_config_t& config) {
+    roar_audio_element_config_t& config) {
   const auto* ambisonics_config =
       std::get_if<AmbisonicsConfig>(&audio_element_config);
   if (ambisonics_config == nullptr) {
@@ -221,14 +221,14 @@ absl::Status FillSceneBasedConfig(
     return order_result.status();
   }
 
-  config.type = ck_scene_based;
+  config.type = ck_roar_scene_based;
   config.sbc.order = *order_result;
   return absl::OkStatus();
 }
 
 absl::Status FillChannelBasedConfig(
     const AudioElementObu::AudioElementConfig& audio_element_config,
-    oar_audio_element_config_t& config) {
+    roar_audio_element_config_t& config) {
   const auto* channel_config =
       std::get_if<ScalableChannelLayoutConfig>(&audio_element_config);
   if (channel_config == nullptr) {
@@ -247,14 +247,14 @@ absl::Status FillChannelBasedConfig(
     return layout_result.status();
   }
 
-  config.type = ck_channel_based;
+  config.type = ck_roar_channel_based;
   config.cbc.layout = *layout_result;
   return absl::OkStatus();
 }
 
 absl::Status FillObjectBasedConfig(
     const AudioElementObu::AudioElementConfig& audio_element_config,
-    oar_audio_element_config_t& config) {
+    roar_audio_element_config_t& config) {
   const auto* objects_config =
       std::get_if<ObjectsConfig>(&audio_element_config);
   if (objects_config == nullptr) {
@@ -262,7 +262,7 @@ absl::Status FillObjectBasedConfig(
         "Objects config is inconsistent with audio element type.");
   }
 
-  config.type = ck_object_based;
+  config.type = ck_roar_object_based;
   config.obc.num_objects = objects_config->GetNumObjects();
   return absl::OkStatus();
 }
@@ -270,7 +270,7 @@ absl::Status FillObjectBasedConfig(
 absl::Status FillAudioElementConfig(
     const AudioElementObu::AudioElementType audio_element_type,
     const AudioElementObu::AudioElementConfig& audio_element_config,
-    oar_audio_element_config_t& config) {
+    roar_audio_element_config_t& config) {
   switch (audio_element_type) {
     case AudioElementObu::kAudioElementSceneBased:
       return FillSceneBasedConfig(audio_element_config, config);
@@ -290,11 +290,11 @@ absl::Status FillAudioElementConfig(
 
 absl::Status FillDemixingInfo(
     const DemixingParamDefinition& demixing_param_definition,
-    const uint32_t audio_element_id, oar_audio_element_config_t& config,
+    const uint32_t audio_element_id, roar_audio_element_config_t& config,
     absl::flat_hash_map<uint32_t, uint32_t>& id_to_demixing_info_ids) {
   const auto& default_demixing_info =
       demixing_param_definition.default_demixing_info_parameter_data_;
-  config.parameters.flags |= def_parameter_set_flag_iamf_downmix_info;
+  config.parameters.flags |= ROAR_PARAMETER_SET_FLAG_IAMF_DOWNMIX_INFO;
   config.parameters.downmix_info = {
       .mode = static_cast<int>(default_demixing_info.dmixp_mode),
       .weight_index = static_cast<int>(default_demixing_info.default_w),
@@ -312,21 +312,21 @@ absl::Status FillDemixingInfo(
 }
 
 absl::Status FillRenderingConfig(const RenderingConfig& rendering_config,
-                                 oar_audio_element_config_t& config) {
-  oar_headphones_rendering_mode_t headphones_rendering_mode;
+                                 roar_audio_element_config_t& config) {
+  roar_headphones_rendering_mode_t headphones_rendering_mode;
   switch (rendering_config.headphones_rendering_mode) {
     using enum RenderingConfig::HeadphonesRenderingMode;
     case kHeadphonesRenderingModeStereo:
-      headphones_rendering_mode = ck_world_locked_restricted;
+      headphones_rendering_mode = ck_roar_world_locked_restricted;
       break;
     case kHeadphonesRenderingModeBinauralWorldLocked:
-      headphones_rendering_mode = ck_world_locked;
+      headphones_rendering_mode = ck_roar_world_locked;
       break;
     case kHeadphonesRenderingModeBinauralHeadLocked:
-      headphones_rendering_mode = ck_head_locked;
+      headphones_rendering_mode = ck_roar_head_locked;
       break;
     case kHeadphonesRenderingModeReserved3:
-      headphones_rendering_mode = ck_reserved;
+      headphones_rendering_mode = ck_roar_reserved;
       break;
     default:
       return absl::UnimplementedError(
@@ -334,18 +334,18 @@ absl::Status FillRenderingConfig(const RenderingConfig& rendering_config,
                        rendering_config.headphones_rendering_mode));
   }
 
-  oar_binaural_filter_profile_t binaural_filter_profile =
-      ck_binaural_filter_profile_default;
+  roar_binaural_filter_profile_t binaural_filter_profile =
+      ck_roar_binaural_filter_profile_default;
   switch (rendering_config.binaural_filter_profile) {
     using enum RenderingConfig::BinauralFilterProfile;
     case kBinauralFilterProfileAmbient:
-      binaural_filter_profile = ck_ambient;
+      binaural_filter_profile = ck_roar_ambient;
       break;
     case kBinauralFilterProfileDirect:
-      binaural_filter_profile = ck_direct;
+      binaural_filter_profile = ck_roar_direct;
       break;
     case kBinauralFilterProfileReverberant:
-      binaural_filter_profile = ck_reverberant;
+      binaural_filter_profile = ck_roar_reverberant;
       break;
     case kBinauralFilterProfileReserved3:
       // The Spec dictates that this shall be ignored. Keeping the default
@@ -358,7 +358,7 @@ absl::Status FillRenderingConfig(const RenderingConfig& rendering_config,
   }
 
   config.parameters.flags |=
-      def_parameter_set_flag_iamf_element_rendering_config;
+      ROAR_PARAMETER_SET_FLAG_IAMF_ELEMENT_RENDERING_CONFIG;
   config.parameters.element_rendering_config = {
       .headphones_rendering_mode = headphones_rendering_mode,
       .binaural_filter_profile = binaural_filter_profile,
@@ -371,40 +371,40 @@ absl::Status FillMixGainMetadata(
     uint32_t audio_element_or_group_id, uint32_t parameter_id,
     uint32_t duration, float default_gain_value,
     const std::optional<MixGainParameterData>& mix_gain_parameter_data,
-    oar_metadata_t& metadata) {
-  metadata.type = ck_metadata_gain;
+    roar_metadata_t& metadata) {
+  metadata.type = ck_roar_metadata_gain;
 
   // `liboar` uses a signed integer to represent duration. Cast here.
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
                                                       metadata.duration));
 
-  oar_metadata_gain_t& gain = metadata.gain;
+  roar_metadata_gain_t& gain = metadata.gain;
   gain.id = parameter_id;
   if (!mix_gain_parameter_data.has_value()) {
-    gain.param_type = ck_param_constant;
+    gain.param_type = ck_roar_param_constant;
     gain.constant_gain = default_gain_value;
     return absl::OkStatus();
   }
 
-  gain.param_type = ck_param_animated;
-  animated_float32_t& animated_gains = gain.animated_gains;
+  gain.param_type = ck_roar_param_animated;
+  roar_animated_float32_t& animated_gains = gain.animated_gains;
   const auto& param_data = mix_gain_parameter_data->param_data;
   switch (param_data.animation_type()) {
     using enum AnimationType;
     case kStep:
-      animated_gains.animation_type = ck_animation_type_step;
+      animated_gains.animation_type = ck_roar_animation_type_step;
       ABSL_DCHECK(param_data.start_point_value().has_value());
       animated_gains.data.start = Q7_8ToFloat(*param_data.start_point_value());
       break;
     case kLinear:
-      animated_gains.animation_type = ck_animation_type_linear;
+      animated_gains.animation_type = ck_roar_animation_type_linear;
       ABSL_DCHECK(param_data.start_point_value().has_value());
       ABSL_DCHECK(param_data.end_point_value().has_value());
       animated_gains.data.start = Q7_8ToFloat(*param_data.start_point_value());
       animated_gains.data.end = Q7_8ToFloat(*param_data.end_point_value());
       break;
     case kBezier:
-      animated_gains.animation_type = ck_animation_type_bezier;
+      animated_gains.animation_type = ck_roar_animation_type_bezier;
       ABSL_DCHECK(param_data.start_point_value().has_value());
       ABSL_DCHECK(param_data.end_point_value().has_value());
       ABSL_DCHECK(param_data.control_point_value().has_value());
@@ -435,7 +435,7 @@ std::unique_ptr<OarWrapper> OarWrapper::Create(const Layout& output_layout,
                                                uint32_t num_output_channels,
                                                uint32_t num_samples_per_frame,
                                                uint32_t output_mix_gain_id) {
-  oar_layout_t target_layout;
+  roar_layout_t target_layout;
 
   if (const auto layout_status = FillTargetLayout(output_layout, target_layout);
       !layout_status.ok()) {
@@ -445,7 +445,7 @@ std::unique_ptr<OarWrapper> OarWrapper::Create(const Layout& output_layout,
 
   // TODO(b/576563728): Update this check once the frame size limitations are
   //                    finalized.
-  if (target_layout == ck_oar_layout_binaural &&
+  if (target_layout == ck_roar_layout_binaural &&
       (num_samples_per_frame > kBinauralMaxFrameSize ||
        num_samples_per_frame < kBinauralMinFrameSize)) {
     ABSL_LOG(ERROR) << "Rendering to binaural with frame size > "
@@ -455,18 +455,23 @@ std::unique_ptr<OarWrapper> OarWrapper::Create(const Layout& output_layout,
     return nullptr;
   }
 
-  oar_config_t oar_config = {
+  roar_config_t oar_config = {
       .target_layout = target_layout,
       .samples_per_channel = num_samples_per_frame,
       .sampling_rate = sample_rate,
   };
-  std::unique_ptr<Oar, OarDeleter> oar(oar_create(&oar_config));
+  std::unique_ptr<Oar, OarDeleter> oar(new Oar(&oar_config), OarDeleter{});
+
   if (oar == nullptr) {
     ABSL_LOG(ERROR) << "Failed to create an OAR instance.";
     return nullptr;
   }
+  if (oar->roar == nullptr) {
+    ABSL_LOG(ERROR) << "Failed to create an ROAR instance.";
+    return nullptr;
+  }
   const uint32_t num_output_channels_created =
-      oar_get_number_of_output_channels(oar.get());
+      roar_get_number_of_output_channels(oar->roar.get());
   if (num_output_channels_created != num_output_channels) {
     ABSL_LOG(ERROR) << "Number of output channels requested != "
                     << " number of output channels created ("
@@ -475,7 +480,7 @@ std::unique_ptr<OarWrapper> OarWrapper::Create(const Layout& output_layout,
     return nullptr;
   }
 
-  int add_group_result = oar_add_audio_group(oar.get());
+  int add_group_result = roar_add_audio_group(oar->roar.get());
   if (add_group_result < 0) {
     ABSL_LOG(ERROR) << "Failed to add an audio group. Error code= "
                     << add_group_result;
@@ -498,7 +503,8 @@ OarWrapper::OarWrapper(std::unique_ptr<Oar, OarDeleter> oar,
                        uint32_t num_samples_per_frame, uint32_t group_id,
                        uint32_t output_mix_gain_id)
     : oar_(std::move(oar)),
-      num_output_channels_(oar_get_number_of_output_channels(oar_.get())),
+      num_output_channels_(
+          roar_get_number_of_output_channels(oar_->roar.get())),
       num_samples_per_frame_(num_samples_per_frame),
       group_id_(group_id),
       output_mix_gain_id_(output_mix_gain_id) {}
@@ -512,7 +518,7 @@ absl::Status OarWrapper::AddAudioElement(
     const std::optional<DemixingParamDefinition>& demixing_param_definition,
     const RenderingConfig& rendering_config, uint32_t element_mix_gain_id) {
   // Initialize and populate element config.
-  oar_audio_element_config_t config = {};
+  roar_audio_element_config_t config = {};
   RETURN_IF_NOT_OK(
       FillAudioElementConfig(audio_element_type, audio_element_config, config));
 
@@ -523,8 +529,8 @@ absl::Status OarWrapper::AddAudioElement(
   }
   RETURN_IF_NOT_OK(FillRenderingConfig(rendering_config, config));
 
-  const int add_result =
-      oar_add_audio_element(oar_.get(), group_id_, audio_element_id, &config);
+  const int add_result = roar_add_audio_element(oar_->roar.get(), group_id_,
+                                                audio_element_id, &config);
   if (add_result != kOarSuccess) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Failed to add an audio element. Error code= ", add_result));
@@ -542,7 +548,7 @@ absl::Status OarWrapper::AddAudioElement(
 }
 
 absl::Status OarWrapper::RemoveAudioElement(uint32_t id) {
-  const int result = oar_remove_audio_element(oar_.get(), id);
+  const int result = roar_remove_audio_element(oar_->roar.get(), id);
   if (result != kOarSuccess) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Failed to remove audio element ID= ", id, ". Error code= ", result));
@@ -560,7 +566,7 @@ absl::Status OarWrapper::AddInput(uint32_t audio_element_id,
 
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "input_buffer", input_buffer, num_samples_per_frame_ * num_channels));
-  oar_audio_block_t input_data = {
+  roar_audio_block_t input_data = {
       // `const_cast` is necessary because `liboar` takes a non-const pointer,
       // but we want to keep the C++ wrapper clear with the intention that this
       // function does not modify the input.
@@ -569,8 +575,8 @@ absl::Status OarWrapper::AddInput(uint32_t audio_element_id,
       .samples_per_channel = num_samples_per_frame_,
   };
 
-  const auto update_data_result =
-      oar_update_audio_element_data(oar_.get(), audio_element_id, &input_data);
+  const auto update_data_result = roar_update_audio_element_data(
+      oar_->roar.get(), audio_element_id, &input_data);
   if (update_data_result != kOarSuccess) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Failed to update sample data for audio element ID= ", audio_element_id,
@@ -590,13 +596,13 @@ absl::Status OarWrapper::UpdateElementMixGain(
     return element_mix_gain_id.status();
   }
 
-  oar_metadata_t metadata;
+  roar_metadata_t metadata;
   RETURN_IF_NOT_OK(FillMixGainMetadata(audio_element_id, *element_mix_gain_id,
                                        duration, default_gain_value,
                                        mix_gain_parameter_data, metadata));
 
-  const auto update_metadata_result = oar_update_audio_element_metadata(
-      oar_.get(), audio_element_id, &metadata);
+  const auto update_metadata_result = roar_update_audio_element_metadata(
+      oar_->roar.get(), audio_element_id, &metadata);
   if (update_metadata_result != kOarSuccess) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Failed to update element mix gain for audio element ID= ",
@@ -609,13 +615,13 @@ absl::Status OarWrapper::UpdateElementMixGain(
 absl::Status OarWrapper::UpdateOutputMixGain(
     uint32_t duration, float default_gain_value,
     const std::optional<MixGainParameterData>& mix_gain_parameter_data) {
-  oar_metadata_t metadata;
+  roar_metadata_t metadata;
   RETURN_IF_NOT_OK(FillMixGainMetadata(group_id_, output_mix_gain_id_, duration,
                                        default_gain_value,
                                        mix_gain_parameter_data, metadata));
 
   const auto update_metadata_result =
-      oar_update_metadata(oar_.get(), group_id_, &metadata);
+      roar_update_metadata(oar_->roar.get(), group_id_, &metadata);
   if (update_metadata_result != 0) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Failed to update output mix gain for audio group ID= ", group_id_,
@@ -627,8 +633,8 @@ absl::Status OarWrapper::UpdateOutputMixGain(
 
 absl::Status OarWrapper::SetHeadRotation(float w, float x, float y, float z,
                                          uint32_t duration) {
-  oar_metadata_t metadata;
-  metadata.type = ck_metadata_head_rotation;
+  roar_metadata_t metadata;
+  metadata.type = ck_roar_metadata_head_rotation;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
                                                       metadata.duration));
   metadata.head_rotation.w = w;
@@ -636,7 +642,8 @@ absl::Status OarWrapper::SetHeadRotation(float w, float x, float y, float z,
   metadata.head_rotation.y = y;
   metadata.head_rotation.z = z;
 
-  const int result = oar_update_metadata(oar_.get(), group_id_, &metadata);
+  const int result =
+      roar_update_metadata(oar_->roar.get(), group_id_, &metadata);
   if (result != kOarSuccess) {
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to set head rotation. Error code= ", result));
@@ -652,14 +659,14 @@ absl::Status OarWrapper::UpdateObjectPositions(
         absl::StrCat("Audio element ID= ", audio_element_id, " not found."));
   }
 
-  oar_metadata_t metadata;
-  metadata.type = ck_metadata_object_positions;
+  roar_metadata_t metadata;
+  metadata.type = ck_roar_metadata_object_positions;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
                                                       metadata.duration));
 
   // TODO(b/516667116): Support more than just constant positions.
-  metadata.object_positions.param_type = ck_param_constant;
-  metadata.object_positions.position_type = ck_polar;
+  metadata.object_positions.param_type = ck_roar_param_constant;
+  metadata.object_positions.position_type = ck_roar_polar;
 
   // Only `kMaxNumObjects` objects are supported for object-based
   // rendering in OAR.
@@ -668,6 +675,8 @@ absl::Status OarWrapper::UpdateObjectPositions(
         "Maximum number of object positions per element exceeded: (",
         positions.size(), " > ", kMaxNumObjects, ")."));
   }
+  metadata.object_positions.num_objects =
+      static_cast<uint32_t>(positions.size());
 
   for (int i = 0; i < positions.size(); ++i) {
     metadata.object_positions.polar_positions[i].azimuth = positions[i].azimuth;
@@ -677,8 +686,8 @@ absl::Status OarWrapper::UpdateObjectPositions(
         positions[i].distance;
   }
 
-  const auto update_metadata_result = oar_update_audio_element_metadata(
-      oar_.get(), audio_element_id, &metadata);
+  const auto update_metadata_result = roar_update_audio_element_metadata(
+      oar_->roar.get(), audio_element_id, &metadata);
   if (update_metadata_result != kOarSuccess) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Failed to update object positions for audio element ID= ",
@@ -703,14 +712,14 @@ absl::Status OarWrapper::UpdateDownMixMode(
                      " not found."));
   }
 
-  oar_metadata_t metadata;
-  metadata.type = ck_metadata_iamf_downmix_mode;
+  roar_metadata_t metadata;
+  metadata.type = ck_roar_metadata_iamf_downmix_mode;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
                                                       metadata.duration));
 
   metadata.iamf_downmix_mode.mode = static_cast<int>(mode);
-  const int update_metadata_result = oar_update_audio_element_metadata(
-      oar_.get(), audio_element_id, &metadata);
+  const int update_metadata_result = roar_update_audio_element_metadata(
+      oar_->roar.get(), audio_element_id, &metadata);
   if (update_metadata_result != kOarSuccess) {
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to update downmix mode to mode= ", mode,
@@ -724,13 +733,13 @@ absl::Status OarWrapper::Render(absl::Span<OarSampleType> output_buffer) {
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "output_buffer", output_buffer,
       num_output_channels_ * num_samples_per_frame_));
-  oar_audio_block_t output_data = {
+  roar_audio_block_t output_data = {
       .data = output_buffer.data(),
       .channels = num_output_channels_,
       .samples_per_channel = num_samples_per_frame_,
   };
 
-  const auto render_result = oar_render(oar_.get(), &output_data);
+  const auto render_result = roar_render(oar_->roar.get(), &output_data);
   if (render_result != kOarSuccess) {
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to render. Error code= ", render_result));
@@ -740,7 +749,8 @@ absl::Status OarWrapper::Render(absl::Span<OarSampleType> output_buffer) {
 }
 
 absl::Status OarWrapper::EnableLoudnessProcessor(bool enable) {
-  const int result = oar_enable_loudness_processor(oar_.get(), enable ? 1 : 0);
+  const int result =
+      roar_enable_loudness_processor(oar_->roar.get(), enable ? 1 : 0);
   if (result != kOarSuccess) {
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to ", (enable ? "enable" : "disable"),
@@ -751,7 +761,7 @@ absl::Status OarWrapper::EnableLoudnessProcessor(bool enable) {
 
 absl::Status OarWrapper::SetLoudness(float loudness, float target_loudness) {
   const int result =
-      oar_set_loudness(oar_.get(), group_id_, loudness, target_loudness);
+      roar_set_loudness(oar_->roar.get(), group_id_, loudness, target_loudness);
   if (result != kOarSuccess) {
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to set loudness from ", loudness, " to ",
@@ -761,7 +771,7 @@ absl::Status OarWrapper::SetLoudness(float loudness, float target_loudness) {
 }
 
 absl::Status OarWrapper::EnableLimiter(bool enable) {
-  const int result = oar_enable_limiter(oar_.get(), enable ? 1 : 0);
+  const int result = roar_enable_limiter(oar_->roar.get(), enable ? 1 : 0);
   if (result != kOarSuccess) {
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to ", (enable ? "enable" : "disable"),
@@ -771,7 +781,8 @@ absl::Status OarWrapper::EnableLimiter(bool enable) {
 }
 
 absl::Status OarWrapper::EnableHeadTracking(bool enable) {
-  const int result = oar_enable_head_tracking(oar_.get(), enable ? 1 : 0);
+  const int result =
+      roar_enable_head_tracking(oar_->roar.get(), enable ? 1 : 0);
   if (result != kOarSuccess) {
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to ", (enable ? "enable" : "disable"),
@@ -781,25 +792,25 @@ absl::Status OarWrapper::EnableHeadTracking(bool enable) {
 }
 
 uint32_t OarWrapper::GetNumSamplesPerFrame() const {
-  return oar_get_samples_per_channel(oar_.get());
+  return roar_get_samples_per_channel(oar_->roar.get());
 }
 
 uint32_t OarWrapper::GetSamplingRate() const {
-  return oar_get_sampling_rate(oar_.get());
+  return roar_get_sampling_rate(oar_->roar.get());
 }
 
 uint32_t OarWrapper::GetNumAudioElementChannels(uint32_t id) const {
-  return oar_get_number_of_audio_element_channels(oar_.get(), id);
+  return roar_get_number_of_audio_element_channels(oar_->roar.get(), id);
 }
 
 uint32_t OarWrapper::GetNumOutputChannels() const {
-  return oar_get_number_of_output_channels(oar_.get());
+  return roar_get_number_of_output_channels(oar_->roar.get());
 }
 
 uint32_t OarWrapper::GetNumAudioElements() const {
-  return oar_get_number_of_audio_elements(oar_.get());
+  return roar_get_number_of_audio_elements(oar_->roar.get());
 }
 
-void OarWrapper::OarDeleter::operator()(Oar* oar) const { oar_destroy(oar); }
+void OarWrapper::OarDeleter::operator()(Oar* oar) const { delete oar; }
 
 }  // namespace iamf_tools

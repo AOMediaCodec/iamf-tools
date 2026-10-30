@@ -40,6 +40,15 @@ Running built-in tests:
 bazelisk test -c opt //iamf/...
 ```
 
+`iamf-tools` now supports rendering using
+[Rust Open Audio Renderer (ROAR)](https://github.com/AOMediaCodec/roar). To
+build with `ROAR`, supply the `-DIAMF_TOOLS_ENABLE_ROAR` flag to the build
+system. For example:
+
+```
+bazelisk build --copt-DIAMF_TOOLS_ENABLE_ROAR //iamf/cli:encoder_main
+```
+
 ## Test suite
 
 [iamf/cli/testdata](../iamf/cli/testdata) covers a wide variety of IAMF

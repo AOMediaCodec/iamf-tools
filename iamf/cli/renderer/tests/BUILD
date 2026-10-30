@@ -2,6 +2,13 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 package(default_visibility = ["//iamf/cli/renderer/tests:__subpackages__"])
 
+exports_files(
+    srcs = [
+        "oar_wrapper_test.cc",
+    ],
+    visibility = ["//iamf/cli:__subpackages__"],
+)
+
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "audio_element_renderer_ambisonics_to_channel_benchmark",

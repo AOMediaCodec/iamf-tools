@@ -13,7 +13,6 @@ module(
 bazel_dep(name = "rules_cc", version = "0.2.22")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-cpp", version = "20260526.0")
-bazel_dep(name = "bazel_skylib", version = "1.9.2")
 
 # To force compatibility with protobuf 36.0.
 single_version_override(
@@ -65,13 +64,13 @@ git_repository(
     remote = "https://github.com/google/loudness_ebur128.git",
 )
 
-git_repository(
-    name = "oar",
-    remote = "https://github.com/AOMediaCodec/oar.git",
-    commit = "a7a5cc890ee088e71ff6dc13628e6e7fe74a1481",
+bazel_dep(name = "aom-roar", version = "1.1.0")
+git_override(
+    module_name = "aom-roar",
+    commit = "ca05b1dd01884932ecb26f1f8d72e401fe001efe",
+    remote = "https://github.com/AOMediaCodec/roar",
 )
 
-# OBR is a nested module and has to be handled separately.
 git_repository(
     name = "obr",
     remote = "https://github.com/AOMediaCodec/oar.git",

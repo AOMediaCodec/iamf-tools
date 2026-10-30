@@ -1,5 +1,3 @@
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
-
 # Example commandline interface tools for the IAMF software.
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
@@ -19,22 +17,6 @@ exports_files(
         "encoder_main_lib.h",
         "iamf_components.h",
     ],
-)
-
-# By default OAR is not used for rendering. To enable it, build with
-# `--//iamf/cli:use_oar=true`. E.g.
-# $ bazel build //iamf/cli:encoder_main \
-# $ --//iamf/cli:use_oar=true
-bool_flag(
-    name = "use_oar",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "oar_used",
-    flag_values = {
-        ":use_oar": "true",
-    },
 )
 
 # keep-sorted start block=yes prefix_order=cc_library,cc_binary newline_separated=yes
@@ -466,6 +448,7 @@ cc_library(
         ":renderer_factory",
         "//iamf/cli/renderer:default_layout_renderer",
         "//iamf/cli/renderer:layout_renderer_base",
+        "//iamf/cli/renderer:oar_layout_renderer",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
@@ -492,20 +475,6 @@ cc_library(
     deps = [
         ":loudness_calculator_base",
         "//iamf/obu:mix_presentation",
-    ],
-)
-
-cc_library(
-    name = "oar_layout_renderer_factory",
-    srcs = ["oar_layout_renderer_factory.cc"],
-    hdrs = ["layout_renderer_factory.h"],
-    deps = [
-        ":audio_element_with_data",
-        "//iamf/cli/renderer:layout_renderer_base",
-        "//iamf/cli/renderer:oar_layout_renderer",
-        "//iamf/obu:mix_presentation",
-        "//iamf/obu:types",
-        "//iamf/obu/param_definitions:mix_gain_param_definition",
     ],
 )
 
@@ -856,6 +825,7 @@ cc_library(
         ":cli_util",
         ":demixing_manager",
         ":descriptor_obus",
+        ":layout_renderer_factory",
         ":loudness_calculator_base",
         ":loudness_calculator_factory_base",
         ":parameter_block_with_data",
@@ -877,10 +847,7 @@ cc_library(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-    ] + select({
-        "oar_used": [":oar_layout_renderer_factory"],
-        "//conditions:default": ["layout_renderer_factory"],
-    }),
+    ],
 )
 
 cc_library(
