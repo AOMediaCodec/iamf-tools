@@ -67,16 +67,16 @@ git_repository(
 bazel_dep(name = "aom-roar", version = "1.1.0")
 git_override(
     module_name = "aom-roar",
-    commit = "ca05b1dd01884932ecb26f1f8d72e401fe001efe",
+    commit = "8b56061100d6f31731400166ecf0d5d1c606b10f",
     remote = "https://github.com/AOMediaCodec/roar",
 )
 
 git_repository(
     name = "obr",
-    remote = "https://github.com/AOMediaCodec/oar.git",
     commit = "a7a5cc890ee088e71ff6dc13628e6e7fe74a1481",
-    strip_prefix = "src/renderer/obr/obr_capi/obr",
+    remote = "https://github.com/AOMediaCodec/oar.git",
     sparse_checkout_patterns = ["src/renderer/obr/obr_capi/obr/**"],
+    strip_prefix = "src/renderer/obr/obr_capi/obr",
 )
 
 # PFFFT, transitive dependency needed by OBR.

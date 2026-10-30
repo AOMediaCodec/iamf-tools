@@ -247,9 +247,7 @@ TEST(OarWrapperTest, CreateBinauralSucceedsAtBoundaryFrameSizes) {
   EXPECT_NE(max_wrapper, nullptr);
 }
 
-// TODO(b/579380360): Re-enable when ROAR supports this.
-TEST(OarWrapperTest,
-     DISABLED_CreateNonBinauralSucceedsWhenFrameSizeIsOutOfBounds) {
+TEST(OarWrapperTest, CreateNonBinauralSucceedsWhenFrameSizeIsOutOfBounds) {
   // The frame size limits only apply when rendering to binaural.
   auto min_wrapper = OarWrapper::Create(
       GetStereoLayout(), kSampleRate, kStereoChannels,
