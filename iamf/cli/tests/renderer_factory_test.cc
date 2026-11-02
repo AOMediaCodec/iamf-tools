@@ -36,7 +36,6 @@ const Layout kMonoLayout = {
     .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
     .specific_layout =
         LoudspeakersSsConventionLayout{.sound_system = kSoundSystem12_0_1_0}};
-const Layout kBinauralLayout = {.layout_type = Layout::kLayoutTypeBinaural};
 
 constexpr size_t kNumSamplesPerFrame = 32;
 constexpr size_t kSampleRate = 48000;
@@ -56,15 +55,9 @@ const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig =
 const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig =
     MakeFullOrderAmbisonicsMonoConfig(1);
 
-const ExtensionConfig kExtensionConfig = {.audio_element_config_bytes = {}};
-
 const RenderingConfig kHeadphonesAsStereoRenderingConfig = {
     .headphones_rendering_mode =
         RenderingConfig::kHeadphonesRenderingModeStereo};
-
-const RenderingConfig kHeadphonesAsBinauralRenderingConfig = {
-    .headphones_rendering_mode =
-        RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked};
 
 TEST(CreateRendererForLayout, SupportsPassThroughRenderer) {
   const RendererFactory factory;
@@ -76,19 +69,6 @@ TEST(CreateRendererForLayout, SupportsPassThroughRenderer) {
           kMonoLayout, kNumSamplesPerFrame, kSampleRate),
       nullptr);
 }
-
-#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
-TEST(CreateRendererForLayout, SupportsPassThroughBinauralRenderer) {
-  const RendererFactory factory;
-
-  EXPECT_NE(
-      factory.CreateRendererForLayout(
-          {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
-          kBinauralChannelLayoutConfig, kHeadphonesAsBinauralRenderingConfig,
-          kBinauralLayout, kNumSamplesPerFrame, kSampleRate),
-      nullptr);
-}
-#endif
 
 TEST(CreateRendererForLayout,
      ReturnsNullPtrWhenTypeIsSceneBasedButConfigIsChannelBased) {
@@ -114,47 +94,6 @@ TEST(CreateRendererForLayout,
       nullptr);
 }
 
-#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
-TEST(CreateRendererForLayout, SupportsChannelToBinauralRenderer) {
-  const RendererFactory factory;
-
-  EXPECT_NE(
-      factory.CreateRendererForLayout(
-          {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
-          kStereoScalableChannelLayoutConfig,
-          kHeadphonesAsBinauralRenderingConfig, kBinauralLayout,
-          kNumSamplesPerFrame, kSampleRate),
-      nullptr);
-}
-#endif
-
-#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
-TEST(CreateRendererForLayout,
-     SupportsChannelToBinauralRendererWithStereoHeadphonesRenderingMode) {
-  const RendererFactory factory;
-
-  EXPECT_NE(
-      factory.CreateRendererForLayout(
-          {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
-          kStereoScalableChannelLayoutConfig,
-          kHeadphonesAsStereoRenderingConfig, kBinauralLayout,
-          kNumSamplesPerFrame, kSampleRate),
-      nullptr);
-}
-#endif
-
-#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
-TEST(CreateRendererForLayout, ReturnsNullPtrForUnknownExtension) {
-  const RendererFactory factory;
-
-  EXPECT_EQ(factory.CreateRendererForLayout(
-                {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementEndReserved,
-                kExtensionConfig, kHeadphonesAsStereoRenderingConfig,
-                kBinauralLayout, kNumSamplesPerFrame, kSampleRate),
-            nullptr);
-}
-#endif
-
 TEST(CreateRendererForLayout, SupportsChannelToChannelRenderer) {
   const RendererFactory factory;
 
@@ -177,38 +116,6 @@ TEST(CreateRendererForLayout, SupportsAmbisonicsToChannelRenderer) {
           kMonoLayout, kNumSamplesPerFrame, kSampleRate),
       nullptr);
 }
-
-#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
-TEST(CreateRendererForLayout, SupportsAmbisonicsToBinauralRenderer) {
-  const RendererFactory factory;
-
-  // TODO(b/459993192): Test 0-th order ambisonics when it's supported.
-  EXPECT_NE(
-      factory.CreateRendererForLayout(
-          {30, 31, 32, 33},
-          {{30, {kA0}}, {31, {kA1}}, {32, {kA2}}, {33, {kA3}}},
-          AudioElementObu::kAudioElementSceneBased,
-          kFullFirstOrderAmbisonicsConfig, kHeadphonesAsBinauralRenderingConfig,
-          kBinauralLayout, kNumSamplesPerFrame, kSampleRate),
-      nullptr);
-}
-#endif
-
-#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
-TEST(CreateRendererForLayout,
-     SupportsAmbisonicsToBinauralRendererWithStereoHeadphonesRenderingMode) {
-  const RendererFactory factory;
-  // TODO(b/459993192): Test 0-th order ambisonics when it's supported.
-  EXPECT_NE(
-      factory.CreateRendererForLayout(
-          {30, 31, 32, 33},
-          {{30, {kA0}}, {31, {kA1}}, {32, {kA2}}, {33, {kA3}}},
-          AudioElementObu::kAudioElementSceneBased,
-          kFullFirstOrderAmbisonicsConfig, kHeadphonesAsStereoRenderingConfig,
-          kBinauralLayout, kNumSamplesPerFrame, kSampleRate),
-      nullptr);
-}
-#endif
 
 }  // namespace
 }  // namespace iamf_tools

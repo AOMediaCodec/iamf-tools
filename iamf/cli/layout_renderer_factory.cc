@@ -21,11 +21,11 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 
+// Either render using ROAR for everything or only support loudspeaker outputs
+// (no binaural rendering without ROAR).
 #ifndef IAMF_TOOLS_DISABLE_ROAR
 #include "iamf/cli/renderer/oar_layout_renderer.h"
 #else
-// Use the built-in renderer instead, which also means no binaural rendering.
-#define IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
 #include "iamf/cli/renderer/default_layout_renderer.h"
 #include "iamf/cli/renderer_factory.h"
 #endif

@@ -73,22 +73,6 @@ git_override(
     remote = "https://github.com/AOMediaCodec/roar",
 )
 
-git_repository(
-    name = "obr",
-    commit = "a7a5cc890ee088e71ff6dc13628e6e7fe74a1481",
-    remote = "https://github.com/AOMediaCodec/oar.git",
-    sparse_checkout_patterns = ["src/renderer/obr/obr_capi/obr/**"],
-    strip_prefix = "src/renderer/obr/obr_capi/obr",
-)
-
-# PFFFT, transitive dependency needed by OBR.
-git_repository(
-    name = "pffft",
-    build_file = "//:external/pffft.BUILD",
-    commit = "d7a4c0206a29423478776d6b23a37bbb308f21d5",
-    remote = "https://bitbucket.org/jpommier/pffft.git",
-)
-
 # FDK AAC.
 git_repository(
     name = "fdk_aac",
