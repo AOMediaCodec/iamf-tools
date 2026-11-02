@@ -15,6 +15,10 @@ and this project adheres to
 -   Changed the encoder API to remove Abseil dependencies, preferring to use std
     types or `IamfStatus` so that consumers of the library do not have to depend
     on Abseil directly.
+-   [ROAR](http://www.github.com/aomediacodec/roar/) is now the default renderer
+    for all output types (binaural and loudspeaker) and the only renderer for
+    binaural output. Loudspeaker-only rendering is still available by passing
+    the flag `--//iamf/cli:enable_roar=False`.
 
 ## [3.0.0] - 2026-09-28
 

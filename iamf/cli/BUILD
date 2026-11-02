@@ -1,3 +1,5 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
 # Example commandline interface tools for the IAMF software.
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
@@ -17,6 +19,21 @@ exports_files(
         "encoder_main_lib.h",
         "iamf_components.h",
     ],
+)
+
+# Boolean flag that can be flipped to disable ROAR with `--//iamf/cli:enable_roar=False`.
+bool_flag(
+    name = "enable_roar",
+    build_setting_default = True,
+)
+
+# Used in the renderer factory to disable ROAR when the above bool_flag is False.
+config_setting(
+    name = "disable_roar",
+    # Trigger values for this setting.
+    flag_values = {
+        ":enable_roar": "False",
+    },
 )
 
 # keep-sorted start block=yes prefix_order=cc_library,cc_binary newline_separated=yes
@@ -443,16 +460,25 @@ cc_library(
     name = "layout_renderer_factory",
     srcs = ["layout_renderer_factory.cc"],
     hdrs = ["layout_renderer_factory.h"],
+    defines = select({
+        ":disable_roar": ["IAMF_TOOLS_DISABLE_ROAR"],
+        "//conditions:default": [],
+    }),
     deps = [
         ":audio_element_with_data",
-        ":renderer_factory",
-        "//iamf/cli/renderer:default_layout_renderer",
         "//iamf/cli/renderer:layout_renderer_base",
-        "//iamf/cli/renderer:oar_layout_renderer",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
-    ],
+    ] + select({
+        ":disable_roar": [
+            ":renderer_factory",
+            "//iamf/cli/renderer:default_layout_renderer",
+        ],
+        "//conditions:default": [
+            "//iamf/cli/renderer:oar_layout_renderer",
+        ],
+    }),
 )
 
 cc_library(

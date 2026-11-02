@@ -17,11 +17,12 @@
 # Move the pins forward as MODULE.bazel moves.
 #
 # Usage:
-#   ./build_cmake.sh [ROOT]   # ROOT defaults to ./build (gitignored is fine;
-#                             # nothing under iamf/ is written)
-# Requirements (Debian/Ubuntu names): cmake pkg-config git g++
+#   ./build_cmake.sh [ROOT]              # ROOT defaults to ./build (gitignored is fine;
+#                                        # nothing under iamf/ is written)
+#   ENABLE_ROAR=OFF ./build_cmake.sh     # Disable ROAR and use built-in renderer
+# Requirements (Debian/Ubuntu names): cmake pkg-config git g++ cargo
 #   libopus-dev libflac-dev libexpat1-dev libeigen3-dev
-# Requirements (macOS / Homebrew):     brew install cmake pkg-config opus flac eigen
+# Requirements (macOS / Homebrew):     brew install cmake pkg-config opus flac eigen rust
 #   expat is supplied by the Xcode Command Line Tools SDK. macOS has no
 #   /usr/include at all, so system headers are discovered (S2 below) and eigen
 #   is located with find_path rather than a fixed prefix.
@@ -32,6 +33,7 @@ ROOT="${1:-$(pwd)/build}"
 SRC="$ROOT/src"
 DEPS="$ROOT/deps"
 LOG="$ROOT/logs"
+ENABLE_ROAR="${ENABLE_ROAR:-ON}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)}"
 mkdir -p "$SRC" "$DEPS" "$LOG"
 
@@ -76,9 +78,13 @@ clone abseil-cpp       https://github.com/abseil/abseil-cpp        20260526.0 ||
 clone protobuf         https://github.com/protocolbuffers/protobuf v36.0      || exit 1
 clone fdk_aac          https://github.com/mstorsjo/fdk-aac         ee76460efbdb147e26d804c798949c23f174460b || exit 1
 clone loudness_ebur128 https://github.com/google/loudness_ebur128  e9e73147637db60dc742cba8a611a37dd72b14b5 || exit 1
-clone obr              https://github.com/google/obr               478dc7c752d5eccae534635139ff0253eee3a14a || exit 1
 clone audio_to_tactile https://github.com/google/audio-to-tactile  d3f449fdfd8cfe4a845d0ae244fce2a0bca34a15 || exit 1
-clone pffft            https://github.com/marton78/pffft           a4b03590cc2a4bea56f9721996e3057835799179 || exit 1
+if [ "$ENABLE_ROAR" = "ON" ]; then
+  clone roar           https://github.com/AOMediaCodec/roar        8b56061100d6f31731400166ecf0d5d1c606b10f || exit 1
+else
+  clone obr            https://github.com/google/obr               478dc7c752d5eccae534635139ff0253eee3a14a || exit 1
+  clone pffft          https://github.com/marton78/pffft           a4b03590cc2a4bea56f9721996e3057835799179 || exit 1
+fi
 
 # ---------- S2: header shims for Bazel-style repo-relative includes ----------
 stage "S2 shims"
@@ -123,12 +129,23 @@ cmake_install protobuf "$SRC/protobuf" "$SRC/build-protobuf" \
   -Dprotobuf_ABSL_PROVIDER=package \
   -Dprotobuf_BUILD_SHARED_LIBS=OFF
 
+if [ "$ENABLE_ROAR" = "ON" ]; then
+  # ---------- S4b: roar (static C library via cargo) ----------
+  stage "Building roar"
+  run_logged "roar-build" cargo rustc \
+    --manifest-path "$SRC/roar/Cargo.toml" \
+    --target-dir "$SRC/build-roar" \
+    --lib --release --locked \
+    -- --crate-type=staticlib
+fi
+
 # ---------- S5: iamf-tools via the in-tree CMakeLists ----------
 stage "Building iamf-tools"
 run_logged "iamf-cfg" cmake -S "$REPO" -B "$SRC/build-iamf" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$DEPS" \
-  -DIAMF_CMAKE_DEPS_ROOT="$SRC"
+  -DIAMF_CMAKE_DEPS_ROOT="$SRC" \
+  -DENABLE_ROAR="$ENABLE_ROAR"
 run_logged "iamf-build" cmake --build "$SRC/build-iamf" -j"$JOBS"
 
 ok=1

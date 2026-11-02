@@ -18,6 +18,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_compile_options(-Wno-sign-compare)
 
+option(ENABLE_ROAR "Enable rendering with ROAR" ON)
+
 set(IAMF ${CMAKE_CURRENT_SOURCE_DIR})
 set(IAMF_CMAKE_DEPS_ROOT "" CACHE PATH
     "Directory holding the dependency checkouts and shims (populated by build_cmake.sh)")
@@ -52,13 +54,6 @@ add_library(fdk_aac_static STATIC ${FDK_SRCS})
 file(GLOB FDK_INC_DIRS ${SRC}/fdk_aac/lib*/include)
 target_include_directories(fdk_aac_static PUBLIC ${FDK_INC_DIRS} ${SRC}/fdk_aac)
 
-# ---------------- pffft ------------------------------------------------------
-# marton78/pffft mirror keeps sources under src/ (upstream jpommier keeps them
-# at repo root); pffft_common.c provides the shared aligned-malloc helpers.
-add_library(pffft_static STATIC ${SRC}/pffft/src/pffft.c ${SRC}/pffft/src/pffft_common.c)
-target_include_directories(pffft_static PUBLIC
-    ${SRC}/pffft/src ${SRC}/pffft/include/pffft)
-
 # ---------------- audio-to-tactile :dsp -------------------------------------
 file(GLOB A2T_SRCS ${SRC}/audio_to_tactile/src/dsp/*.c)
 add_library(a2t_dsp STATIC ${A2T_SRCS})
@@ -73,14 +68,30 @@ target_include_directories(ebur128_analyzer PUBLIC
 target_link_libraries(ebur128_analyzer PUBLIC absl::status absl::statusor
     absl::strings absl::span)
 
-# ---------------- OBR (binaural renderer) -----------------------------------
-file(GLOB_RECURSE OBR_SRCS ${SRC}/obr/obr/*.cc)
-list(FILTER OBR_SRCS EXCLUDE REGEX "/tests?/|_test\\.cc|test_util\\.cc|/cli/")
-add_library(obr_lib STATIC ${OBR_SRCS})
-target_include_directories(obr_lib PUBLIC ${SRC}/obr ${EIGEN_INC})
-target_link_libraries(obr_lib PUBLIC pffft_static a2t_dsp
-    absl::log absl::check absl::status absl::statusor absl::strings
-    absl::flat_hash_map absl::span)
+if(ENABLE_ROAR)
+  # ---------------- ROAR (Rust Open Audio Renderer) -------------------------
+  find_library(ROAR_LIB aom_roar PATHS ${SRC}/build-roar/release NO_DEFAULT_PATH REQUIRED)
+  set(RENDERER_LIBS ${ROAR_LIB} ${CMAKE_DL_LIBS})
+  set(RENDERER_INC_DIRS ${SRC}/roar)
+else()
+  # ---------------- pffft ---------------------------------------------------
+  # marton78/pffft mirror keeps sources under src/ (upstream jpommier keeps them
+  # at repo root); pffft_common.c provides the shared aligned-malloc helpers.
+  add_library(pffft_static STATIC ${SRC}/pffft/src/pffft.c ${SRC}/pffft/src/pffft_common.c)
+  target_include_directories(pffft_static PUBLIC
+      ${SRC}/pffft/src ${SRC}/pffft/include/pffft)
+
+  # ---------------- OBR (binaural renderer) ---------------------------------
+  file(GLOB_RECURSE OBR_SRCS ${SRC}/obr/obr/*.cc)
+  list(FILTER OBR_SRCS EXCLUDE REGEX "/tests?/|_test\\.cc|test_util\\.cc|/cli/")
+  add_library(obr_lib STATIC ${OBR_SRCS})
+  target_include_directories(obr_lib PUBLIC ${SRC}/obr ${EIGEN_INC})
+  target_link_libraries(obr_lib PUBLIC pffft_static a2t_dsp
+      absl::log absl::check absl::status absl::statusor absl::strings
+      absl::flat_hash_map absl::span)
+  set(RENDERER_LIBS obr_lib)
+  set(RENDERER_INC_DIRS "")
+endif()
 
 # ---------------- proto codegen ---------------------------------------------
 file(GLOB IAMF_PROTOS ${IAMF}/iamf/cli/proto/*.proto)
@@ -106,16 +117,26 @@ target_link_libraries(iamf_protos PUBLIC protobuf::libprotobuf)
 file(GLOB_RECURSE IAMF_SRCS ${IAMF}/iamf/*.cc)
 list(FILTER IAMF_SRCS EXCLUDE REGEX "/tests/|_test\\.cc|_fuzz|_benchmark")
 list(FILTER IAMF_SRCS EXCLUDE REGEX "encoder_main\\.cc|decoder_main\\.cc|probe_main\\.cc|adm_to_user_metadata_main\\.cc")
+if(ENABLE_ROAR)
+  list(FILTER IAMF_SRCS EXCLUDE REGEX
+      "/renderer_factory\\.cc|/default_layout_renderer\\.cc|/audio_element_renderer_.*\\.cc|/loudspeakers_renderer\\.cc|/renderer/gains/")
+else()
+  list(FILTER IAMF_SRCS EXCLUDE REGEX "/oar_layout_renderer\\.cc|/oar_wrapper\\.cc")
+endif()
 add_library(iamf_core STATIC ${IAMF_SRCS})
+if(NOT ENABLE_ROAR)
+  target_compile_definitions(iamf_core PUBLIC IAMF_TOOLS_DISABLE_ROAR)
+endif()
 target_include_directories(iamf_core PUBLIC
     ${IAMF}
     ${SRC}/protobuf              # bazel-style "src/google/protobuf/..." includes
     ${SRC}/shims/flac            # "FLAC/..."
     ${SRC}/shims/opus            # "include/opus.h"
     ${SRC}/shims/expat           # "lib/expat.h"
-    ${EIGEN_INC})
+    ${EIGEN_INC}
+    ${RENDERER_INC_DIRS})
 target_link_libraries(iamf_core PUBLIC
-    iamf_protos ebur128_analyzer obr_lib a2t_dsp fdk_aac_static
+    iamf_protos ebur128_analyzer ${RENDERER_LIBS} a2t_dsp fdk_aac_static
     ${OPUS_LIB} ${FLAC_LIB} ${EXPAT_LIB}
     absl::base absl::log absl::log_initialize absl::log_globals absl::check
     absl::flags absl::flags_parse absl::flags_usage

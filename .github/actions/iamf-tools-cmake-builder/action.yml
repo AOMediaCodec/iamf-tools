@@ -23,6 +23,8 @@ runs:
           sudo apt-get install -y cmake pkg-config g++ \
             libopus-dev libflac-dev libexpat1-dev libeigen3-dev
         fi
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
     - name: Build (CMake path)
       shell: bash
       run: ./build_cmake.sh "$RUNNER_TEMP/cmake-build"
