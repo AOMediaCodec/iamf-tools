@@ -10,6 +10,8 @@ module(
 )
 
 # Bazel central registry dependencies.
+# Placed before `rules_cc`, to ensure it takes precedence.
+bazel_dep(name = "apple_support", version = "2.8.3")
 bazel_dep(name = "rules_cc", version = "0.2.22")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-cpp", version = "20260526.0")
