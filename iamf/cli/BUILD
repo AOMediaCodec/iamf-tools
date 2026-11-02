@@ -893,6 +893,29 @@ cc_library(
 )
 
 cc_library(
+    name = "temporal_unit_processor",
+    hdrs = ["temporal_unit_processor.h"],
+    deps = [
+        ":audio_element_with_data",
+        ":audio_frame_with_data",
+        ":descriptor_obus",
+        ":global_timing_module",
+        ":parameter_block_with_data",
+        ":parameters_manager",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/obu:metadata_obu",
+        "//iamf/obu:temporal_delimiter",
+        "//iamf/obu:types",
+        "//iamf/obu/param_definitions:param_definition_variant",
+        "@abseil-cpp//absl/base:nullability",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "temporal_unit_view",
     srcs = ["temporal_unit_view.cc"],
     hdrs = ["temporal_unit_view.h"],
