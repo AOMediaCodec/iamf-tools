@@ -219,7 +219,7 @@ TEST(GenerateAudioElementWithData, InvalidCodecConfigId) {
 //                    on individual frames and may not have the knowledge of
 //                    the "global state" of the whole bitstream. So any test
 //                    that tests the global state should be moved to the user
-//                    of the function, namely `ObuProcessor`.
+//                    of the function, namely `TemporalUnitProcessor`.
 class GenerateAudioFrameWithDataTest : public testing::Test {
  public:
   // Used to compare down mixing params.

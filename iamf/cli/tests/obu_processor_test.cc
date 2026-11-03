@@ -663,12 +663,6 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsWithTemporalDelimiters) {
   EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
 }
 
-// TODO(b/377772983): Test rejecting processing temporal units with mismatching
-//                    durations from parameter blocks and audio frames.
-// TODO(b/377772983): Test rejecting processing temporal units where the
-//                    required descriptors (audio elements, codec configs, etc.)
-//                    are not present.
-
 constexpr Layout kStereoLayout = {
     .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
     .specific_layout = LoudspeakersSsConventionLayout{
