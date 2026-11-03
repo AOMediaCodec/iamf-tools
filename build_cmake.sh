@@ -70,7 +70,7 @@ cmake_install() {
 
 # ---------- S1: dependency clones (pins mirror MODULE.bazel; see header) ----------
 stage "S1 clones"
-clone abseil-cpp       https://github.com/abseil/abseil-cpp        20260526.0 || exit 1
+clone abseil-cpp       https://github.com/abseil/abseil-cpp        20260817.0 || exit 1
 clone protobuf         https://github.com/protocolbuffers/protobuf v36.0      || exit 1
 clone fdk_aac          https://github.com/mstorsjo/fdk-aac         ee76460efbdb147e26d804c798949c23f174460b || exit 1
 clone loudness_ebur128 https://github.com/google/loudness_ebur128  e9e73147637db60dc742cba8a611a37dd72b14b5 || exit 1
