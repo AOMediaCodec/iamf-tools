@@ -59,8 +59,8 @@ absl::Status ValidateSampleRate(uint32_t sample_rate) {
   //
   // Set is arranged in the order as listed in the related RFC.
   static const absl::NoDestructor<absl::flat_hash_set<uint32_t>>
-      kAllowedSampleRates({88200, 176400, 192000, 8000, 16000, 22050, 24000,
-                           32000, 44100, 48000, 96000});
+      kAllowedSampleRates{{88200, 176400, 192000, 8000, 16000, 22050, 24000,
+                           32000, 44100, 48000, 96000}};
   if (kAllowedSampleRates->contains(sample_rate)) {
     return absl::OkStatus();
   }
@@ -72,7 +72,7 @@ absl::Status ValidateBitsPerSample(uint8_t raw_bits_per_sample) {
   // SHALL be set to one of 15, 23 or 31, corresponding to 16, 24 or 32 bits
   // respectively.
   static const absl::NoDestructor<absl::flat_hash_set<uint8_t>>
-      kAllowedBitsPerSample({15, 23, 31});
+      kAllowedBitsPerSample{{15, 23, 31}};
   if (kAllowedBitsPerSample->contains(raw_bits_per_sample)) {
     return absl::OkStatus();
   }

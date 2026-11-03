@@ -80,17 +80,17 @@ LookupEarChannelOrderFromExpandedLoudspeakerLayout(
         expanded_loudspeaker_layout) {
   using enum ChannelLabel::Label;
   static const absl::NoDestructor<std::vector<ChannelLabel::Label>>
-      k9_1_6ChannelOrder({kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL, kSiR,
-                          kTpFL, kTpFR, kTpBL, kTpBR, kTpSiL, kTpSiR});
+      k9_1_6ChannelOrder{{kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL, kSiR,
+                          kTpFL, kTpFR, kTpBL, kTpBR, kTpSiL, kTpSiR}};
   static const absl::NoDestructor<std::vector<ChannelLabel::Label>>
-      k10_2_9_3ChannelOrder({kFL,    kFR,    kFC,   kLFE,  kBL,   kBR,
+      k10_2_9_3ChannelOrder{{kFL,    kFR,    kFC,   kLFE,  kBL,   kBR,
                              kFLc,   kFRc,   kBC,   kLFE2, kSiL,  kSiR,
                              kTpFL,  kTpFR,  kTpFC, kTpC,  kTpBL, kTpBR,
-                             kTpSiL, kTpSiR, kTpBC, kBtFC, kBtFL, kBtFR});
+                             kTpSiL, kTpSiR, kTpBC, kBtFC, kBtFL, kBtFR}};
   static const absl::NoDestructor<std::vector<ChannelLabel::Label>>
-      k7_1_5_4ChannelOrder({kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7,
+      k7_1_5_4ChannelOrder{{kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7,
                             kLtf4, kRtf4, kLtb4, kRtb4, kTpC, kBtFL, kBtFR,
-                            kBtBL, kBtBR});
+                            kBtBL, kBtBR}};
   // Determine the related layout and then omit any irrelevant channels. This
   // ensures the permitted channels are in the same slot and allows downstream
   // processing to use the related layout's EAR matrix.
