@@ -979,6 +979,21 @@ cc_test(
 )
 
 cc_test(
+    name = "temporal_unit_processor_test",
+    srcs = ["temporal_unit_processor_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:descriptor_obus",
+        "//iamf/cli:temporal_unit_processor",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "temporal_unit_view_test",
     srcs = ["temporal_unit_view_test.cc"],
     deps = [
