@@ -13,6 +13,7 @@
 #include "iamf/cli/temporal_unit_processor.h"
 
 #include <cstdint>
+#include <list>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -172,7 +173,7 @@ absl::Status GetAndStoreParameterBlockWithData(
   return absl::OkStatus();
 }
 
-[[maybe_unused]] absl::Status ProcessTemporalUnitObu(
+absl::Status ProcessTemporalUnitObu(
     const absl::flat_hash_set<DecodedUleb128>& audio_element_ids,
     const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>&
         substream_id_to_audio_element,
@@ -340,6 +341,72 @@ absl::Status GetAndStoreParameterBlockWithData(
   return absl::OkStatus();
 }
 
+// Adds `metadata_obu` to `current_metadata_obus` if the current temporal unit
+// has no audio frames yet; otherwise tentatively adds it to
+// `next_metadata_obus`.
+void AddMetadataObuToCorrectTemporalUnit(
+    const std::list<AudioFrameWithData>& current_audio_frames,
+    std::list<MetadataObu>& current_metadata_obus,
+    std::list<MetadataObu>& next_metadata_obus, MetadataObu&& metadata_obu) {
+  if (current_audio_frames.empty()) {
+    current_metadata_obus.push_back(std::move(metadata_obu));
+  } else {
+    next_metadata_obus.push_back(std::move(metadata_obu));
+  }
+}
+
+// Validates that no Metadata OBU was placed between Audio Frame OBUs of the
+// current temporal unit.
+//
+// If `next_metadata_obus` already holds a tentatively added Metadata OBU
+// (placed after the current temporal unit already had audio frames), the new
+// Audio Frame OBU must belong to the next temporal unit (which sets
+// `next_timestamp`). If `next_timestamp` is still unset, the Audio Frame OBU
+// belonged to the current temporal unit, meaning the Metadata OBU was
+// illegally placed between Audio Frame OBUs of the current temporal unit.
+absl::Status ValidateNoMetadataBetweenAudioFrames(
+    const std::list<MetadataObu>& next_metadata_obus,
+    const std::optional<InternalTimestamp>& next_timestamp) {
+  if (!next_metadata_obus.empty() && !next_timestamp.has_value()) {
+    return absl::InvalidArgumentError(
+        "Metadata OBU must not be placed after Audio Frame OBUs in a "
+        "Temporal Unit.");
+  }
+  return absl::OkStatus();
+}
+
+// Validates that no Metadata OBU precedes a Temporal Delimiter OBU in the
+// temporal unit started by that delimiter.
+absl::Status ValidateNoMetadataBeforeTemporalDelimiter(
+    const std::optional<TemporalDelimiterObu>& current_temporal_delimiter,
+    const std::list<MetadataObu>& current_metadata_obus,
+    const std::list<MetadataObu>& next_metadata_obus) {
+  if ((!current_temporal_delimiter.has_value() &&
+       !current_metadata_obus.empty()) ||
+      !next_metadata_obus.empty()) {
+    return absl::InvalidArgumentError(
+        "Metadata OBU must be placed after the Temporal Delimiter OBU and "
+        "before the end of the Temporal Unit.");
+  }
+  return absl::OkStatus();
+}
+
+// Validates that Metadata OBUs are followed by Audio Frame OBUs in the current
+// temporal unit, and that no trailing Metadata OBUs remain at the end of the
+// sequence.
+absl::Status ValidateMetadataFollowedByAudioFrames(
+    const std::list<MetadataObu>& current_metadata_obus,
+    const std::list<AudioFrameWithData>& current_audio_frames,
+    const std::list<MetadataObu>& next_metadata_obus, bool is_end_of_sequence) {
+  if ((!current_metadata_obus.empty() && current_audio_frames.empty()) ||
+      (is_end_of_sequence && !next_metadata_obus.empty())) {
+    return absl::InvalidArgumentError(
+        "Metadata OBU must not be the last OBU of a Temporal Unit and must "
+        "be followed by Audio Frame OBUs.");
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::StatusOr<TemporalUnitProcessor> TemporalUnitProcessor::Create(
@@ -392,11 +459,93 @@ absl::StatusOr<TemporalUnitProcessor> TemporalUnitProcessor::Create(
 }
 
 absl::Status TemporalUnitProcessor::ProcessTemporalUnit(
-    bool /*eos_is_end_of_sequence*/,
-    std::optional<OutputTemporalUnit>& /*output_temporal_unit*/,
-    bool& /*continue_processing*/) {
-  return absl::UnimplementedError(
-      "ProcessTemporalUnit is not yet implemented.");
+    bool eos_is_end_of_sequence,
+    std::optional<OutputTemporalUnit>& output_temporal_unit,
+    bool& continue_processing) {
+  // Various checks that should have been handled by the factory function.
+  ABSL_CHECK(parameters_manager_ != nullptr);
+  ABSL_CHECK(global_timing_module_ != nullptr);
+  ABSL_CHECK(read_bit_buffer_ != nullptr);
+
+  continue_processing = true;
+  while (continue_processing) {
+    std::optional<AudioFrameWithData> audio_frame_with_data;
+    std::optional<ParameterBlockWithData> parameter_block_with_data;
+    std::optional<TemporalDelimiterObu> temporal_delimiter;
+    std::optional<MetadataObu> metadata_obu;
+    RETURN_IF_NOT_OK(ProcessTemporalUnitObu(
+        audio_element_ids_, substream_id_to_audio_element_,
+        param_definition_variants_, *parameters_manager_, *read_bit_buffer_,
+        *global_timing_module_, audio_frame_with_data,
+        parameter_block_with_data, temporal_delimiter, metadata_obu,
+        continue_processing));
+
+    // Collect OBUs into a temporal unit.
+    bool delimiter_end_condition = false;
+    if (audio_frame_with_data.has_value()) {
+      TemporalUnitData::AddDataToCorrectTemporalUnit(
+          current_temporal_unit_, next_temporal_unit_,
+          *std::move(audio_frame_with_data));
+      RETURN_IF_NOT_OK(ValidateNoMetadataBetweenAudioFrames(
+          next_temporal_unit_.metadata_obus, next_temporal_unit_.timestamp));
+    } else if (parameter_block_with_data.has_value()) {
+      TemporalUnitData::AddDataToCorrectTemporalUnit(
+          current_temporal_unit_, next_temporal_unit_,
+          *std::move(parameter_block_with_data));
+    } else if (metadata_obu.has_value()) {
+      AddMetadataObuToCorrectTemporalUnit(current_temporal_unit_.audio_frames,
+                                          current_temporal_unit_.metadata_obus,
+                                          next_temporal_unit_.metadata_obus,
+                                          *std::move(metadata_obu));
+    } else if (temporal_delimiter.has_value()) {
+      RETURN_IF_NOT_OK(ValidateNoMetadataBeforeTemporalDelimiter(
+          current_temporal_unit_.temporal_delimiter,
+          current_temporal_unit_.metadata_obus,
+          next_temporal_unit_.metadata_obus));
+      if (current_temporal_unit_.temporal_delimiter.has_value()) {
+        delimiter_end_condition = true;
+        next_temporal_unit_.temporal_delimiter = *temporal_delimiter;
+      } else {
+        current_temporal_unit_.temporal_delimiter = *temporal_delimiter;
+      }
+    }
+
+    // The current temporal unit is considered finished if any of the
+    // following conditions is met:
+    // - The end of sequence is reached.
+    // - The timestamp has advanced (i.e. when the next temporal unit gets its
+    //   timestamp).
+    // - A second temporal delimiter is encountered.
+    const bool is_end_of_sequence =
+        !continue_processing && eos_is_end_of_sequence;
+    if (is_end_of_sequence || next_temporal_unit_.timestamp.has_value() ||
+        delimiter_end_condition) {
+      RETURN_IF_NOT_OK(ValidateMetadataFollowedByAudioFrames(
+          current_temporal_unit_.metadata_obus,
+          current_temporal_unit_.audio_frames,
+          next_temporal_unit_.metadata_obus, is_end_of_sequence));
+      if (current_temporal_unit_.audio_frames.empty() &&
+          current_temporal_unit_.parameter_blocks.empty()) {
+        break;
+      }
+      output_temporal_unit = OutputTemporalUnit();
+      output_temporal_unit->output_audio_frames =
+          std::move(current_temporal_unit_.audio_frames);
+      output_temporal_unit->output_parameter_blocks =
+          std::move(current_temporal_unit_.parameter_blocks);
+      output_temporal_unit->output_metadata_obus =
+          std::move(current_temporal_unit_.metadata_obus);
+      if (current_temporal_unit_.timestamp.has_value()) {
+        output_temporal_unit->output_timestamp =
+            current_temporal_unit_.timestamp.value();
+      }
+      current_temporal_unit_ = std::move(next_temporal_unit_);
+      next_temporal_unit_ = TemporalUnitData();
+      break;
+    }
+  }
+
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools
