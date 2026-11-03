@@ -19,26 +19,20 @@
 #include <optional>
 
 #include "absl/base/nullability.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_manager.h"
 #include "iamf/cli/descriptor_obus.h"
-#include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
+#include "iamf/cli/temporal_unit_processor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/param_definitions/param_definition_variant.h"
-#include "iamf/obu/temporal_delimiter.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -138,12 +132,7 @@ class ObuProcessor {
   absl::StatusOr<Layout> GetOutputLayout() const;
 
   /*!\brief The output of processing a Temporal Unit. */
-  struct OutputTemporalUnit {
-    std::list<AudioFrameWithData> output_audio_frames;
-    std::list<ParameterBlockWithData> output_parameter_blocks;
-    std::list<MetadataObu> output_metadata_obus;
-    InternalTimestamp output_timestamp;
-  };
+  using OutputTemporalUnit = TemporalUnitProcessor::OutputTemporalUnit;
 
   // TODO(b/379819959): Also handle Temporal Delimiter OBUs.
   /*!\brief Processes all OBUs from a Temporal Unit from the stored IA Sequence.
@@ -297,75 +286,16 @@ class ObuProcessor {
     Layout layout;
   };
 
-  struct TemporalUnitData {
-    std::list<ParameterBlockWithData> parameter_blocks;
-    std::list<AudioFrameWithData> audio_frames;
-    std::list<MetadataObu> metadata_obus;
-
-    std::optional<TemporalDelimiterObu> temporal_delimiter;
-    std::optional<InternalTimestamp> timestamp;
-
-    bool Empty() const {
-      return parameter_blocks.empty() && audio_frames.empty() &&
-             metadata_obus.empty();
-    }
-
-    void Clear() {
-      audio_frames.clear();
-      parameter_blocks.clear();
-      metadata_obus.clear();
-      temporal_delimiter.reset();
-      timestamp.reset();
-    }
-
-    template <class T>
-    static void AddDataToCorrectTemporalUnit(
-        TemporalUnitData& current_temporal_unit,
-        TemporalUnitData& next_temporal_unit, T&& obu_with_data) {
-      const InternalTimestamp new_timestamp = obu_with_data.start_timestamp;
-      if (!current_temporal_unit.timestamp.has_value()) {
-        current_temporal_unit.timestamp = new_timestamp;
-      }
-      if (*current_temporal_unit.timestamp == new_timestamp) {
-        current_temporal_unit.GetList<T>().push_back(
-            std::forward<T>(obu_with_data));
-      } else {
-        next_temporal_unit.GetList<T>().push_back(
-            std::forward<T>(obu_with_data));
-        next_temporal_unit.timestamp = new_timestamp;
-      }
-    }
-
-   private:
-    template <class T>
-    std::list<T>& GetList() {
-      if constexpr (std::is_same_v<T, ParameterBlockWithData>) {
-        return parameter_blocks;
-      } else if constexpr (std::is_same_v<T, AudioFrameWithData>) {
-        return audio_frames;
-      } else if constexpr (std::is_same_v<T, MetadataObu>) {
-        return metadata_obus;
-      }
-    }
-  };
-
   std::optional<uint32_t> output_sample_rate_;
   std::optional<uint32_t> output_frame_size_;
 
-  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
-      param_definition_variants_;
-  absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
-      substream_id_to_audio_element_;
-  std::unique_ptr<GlobalTimingModule> global_timing_module_;
-  std::unique_ptr<ParametersManager> parameters_manager_;
   ReadBitBuffer* absl_nonnull read_bit_buffer_;
 
   // Contains target layout information for rendering.
   DecodingLayoutInfo decoding_layout_info_;
 
-  // Cached data when processing temporal units.
-  TemporalUnitData current_temporal_unit_;
-  TemporalUnitData next_temporal_unit_;
+  // Processor for temporal units.
+  std::optional<TemporalUnitProcessor> temporal_unit_processor_;
 
   // Modules used for rendering, present iff `CreateForRendering()` was called.
   std::optional<RenderingModels> rendering_models_;
