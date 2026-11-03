@@ -7,13 +7,9 @@
 # Written from scratch against the Bazel BUILD graph; no Bazel-generated
 # content is used or derived.
 #
-# Dependency pins mirror MODULE.bazel exactly, with two stated exceptions:
-#   - pffft: MODULE.bazel pins jpommier's bitbucket repo (d7a4c020); this path
-#     uses the marton78 GitHub mirror at a fixed commit (a4b03590), because
-#     restricted environments that motivate this build path typically allow
-#     github.com only. The mirror keeps sources under src/.
-#   - opus / flac / expat / eigen: satisfied from system packages rather than
-#     source pins (header shims below provide the Bazel-style include paths).
+# Dependency pins mirror MODULE.bazel exactly, with one stated exception:
+# opus / flac / expat / eigen are satisfied from system packages rather than
+# source pins (header shims below provide the Bazel-style include paths).
 # Move the pins forward as MODULE.bazel moves.
 #
 # Usage:
@@ -81,9 +77,6 @@ clone loudness_ebur128 https://github.com/google/loudness_ebur128  e9e73147637db
 clone audio_to_tactile https://github.com/google/audio-to-tactile  d3f449fdfd8cfe4a845d0ae244fce2a0bca34a15 || exit 1
 if [ "$ENABLE_ROAR" = "ON" ]; then
   clone roar           https://github.com/AOMediaCodec/roar        8b56061100d6f31731400166ecf0d5d1c606b10f || exit 1
-else
-  clone obr            https://github.com/google/obr               478dc7c752d5eccae534635139ff0253eee3a14a || exit 1
-  clone pffft          https://github.com/marton78/pffft           a4b03590cc2a4bea56f9721996e3057835799179 || exit 1
 fi
 
 # ---------- S2: header shims for Bazel-style repo-relative includes ----------
@@ -136,7 +129,7 @@ if [ "$ENABLE_ROAR" = "ON" ]; then
     --manifest-path "$SRC/roar/Cargo.toml" \
     --target-dir "$SRC/build-roar" \
     --lib --release --locked \
-    -- --crate-type=staticlib
+    --crate-type=staticlib
 fi
 
 # ---------- S5: iamf-tools via the in-tree CMakeLists ----------

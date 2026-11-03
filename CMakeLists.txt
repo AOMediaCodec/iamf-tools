@@ -74,22 +74,7 @@ if(ENABLE_ROAR)
   set(RENDERER_LIBS ${ROAR_LIB} ${CMAKE_DL_LIBS})
   set(RENDERER_INC_DIRS ${SRC}/roar)
 else()
-  # ---------------- pffft ---------------------------------------------------
-  # marton78/pffft mirror keeps sources under src/ (upstream jpommier keeps them
-  # at repo root); pffft_common.c provides the shared aligned-malloc helpers.
-  add_library(pffft_static STATIC ${SRC}/pffft/src/pffft.c ${SRC}/pffft/src/pffft_common.c)
-  target_include_directories(pffft_static PUBLIC
-      ${SRC}/pffft/src ${SRC}/pffft/include/pffft)
-
-  # ---------------- OBR (binaural renderer) ---------------------------------
-  file(GLOB_RECURSE OBR_SRCS ${SRC}/obr/obr/*.cc)
-  list(FILTER OBR_SRCS EXCLUDE REGEX "/tests?/|_test\\.cc|test_util\\.cc|/cli/")
-  add_library(obr_lib STATIC ${OBR_SRCS})
-  target_include_directories(obr_lib PUBLIC ${SRC}/obr ${EIGEN_INC})
-  target_link_libraries(obr_lib PUBLIC pffft_static a2t_dsp
-      absl::log absl::check absl::status absl::statusor absl::strings
-      absl::flat_hash_map absl::span)
-  set(RENDERER_LIBS obr_lib)
+  set(RENDERER_LIBS "")
   set(RENDERER_INC_DIRS "")
 endif()
 
