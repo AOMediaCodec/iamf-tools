@@ -100,6 +100,9 @@ class OarLayoutRenderer : public LayoutRendererBase {
           audio_element_id_to_demixing_matrices,
       const absl::flat_hash_map<DecodedUleb128, DemixingParamDefinition>&
           audio_element_id_to_demixing_param_definitions,
+      const absl::flat_hash_map<DecodedUleb128,
+                                std::vector<OarWrapper::OarPositionData>>&
+          audio_element_id_to_default_positions,
       const TrimmingSettings& trimming_settings,
       std::unique_ptr<OarWrapper> oar);
 
@@ -181,6 +184,11 @@ class OarLayoutRenderer : public LayoutRendererBase {
   // Mapping from Audio Element ID to demixing infos.
   const absl::flat_hash_map<DecodedUleb128, DemixingParamDefinition>
       audio_element_id_to_demixing_param_definitions_;
+
+  // Mapping from Audio Element ID to default positions.
+  const absl::flat_hash_map<DecodedUleb128,
+                            std::vector<OarWrapper::OarPositionData>>
+      audio_element_id_to_default_positions_;
 
   // Determines whether frame start/end sample trimming is applied on rendered
   // samples.

@@ -23,7 +23,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
@@ -40,8 +39,11 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
 
@@ -153,8 +155,9 @@ class OarLayoutRendererTest : public ::testing::Test {
                             std::move(*audio_element_with_data));
   }
 
-  void CreateObjectBasedAudioElement(DecodedUleb128 audio_element_id) {
-    auto config = ObjectsConfig::Create(/*num_objects=*/1, {});
+  void CreateObjectBasedAudioElement(DecodedUleb128 audio_element_id,
+                                     uint8_t num_objects) {
+    auto config = ObjectsConfig::Create(num_objects, {});
     ASSERT_THAT(config, IsOk());
     auto obu = AudioElementObu::CreateForObjects(ObuHeader(), audio_element_id,
                                                  /*reserved=*/0, kCodecConfigId,
@@ -201,6 +204,37 @@ class OarLayoutRendererTest : public ::testing::Test {
         &parameter_blocks_.back();
   }
 
+  void SetDefaultPolarPositionForAudioElement(DecodedUleb128 audio_element_id,
+                                              int16_t azimuth, int8_t elevation,
+                                              uint8_t distance) {
+    PolarParamDefinition polar_param_definition({});
+    polar_param_definition.default_azimuth_ = azimuth;
+    polar_param_definition.default_elevation_ = elevation;
+    polar_param_definition.default_distance_ = distance;
+    RenderingConfig& rendering_config =
+        id_to_rendering_config_[audio_element_id];
+    rendering_config.rendering_config_param_definitions.push_back(
+        RenderingConfigParamDefinition::Create(polar_param_definition, {}));
+  }
+
+  void SetDefaultDualPolarPositionForAudioElement(
+      DecodedUleb128 audio_element_id, int16_t first_azimuth,
+      int8_t first_elevation, uint8_t first_distance, int16_t second_azimuth,
+      int8_t second_elevation, uint8_t second_distance) {
+    DualPolarParamDefinition dual_polar_param_definition({});
+    dual_polar_param_definition.default_first_azimuth_ = first_azimuth;
+    dual_polar_param_definition.default_first_elevation_ = first_elevation;
+    dual_polar_param_definition.default_first_distance_ = first_distance;
+    dual_polar_param_definition.default_second_azimuth_ = second_azimuth;
+    dual_polar_param_definition.default_second_elevation_ = second_elevation;
+    dual_polar_param_definition.default_second_distance_ = second_distance;
+    RenderingConfig& rendering_config =
+        id_to_rendering_config_[audio_element_id];
+    rendering_config.rendering_config_param_definitions.push_back(
+        RenderingConfigParamDefinition::Create(dual_polar_param_definition,
+                                               {}));
+  }
+
   std::unique_ptr<OarLayoutRenderer> CreateRenderer(
       const std::vector<DecodedUleb128>& audio_element_ids) {
     std::vector<const AudioElementWithData*> audio_elements_in_sub_mix;
@@ -209,6 +243,7 @@ class OarLayoutRendererTest : public ::testing::Test {
       audio_elements_in_sub_mix.push_back(&audio_elements_.at(id));
       sub_mix_audio_elements.push_back(
           {.audio_element_id = id,
+           .rendering_config = id_to_rendering_config_[id],
            .element_mix_gain =
                CreateMixGainParamDefinition(kElementMixGainParameterId)});
     }
@@ -263,6 +298,8 @@ class OarLayoutRendererTest : public ::testing::Test {
     // For objects.
     frame.label_to_samples[kObjectChannel0] =
         std::vector<InternalSampleType>(num_samples, 0.0);
+    frame.label_to_samples[kObjectChannel1] =
+        std::vector<InternalSampleType>(num_samples, 0.0);
     return frame;
   }
 
@@ -271,6 +308,7 @@ class OarLayoutRendererTest : public ::testing::Test {
   DescriptorObus::AudioElementsById audio_elements_;
   absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>
       id_to_parameter_block_;
+  absl::flat_hash_map<DecodedUleb128, RenderingConfig> id_to_rendering_config_;
 
   IdLabeledFrameMap id_to_labeled_frame_;
   std::vector<ParameterBlockWithData> parameter_blocks_;
@@ -381,6 +419,48 @@ TEST_F(OarLayoutRendererTest, CreateFailsWithInconsistentAudioElementType) {
       trimming_settings);
 
   EXPECT_EQ(renderer, nullptr);
+}
+
+TEST_F(OarLayoutRendererTest,
+       CreateFailsWithObjectBasedAudioElementWithoutDefaultPositions) {
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/1);
+
+  // Here we omit calling `SetDefaultPolarPositionForAudioElement()`, so there
+  // is no default positions for the object-based audio element.
+  auto renderer = CreateRenderer({kAudioElementId});
+  EXPECT_EQ(renderer, nullptr);
+}
+
+TEST_F(OarLayoutRendererTest,
+       CreateFailsWithMismatchingNumberOfObjectsAndDefaultPositions) {
+  // One-object based audio element requires a single default position.
+  // Providing a dual polar param definition fails.
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/1);
+  SetDefaultDualPolarPositionForAudioElement(kAudioElementId,
+                                             /*first_azimuth=*/200,
+                                             /*first_elevation=*/-10,
+                                             /*first_distance=*/50,
+                                             /*second_azimuth=*/-400,
+                                             /*second_elevation=*/20,
+                                             /*second_distance=*/100);
+  {
+    auto renderer = CreateRenderer({kAudioElementId});
+    EXPECT_EQ(renderer, nullptr);
+  }
+  audio_elements_.clear();
+  id_to_rendering_config_.clear();
+
+  // Two-object based audio element requires two default positions.
+  // Providing a (non-dual) polar param definition fails.
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/2);
+  SetDefaultPolarPositionForAudioElement(kAudioElementId,
+                                         /*azimuth=*/200,
+                                         /*elevation=*/-10,
+                                         /*distance=*/50);
+  {
+    auto renderer = CreateRenderer({kAudioElementId});
+    EXPECT_EQ(renderer, nullptr);
+  }
 }
 
 TEST_F(OarLayoutRendererTest, RenderSucceeds5_1ToStereo) {
@@ -597,8 +677,29 @@ TEST_F(OarLayoutRendererTest, RenderSucceedsWithSceneBasedAudioElement) {
               IsOk());
 }
 
-TEST_F(OarLayoutRendererTest, RenderSucceedsWithObjectBasedAudioElement) {
-  CreateObjectBasedAudioElement(kAudioElementId);
+TEST_F(OarLayoutRendererTest, RenderSucceedsWithOneObjectBasedAudioElement) {
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/1);
+  SetDefaultPolarPositionForAudioElement(kAudioElementId,
+                                         /*azimuth=*/200,
+                                         /*elevation=*/-10,
+                                         /*distance=*/50);
+  auto renderer = CreateRenderer({kAudioElementId});
+  ASSERT_NE(renderer, nullptr);
+
+  EXPECT_THAT(renderer->Render(id_to_labeled_frame_, id_to_parameter_block_,
+                               rendered_samples_, valid_rendered_samples_),
+              IsOk());
+}
+
+TEST_F(OarLayoutRendererTest, RenderSucceedsWithTwoObjectBasedAudioElement) {
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/2);
+  SetDefaultDualPolarPositionForAudioElement(kAudioElementId,
+                                             /*first_azimuth=*/200,
+                                             /*first_elevation=*/-10,
+                                             /*first_distance=*/50,
+                                             /*second_azimuth=*/-400,
+                                             /*second_elevation=*/20,
+                                             /*second_distance=*/100);
   auto renderer = CreateRenderer({kAudioElementId});
   ASSERT_NE(renderer, nullptr);
 
