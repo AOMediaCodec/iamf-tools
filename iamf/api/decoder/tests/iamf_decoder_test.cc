@@ -961,6 +961,69 @@ TEST(
   EXPECT_EQ(bytes_written, 0);
 }
 
+TEST(Decode, PreBinauralizedAudioElementPassesThroughSamplesUnmodified) {
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
+                     kSampleRate, codec_config_obus);
+  AudioElementsById audio_elements_with_data;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kBinaural, kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements_with_data);
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  const std::vector<uint8_t> descriptors = SerializeObusExpectOk(
+      {&ia_sequence_header, &codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kBinauralInt16Settings = {
+      .requested_mix = {.output_layout = api::OutputLayout::kIAMF_Binaural},
+      .requested_output_sample_type = api::OutputSampleType::kInt16LittleEndian,
+  };
+  ASSERT_TRUE(api::IamfDecoder::CreateFromDescriptors(
+                  kBinauralInt16Settings, descriptors.data(),
+                  descriptors.size(), decoder)
+                  .ok());
+
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  AudioFrameObu audio_frame2(ObuHeader(), kFirstSubstreamId,
+                             kEightSampleAudioFrame2);
+  const auto temporal_units =
+      SerializeObusExpectOk({&audio_frame, &audio_frame2});
+
+  EXPECT_TRUE(
+      decoder->Decode(temporal_units.data(), temporal_units.size()).ok());
+
+  // 4 ticks * 2 channels (binaural) * 2 bytes (16-bit ints) = 16 bytes.
+  const size_t expected_output_size = kEightSampleAudioFrame.size();
+  std::vector<uint8_t> output_data(expected_output_size);
+  size_t bytes_written = 0;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+  EXPECT_THAT(output_data, testing::ElementsAreArray(kEightSampleAudioFrame));
+
+  std::vector<uint8_t> output_data2(expected_output_size);
+  bytes_written = 0;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data2.data(),
+                                          output_data2.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+  EXPECT_THAT(output_data2, testing::ElementsAreArray(kEightSampleAudioFrame2));
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
 TEST(Decode, FailsWhenCalledAfterSignalEndOfDecoding) {
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(
