@@ -249,6 +249,118 @@ TEST(GetOutputMix, CanAcceptMixPresentationIdToSpecifyMix) {
   EXPECT_EQ(num_output_channels, 6);
 }
 
+TEST(GetOutputMix,
+     PrefersMixPresentationWithBinauralAudioElementWhenRequestingBinaural) {
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  CodecConfigsById codec_configs;
+  AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
+                     kSampleRate, codec_configs);
+  AudioElementsById audio_elements;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId}, codec_configs, audio_elements);
+  constexpr DecodedUleb128 kSecondAudioElementId = kFirstAudioElementId + 1;
+  constexpr DecodedUleb128 kSecondSubstreamId = kFirstSubstreamId + 1;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kBinaural, kSecondAudioElementId, kFirstCodecConfigId,
+      {kSecondSubstreamId}, codec_configs, audio_elements);
+
+  MixPresentationObus mix_presentation_obus;
+  // First mix presentation references a stereo audio element, even with an
+  // explicit binaural loudness layout.
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  mix_presentation_obus.back().sub_mixes_[0].layouts.push_back(
+      {.loudness_layout = {
+           .layout_type = Layout::kLayoutTypeBinaural,
+           .specific_layout =
+               LoudspeakersReservedOrBinauralLayout{.reserved = 0}}});
+  // Second mix presentation references a pre-binauralized audio element
+  // (IAMF Spec §7.4.1 Clause 2.1.1).
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+
+  const std::vector<uint8_t> descriptor_obus = SerializeObusExpectOk(
+      {&ia_sequence_header, &codec_configs.at(kFirstCodecConfigId),
+       &audio_elements.at(kFirstAudioElementId).obu,
+       &audio_elements.at(kSecondAudioElementId).obu,
+       &mix_presentation_obus.front(), &mix_presentation_obus.back()});
+
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kBinauralSettings = {
+      .requested_mix = {.output_layout = api::OutputLayout::kIAMF_Binaural}};
+  ASSERT_TRUE(api::IamfDecoder::CreateFromDescriptors(
+                  kBinauralSettings, descriptor_obus.data(),
+                  descriptor_obus.size(), decoder)
+                  .ok());
+
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  api::SelectedMix selected_mix;
+  ASSERT_TRUE(decoder->GetOutputMix(selected_mix).ok());
+  EXPECT_EQ(selected_mix.mix_presentation_id, kSecondMixPresentationId);
+  EXPECT_EQ(selected_mix.output_layout, api::OutputLayout::kIAMF_Binaural);
+  int num_output_channels = 0;
+  ASSERT_TRUE(decoder->GetNumberOfOutputChannels(num_output_channels).ok());
+  EXPECT_EQ(num_output_channels, 2);
+}
+
+TEST(
+    GetOutputMix,
+    PrefersMixPresentationWithExplicitBinauralLayoutWhenNoBinauralAudioElementExists) {
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  CodecConfigsById codec_configs;
+  AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
+                     kSampleRate, codec_configs);
+  AudioElementsById audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
+      codec_configs, audio_elements);
+
+  MixPresentationObus mix_presentation_obus;
+  // First mix presentation only has a stereo loudness layout.
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  // Second mix presentation has an explicit binaural loudness layout
+  // (IAMF Spec §7.4.1 Clause 2.1.2).
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  mix_presentation_obus.back().sub_mixes_[0].layouts.push_back(
+      {.loudness_layout = {
+           .layout_type = Layout::kLayoutTypeBinaural,
+           .specific_layout =
+               LoudspeakersReservedOrBinauralLayout{.reserved = 0}}});
+
+  const std::vector<uint8_t> descriptor_obus = SerializeObusExpectOk(
+      {&ia_sequence_header, &codec_configs.at(kFirstCodecConfigId),
+       &audio_elements.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front(), &mix_presentation_obus.back()});
+
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kBinauralSettings = {
+      .requested_mix = {.output_layout = api::OutputLayout::kIAMF_Binaural}};
+  ASSERT_TRUE(api::IamfDecoder::CreateFromDescriptors(
+                  kBinauralSettings, descriptor_obus.data(),
+                  descriptor_obus.size(), decoder)
+                  .ok());
+
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  api::SelectedMix selected_mix;
+  ASSERT_TRUE(decoder->GetOutputMix(selected_mix).ok());
+  EXPECT_EQ(selected_mix.mix_presentation_id, kSecondMixPresentationId);
+  EXPECT_EQ(selected_mix.output_layout, api::OutputLayout::kIAMF_Binaural);
+  int num_output_channels = 0;
+  ASSERT_TRUE(decoder->GetNumberOfOutputChannels(num_output_channels).ok());
+  EXPECT_EQ(num_output_channels, 2);
+}
+
 TEST(Create, SucceedsAndDecodeSucceedsWithPartialData) {
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(
