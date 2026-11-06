@@ -476,6 +476,84 @@ TEST(Decode, SucceedsWithOneTemporalUnit) {
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
+TEST(Decode, SucceedsWithVirtualBinauralLayoutWhenOnlyLoudspeakerLayoutsExist) {
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kBinauralSettings = {
+      .requested_mix = {.output_layout = api::OutputLayout::kIAMF_Binaural}};
+  ASSERT_TRUE(api::IamfDecoder::Create(kBinauralSettings, decoder).ok());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_unit = SerializeObusExpectOk({&audio_frame});
+  source_data.insert(source_data.end(), temporal_unit.begin(),
+                     temporal_unit.end());
+
+  EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  api::SelectedMix selected_mix;
+  ASSERT_TRUE(decoder->GetOutputMix(selected_mix).ok());
+  EXPECT_EQ(selected_mix.output_layout, api::OutputLayout::kIAMF_Binaural);
+  int num_output_channels = 0;
+  ASSERT_TRUE(decoder->GetNumberOfOutputChannels(num_output_channels).ok());
+  EXPECT_EQ(num_output_channels, 2);
+
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
+  ASSERT_TRUE(decoder->IsTemporalUnitAvailable());
+  const size_t expected_output_size =
+      8 * 4 * 2;  // 8 samples, 32-bit ints, binaural (2 channels).
+  std::vector<uint8_t> output_data(expected_output_size);
+  size_t bytes_written = 0;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
+TEST(Decode, CreatedFromDescriptorsSucceedsWithVirtualBinauralLayout) {
+  auto descriptors = GenerateBasicDescriptorObus();
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kBinauralSettings = {
+      .requested_mix = {.output_layout = api::OutputLayout::kIAMF_Binaural}};
+  ASSERT_TRUE(
+      api::IamfDecoder::CreateFromDescriptors(
+          kBinauralSettings, descriptors.data(), descriptors.size(), decoder)
+          .ok());
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  api::SelectedMix selected_mix;
+  ASSERT_TRUE(decoder->GetOutputMix(selected_mix).ok());
+  EXPECT_EQ(selected_mix.output_layout, api::OutputLayout::kIAMF_Binaural);
+  int num_output_channels = 0;
+  ASSERT_TRUE(decoder->GetNumberOfOutputChannels(num_output_channels).ok());
+  EXPECT_EQ(num_output_channels, 2);
+
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+  EXPECT_TRUE(
+      decoder->Decode(temporal_units.data(), temporal_units.size()).ok());
+  ASSERT_TRUE(decoder->IsTemporalUnitAvailable());
+  const size_t expected_output_size =
+      8 * 4 * 2;  // 8 samples, 32-bit ints, binaural (2 channels).
+  std::vector<uint8_t> output_data(expected_output_size);
+  size_t bytes_written = 0;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+  ASSERT_TRUE(decoder->IsTemporalUnitAvailable());
+
+  bytes_written = 0;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
 TEST(Decode, ReordersSamplesIfRequested) {
   api::IamfDecoder::Settings settings = {
       .requested_mix = {.output_layout =
