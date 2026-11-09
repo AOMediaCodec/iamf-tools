@@ -11,6 +11,8 @@
  */
 #include "iamf/cli/renderer/oar_wrapper.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -41,6 +43,8 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/rendering_config.h"
 #include "include/roar.h"
 
@@ -428,6 +432,86 @@ absl::Status FillMixGainMetadata(
   return absl::OkStatus();
 }
 
+// The IAMF spec defines 9-bit signed azimuth and 8-bit signed elevation via
+// `Clip3` clamping (to [-180, 180] and [-90, 90], rather than modulo angle
+// wrapping), and normalizes 7-bit unsigned distance [0, 127] to [0.0, 1.0].
+float ClampAzimuth(int16_t azimuth) {
+  return static_cast<float>(std::clamp<int16_t>(azimuth, -180, 180));
+}
+
+float ClampElevation(int8_t elevation) {
+  return static_cast<float>(std::clamp<int8_t>(elevation, -90, 90));
+}
+
+float NormalizeDistance(uint8_t distance) {
+  return static_cast<float>(std::clamp<uint8_t>(distance, 0, 127)) / 127.0f;
+}
+
+roar_polar_t ConvertFromIamfPolarPosition(int16_t azimuth, int8_t elevation,
+                                          uint8_t distance) {
+  return {
+      .azimuth = ClampAzimuth(azimuth),
+      .elevation = ClampElevation(elevation),
+      .distance = NormalizeDistance(distance),
+  };
+}
+
+roar_metadata_object_positions_t CreateDefaultPositions(
+    const PolarParamDefinition& param_def) {
+  roar_metadata_object_positions_t object_positions = {};
+  object_positions.param_type = ck_roar_param_constant;
+  object_positions.position_type = ck_roar_polar;
+  object_positions.num_objects = 1;
+  object_positions.polar_positions[0] = ConvertFromIamfPolarPosition(
+      param_def.default_azimuth_, param_def.default_elevation_,
+      param_def.default_distance_);
+  return object_positions;
+}
+
+roar_metadata_object_positions_t CreateDefaultPositions(
+    const DualPolarParamDefinition& param_def) {
+  roar_metadata_object_positions_t object_positions = {};
+  object_positions.param_type = ck_roar_param_constant;
+  object_positions.position_type = ck_roar_polar;
+  object_positions.num_objects = 2;
+  object_positions.polar_positions[0] = ConvertFromIamfPolarPosition(
+      param_def.default_first_azimuth_, param_def.default_first_elevation_,
+      param_def.default_first_distance_);
+  object_positions.polar_positions[1] = ConvertFromIamfPolarPosition(
+      param_def.default_second_azimuth_, param_def.default_second_elevation_,
+      param_def.default_second_distance_);
+  return object_positions;
+}
+
+absl::StatusOr<roar_metadata_t> CreateDefaultObjectPositionsMetadata(
+    uint32_t expected_num_objects, uint32_t duration,
+    const PositionParamVariant& position_param_definition) {
+  roar_metadata_t metadata = {};
+  metadata.type = ck_roar_metadata_object_positions;
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
+                                                      metadata.duration));
+  const absl::StatusOr<roar_metadata_object_positions_t> object_positions =
+      std::visit(
+          [](const auto& param_def)
+              -> absl::StatusOr<roar_metadata_object_positions_t> {
+            if constexpr (requires { CreateDefaultPositions(param_def); }) {
+              return CreateDefaultPositions(param_def);
+            } else {
+              return absl::UnimplementedError(
+                  "Cartesian object position parameter definitions are not yet "
+                  "supported.");
+            }
+          },
+          position_param_definition);
+  if (!object_positions.ok()) {
+    return object_positions.status();
+  }
+  RETURN_IF_NOT_OK(ValidateEqual(expected_num_objects,
+                                 object_positions->num_objects, "num_objects"));
+  metadata.object_positions = *object_positions;
+  return metadata;
+}
+
 }  // namespace
 
 std::unique_ptr<OarWrapper> OarWrapper::Create(const Layout& output_layout,
@@ -543,6 +627,9 @@ absl::Status OarWrapper::AddAudioElement(
         "Element mix gain ID for audio element ID= ", audio_element_id,
         " already exists."));
   }
+  if (audio_element_type == AudioElementObu::kAudioElementObjectBased) {
+    id_to_num_objects_[audio_element_id] = config.obc.num_objects;
+  }
 
   return absl::OkStatus();
 }
@@ -553,6 +640,7 @@ absl::Status OarWrapper::RemoveAudioElement(uint32_t id) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Failed to remove audio element ID= ", id, ". Error code= ", result));
   }
+  id_to_num_objects_.erase(id);
   return absl::OkStatus();
 }
 
@@ -651,6 +739,33 @@ absl::Status OarWrapper::SetHeadRotation(float w, float x, float y, float z,
   return absl::OkStatus();
 }
 
+absl::Status OarWrapper::SetDefaultObjectPositions(
+    uint32_t audio_element_id, uint32_t duration,
+    const PositionParamVariant& position_param_definition) {
+  const auto num_objects =
+      LookupInMap(id_to_num_objects_, audio_element_id,
+                  "Number of objects for audio element ID");
+  if (!num_objects.ok()) {
+    return num_objects.status();
+  }
+
+  const absl::StatusOr<roar_metadata_t> metadata =
+      CreateDefaultObjectPositionsMetadata(*num_objects, duration,
+                                           position_param_definition);
+  if (!metadata.ok()) {
+    return metadata.status();
+  }
+
+  const auto update_metadata_result = roar_update_audio_element_metadata(
+      oar_->roar.get(), audio_element_id, &*metadata);
+  if (update_metadata_result != kOarSuccess) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Failed to update object positions for audio element ID= ",
+        audio_element_id, ". Error code= ", update_metadata_result));
+  }
+  return absl::OkStatus();
+}
+
 absl::Status OarWrapper::UpdateObjectPositions(
     uint32_t audio_element_id, uint32_t duration,
     const std::vector<OarPositionData>& positions) {
@@ -659,17 +774,12 @@ absl::Status OarWrapper::UpdateObjectPositions(
         absl::StrCat("Audio element ID= ", audio_element_id, " not found."));
   }
 
-  roar_metadata_t metadata;
+  roar_metadata_t metadata = {};
   metadata.type = ck_roar_metadata_object_positions;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
                                                       metadata.duration));
-
-  // TODO(b/516667116): Support more than just constant positions.
   metadata.object_positions.param_type = ck_roar_param_constant;
   metadata.object_positions.position_type = ck_roar_polar;
-
-  // Only `kMaxNumObjects` objects are supported for object-based
-  // rendering in OAR.
   if (positions.size() > kMaxNumObjects) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Maximum number of object positions per element exceeded: (",
@@ -677,8 +787,7 @@ absl::Status OarWrapper::UpdateObjectPositions(
   }
   metadata.object_positions.num_objects =
       static_cast<uint32_t>(positions.size());
-
-  for (int i = 0; i < positions.size(); ++i) {
+  for (size_t i = 0; i < positions.size(); ++i) {
     metadata.object_positions.polar_positions[i].azimuth = positions[i].azimuth;
     metadata.object_positions.polar_positions[i].elevation =
         positions[i].elevation;

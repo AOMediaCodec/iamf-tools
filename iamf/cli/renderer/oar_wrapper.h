@@ -78,7 +78,8 @@ class OarWrapper {
   /*!\brief Type of audio samples used by the `liboar` library. */
   using OarSampleType = float;
 
-  // TODO(b/516667116)): Support more than just constant positions.
+  // TODO(b/516667116): Remove once `OarLayoutRenderer` uses
+  // `PositionParamVariant`.
   /*!\brief Struct describing an object's position. */
   struct OarPositionData {
     float azimuth;
@@ -199,12 +200,24 @@ class OarWrapper {
   absl::Status SetHeadRotation(float w, float x, float y, float z,
                                uint32_t duration);
 
-  /*!\brief Updates the object positions of an audio element.
+  /*!\brief Sets object positions of an audio element to their defaults.
    *
-   * \param audio_element_id ID of the audio element.
+   * \param audio_element_id ID of the audio element to be updated.
    * \param duration Duration in samples for which this metadata is valid.
-   * \param positions Position data for each object.
-   * \return absl::OkStatus() on success, or a specific status on failure.
+   * \param position_param_definition Parameter definition for the object
+   *        positions, containing the default positions.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status SetDefaultObjectPositions(
+      uint32_t audio_element_id, uint32_t duration,
+      const PositionParamVariant& position_param_definition);
+
+  /*!\brief Updates object positions of an audio element from polar floats.
+   *
+   * \param audio_element_id ID of the audio element to be updated.
+   * \param duration Duration in samples for which this metadata is valid.
+   * \param positions Vector of polar positions for each object.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status UpdateObjectPositions(
       uint32_t audio_element_id, uint32_t duration,
@@ -344,6 +357,9 @@ class OarWrapper {
   // Mapping from each audio element ID to its corresponding demixing parameter
   // ID, if available.
   absl::flat_hash_map<uint32_t, uint32_t> id_to_demixing_info_ids_;
+
+  // Mapping from each object-based audio element ID to its number of objects.
+  absl::flat_hash_map<uint32_t, uint32_t> id_to_num_objects_;
 };
 
 }  // namespace iamf_tools

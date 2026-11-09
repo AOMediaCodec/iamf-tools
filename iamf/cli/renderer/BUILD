@@ -228,6 +228,8 @@ cc_library(
         "//iamf/obu:parameter_data",
         "//iamf/obu:rendering_config",
         "//iamf/obu/param_definitions:demixing_param_definition",
+        "//iamf/obu/param_definitions:dual_polar_param_definition",
+        "//iamf/obu/param_definitions:polar_param_definition",
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log:absl_check",

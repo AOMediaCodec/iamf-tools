@@ -12,6 +12,8 @@
 
 #include "iamf/cli/renderer/oar_wrapper.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -30,6 +32,8 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
@@ -409,49 +413,161 @@ TEST(OarWrapperTest, SetHeadTrackingFailsForSterioLayout) {
 }
 
 // ---- Object positions related ----
-TEST(OarWrapperTest, UpdateObjectPositionsSucceeds) {
+TEST(SetDefaultObjectPositions, RendersDefaultSingleObjectPolarPosition) {
   auto wrapper =
       OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
                          kNumSamplesPerFrame, kOutputMixGainId);
   ASSERT_NE(wrapper, nullptr);
-  EXPECT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 2), IsOk());
+  ASSERT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 1), IsOk());
+  PolarParamDefinition polar_def({});
+  polar_def.default_azimuth_ = 90;
+  polar_def.default_elevation_ = 0;
+  polar_def.default_distance_ = 127;
+  std::vector<float> input_buffer(kNumSamplesPerFrame, 1.0f);
+  std::vector<float> polar_output(kNumSamplesPerFrame * kStereoChannels, 0.0f);
 
-  std::vector<OarWrapper::OarPositionData> positions = {{0.0f, 0.0f, 1.0f},
-                                                        {90.0f, 0.0f, 1.0f}};
-  EXPECT_THAT(wrapper->UpdateObjectPositions(kAudioElementId,
-                                             kNumSamplesPerFrame, positions),
+  ASSERT_THAT(
+      wrapper->AddInput(kAudioElementId, absl::MakeConstSpan(input_buffer), 1),
+      IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
               IsOk());
+  ASSERT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, polar_def),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(polar_output)), IsOk());
+
+  constexpr size_t kLastLeftSample = kNumSamplesPerFrame - 1;
+  constexpr size_t kLastRightSample = 2 * kNumSamplesPerFrame - 1;
+  EXPECT_GT(polar_output[kLastLeftSample], polar_output[kLastRightSample]);
 }
 
-TEST(OarWrapperTest, UpdateObjectPositionsFailsWhenMaxObjectsExceeded) {
+TEST(SetDefaultObjectPositions, ClampsOutOfRangePolarCoordinatesPerIamfSpec) {
   auto wrapper =
       OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
                          kNumSamplesPerFrame, kOutputMixGainId);
   ASSERT_NE(wrapper, nullptr);
+  ASSERT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 1), IsOk());
+  PolarParamDefinition polar_def({});
+  // -270 degrees clamps to -180 degrees (directly behind on the median plane)
+  // rather than wrapping modulo 360 to +90 degrees (left).
+  polar_def.default_azimuth_ = -270;
+  polar_def.default_elevation_ = 100;
+  polar_def.default_distance_ = 200;
+  std::vector<float> input_buffer(kNumSamplesPerFrame, 1.0f);
+  std::vector<float> polar_output(kNumSamplesPerFrame * kStereoChannels, 0.0f);
 
-  constexpr uint32_t kElementId = 102;
-  constexpr uint32_t kDuration = 512;
+  ASSERT_THAT(
+      wrapper->AddInput(kAudioElementId, absl::MakeConstSpan(input_buffer), 1),
+      IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, polar_def),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(polar_output)), IsOk());
 
-  // Max number of objects is 2 (`kMaxNumObjects`).
-  std::vector<OarWrapper::OarPositionData> too_many_positions(
-      OarWrapper::kMaxNumObjects + 1);
-
-  EXPECT_FALSE(
-      wrapper->UpdateObjectPositions(kElementId, kDuration, too_many_positions)
-          .ok());
+  constexpr size_t kLastLeftSample = kNumSamplesPerFrame - 1;
+  constexpr size_t kLastRightSample = 2 * kNumSamplesPerFrame - 1;
+  EXPECT_GT(polar_output[kLastLeftSample], 0.0f);
+  EXPECT_FLOAT_EQ(polar_output[kLastLeftSample],
+                  polar_output[kLastRightSample]);
 }
 
-TEST(OarWrapperTest, UpdateObjectPositionsFailsIfAudioElementIdNotFound) {
+TEST(SetDefaultObjectPositions, RendersDefaultDualObjectPolarPositions) {
   auto wrapper =
       OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
                          kNumSamplesPerFrame, kOutputMixGainId);
   ASSERT_NE(wrapper, nullptr);
+  ASSERT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 2), IsOk());
+  DualPolarParamDefinition dual_polar_def({});
+  dual_polar_def.default_first_azimuth_ = 90;
+  dual_polar_def.default_first_distance_ = 127;
+  dual_polar_def.default_second_azimuth_ = -90;
+  dual_polar_def.default_second_distance_ = 127;
+  std::vector<float> first_object_input(2 * kNumSamplesPerFrame, 0.0f);
+  std::fill_n(first_object_input.begin(), kNumSamplesPerFrame, 1.0f);
+  std::vector<float> second_object_input(2 * kNumSamplesPerFrame, 0.0f);
+  std::fill_n(second_object_input.begin() + kNumSamplesPerFrame,
+              kNumSamplesPerFrame, 1.0f);
+  std::vector<float> first_object_output(kNumSamplesPerFrame * kStereoChannels,
+                                         0.0f);
+  std::vector<float> second_object_output(kNumSamplesPerFrame * kStereoChannels,
+                                          0.0f);
 
-  // Here we omit adding an audio element, so updating the object positions
-  // fails.
-  std::vector<OarWrapper::OarPositionData> positions = {{0.0f, 0.0f, 1.0f}};
-  EXPECT_THAT(wrapper->UpdateObjectPositions(kNonExistentAudioElementId,
-                                             kNumSamplesPerFrame, positions),
+  ASSERT_THAT(wrapper->AddInput(kAudioElementId,
+                                absl::MakeConstSpan(first_object_input), 2),
+              IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, dual_polar_def),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(first_object_output)), IsOk());
+
+  ASSERT_THAT(wrapper->AddInput(kAudioElementId,
+                                absl::MakeConstSpan(second_object_input), 2),
+              IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, dual_polar_def),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(second_object_output)), IsOk());
+
+  constexpr size_t kLastLeftSample = kNumSamplesPerFrame - 1;
+  constexpr size_t kLastRightSample = 2 * kNumSamplesPerFrame - 1;
+  EXPECT_GT(first_object_output[kLastLeftSample],
+            first_object_output[kLastRightSample]);
+  EXPECT_GT(second_object_output[kLastRightSample],
+            second_object_output[kLastLeftSample]);
+}
+
+TEST(SetDefaultObjectPositions, RejectsNonExistentOrNonObjectElement) {
+  auto wrapper =
+      OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
+                         kNumSamplesPerFrame, kOutputMixGainId);
+  ASSERT_NE(wrapper, nullptr);
+  ASSERT_THAT(AddChannelBasedElement(*wrapper, kAudioElementId), IsOk());
+  PolarParamDefinition polar_def({});
+
+  EXPECT_THAT(wrapper->SetDefaultObjectPositions(
+                  kNonExistentAudioElementId, kNumSamplesPerFrame, polar_def),
+              Not(IsOk()));
+  EXPECT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, polar_def),
+              Not(IsOk()));
+}
+
+TEST(SetDefaultObjectPositions, RejectsMismatchedNumObjects) {
+  auto wrapper =
+      OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
+                         kNumSamplesPerFrame, kOutputMixGainId);
+  ASSERT_NE(wrapper, nullptr);
+  ASSERT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 1), IsOk());
+  DualPolarParamDefinition dual_polar_def({});
+
+  EXPECT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, dual_polar_def),
               Not(IsOk()));
 }
 

@@ -181,6 +181,8 @@ cc_test(
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:demixing_param_definition",
+        "//iamf/obu/param_definitions:dual_polar_param_definition",
+        "//iamf/obu/param_definitions:polar_param_definition",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
