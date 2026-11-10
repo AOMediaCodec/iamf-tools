@@ -213,6 +213,7 @@ cc_test(
     size = "small",
     srcs = ["metadata_obu_test.cc"],
     deps = [
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",

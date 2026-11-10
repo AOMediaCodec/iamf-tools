@@ -50,6 +50,7 @@
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
@@ -549,8 +550,8 @@ inline auto Has2DShape(size_t first_dimension, size_t second_dimension) {
  * matcher will match both the old and new formats.
  *
  * For example:
- * const MixPresentationTags::Tag tag{.tag_name = "iamf_encoder",
- *                                    .tag_value = "GitHub/iamf-tools"};
+ * const MetadataIamfTags::Tag tag{.tag_name = "iamf_encoder",
+ *                                 .tag_value = "GitHub/iamf-tools"};
  * EXPECT_THAT(tag, TagMatchesBuildInformation());
  */
 MATCHER(TagMatchesBuildInformation, "") {

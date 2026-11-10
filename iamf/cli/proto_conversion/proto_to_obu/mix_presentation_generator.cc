@@ -458,32 +458,20 @@ absl::Status FillLayouts(
 }
 
 absl::Status FillMixPresentationTags(
-    bool append_build_information_tag,
     const iamf_tools_cli_proto::MixPresentationTags& mix_presentation_tags,
     std::optional<MixPresentationTags>& obu_mix_presentation_tags) {
   obu_mix_presentation_tags = MixPresentationTags{};
 
-  // Calculate the total number of tags, including automatically added ones.
-  const size_t num_tags = mix_presentation_tags.tags().size() +
-                          (append_build_information_tag ? 1 : 0);
   // At the OBU it must fit into a `uint8_t`.
   uint8_t obu_num_tags;
   RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
-      "Total number of MixPresentationTags.tags", num_tags, obu_num_tags));
+      "Total number of MixPresentationTags.tags",
+      mix_presentation_tags.tags().size(), obu_num_tags));
   obu_mix_presentation_tags->tags.reserve(obu_num_tags);
   for (const auto& input_tag : mix_presentation_tags.tags()) {
     obu_mix_presentation_tags->tags.emplace_back(MixPresentationTags::Tag{
         .tag_name = input_tag.tag_name(),
         .tag_value = input_tag.tag_value(),
-    });
-  }
-  // Append the build information tag.
-  if (append_build_information_tag) {
-    // TODO(b/388577499): Include the commit hash at build time, in the
-    //                    `iamf_encoder` tag value.
-    obu_mix_presentation_tags->tags.emplace_back(MixPresentationTags::Tag{
-        .tag_name = "iamf_encoder",
-        .tag_value = "GitHub/iamf-tools",
     });
   }
 
@@ -715,7 +703,6 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
 }
 
 absl::Status MixPresentationGenerator::Generate(
-    bool append_build_information_tag,
     DescriptorObus::MixPresentationObus& mix_presentation_obus) {
   for (const auto& mix_presentation_metadata : mix_presentation_metadata_) {
     struct {
@@ -785,10 +772,8 @@ absl::Status MixPresentationGenerator::Generate(
       obu_args.sub_mixes.push_back(std::move(sub_mix));
     }
 
-    if (mix_presentation_metadata.include_mix_presentation_tags() ||
-        append_build_information_tag) {
+    if (mix_presentation_metadata.include_mix_presentation_tags()) {
       RETURN_IF_NOT_OK(FillMixPresentationTags(
-          append_build_information_tag,
           mix_presentation_metadata.mix_presentation_tags(),
           obu_args.mix_presentation_tags));
     } else {

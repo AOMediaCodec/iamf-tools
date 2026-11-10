@@ -424,6 +424,7 @@ cc_library(
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:metadata_obu",
+        "//iamf/obu:obu_header",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:param_definition_variant",
         "@abseil-cpp//absl/base:nullability",

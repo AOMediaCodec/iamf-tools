@@ -19,6 +19,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/obu/loudness_info.h"
 #include "iamf/obu/mix_presentation.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -99,14 +100,10 @@ class MixPresentationGenerator {
    * Note that `finalize_mix_presentation_obus` must be called afterwards to
    * populate the loudness information for the OBUs.
    *
-   * \param append_build_information_tag Whether to append an additional
-   *        `MixPresentationTag` which signals the encoder version which
-   *        generated the bitstream.
    * \param mix_presentation_obus Output list of OBUs.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Generate(
-      bool append_build_information_tag,
       DescriptorObus::MixPresentationObus& mix_presentation_obus);
 
  private:

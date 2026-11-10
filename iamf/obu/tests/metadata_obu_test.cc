@@ -19,6 +19,7 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -43,6 +44,11 @@ TEST(CreateWithMetadata, ITUTT35) {
 TEST(CreateWithMetadata, IamfTags) {
   MetadataObu obu = MetadataObu::Create(ObuHeader(), MetadataIamfTags());
   EXPECT_EQ(obu.GetMetadataType(), kMetadataTypeIamfTags);
+}
+
+TEST(CreateBuildInformationTag, MatchesBuildInformation) {
+  EXPECT_THAT(MetadataIamfTags::CreateBuildInformationTag(),
+              TagMatchesBuildInformation());
 }
 
 TEST(CreateFromBuffer, IamfTags) {

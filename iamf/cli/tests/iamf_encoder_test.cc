@@ -19,6 +19,7 @@
 #include <span>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
@@ -52,7 +53,8 @@
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/loudness_info.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/types.h"
@@ -376,19 +378,52 @@ TEST_F(IamfEncoderTest, CreateGeneratesDescriptorArbitraryObus) {
 
 TEST_F(IamfEncoderTest, BuildInformationTagIsPresentByDefault) {
   SetupDescriptorObus();
-
   auto iamf_encoder = CreateExpectOk();
-  bool unused_obus_are_finalized = false;
-  const auto& mix_presentation_obus =
-      iamf_encoder.GetMixPresentationObus(unused_obus_are_finalized);
-  ASSERT_FALSE(mix_presentation_obus.empty());
+  std::vector<uint8_t> output_obus;
+  bool get_descriptors_obus_are_finalized;
+  EXPECT_TRUE(iamf_encoder
+                  .GetDescriptorObus(kNoRedundantCopy, output_obus,
+                                     get_descriptors_obus_are_finalized)
+                  .ok());
+
+  auto rb =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(output_obus));
+  ASSERT_NE(rb, nullptr);
+  bool output_insufficient_data = false;
+  auto obu_processor = ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                                            rb.get(), output_insufficient_data);
+  ASSERT_NE(obu_processor, nullptr);
+  const auto& metadata_obus = obu_processor->GetMetadataObusView();
+  ASSERT_FALSE(metadata_obus.empty());
 
   // We don't care which slot the build information tag is in. But we want it to
   // be present by default, to help with debugging.
-  const auto& first_obu_tags =
-      mix_presentation_obus.front().mix_presentation_tags_;
-  ASSERT_TRUE(first_obu_tags.has_value());
+  const auto* first_obu_tags = std::get_if<MetadataIamfTags>(
+      &metadata_obus.front().GetMetadataVariant());
+  ASSERT_NE(first_obu_tags, nullptr);
   EXPECT_THAT(first_obu_tags->tags, Contains(TagMatchesBuildInformation()));
+}
+
+TEST_F(IamfEncoderTest, BuildInformationTagCanBeOmitted) {
+  SetupDescriptorObus();
+  user_metadata_.mutable_encoder_control_metadata()
+      ->set_add_build_information_tag(false);
+  auto iamf_encoder = CreateExpectOk();
+  std::vector<uint8_t> output_obus;
+  bool get_descriptors_obus_are_finalized;
+  EXPECT_TRUE(iamf_encoder
+                  .GetDescriptorObus(kNoRedundantCopy, output_obus,
+                                     get_descriptors_obus_are_finalized)
+                  .ok());
+
+  auto rb =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(output_obus));
+  ASSERT_NE(rb, nullptr);
+  bool output_insufficient_data = false;
+  auto obu_processor = ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                                            rb.get(), output_insufficient_data);
+  ASSERT_NE(obu_processor, nullptr);
+  EXPECT_TRUE(obu_processor->GetMetadataObusView().empty());
 }
 
 TEST_F(IamfEncoderTest,

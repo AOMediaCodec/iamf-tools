@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+-   Move the encoder build information tag (`iamf_encoder`) from
+    `MixPresentationObu` (`MixPresentationTags`) to a standalone `MetadataObu`
+    (`MetadataIamfTags`).
+
 ## [4.0.0] - 2026-10-22
 
 ### Changed

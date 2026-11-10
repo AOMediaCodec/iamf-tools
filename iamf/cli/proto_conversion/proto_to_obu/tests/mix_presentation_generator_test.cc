@@ -12,7 +12,6 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/mix_presentation_generator.h"
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <list>
@@ -71,8 +70,6 @@ constexpr bool kParamDefinitionMode = true;
 constexpr uint8_t kParamDefinitionReserved = 0;
 constexpr int16_t kZeroMixGain = 0;
 constexpr int16_t kNonZeroMixGain = 100;
-constexpr bool kOmitBuildInformationTag = false;
-constexpr bool kAppendBuildInformationTag = true;
 
 void FillMixGainParamDefinition(
     uint32_t parameter_id, int16_t output_mix_gain,
@@ -143,8 +140,7 @@ TEST(Generate, CopiesSoundSystem13_6_9_0) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_specific_layout = generated_obus.front()
                                               .sub_mixes_[0]
@@ -171,8 +167,7 @@ TEST(Generate, CopiesSoundSystem14_5_7_4) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_specific_layout = generated_obus.front()
                                               .sub_mixes_[0]
@@ -199,8 +194,7 @@ TEST(Generate, CopiesHeadphonesRenderingModeBinauralWorldLocked) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_EQ(generated_obus.front()
                 .sub_mixes_[0]
@@ -225,8 +219,7 @@ TEST(Generate,
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_EQ(generated_obus.front()
                 .sub_mixes_[0]
@@ -249,8 +242,7 @@ TEST(Generate, CopiesHeadphonesRenderingModeBinauralHeadLocked) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_EQ(generated_obus.front()
                 .sub_mixes_[0]
@@ -272,8 +264,7 @@ TEST(Generate, CopiesReservedHeadphonesRenderingMode3) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -294,8 +285,7 @@ TEST(Generate, InvalidHeadphonesRenderingMode) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -312,8 +302,7 @@ TEST(Generate, CopiesBinauralFilterProfileAmbient) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -336,8 +325,7 @@ TEST(Generate, CopiesBinauralFilterProfileDirect) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -360,8 +348,7 @@ TEST(Generate, CopiesBinauralFilterProfileReverberant) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -384,8 +371,7 @@ TEST(Generate, CopiesBinauralFilterProfileReserved3) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -410,8 +396,7 @@ TEST(Generate, DefaultsBinauralFilterProfileToAmbient) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -435,8 +420,7 @@ TEST(Generate, InvalidBinauralFilterProfile) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -473,8 +457,7 @@ TEST(Generate, CopiesRenderingConfigWithPolarParamDefinition) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
@@ -518,8 +501,7 @@ TEST(Generate, CopiesRenderingConfigWithCart8ParamDefinition) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
@@ -563,8 +545,7 @@ TEST(Generate, CopiesRenderingConfigWithCart16ParamDefinition) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
@@ -615,8 +596,7 @@ TEST(Generate, CopiesRenderingConfigWithDualPolarParamDefinition) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
@@ -667,8 +647,7 @@ TEST(Generate, CopiesRenderingConfigWithDualCart8ParamDefinition) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
@@ -719,8 +698,7 @@ TEST(Generate, CopiesRenderingConfigWithDualCart16ParamDefinition) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
@@ -745,8 +723,7 @@ TEST(Generate, CopiesRenderingConfigExtension) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -769,8 +746,7 @@ TEST(Generate, IgnoresDeprecatedRenderingConfigExtensionSize) {
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
 
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_EQ(generated_obus.front()
                 .sub_mixes_[0]
@@ -792,8 +768,7 @@ TEST(Generate, CopiesNoAnnotations) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& first_obu = generated_obus.front();
   EXPECT_TRUE(first_obu.GetAnnotationsLanguage().empty());
@@ -826,8 +801,7 @@ TEST(Generate, CopiesAnnotations) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& first_obu = generated_obus.front();
   EXPECT_EQ(first_obu.GetAnnotationsLanguage(), kAnnotationsLanguage);
@@ -847,8 +821,7 @@ TEST(Generate, IgnoresDeprecatedCountLabel) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
   ASSERT_FALSE(generated_obus.empty());
 
   const auto& first_obu = generated_obus.front();
@@ -885,8 +858,7 @@ TEST(Generate, InvalidWhenNumberOfAnnotationsLanguageIsInconsistent) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -900,8 +872,7 @@ TEST(Generate,
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -914,8 +885,7 @@ TEST(Generate, InvalidWhenNumberOfLocalizedElementAnnotationsIsInconsistent) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -928,17 +898,14 @@ TEST(Generate, CopiesMixPresentationTagsWithZeroTags) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  // We must avoid appending the build information tag, to exercise the "zero
-  // tags" case.
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& first_obu = generated_obus.front();
   ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
   EXPECT_TRUE(first_obu.mix_presentation_tags_->tags.empty());
 }
 
-TEST(Generate, ReturnsErrorIfUserSpecifies256TagsWithoutBuildInformation) {
+TEST(Generate, ReturnsErrorIfUserSpecifies256Tags) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
   auto& mix_presentation = mix_presentation_metadata.at(0);
@@ -953,30 +920,7 @@ TEST(Generate, ReturnsErrorIfUserSpecifies256TagsWithoutBuildInformation) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              Not(IsOk()));
-  EXPECT_TRUE(generated_obus.empty());
-}
-
-TEST(Generate, ReturnsErrorIfUserSpecifies255TagsWithoutBuildInformation) {
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  FillMixPresentationMetadata(mix_presentation_metadata.Add());
-  auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.set_include_mix_presentation_tags(true);
-  constexpr int kMaxNumTags = 255;
-  for (int i = 0; i < kMaxNumTags; ++i) {
-    auto* tag = mix_presentation.mutable_mix_presentation_tags()->add_tags();
-    tag->set_tag_name("tag_name");
-    tag->set_tag_value("tag_value");
-  }
-
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  // It would be OK to generate 255 tags, but the build information tag pushes
-  // the final count over the limit.
-  MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -997,8 +941,7 @@ TEST(Generate, CopiesDuplicateContentLanguageTags) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& first_obu = generated_obus.front();
   ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
@@ -1011,9 +954,8 @@ TEST(Generate, CopiesDuplicateContentLanguageTags) {
   EXPECT_EQ(first_obu.mix_presentation_tags_->tags[1].tag_value, "kor");
 }
 
-TEST(
-    Generate,
-    MixPresentationTagsAreAbsentIncludeMixPresentationTagsAndOmitBuildInformationTagAreFalse) {
+TEST(Generate,
+     MixPresentationTagsAreAbsentWhenIncludeMixPresentationTagsIsFalse) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
   auto& mix_presentation = mix_presentation_metadata.at(0);
@@ -1024,101 +966,12 @@ TEST(
 
   MixPresentationGenerator generator(mix_presentation_metadata);
 
-  // To exercise the "absent" tags case, we must avoid appending the build
-  // information tag.
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& first_obu = generated_obus.front();
   EXPECT_FALSE(first_obu.mix_presentation_tags_.has_value());
 }
-
-struct MixPresentationTagsPresenceTestCase {
-  bool include_mix_presentation_tags;
-  bool append_build_information_tag;
-
-  // `std::nullopt` means that the tags are expected to be absent.
-  std::optional<size_t> expected_num_tags;
-  bool expect_build_information_tag_to_be_present;
-};
-
-class MixPresentationTagsPresenceTest
-    : public ::testing::TestWithParam<MixPresentationTagsPresenceTestCase> {};
-
-TEST_P(MixPresentationTagsPresenceTest, MixPresentationTagsArePresentOrAbsent) {
-  const auto& test_case = GetParam();
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  FillMixPresentationMetadata(mix_presentation_metadata.Add());
-  auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.set_include_mix_presentation_tags(
-      test_case.include_mix_presentation_tags);
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(test_case.append_build_information_tag,
-                                 generated_obus),
-              IsOk());
-  ASSERT_FALSE(generated_obus.empty());
-  const auto& first_obu = generated_obus.front();
-
-  if (test_case.expected_num_tags.has_value()) {
-    EXPECT_TRUE(first_obu.mix_presentation_tags_.has_value());
-    EXPECT_EQ(first_obu.mix_presentation_tags_->tags.size(),
-              *test_case.expected_num_tags);
-    // If the tags are present, the last tag may be the build information tag.
-    if (test_case.expect_build_information_tag_to_be_present) {
-      ASSERT_FALSE(first_obu.mix_presentation_tags_->tags.empty());
-      EXPECT_THAT(first_obu.mix_presentation_tags_->tags.back(),
-                  TagMatchesBuildInformation());
-    }
-  } else {
-    EXPECT_FALSE(first_obu.mix_presentation_tags_.has_value());
-  }
-}
-
-// To strictly exercise Simple or Base profile bitstream with no extensions, we
-// can disable both the mix presentation tags and the build information tag.
-INSTANTIATE_TEST_SUITE_P(
-    MixPresentationTagsAreAbsent, MixPresentationTagsPresenceTest,
-    testing::ValuesIn<MixPresentationTagsPresenceTestCase>({{
-        .include_mix_presentation_tags = false,
-        .append_build_information_tag = false,
-        .expected_num_tags = std::nullopt,
-        .expect_build_information_tag_to_be_present = false,
-    }}));
-
-// The spec supports an edge case where the bitstream signals zero tags are
-// present. This mode also is useful if a user wants to provide their own tags,
-// but disable the build information tag.
-INSTANTIATE_TEST_SUITE_P(
-    MixPresentationTagsArePresentWithZeroTags, MixPresentationTagsPresenceTest,
-    testing::ValuesIn<MixPresentationTagsPresenceTestCase>({{
-        .include_mix_presentation_tags = true,
-        .append_build_information_tag = false,
-        .expected_num_tags = 0,
-        .expect_build_information_tag_to_be_present = false,
-    }}));
-
-// Other modes result in a tag describing the build information. A compliant
-// Simple or Base profile decoder should handle the presence of the tag, but
-// it's not required to understand what it means.
-INSTANTIATE_TEST_SUITE_P(
-    MixPresentationTagsArePresentWithBuildInformationTag,
-    MixPresentationTagsPresenceTest,
-    testing::ValuesIn<MixPresentationTagsPresenceTestCase>(
-        {{
-             .include_mix_presentation_tags = true,
-             .append_build_information_tag = true,
-             .expected_num_tags = 1,
-             .expect_build_information_tag_to_be_present = true,
-         },
-         {
-             .include_mix_presentation_tags = false,
-             .append_build_information_tag = true,
-             .expected_num_tags = 1,
-             .expect_build_information_tag_to_be_present = true,
-         }}));
 
 TEST(Generate, CopiesOptionalFields) {
   MixPresentationObuMetadatas mix_presentation_metadata;
@@ -1140,10 +993,7 @@ TEST(Generate, CopiesOptionalFields) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  // We must avoid appending the build information tag, to exercise the "zero
-  // tags" case.
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& first_obu = generated_obus.front();
   ASSERT_TRUE(first_obu.optional_fields_.has_value());
@@ -1166,10 +1016,7 @@ TEST(Generate, FailsWithMissingOptionalFields) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  // We must avoid appending the build information tag, to exercise the "zero
-  // tags" case.
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -1197,10 +1044,7 @@ TEST(Generate, FailsWithOptionalFieldsMissingMixPresentationTags) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  // We must avoid appending the build information tag, to exercise the "zero
-  // tags" case.
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -1214,8 +1058,7 @@ TEST(Generate, CopiesOutputMixGain) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& first_output_mix_gain =
       generated_obus.front().sub_mixes_[0].output_mix_gain;
@@ -1238,8 +1081,7 @@ TEST(Generate, CopiesElementMixGain) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& first_element_mix_gain =
       generated_obus.front().sub_mixes_[0].audio_elements[0].element_mix_gain;
@@ -1264,8 +1106,7 @@ TEST(Generate, CopiesFloatingPointElementMixGainDb) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_EQ(generated_obus.front()
                 .sub_mixes_[0]
@@ -1286,8 +1127,7 @@ TEST(Generate, CopiesDeprecatedDefaultMixGain) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_EQ(generated_obus.front()
                 .sub_mixes_[0]
@@ -1308,16 +1148,14 @@ TEST(Generate, FailsWhenBothDeprecatedDefaultMixGainAndDefaultMixGainDbAreSet) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
 }
 
 TEST(Generate, EmptyUserMetadataGeneratesNoObus) {
   MixPresentationGenerator generator(/*mix_presentation_metadata=*/{});
   MixPresentationObus generated_obus;
 
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_TRUE(generated_obus.empty());
 }
@@ -1333,8 +1171,7 @@ TEST(Generate, SSConventionWithOneStereoAudioElement) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_EQ(generated_obus, expected_obus);
 }
@@ -1350,8 +1187,7 @@ TEST(Generate, SupportsUtf8) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  ASSERT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  ASSERT_THAT(generator.Generate(generated_obus), IsOk());
 
   EXPECT_EQ(generated_obus.back().GetLocalizedPresentationAnnotations(),
             std::vector<std::string>{kUtf8FourByteSequenceCode});
@@ -1376,8 +1212,7 @@ TEST(Generate, CopiesUserLoudness) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   auto& first_output_loudness =
       generated_obus.front().sub_mixes_[0].layouts[0].loudness;
@@ -1400,8 +1235,7 @@ TEST(Generate, InvalidLayoutType) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
   EXPECT_TRUE(generated_obus.empty());
 }
 
@@ -1422,8 +1256,7 @@ TEST(Generate, ReservedLayoutWithOneStereoAudioElement) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   auto& first_output_layout = generated_obus.front().sub_mixes_[0].layouts[0];
   EXPECT_EQ(first_output_layout.loudness_layout.layout_type,
@@ -1738,8 +1571,7 @@ TEST(Generate, CopiesRenderingConfigWithElementGainOffsetValueQ78) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -1762,8 +1594,7 @@ TEST(Generate, CopiesRenderingConfigWithElementGainOffsetValueFloat) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -1787,8 +1618,7 @@ TEST(Generate, CopiesRenderingConfigWithElementGainOffsetRangeQ78) {
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
@@ -1811,8 +1641,7 @@ TEST(Generate, ElementGainOffsetConfigMustHaveValueOrRangeType) {
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   MixPresentationObus generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
+  EXPECT_THAT(generator.Generate(generated_obus), Not(IsOk()));
 }
 
 }  // namespace
