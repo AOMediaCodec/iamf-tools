@@ -4,6 +4,16 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
+    name = "build_info_test",
+    size = "small",
+    srcs = ["build_info_test.cc"],
+    deps = [
+        "//iamf/common:build_info",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "leb_generator_test",
     srcs = ["leb_generator_test.cc"],
     deps = [

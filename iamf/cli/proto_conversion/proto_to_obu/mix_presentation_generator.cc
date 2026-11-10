@@ -34,6 +34,7 @@
 #include "iamf/cli/proto/types.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
+#include "iamf/common/build_info.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
@@ -479,11 +480,12 @@ absl::Status FillMixPresentationTags(
   }
   // Append the build information tag.
   if (append_build_information_tag) {
-    // TODO(b/388577499): Include the commit hash at build time, in the
-    //                    `iamf_encoder` tag value.
+    std::string tag_value =
+        absl::StrCat("GitHub/iamf-tools@", GetBuildVersion());
+    ABSL_LOG(INFO) << "Adding build information tag: " << tag_value;
     obu_mix_presentation_tags->tags.emplace_back(MixPresentationTags::Tag{
         .tag_name = "iamf_encoder",
-        .tag_value = "GitHub/iamf-tools",
+        .tag_value = std::move(tag_value),
     });
   }
 

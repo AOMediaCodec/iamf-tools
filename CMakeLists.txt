@@ -99,6 +99,14 @@ target_include_directories(iamf_protos PUBLIC ${PROTO_GEN_DIR})
 target_link_libraries(iamf_protos PUBLIC protobuf::libprotobuf)
 
 # ---------------- iamf-tools core -------------------------------------------
+execute_process(
+  COMMAND git describe --tags --long --always --dirty
+  WORKING_DIRECTORY ${IAMF}
+  OUTPUT_VARIABLE IAMF_TOOLS_BUILD_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET)
+message(STATUS "Stamping build info: IAMF_TOOLS_BUILD_VERSION=${IAMF_TOOLS_BUILD_VERSION}")
+
 file(GLOB_RECURSE IAMF_SRCS ${IAMF}/iamf/*.cc)
 list(FILTER IAMF_SRCS EXCLUDE REGEX "/tests/|_test\\.cc|_fuzz|_benchmark")
 list(FILTER IAMF_SRCS EXCLUDE REGEX "encoder_main\\.cc|decoder_main\\.cc|probe_main\\.cc|adm_to_user_metadata_main\\.cc")
@@ -109,6 +117,7 @@ else()
   list(FILTER IAMF_SRCS EXCLUDE REGEX "/oar_layout_renderer\\.cc|/oar_wrapper\\.cc")
 endif()
 add_library(iamf_core STATIC ${IAMF_SRCS})
+target_compile_definitions(iamf_core PRIVATE IAMF_TOOLS_BUILD_VERSION="${IAMF_TOOLS_BUILD_VERSION}")
 if(NOT ENABLE_ROAR)
   target_compile_definitions(iamf_core PUBLIC IAMF_TOOLS_DISABLE_ROAR)
 endif()

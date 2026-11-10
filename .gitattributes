@@ -1,0 +1,3 @@
+# Substitute git version placeholders in build_info.cc when using `git archive`
+# (including GitHub release tarballs/zips).
+/iamf/common/build_info.cc export-subst

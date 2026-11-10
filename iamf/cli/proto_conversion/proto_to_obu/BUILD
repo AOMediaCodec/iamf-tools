@@ -180,6 +180,7 @@ cc_library(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:lookup_tables",
         "//iamf/cli/proto_conversion:proto_utils",
+        "//iamf/common:build_info",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",

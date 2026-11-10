@@ -139,6 +139,7 @@ run_logged "iamf-cfg" cmake -S "$REPO" -B "$SRC/build-iamf" \
   -DCMAKE_PREFIX_PATH="$DEPS" \
   -DIAMF_CMAKE_DEPS_ROOT="$SRC" \
   -DENABLE_ROAR="$ENABLE_ROAR"
+grep "Stamping build info:" "$LOG/iamf-cfg.log" || true
 run_logged "iamf-build" cmake --build "$SRC/build-iamf" -j"$JOBS"
 
 ok=1

@@ -1,11 +1,38 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load(":build_info.bzl", "generate_build_info")
 
 package(default_visibility = [
     "//iamf:__subpackages__",
     "//validation:__subpackages__",
 ])
 
-# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
+# keep-sorted start block=yes prefix_order=bzl_library,generate_build_info,cc_library newline_separated=yes
+bzl_library(
+    name = "build_info_bzl",
+    srcs = ["build_info.bzl"],
+    visibility = ["//visibility:private"],
+)
+
+generate_build_info(
+    name = "generated_build_info",
+    out = "generated_build_info.cc",
+)
+
+cc_library(
+    name = "build_info",
+    srcs = [
+        "build_info.cc",
+        ":generated_build_info",
+    ],
+    hdrs = ["build_info.h"],
+    deps = [
+        "@abseil-cpp//absl/base:no_destructor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:string_view",
+    ],
+)
+
 cc_library(
     name = "leb_generator",
     srcs = ["leb_generator.cc"],

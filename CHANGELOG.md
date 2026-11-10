@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+-   Default `iamf_encoder` tag in Mix Presentation OBUs now includes the build
+    version (`GitHub/iamf-tools@<version>`).
+
 ## [4.0.0] - 2026-10-22
 
 ### Changed
