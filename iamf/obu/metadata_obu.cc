@@ -116,15 +116,6 @@ absl::Status WriteMetadataIamfTags(const MetadataIamfTags& metadata_iamf_tags,
 
 }  // namespace
 
-MetadataIamfTags::Tag MetadataIamfTags::CreateBuildInformationTag() {
-  // TODO(b/388577499): Include the commit hash at build time, in the
-  //                    `iamf_encoder` tag value.
-  return {
-      .tag_name = "iamf_encoder",
-      .tag_value = "GitHub/iamf-tools",
-  };
-}
-
 MetadataObu MetadataObu::Create(const ObuHeader& header,
                                 MetadataVariant metadata_variant) {
   MetadataType metadata_type = std::visit(

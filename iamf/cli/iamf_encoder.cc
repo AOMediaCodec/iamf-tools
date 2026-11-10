@@ -66,7 +66,6 @@
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/metadata_obu.h"
-#include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
@@ -281,12 +280,6 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   MetadataObuGenerator metadata_obu_generator(
       user_metadata.metadata_obu_metadata());
   RETURN_IF_NOT_OK(metadata_obu_generator.Generate(metadata_obus));
-  if (user_metadata.encoder_control_metadata().add_build_information_tag()) {
-    metadata_obus.push_back(MetadataObu::Create(
-        ObuHeader(),
-        MetadataIamfTags{
-            .tags = {MetadataIamfTags::CreateBuildInformationTag()}}));
-  }
 
   // Codec Config OBUs.
   // Held in a `unique_ptr`, so the underlying map can be moved without
@@ -310,7 +303,9 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   DescriptorObus::MixPresentationObus mix_presentation_obus;
   MixPresentationGenerator mix_presentation_generator(
       user_metadata.mix_presentation_metadata());
-  RETURN_IF_NOT_OK(mix_presentation_generator.Generate(mix_presentation_obus));
+  RETURN_IF_NOT_OK(mix_presentation_generator.Generate(
+      user_metadata.encoder_control_metadata().add_build_information_tag(),
+      mix_presentation_obus));
   // Initialize a mix presentation mix presentation finalizer. Requires
   // rendering data for every submix to accurately compute loudness.
   auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(

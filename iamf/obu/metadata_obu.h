@@ -50,13 +50,6 @@ struct MetadataIamfTags {
     std::string tag_name;
     std::string tag_value;
   };
-
-  /*!\brief Creates a `Tag` with the encoder build information.
-   *
-   * \return `Tag` containing the build information.
-   */
-  static Tag CreateBuildInformationTag();
-
   std::vector<Tag> tags;
 };
 
