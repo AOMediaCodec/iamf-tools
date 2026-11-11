@@ -116,10 +116,30 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
   AmbisonicEncoder encoder(samples_per_frame, info.num_channels,
                            kAmbisonicOrder);
 
+  // The ADM's audioChannelFormats and the caller's block indices are indexed
+  // by the input wav file's channel number, so both must cover every channel
+  // the header declares.
+  if (input_adm.audio_channels.size() < static_cast<size_t>(ip_wav_nch) ||
+      block_indices.size() < static_cast<size_t>(ip_wav_nch)) {
+    std::fclose(input_file);
+    return absl::InvalidArgumentError(absl::StrCat(
+        "The input wav file declares ", ip_wav_nch,
+        " channel(s), but the ADM describes ", input_adm.audio_channels.size(),
+        " audioChannelFormat(s) and ", block_indices.size(),
+        " audioBlockFormat index/indices."));
+  }
+
   // Assign sources to the encoder at all available input channels.
   for (int i = 0; i < ip_wav_nch; ++i) {
-    auto& audio_block =
-        input_adm.audio_channels[i].audio_blocks[block_indices[i]];
+    const auto& audio_blocks = input_adm.audio_channels[i].audio_blocks;
+    if (block_indices[i] >= audio_blocks.size()) {
+      std::fclose(input_file);
+      return absl::InvalidArgumentError(absl::StrCat(
+          "audioBlockFormat index ", block_indices[i], " for channel ", i,
+          " is out of range; the audioChannelFormat has ", audio_blocks.size(),
+          " audioBlockFormat(s)."));
+    }
+    const auto& audio_block = audio_blocks[block_indices[i]];
     auto x = audio_block.position.x;
     auto y = audio_block.position.y;
     auto z = audio_block.position.z;
