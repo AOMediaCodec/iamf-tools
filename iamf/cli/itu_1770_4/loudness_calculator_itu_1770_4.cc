@@ -29,8 +29,6 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/cli/proto/mix_presentation.pb.h"
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/loudness_info.h"

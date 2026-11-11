@@ -24,8 +24,6 @@ cc_library(
     hdrs = ["loudness_calculator_itu_1770_4.h"],
     deps = [
         "//iamf/cli:loudness_calculator_base",
-        "//iamf/cli/proto:mix_presentation_cc_proto",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/common:q_format_or_floating_point",
         "//iamf/common/utils:macros",
         "//iamf/obu:loudness_info",
