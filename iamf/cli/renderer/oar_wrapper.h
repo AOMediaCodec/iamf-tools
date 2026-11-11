@@ -27,6 +27,7 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/polar_position_data.h"
 #include "iamf/obu/rendering_config.h"
 
 // Forward declaration of the C structure that this wrapper interfaces.
@@ -211,6 +212,19 @@ class OarWrapper {
   absl::Status SetDefaultObjectPositions(
       uint32_t audio_element_id, uint32_t duration,
       const PositionParamVariant& position_param_definition);
+
+  /*!\brief Updates polar object positions of an audio element from parameter
+   *        data.
+   *
+   * \param audio_element_id ID of the audio element to be updated.
+   * \param duration Duration in samples for which this metadata is valid.
+   * \param polar_position_data Parameter data defining the animated polar
+   *        object positions for this subblock.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status UpdatePolarObjectPositions(
+      uint32_t audio_element_id, uint32_t duration,
+      const PolarPositionData& polar_position_data);
 
   /*!\brief Updates object positions of an audio element from polar floats.
    *

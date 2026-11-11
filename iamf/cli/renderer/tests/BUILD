@@ -178,6 +178,7 @@ cc_test(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:parameter_data",
+        "//iamf/obu:polar_position_data",
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:cart16_param_definition",

@@ -226,6 +226,7 @@ cc_library(
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:parameter_data",
+        "//iamf/obu:polar_position_data",
         "//iamf/obu:rendering_config",
         "//iamf/obu/param_definitions:cart16_param_definition",
         "//iamf/obu/param_definitions:cart8_param_definition",

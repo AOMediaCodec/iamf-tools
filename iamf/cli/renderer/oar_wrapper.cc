@@ -50,6 +50,7 @@
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
+#include "iamf/obu/polar_position_data.h"
 #include "iamf/obu/rendering_config.h"
 #include "include/roar.h"
 
@@ -570,6 +571,49 @@ absl::StatusOr<roar_metadata_t> CreateDefaultObjectPositionsMetadata(
   return metadata;
 }
 
+roar_animated_polar_t CreateAnimatedPolarPosition(
+    const PolarPosition& position) {
+  const roar_polar_t start =
+      ConvertFromIamfPolarPosition(*position.azimuth.start_point_value(),
+                                   *position.elevation.start_point_value(),
+                                   *position.distance.start_point_value());
+  roar_animated_polar_t animated_polar = {};
+  animated_polar.animation_type = ck_roar_animation_type_step;
+  animated_polar.azimuth.start = start.azimuth;
+  animated_polar.elevation.start = start.elevation;
+  animated_polar.distance.start = start.distance;
+  return animated_polar;
+}
+
+absl::StatusOr<roar_metadata_t> CreateAnimatedPolarPositionsMetadata(
+    uint32_t expected_num_objects, uint32_t duration,
+    const PolarPositionData& polar_data) {
+  // TODO(b/516667116): Support more than just step animation for object
+  // positions.
+  if (polar_data.animation_type() != AnimationType::kStep) {
+    return absl::UnimplementedError(absl::StrCat("Unsupported animation type= ",
+                                                 polar_data.animation_type()));
+  }
+
+  roar_metadata_t metadata = {};
+  metadata.type = ck_roar_metadata_object_positions;
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
+                                                      metadata.duration));
+  metadata.object_positions.param_type = ck_roar_param_animated;
+  metadata.object_positions.position_type = ck_roar_polar;
+  metadata.object_positions.num_objects = polar_data.is_dual() ? 2 : 1;
+  RETURN_IF_NOT_OK(ValidateEqual(expected_num_objects,
+                                 metadata.object_positions.num_objects,
+                                 "num_objects"));
+  metadata.object_positions.animated_polar_positions[0] =
+      CreateAnimatedPolarPosition(polar_data.first_position());
+  if (polar_data.is_dual()) {
+    metadata.object_positions.animated_polar_positions[1] =
+        CreateAnimatedPolarPosition(*polar_data.second_position());
+  }
+  return metadata;
+}
+
 }  // namespace
 
 std::unique_ptr<OarWrapper> OarWrapper::Create(const Layout& output_layout,
@@ -810,6 +854,33 @@ absl::Status OarWrapper::SetDefaultObjectPositions(
   const absl::StatusOr<roar_metadata_t> metadata =
       CreateDefaultObjectPositionsMetadata(*num_objects, duration,
                                            position_param_definition);
+  if (!metadata.ok()) {
+    return metadata.status();
+  }
+
+  const auto update_metadata_result = roar_update_audio_element_metadata(
+      oar_->roar.get(), audio_element_id, &*metadata);
+  if (update_metadata_result != kOarSuccess) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Failed to update object positions for audio element ID= ",
+        audio_element_id, ". Error code= ", update_metadata_result));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status OarWrapper::UpdatePolarObjectPositions(
+    uint32_t audio_element_id, uint32_t duration,
+    const PolarPositionData& polar_position_data) {
+  const auto num_objects =
+      LookupInMap(id_to_num_objects_, audio_element_id,
+                  "Number of objects for audio element ID");
+  if (!num_objects.ok()) {
+    return num_objects.status();
+  }
+
+  const absl::StatusOr<roar_metadata_t> metadata =
+      CreateAnimatedPolarPositionsMetadata(*num_objects, duration,
+                                           polar_position_data);
   if (!metadata.ok()) {
     return metadata.status();
   }
