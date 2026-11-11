@@ -89,6 +89,16 @@ struct AudioObject {
   std::vector<std::string> audio_pack_format_id_refs;
   std::vector<std::string> audio_comple_object_id_ref;
   std::vector<std::string> audio_track_uid_ref;
+  // 0-based index of this object's first audioTrack in the wav's original
+  // channel order, counting every audioObject in declaration order. Stamped
+  // once by `AssignOriginalTrackIndices()` (xml_to_adm.cc) *before*
+  // `RemoveLowImportanceAndInvalidAudioObjects()` can drop any object from
+  // `ADM::audio_objects`. The default-ADM wav splicer
+  // (wav_file_splicer.cc) relies on this to keep reading each surviving
+  // object's own physical wav channel(s) when an earlier object is filtered
+  // out by --adm_importance_threshold (or is invalid) and the filtered
+  // object is not the last one. Left at -1 if that pass has not run.
+  int32_t first_audio_track_index = -1;
 };
 
 // This structure holds the attributes of an audio pack format in ADM.
