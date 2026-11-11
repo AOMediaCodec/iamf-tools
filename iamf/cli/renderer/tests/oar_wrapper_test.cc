@@ -27,6 +27,7 @@
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/cartesian_position_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
@@ -797,6 +798,158 @@ TEST(UpdatePolarObjectPositions, RejectsInvalidElementOrMismatchedNumObjects) {
       Not(IsOk()));
   EXPECT_THAT(wrapper->UpdatePolarObjectPositions(
                   kAudioElementId, kNumSamplesPerFrame, *dual_polar_data),
+              Not(IsOk()));
+}
+
+TEST(UpdateCartesianObjectPositions,
+     RendersAnimatedStepSingleCartesianObjectPositions) {
+  auto wrapper =
+      OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
+                         kNumSamplesPerFrame, kOutputMixGainId);
+  ASSERT_NE(wrapper, nullptr);
+  ASSERT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 1), IsOk());
+  auto cart8_data = CartesianPositionData::Create(
+      AnimationType::kStep, CartesianBitDepth::k8Bit,
+      CartesianPosition{
+          .x = AnimatedParameterData<int16_t>::MakeStep(-127),
+          .y = AnimatedParameterData<int16_t>::MakeStep(0),
+          .z = AnimatedParameterData<int16_t>::MakeStep(0),
+      });
+  ASSERT_THAT(cart8_data, IsOk());
+  auto cart16_data = CartesianPositionData::Create(
+      AnimationType::kStep, CartesianBitDepth::k16Bit,
+      CartesianPosition{
+          .x = AnimatedParameterData<int16_t>::MakeStep(32767),
+          .y = AnimatedParameterData<int16_t>::MakeStep(0),
+          .z = AnimatedParameterData<int16_t>::MakeStep(0),
+      });
+  ASSERT_THAT(cart16_data, IsOk());
+  std::vector<float> input_buffer(kNumSamplesPerFrame, 1.0f);
+  std::vector<float> cart8_output(kNumSamplesPerFrame * kStereoChannels, 0.0f);
+  std::vector<float> cart16_output(kNumSamplesPerFrame * kStereoChannels, 0.0f);
+
+  ASSERT_THAT(
+      wrapper->AddInput(kAudioElementId, absl::MakeConstSpan(input_buffer), 1),
+      IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->UpdateCartesianObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, *cart8_data),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(cart8_output)), IsOk());
+
+  ASSERT_THAT(
+      wrapper->AddInput(kAudioElementId, absl::MakeConstSpan(input_buffer), 1),
+      IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->UpdateCartesianObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, *cart16_data),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(cart16_output)), IsOk());
+
+  constexpr size_t kLastLeftSample = kNumSamplesPerFrame - 1;
+  constexpr size_t kLastRightSample = 2 * kNumSamplesPerFrame - 1;
+  EXPECT_GT(cart8_output[kLastLeftSample], cart8_output[kLastRightSample]);
+  EXPECT_GT(cart16_output[kLastRightSample], cart16_output[kLastLeftSample]);
+}
+
+TEST(UpdateCartesianObjectPositions,
+     RendersAnimatedStepDualCartesianObjectPositions) {
+  auto wrapper =
+      OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
+                         kNumSamplesPerFrame, kOutputMixGainId);
+  ASSERT_NE(wrapper, nullptr);
+  ASSERT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 2), IsOk());
+  auto dual_cart8_data = CartesianPositionData::CreateDual(
+      AnimationType::kStep, CartesianBitDepth::k8Bit,
+      CartesianPosition{.x = AnimatedParameterData<int16_t>::MakeStep(-128)},
+      CartesianPosition{.x = AnimatedParameterData<int16_t>::MakeStep(127)});
+  ASSERT_THAT(dual_cart8_data, IsOk());
+  auto dual_cart16_data = CartesianPositionData::CreateDual(
+      AnimationType::kStep, CartesianBitDepth::k16Bit,
+      CartesianPosition{.x = AnimatedParameterData<int16_t>::MakeStep(-32768)},
+      CartesianPosition{.x = AnimatedParameterData<int16_t>::MakeStep(32767)});
+  ASSERT_THAT(dual_cart16_data, IsOk());
+  std::vector<float> first_object_input(2 * kNumSamplesPerFrame, 0.0f);
+  std::fill_n(first_object_input.begin(), kNumSamplesPerFrame, 1.0f);
+  std::vector<float> second_object_input(2 * kNumSamplesPerFrame, 0.0f);
+  std::fill_n(second_object_input.begin() + kNumSamplesPerFrame,
+              kNumSamplesPerFrame, 1.0f);
+  std::vector<float> first_object_output(kNumSamplesPerFrame * kStereoChannels,
+                                         0.0f);
+  std::vector<float> second_object_output(kNumSamplesPerFrame * kStereoChannels,
+                                          0.0f);
+
+  ASSERT_THAT(wrapper->AddInput(kAudioElementId,
+                                absl::MakeConstSpan(first_object_input), 2),
+              IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->UpdateCartesianObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, *dual_cart8_data),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(first_object_output)), IsOk());
+
+  ASSERT_THAT(wrapper->AddInput(kAudioElementId,
+                                absl::MakeConstSpan(second_object_input), 2),
+              IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->UpdateCartesianObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, *dual_cart16_data),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(second_object_output)), IsOk());
+
+  constexpr size_t kLastLeftSample = kNumSamplesPerFrame - 1;
+  constexpr size_t kLastRightSample = 2 * kNumSamplesPerFrame - 1;
+  EXPECT_GT(first_object_output[kLastLeftSample],
+            first_object_output[kLastRightSample]);
+  EXPECT_GT(second_object_output[kLastRightSample],
+            second_object_output[kLastLeftSample]);
+}
+
+TEST(UpdateCartesianObjectPositions,
+     RejectsInvalidElementOrMismatchedNumObjects) {
+  auto wrapper =
+      OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
+                         kNumSamplesPerFrame, kOutputMixGainId);
+  ASSERT_NE(wrapper, nullptr);
+  ASSERT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 1), IsOk());
+  auto single_cart8_data = CartesianPositionData::Create(
+      AnimationType::kStep, CartesianBitDepth::k8Bit, CartesianPosition{});
+  ASSERT_THAT(single_cart8_data, IsOk());
+  auto dual_cart8_data = CartesianPositionData::CreateDual(
+      AnimationType::kStep, CartesianBitDepth::k8Bit, CartesianPosition{},
+      CartesianPosition{});
+  ASSERT_THAT(dual_cart8_data, IsOk());
+
+  EXPECT_THAT(
+      wrapper->UpdateCartesianObjectPositions(
+          kNonExistentAudioElementId, kNumSamplesPerFrame, *single_cart8_data),
+      Not(IsOk()));
+  EXPECT_THAT(wrapper->UpdateCartesianObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, *dual_cart8_data),
               Not(IsOk()));
 }
 

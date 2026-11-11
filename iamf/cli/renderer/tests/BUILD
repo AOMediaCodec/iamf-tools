@@ -175,6 +175,7 @@ cc_test(
         "//iamf/obu:ambisonics_config",
         "//iamf/obu:animated_parameter_data",
         "//iamf/obu:audio_element",
+        "//iamf/obu:cartesian_position_data",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:parameter_data",

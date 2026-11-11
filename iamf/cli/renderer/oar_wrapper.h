@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/cartesian_position_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
@@ -225,6 +226,19 @@ class OarWrapper {
   absl::Status UpdatePolarObjectPositions(
       uint32_t audio_element_id, uint32_t duration,
       const PolarPositionData& polar_position_data);
+
+  /*!\brief Updates Cartesian object positions of an audio element from
+   *        parameter data.
+   *
+   * \param audio_element_id ID of the audio element to be updated.
+   * \param duration Duration in samples for which this metadata is valid.
+   * \param cartesian_position_data Parameter data defining the animated
+   *        Cartesian object positions for this subblock.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status UpdateCartesianObjectPositions(
+      uint32_t audio_element_id, uint32_t duration,
+      const CartesianPositionData& cartesian_position_data);
 
   /*!\brief Updates object positions of an audio element from polar floats.
    *

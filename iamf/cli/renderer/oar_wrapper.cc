@@ -40,6 +40,7 @@
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/cartesian_position_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
@@ -585,6 +586,28 @@ roar_animated_polar_t CreateAnimatedPolarPosition(
   return animated_polar;
 }
 
+roar_animated_cartesian_t CreateAnimatedCartesianPosition(
+    const CartesianPosition& position, CartesianBitDepth bit_depth) {
+  roar_animated_cartesian_t animated_cartesian = {};
+  animated_cartesian.animation_type = ck_roar_animation_type_step;
+  if (bit_depth == CartesianBitDepth::k8Bit) {
+    animated_cartesian.x.start =
+        NormalizeCart8(static_cast<int8_t>(*position.x.start_point_value()));
+    animated_cartesian.y.start =
+        NormalizeCart8(static_cast<int8_t>(*position.y.start_point_value()));
+    animated_cartesian.z.start =
+        NormalizeCart8(static_cast<int8_t>(*position.z.start_point_value()));
+  } else {
+    animated_cartesian.x.start =
+        NormalizeCart16(*position.x.start_point_value());
+    animated_cartesian.y.start =
+        NormalizeCart16(*position.y.start_point_value());
+    animated_cartesian.z.start =
+        NormalizeCart16(*position.z.start_point_value());
+  }
+  return animated_cartesian;
+}
+
 absl::StatusOr<roar_metadata_t> CreateAnimatedPolarPositionsMetadata(
     uint32_t expected_num_objects, uint32_t duration,
     const PolarPositionData& polar_data) {
@@ -610,6 +633,37 @@ absl::StatusOr<roar_metadata_t> CreateAnimatedPolarPositionsMetadata(
   if (polar_data.is_dual()) {
     metadata.object_positions.animated_polar_positions[1] =
         CreateAnimatedPolarPosition(*polar_data.second_position());
+  }
+  return metadata;
+}
+
+absl::StatusOr<roar_metadata_t> CreateAnimatedCartesianPositionsMetadata(
+    uint32_t expected_num_objects, uint32_t duration,
+    const CartesianPositionData& cart_data) {
+  // TODO(b/516667116): Support more than just step animation for object
+  // positions.
+  if (cart_data.animation_type() != AnimationType::kStep) {
+    return absl::UnimplementedError(absl::StrCat("Unsupported animation type= ",
+                                                 cart_data.animation_type()));
+  }
+
+  roar_metadata_t metadata = {};
+  metadata.type = ck_roar_metadata_object_positions;
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
+                                                      metadata.duration));
+  metadata.object_positions.param_type = ck_roar_param_animated;
+  metadata.object_positions.position_type = ck_roar_cartesian;
+  metadata.object_positions.num_objects = cart_data.is_dual() ? 2 : 1;
+  RETURN_IF_NOT_OK(ValidateEqual(expected_num_objects,
+                                 metadata.object_positions.num_objects,
+                                 "num_objects"));
+  metadata.object_positions.animated_cartesian_positions[0] =
+      CreateAnimatedCartesianPosition(cart_data.first_position(),
+                                      cart_data.bit_depth());
+  if (cart_data.is_dual()) {
+    metadata.object_positions.animated_cartesian_positions[1] =
+        CreateAnimatedCartesianPosition(*cart_data.second_position(),
+                                        cart_data.bit_depth());
   }
   return metadata;
 }
@@ -881,6 +935,33 @@ absl::Status OarWrapper::UpdatePolarObjectPositions(
   const absl::StatusOr<roar_metadata_t> metadata =
       CreateAnimatedPolarPositionsMetadata(*num_objects, duration,
                                            polar_position_data);
+  if (!metadata.ok()) {
+    return metadata.status();
+  }
+
+  const auto update_metadata_result = roar_update_audio_element_metadata(
+      oar_->roar.get(), audio_element_id, &*metadata);
+  if (update_metadata_result != kOarSuccess) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Failed to update object positions for audio element ID= ",
+        audio_element_id, ". Error code= ", update_metadata_result));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status OarWrapper::UpdateCartesianObjectPositions(
+    uint32_t audio_element_id, uint32_t duration,
+    const CartesianPositionData& cartesian_position_data) {
+  const auto num_objects =
+      LookupInMap(id_to_num_objects_, audio_element_id,
+                  "Number of objects for audio element ID");
+  if (!num_objects.ok()) {
+    return num_objects.status();
+  }
+
+  const absl::StatusOr<roar_metadata_t> metadata =
+      CreateAnimatedCartesianPositionsMetadata(*num_objects, duration,
+                                               cartesian_position_data);
   if (!metadata.ok()) {
     return metadata.status();
   }
