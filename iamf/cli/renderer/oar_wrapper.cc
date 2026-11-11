@@ -23,6 +23,7 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
@@ -42,7 +43,11 @@
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/param_definitions/cart16_param_definition.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/rendering_config.h"
@@ -447,6 +452,14 @@ float NormalizeDistance(uint8_t distance) {
   return static_cast<float>(std::clamp<uint8_t>(distance, 0, 127)) / 127.0f;
 }
 
+float NormalizeCart8(int8_t value) {
+  return static_cast<float>(value) / 127.0f;
+}
+
+float NormalizeCart16(int16_t value) {
+  return static_cast<float>(value) / 32767.0f;
+}
+
 roar_polar_t ConvertFromIamfPolarPosition(int16_t azimuth, int8_t elevation,
                                           uint8_t distance) {
   return {
@@ -456,7 +469,42 @@ roar_polar_t ConvertFromIamfPolarPosition(int16_t azimuth, int8_t elevation,
   };
 }
 
-roar_metadata_object_positions_t CreateDefaultPositions(
+template <auto NormalizeFn, typename SingleCartParamDef>
+roar_metadata_object_positions_t CreateSingleCartesianDefaultPositions(
+    const SingleCartParamDef& param_def) {
+  roar_metadata_object_positions_t object_positions = {};
+  object_positions.param_type = ck_roar_param_constant;
+  object_positions.position_type = ck_roar_cartesian;
+  object_positions.num_objects = 1;
+  object_positions.cartesian_positions[0] = {
+      .x = NormalizeFn(param_def.default_x_),
+      .y = NormalizeFn(param_def.default_y_),
+      .z = NormalizeFn(param_def.default_z_),
+  };
+  return object_positions;
+}
+
+template <auto NormalizeFn, typename DualCartParamDef>
+roar_metadata_object_positions_t CreateDualCartesianDefaultPositions(
+    const DualCartParamDef& param_def) {
+  roar_metadata_object_positions_t object_positions = {};
+  object_positions.param_type = ck_roar_param_constant;
+  object_positions.position_type = ck_roar_cartesian;
+  object_positions.num_objects = 2;
+  object_positions.cartesian_positions[0] = {
+      .x = NormalizeFn(param_def.default_first_x_),
+      .y = NormalizeFn(param_def.default_first_y_),
+      .z = NormalizeFn(param_def.default_first_z_),
+  };
+  object_positions.cartesian_positions[1] = {
+      .x = NormalizeFn(param_def.default_second_x_),
+      .y = NormalizeFn(param_def.default_second_y_),
+      .z = NormalizeFn(param_def.default_second_z_),
+  };
+  return object_positions;
+}
+
+roar_metadata_object_positions_t CreatePolarDefaultPositions(
     const PolarParamDefinition& param_def) {
   roar_metadata_object_positions_t object_positions = {};
   object_positions.param_type = ck_roar_param_constant;
@@ -468,7 +516,7 @@ roar_metadata_object_positions_t CreateDefaultPositions(
   return object_positions;
 }
 
-roar_metadata_object_positions_t CreateDefaultPositions(
+roar_metadata_object_positions_t CreateDualPolarDefaultPositions(
     const DualPolarParamDefinition& param_def) {
   roar_metadata_object_positions_t object_positions = {};
   object_positions.param_type = ck_roar_param_constant;
@@ -490,25 +538,35 @@ absl::StatusOr<roar_metadata_t> CreateDefaultObjectPositionsMetadata(
   metadata.type = ck_roar_metadata_object_positions;
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
                                                       metadata.duration));
-  const absl::StatusOr<roar_metadata_object_positions_t> object_positions =
-      std::visit(
-          [](const auto& param_def)
-              -> absl::StatusOr<roar_metadata_object_positions_t> {
-            if constexpr (requires { CreateDefaultPositions(param_def); }) {
-              return CreateDefaultPositions(param_def);
-            } else {
-              return absl::UnimplementedError(
-                  "Cartesian object position parameter definitions are not yet "
-                  "supported.");
-            }
+  metadata.object_positions = std::visit(
+      absl::Overload{
+          [](const PolarParamDefinition& param_def) {
+            return CreatePolarDefaultPositions(param_def);
           },
-          position_param_definition);
-  if (!object_positions.ok()) {
-    return object_positions.status();
-  }
+          [](const DualPolarParamDefinition& param_def) {
+            return CreateDualPolarDefaultPositions(param_def);
+          },
+          [](const Cart8ParamDefinition& param_def) {
+            return CreateSingleCartesianDefaultPositions<NormalizeCart8>(
+                param_def);
+          },
+          [](const Cart16ParamDefinition& param_def) {
+            return CreateSingleCartesianDefaultPositions<NormalizeCart16>(
+                param_def);
+          },
+          [](const DualCart8ParamDefinition& param_def) {
+            return CreateDualCartesianDefaultPositions<NormalizeCart8>(
+                param_def);
+          },
+          [](const DualCart16ParamDefinition& param_def) {
+            return CreateDualCartesianDefaultPositions<NormalizeCart16>(
+                param_def);
+          },
+      },
+      position_param_definition);
   RETURN_IF_NOT_OK(ValidateEqual(expected_num_objects,
-                                 object_positions->num_objects, "num_objects"));
-  metadata.object_positions = *object_positions;
+                                 metadata.object_positions.num_objects,
+                                 "num_objects"));
   return metadata;
 }
 

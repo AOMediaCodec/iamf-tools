@@ -31,7 +31,11 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions/cart16_param_definition.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/rendering_config.h"
@@ -413,7 +417,7 @@ TEST(OarWrapperTest, SetHeadTrackingFailsForSterioLayout) {
 }
 
 // ---- Object positions related ----
-TEST(SetDefaultObjectPositions, RendersDefaultSingleObjectPolarPosition) {
+TEST(SetDefaultObjectPositions, RendersDefaultSingleObjectPositions) {
   auto wrapper =
       OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
                          kNumSamplesPerFrame, kOutputMixGainId);
@@ -423,8 +427,14 @@ TEST(SetDefaultObjectPositions, RendersDefaultSingleObjectPolarPosition) {
   polar_def.default_azimuth_ = 90;
   polar_def.default_elevation_ = 0;
   polar_def.default_distance_ = 127;
+  Cart8ParamDefinition cart8_def({});
+  cart8_def.default_x_ = -127;
+  Cart16ParamDefinition cart16_def({});
+  cart16_def.default_x_ = 32767;
   std::vector<float> input_buffer(kNumSamplesPerFrame, 1.0f);
   std::vector<float> polar_output(kNumSamplesPerFrame * kStereoChannels, 0.0f);
+  std::vector<float> cart8_output(kNumSamplesPerFrame * kStereoChannels, 0.0f);
+  std::vector<float> cart16_output(kNumSamplesPerFrame * kStereoChannels, 0.0f);
 
   ASSERT_THAT(
       wrapper->AddInput(kAudioElementId, absl::MakeConstSpan(input_buffer), 1),
@@ -441,9 +451,41 @@ TEST(SetDefaultObjectPositions, RendersDefaultSingleObjectPolarPosition) {
               IsOk());
   ASSERT_THAT(wrapper->Render(absl::MakeSpan(polar_output)), IsOk());
 
+  ASSERT_THAT(
+      wrapper->AddInput(kAudioElementId, absl::MakeConstSpan(input_buffer), 1),
+      IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, cart8_def),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(cart8_output)), IsOk());
+
+  ASSERT_THAT(
+      wrapper->AddInput(kAudioElementId, absl::MakeConstSpan(input_buffer), 1),
+      IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, cart16_def),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(cart16_output)), IsOk());
+
   constexpr size_t kLastLeftSample = kNumSamplesPerFrame - 1;
   constexpr size_t kLastRightSample = 2 * kNumSamplesPerFrame - 1;
   EXPECT_GT(polar_output[kLastLeftSample], polar_output[kLastRightSample]);
+  EXPECT_GT(cart8_output[kLastLeftSample], cart8_output[kLastRightSample]);
+  EXPECT_GT(cart16_output[kLastRightSample], cart16_output[kLastLeftSample]);
 }
 
 TEST(SetDefaultObjectPositions, ClampsOutOfRangePolarCoordinatesPerIamfSpec) {
@@ -531,6 +573,66 @@ TEST(SetDefaultObjectPositions, RendersDefaultDualObjectPolarPositions) {
               IsOk());
   ASSERT_THAT(wrapper->SetDefaultObjectPositions(
                   kAudioElementId, kNumSamplesPerFrame, dual_polar_def),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(second_object_output)), IsOk());
+
+  constexpr size_t kLastLeftSample = kNumSamplesPerFrame - 1;
+  constexpr size_t kLastRightSample = 2 * kNumSamplesPerFrame - 1;
+  EXPECT_GT(first_object_output[kLastLeftSample],
+            first_object_output[kLastRightSample]);
+  EXPECT_GT(second_object_output[kLastRightSample],
+            second_object_output[kLastLeftSample]);
+}
+
+TEST(SetDefaultObjectPositions, RendersDefaultDualCartesianObjectPositions) {
+  auto wrapper =
+      OarWrapper::Create(GetStereoLayout(), kSampleRate, kStereoChannels,
+                         kNumSamplesPerFrame, kOutputMixGainId);
+  ASSERT_NE(wrapper, nullptr);
+  ASSERT_THAT(AddObjectBasedElement(*wrapper, kAudioElementId, 2), IsOk());
+  DualCart8ParamDefinition dual_cart8_def({});
+  dual_cart8_def.default_first_x_ = -128;
+  dual_cart8_def.default_second_x_ = 127;
+  DualCart16ParamDefinition dual_cart16_def({});
+  dual_cart16_def.default_first_x_ = -32768;
+  dual_cart16_def.default_second_x_ = 32767;
+  std::vector<float> first_object_input(2 * kNumSamplesPerFrame, 0.0f);
+  std::fill_n(first_object_input.begin(), kNumSamplesPerFrame, 1.0f);
+  std::vector<float> second_object_input(2 * kNumSamplesPerFrame, 0.0f);
+  std::fill_n(second_object_input.begin() + kNumSamplesPerFrame,
+              kNumSamplesPerFrame, 1.0f);
+  std::vector<float> first_object_output(kNumSamplesPerFrame * kStereoChannels,
+                                         0.0f);
+  std::vector<float> second_object_output(kNumSamplesPerFrame * kStereoChannels,
+                                          0.0f);
+
+  ASSERT_THAT(wrapper->AddInput(kAudioElementId,
+                                absl::MakeConstSpan(first_object_input), 2),
+              IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, dual_cart8_def),
+              IsOk());
+  ASSERT_THAT(wrapper->Render(absl::MakeSpan(first_object_output)), IsOk());
+
+  ASSERT_THAT(wrapper->AddInput(kAudioElementId,
+                                absl::MakeConstSpan(second_object_input), 2),
+              IsOk());
+  ASSERT_THAT(
+      wrapper->UpdateElementMixGain(kAudioElementId, kNumSamplesPerFrame, 0.0f,
+                                    kNoMixGainParameterData),
+      IsOk());
+  ASSERT_THAT(wrapper->UpdateOutputMixGain(kNumSamplesPerFrame, 0.0f,
+                                           kNoMixGainParameterData),
+              IsOk());
+  ASSERT_THAT(wrapper->SetDefaultObjectPositions(
+                  kAudioElementId, kNumSamplesPerFrame, dual_cart16_def),
               IsOk());
   ASSERT_THAT(wrapper->Render(absl::MakeSpan(second_object_output)), IsOk());
 
