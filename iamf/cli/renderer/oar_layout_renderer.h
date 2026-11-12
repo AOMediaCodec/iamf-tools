@@ -32,6 +32,7 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -85,6 +86,8 @@ class OarLayoutRenderer : public LayoutRendererBase {
    *        to optional demixing matrices.
    * \param audio_element_id_to_demixing_param_definitions Mapping from audio
    *        element ID to demixing parameter definitions.
+   * \param audio_element_id_to_position_param_definitions Mapping from audio
+   *        element ID to position parameter definitions.
    * \param trimming_settings Trimming settings to apply.
    * \param oar Unique pointer to underlying `OarWrapper` instance.
    */
@@ -100,9 +103,8 @@ class OarLayoutRenderer : public LayoutRendererBase {
           audio_element_id_to_demixing_matrices,
       const absl::flat_hash_map<DecodedUleb128, DemixingParamDefinition>&
           audio_element_id_to_demixing_param_definitions,
-      const absl::flat_hash_map<DecodedUleb128,
-                                std::vector<OarWrapper::OarPositionData>>&
-          audio_element_id_to_default_positions,
+      const absl::flat_hash_map<DecodedUleb128, PositionParamVariant>&
+          audio_element_id_to_position_param_definitions,
       const TrimmingSettings& trimming_settings,
       std::unique_ptr<OarWrapper> oar);
 
@@ -185,10 +187,9 @@ class OarLayoutRenderer : public LayoutRendererBase {
   const absl::flat_hash_map<DecodedUleb128, DemixingParamDefinition>
       audio_element_id_to_demixing_param_definitions_;
 
-  // Mapping from Audio Element ID to default positions.
-  const absl::flat_hash_map<DecodedUleb128,
-                            std::vector<OarWrapper::OarPositionData>>
-      audio_element_id_to_default_positions_;
+  // Mapping from Audio Element ID to position parameter definitions.
+  const absl::flat_hash_map<DecodedUleb128, PositionParamVariant>
+      audio_element_id_to_position_param_definitions_;
 
   // Determines whether frame start/end sample trimming is applied on rendered
   // samples.

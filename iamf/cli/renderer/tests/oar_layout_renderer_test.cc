@@ -23,6 +23,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
@@ -38,7 +39,9 @@
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
@@ -232,6 +235,35 @@ class OarLayoutRendererTest : public ::testing::Test {
         id_to_rendering_config_[audio_element_id];
     rendering_config.rendering_config_param_definitions.push_back(
         RenderingConfigParamDefinition::Create(dual_polar_param_definition,
+                                               {}));
+  }
+
+  void SetDefaultCart8PositionForAudioElement(DecodedUleb128 audio_element_id,
+                                              int8_t x, int8_t y, int8_t z) {
+    Cart8ParamDefinition cart8_param_definition({});
+    cart8_param_definition.default_x_ = x;
+    cart8_param_definition.default_y_ = y;
+    cart8_param_definition.default_z_ = z;
+    RenderingConfig& rendering_config =
+        id_to_rendering_config_[audio_element_id];
+    rendering_config.rendering_config_param_definitions.push_back(
+        RenderingConfigParamDefinition::Create(cart8_param_definition, {}));
+  }
+
+  void SetDefaultDualCart8PositionForAudioElement(
+      DecodedUleb128 audio_element_id, int8_t first_x, int8_t first_y,
+      int8_t first_z, int8_t second_x, int8_t second_y, int8_t second_z) {
+    DualCart8ParamDefinition dual_cart8_param_definition({});
+    dual_cart8_param_definition.default_first_x_ = first_x;
+    dual_cart8_param_definition.default_first_y_ = first_y;
+    dual_cart8_param_definition.default_first_z_ = first_z;
+    dual_cart8_param_definition.default_second_x_ = second_x;
+    dual_cart8_param_definition.default_second_y_ = second_y;
+    dual_cart8_param_definition.default_second_z_ = second_z;
+    RenderingConfig& rendering_config =
+        id_to_rendering_config_[audio_element_id];
+    rendering_config.rendering_config_param_definitions.push_back(
+        RenderingConfigParamDefinition::Create(dual_cart8_param_definition,
                                                {}));
   }
 
@@ -432,6 +464,16 @@ TEST_F(OarLayoutRendererTest,
 }
 
 TEST_F(OarLayoutRendererTest,
+       CreateReturnsNullWhenNonObjectElementHasPositionParam) {
+  CreateScalableAudioElement(kAudioElementId);
+  SetDefaultPolarPositionForAudioElement(kAudioElementId, /*azimuth=*/0,
+                                         /*elevation=*/0, /*distance=*/127);
+
+  auto renderer = CreateRenderer({kAudioElementId});
+  EXPECT_EQ(renderer, nullptr);
+}
+
+TEST_F(OarLayoutRendererTest,
        CreateFailsWithMismatchingNumberOfObjectsAndDefaultPositions) {
   // One-object based audio element requires a single default position.
   // Providing a dual polar param definition fails.
@@ -461,6 +503,36 @@ TEST_F(OarLayoutRendererTest,
     auto renderer = CreateRenderer({kAudioElementId});
     EXPECT_EQ(renderer, nullptr);
   }
+}
+
+TEST_F(OarLayoutRendererTest,
+       CreateFailsWithDuplicateObjectBasedAudioElementId) {
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/1);
+  SetDefaultPolarPositionForAudioElement(kAudioElementId, /*azimuth=*/0,
+                                         /*elevation=*/0, /*distance=*/127);
+
+  auto renderer = CreateRenderer({kAudioElementId, kAudioElementId});
+  EXPECT_EQ(renderer, nullptr);
+}
+
+TEST_F(OarLayoutRendererTest,
+       CreateFailsWithMismatchedSubMixAudioElementsSize) {
+  CreateScalableAudioElement(kAudioElementId);
+  std::vector<const AudioElementWithData*> audio_elements_in_sub_mix = {
+      &audio_elements_.at(kAudioElementId)};
+  std::vector<SubMixAudioElement> sub_mix_audio_elements;
+  MixGainParamDefinition output_mix_gain =
+      CreateMixGainParamDefinition(kOutputMixGainParameterId);
+  Layout layout = CreateStereoLayout();
+  constexpr int32_t kNumChannels = 2;
+  TrimmingSettings trimming_settings = {.trim_beginning = false,
+                                        .trim_end = false};
+
+  auto renderer = OarLayoutRenderer::Create(
+      audio_elements_in_sub_mix, sub_mix_audio_elements, output_mix_gain,
+      layout, kNumChannels, kCommonSampleRate, kCommonNumSamplesPerFrame,
+      trimming_settings);
+  EXPECT_EQ(renderer, nullptr);
 }
 
 TEST_F(OarLayoutRendererTest, RenderSucceeds5_1ToStereo) {
@@ -706,6 +778,67 @@ TEST_F(OarLayoutRendererTest, RenderSucceedsWithTwoObjectBasedAudioElement) {
   EXPECT_THAT(renderer->Render(id_to_labeled_frame_, id_to_parameter_block_,
                                rendered_samples_, valid_rendered_samples_),
               IsOk());
+}
+
+TEST_F(OarLayoutRendererTest, RenderRendersSingleObjectWithDefaultPositions) {
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/1);
+  id_to_labeled_frame_[kAudioElementId].label_to_samples[kObjectChannel0] =
+      std::vector<InternalSampleType>(kCommonNumSamplesPerFrame, 1.0);
+  SetDefaultPolarPositionForAudioElement(kAudioElementId, /*azimuth=*/90,
+                                         /*elevation=*/0, /*distance=*/127);
+  auto polar_renderer = CreateRenderer({kAudioElementId});
+  ASSERT_NE(polar_renderer, nullptr);
+
+  id_to_rendering_config_.clear();
+  SetDefaultCart8PositionForAudioElement(kAudioElementId, /*x=*/127, /*y=*/0,
+                                         /*z=*/0);
+  auto cart8_renderer = CreateRenderer({kAudioElementId});
+  ASSERT_NE(cart8_renderer, nullptr);
+
+  std::vector<std::vector<InternalSampleType>> polar_samples(
+      kTwoChannelsForStereo);
+  std::vector<absl::Span<const InternalSampleType>> polar_valid_samples;
+  std::vector<std::vector<InternalSampleType>> cart8_samples(
+      kTwoChannelsForStereo);
+  std::vector<absl::Span<const InternalSampleType>> cart8_valid_samples;
+
+  ASSERT_THAT(
+      polar_renderer->Render(id_to_labeled_frame_, id_to_parameter_block_,
+                             polar_samples, polar_valid_samples),
+      IsOk());
+  ASSERT_THAT(
+      cart8_renderer->Render(id_to_labeled_frame_, id_to_parameter_block_,
+                             cart8_samples, cart8_valid_samples),
+      IsOk());
+
+  constexpr size_t kLastSample = kCommonNumSamplesPerFrame - 1;
+  EXPECT_GT(polar_valid_samples[0][kLastSample],
+            polar_valid_samples[1][kLastSample]);
+  EXPECT_GT(cart8_valid_samples[1][kLastSample],
+            cart8_valid_samples[0][kLastSample]);
+}
+
+TEST_F(OarLayoutRendererTest,
+       RenderRendersDualObjectsWithDefaultCartesianPositions) {
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/2);
+  id_to_labeled_frame_[kAudioElementId].label_to_samples[kObjectChannel0] =
+      std::vector<InternalSampleType>(kCommonNumSamplesPerFrame, 1.0);
+  id_to_labeled_frame_[kAudioElementId].label_to_samples[kObjectChannel1] =
+      std::vector<InternalSampleType>(kCommonNumSamplesPerFrame, 0.0);
+  SetDefaultDualCart8PositionForAudioElement(kAudioElementId, /*first_x=*/-128,
+                                             /*first_y=*/0, /*first_z=*/0,
+                                             /*second_x=*/127, /*second_y=*/0,
+                                             /*second_z=*/0);
+  auto renderer = CreateRenderer({kAudioElementId});
+  ASSERT_NE(renderer, nullptr);
+
+  ASSERT_THAT(renderer->Render(id_to_labeled_frame_, id_to_parameter_block_,
+                               rendered_samples_, valid_rendered_samples_),
+              IsOk());
+
+  constexpr size_t kLastSample = kCommonNumSamplesPerFrame - 1;
+  EXPECT_GT(valid_rendered_samples_[0][kLastSample],
+            valid_rendered_samples_[1][kLastSample]);
 }
 
 TEST_F(OarLayoutRendererTest, RenderSucceedsWhenTrimmingIsConsistent) {

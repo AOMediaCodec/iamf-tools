@@ -80,15 +80,6 @@ class OarWrapper {
   /*!\brief Type of audio samples used by the `liboar` library. */
   using OarSampleType = float;
 
-  // TODO(b/516667116): Remove once `OarLayoutRenderer` uses
-  // `PositionParamVariant`.
-  /*!\brief Struct describing an object's position. */
-  struct OarPositionData {
-    float azimuth;
-    float elevation;
-    float distance;
-  };
-
   static const size_t kMaxNumObjects;
 
   // TODO(b/576563728): Update or remove these limitations once clarified.
@@ -239,17 +230,6 @@ class OarWrapper {
   absl::Status UpdateCartesianObjectPositions(
       uint32_t audio_element_id, uint32_t duration,
       const CartesianPositionData& cartesian_position_data);
-
-  /*!\brief Updates object positions of an audio element from polar floats.
-   *
-   * \param audio_element_id ID of the audio element to be updated.
-   * \param duration Duration in samples for which this metadata is valid.
-   * \param positions Vector of polar positions for each object.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status UpdateObjectPositions(
-      uint32_t audio_element_id, uint32_t duration,
-      const std::vector<OarPositionData>& positions);
 
   /*!\brief Updates the IAMF down-mix mode of an audio element.
    *

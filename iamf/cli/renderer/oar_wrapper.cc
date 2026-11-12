@@ -976,45 +976,6 @@ absl::Status OarWrapper::UpdateCartesianObjectPositions(
   return absl::OkStatus();
 }
 
-absl::Status OarWrapper::UpdateObjectPositions(
-    uint32_t audio_element_id, uint32_t duration,
-    const std::vector<OarPositionData>& positions) {
-  if (!id_to_element_mix_gain_ids_.contains(audio_element_id)) {
-    return absl::NotFoundError(
-        absl::StrCat("Audio element ID= ", audio_element_id, " not found."));
-  }
-
-  roar_metadata_t metadata = {};
-  metadata.type = ck_roar_metadata_object_positions;
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, int>("duration", duration,
-                                                      metadata.duration));
-  metadata.object_positions.param_type = ck_roar_param_constant;
-  metadata.object_positions.position_type = ck_roar_polar;
-  if (positions.size() > kMaxNumObjects) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Maximum number of object positions per element exceeded: (",
-        positions.size(), " > ", kMaxNumObjects, ")."));
-  }
-  metadata.object_positions.num_objects =
-      static_cast<uint32_t>(positions.size());
-  for (size_t i = 0; i < positions.size(); ++i) {
-    metadata.object_positions.polar_positions[i].azimuth = positions[i].azimuth;
-    metadata.object_positions.polar_positions[i].elevation =
-        positions[i].elevation;
-    metadata.object_positions.polar_positions[i].distance =
-        positions[i].distance;
-  }
-
-  const auto update_metadata_result = roar_update_audio_element_metadata(
-      oar_->roar.get(), audio_element_id, &metadata);
-  if (update_metadata_result != kOarSuccess) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Failed to update object positions for audio element ID= ",
-        audio_element_id, ". Error code= ", update_metadata_result));
-  }
-  return absl::OkStatus();
-}
-
 absl::Status OarWrapper::UpdateDownMixMode(
     uint32_t audio_element_id, uint32_t duration,
     DemixingInfoParameterData::DMixPMode mode) {

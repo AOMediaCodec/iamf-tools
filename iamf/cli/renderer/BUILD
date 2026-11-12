@@ -195,6 +195,8 @@ cc_library(
         "//iamf/obu:parameter_data",
         "//iamf/obu:rendering_config",
         "//iamf/obu:types",
+        "//iamf/obu/param_definitions:cart16_param_definition",
+        "//iamf/obu/param_definitions:cart8_param_definition",
         "//iamf/obu/param_definitions:demixing_param_definition",
         "//iamf/obu/param_definitions:dual_polar_param_definition",
         "//iamf/obu/param_definitions:mix_gain_param_definition",

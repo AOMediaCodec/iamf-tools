@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -47,6 +48,8 @@
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/param_definitions/cart16_param_definition.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
@@ -113,6 +116,65 @@ absl::Status ConstructIdToDemixingParamDefinitions(
     }
   }
 
+  return absl::OkStatus();
+}
+
+absl::Status ConstructIdToPositionParamDefinitions(
+    const std::vector<const AudioElementWithData*>& audio_elements_in_sub_mix,
+    const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
+    absl::flat_hash_map<DecodedUleb128, PositionParamVariant>&
+        id_to_position_param_definitions) {
+  RETURN_IF_NOT_OK(ValidateEqual(audio_elements_in_sub_mix.size(),
+                                 sub_mix_audio_elements.size(),
+                                 "audio_elements_in_sub_mix.size()"));
+  for (size_t i = 0; i < audio_elements_in_sub_mix.size(); ++i) {
+    const auto& obu = audio_elements_in_sub_mix[i]->obu;
+    const auto audio_element_id = obu.GetAudioElementId();
+    const auto& rendering_config_param_definitions =
+        sub_mix_audio_elements[i]
+            .rendering_config.rendering_config_param_definitions;
+    if (obu.GetAudioElementType() !=
+        AudioElementObu::kAudioElementObjectBased) {
+      if (!rendering_config_param_definitions.empty()) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Non-object audio element ID= ", audio_element_id,
+                         " cannot have rendering config param definitions."));
+      }
+      continue;
+    }
+
+    if (rendering_config_param_definitions.size() != 1) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Object-based audio element ID= ", audio_element_id,
+          " must have exactly 1 rendering config param definition, got ",
+          rendering_config_param_definitions.size()));
+    }
+    const auto& position_param_variant =
+        rendering_config_param_definitions[0].param_definition;
+    const uint8_t expected_num_objects = std::visit(
+        [](const auto& def) -> uint8_t {
+          using T = std::decay_t<decltype(def)>;
+          if constexpr (std::is_same_v<T, PolarParamDefinition> ||
+                        std::is_same_v<T, Cart8ParamDefinition> ||
+                        std::is_same_v<T, Cart16ParamDefinition>) {
+            return 1;
+          } else {
+            return 2;
+          }
+        },
+        position_param_variant);
+    const auto& objects_config = std::get<ObjectsConfig>(obu.config_);
+    RETURN_IF_NOT_OK(ValidateEqual(objects_config.GetNumObjects(),
+                                   expected_num_objects,
+                                   "num_objects for position parameter"));
+    const auto [iter, inserted] = id_to_position_param_definitions.insert(
+        {audio_element_id, position_param_variant});
+    if (!inserted) {
+      return absl::AlreadyExistsError(absl::StrCat(
+          "Position param definition for audio element ID= ", audio_element_id,
+          " already exists."));
+    }
+  }
   return absl::OkStatus();
 }
 
@@ -233,111 +295,6 @@ absl::Status ConstructIdToOrderedLabelsAndDemixingMatrices(
       case AudioElementObu::kAudioElementEndReserved:
         return absl::UnimplementedError(absl::StrCat(
             "Unsupported audio element type= ", obu.GetAudioElementType()));
-    }
-  }
-
-  return absl::OkStatus();
-}
-
-// IAMF bitstream stores polar coordinates as integers. Convert them to
-// physically meaningful floats according to the Spec.
-OarWrapper::OarPositionData ConvertFromIamfPolarPosition(
-    const int16_t azimuth, const int8_t elevation, const uint8_t distance) {
-  return {OarWrapper::OarPositionData{
-      .azimuth = std::clamp(static_cast<float>(azimuth), -180.0f, 180.0f),
-      .elevation = std::clamp(static_cast<float>(elevation), -90.0f, 90.0f),
-      .distance = std::clamp(static_cast<float>(distance) / 127.0f, 0.0f, 1.0f),
-  }};
-}
-
-absl::Status FillDefaultPositionsFromRenderingConfig(
-    const DecodedUleb128 audio_element_id, const size_t num_objects,
-    const RenderingConfig& rendering_config,
-    std::vector<OarWrapper::OarPositionData>& default_positions) {
-  default_positions.reserve(num_objects);
-  for (const auto& rendering_config_param_definition :
-       rendering_config.rendering_config_param_definitions) {
-    if (const auto* polar_param_definition = std::get_if<PolarParamDefinition>(
-            &rendering_config_param_definition.param_definition);
-        polar_param_definition != nullptr) {
-      if (num_objects != 1) {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Expecting 1 default position for one object-based audio "
-            "element ID= ",
-            audio_element_id, "; got ", num_objects));
-      }
-      default_positions.push_back(ConvertFromIamfPolarPosition(
-          polar_param_definition->default_azimuth_,
-          polar_param_definition->default_elevation_,
-          polar_param_definition->default_distance_));
-    } else if (const auto* dual_polar_param_definition =
-                   std::get_if<DualPolarParamDefinition>(
-                       &rendering_config_param_definition.param_definition);
-               dual_polar_param_definition != nullptr) {
-      if (num_objects != 2) {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Expecting 2 default positions for two object-based audio ",
-            "element ID= ", audio_element_id, "; got ", num_objects));
-      }
-      default_positions.push_back(ConvertFromIamfPolarPosition(
-          dual_polar_param_definition->default_first_azimuth_,
-          dual_polar_param_definition->default_first_elevation_,
-          dual_polar_param_definition->default_first_distance_));
-      default_positions.push_back(ConvertFromIamfPolarPosition(
-          dual_polar_param_definition->default_second_azimuth_,
-          dual_polar_param_definition->default_second_elevation_,
-          dual_polar_param_definition->default_second_distance_));
-    } else {
-      // TODO(b/516667116): Support cartesian coordinates.
-      return absl::UnimplementedError(absl::StrCat(
-          "Unsupported rendering config param definition type=",
-          rendering_config_param_definition.param_definition_type));
-    }
-  }
-
-  return absl::OkStatus();
-}
-
-absl::Status CollectDefaultPositions(
-    const std::vector<const AudioElementWithData*>& audio_elements_in_sub_mix,
-    const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
-    absl::flat_hash_map<DecodedUleb128,
-                        std::vector<OarWrapper::OarPositionData>>&
-        audio_element_id_to_default_positions) {
-  for (size_t i = 0; i < audio_elements_in_sub_mix.size(); i++) {
-    const auto& obu = audio_elements_in_sub_mix[i]->obu;
-    if (obu.GetAudioElementType() !=
-        AudioElementObu::kAudioElementObjectBased) {
-      // Default positions only meaningful for object-based audio elements.
-      continue;
-    }
-
-    const auto* objects_config = std::get_if<ObjectsConfig>(&obu.config_);
-    if (objects_config == nullptr) {
-      return absl::InvalidArgumentError(
-          "Objects config is inconsistent with audio element type.");
-    }
-    const auto num_objects = objects_config->GetNumObjects();
-
-    std::vector<OarWrapper::OarPositionData> default_positions;
-    RETURN_IF_NOT_OK(FillDefaultPositionsFromRenderingConfig(
-        obu.GetAudioElementId(), num_objects,
-        sub_mix_audio_elements[i].rendering_config, default_positions));
-
-    const auto audio_element_id = obu.GetAudioElementId();
-    if (default_positions.empty()) {
-      // Every object-based audio element must have default positions.
-      return absl::NotFoundError(absl::StrCat(
-          "Default positions for audio element ID= ", audio_element_id,
-          " not found."));
-    }
-
-    const auto [iter, inserted] = audio_element_id_to_default_positions.insert(
-        {audio_element_id, default_positions});
-    if (!inserted) {
-      return absl::AlreadyExistsError(absl::StrCat(
-          "Default positions for audio element ID= ", audio_element_id,
-          " already exists."));
     }
   }
 
@@ -508,6 +465,22 @@ absl::Status MaybeUpdateDownMixModeForOar(
   return absl::OkStatus();
 }
 
+absl::Status MaybeUpdateObjectPositionsForOar(
+    const uint32_t audio_element_id,
+    const absl::flat_hash_map<DecodedUleb128, PositionParamVariant>&
+        audio_element_id_to_position_param_definitions,
+    const uint32_t num_samples_per_frame, OarWrapper& oar) {
+  const auto position_iter =
+      audio_element_id_to_position_param_definitions.find(audio_element_id);
+  if (position_iter == audio_element_id_to_position_param_definitions.end()) {
+    // No position param definition found for this audio element; skip.
+    return absl::OkStatus();
+  }
+
+  return oar.SetDefaultObjectPositions(audio_element_id, num_samples_per_frame,
+                                       position_iter->second);
+}
+
 }  // namespace
 
 std::unique_ptr<OarLayoutRenderer> OarLayoutRenderer::Create(
@@ -547,6 +520,20 @@ std::unique_ptr<OarLayoutRenderer> OarLayoutRenderer::Create(
       !construct_status.ok()) {
     ABSL_LOG(ERROR) << "Failed to create `OarLayoutRenderer`: constructing "
                     << "mappings from audio element ID to demixing param "
+                    << "definitions failed. Error message= "
+                    << construct_status.message();
+    return nullptr;
+  }
+
+  // Collect position parameter definitions (for object-based audio elements).
+  absl::flat_hash_map<DecodedUleb128, PositionParamVariant>
+      audio_element_id_to_position_param_definitions;
+  if (auto construct_status = ConstructIdToPositionParamDefinitions(
+          audio_elements_in_sub_mix, sub_mix_audio_elements,
+          audio_element_id_to_position_param_definitions);
+      !construct_status.ok()) {
+    ABSL_LOG(ERROR) << "Failed to create `OarLayoutRenderer`: constructing "
+                    << "mappings from audio element ID to position param "
                     << "definitions failed. Error message= "
                     << construct_status.message();
     return nullptr;
@@ -594,25 +581,12 @@ std::unique_ptr<OarLayoutRenderer> OarLayoutRenderer::Create(
     return nullptr;
   }
 
-  // Collect default positions corresponding to each audio element.
-  absl::flat_hash_map<DecodedUleb128, std::vector<OarWrapper::OarPositionData>>
-      audio_element_id_to_default_positions;
-  if (auto default_positions_status = CollectDefaultPositions(
-          audio_elements_in_sub_mix, sub_mix_audio_elements,
-          audio_element_id_to_default_positions);
-      !default_positions_status.ok()) {
-    ABSL_LOG(ERROR) << "Failed to create `OarLayoutRenderer`: collecting "
-                    << "default positions failed. Error message= "
-                    << default_positions_status.message();
-    return nullptr;
-  }
-
   return absl::WrapUnique(new OarLayoutRenderer(
       audio_element_ids, element_mix_gains, output_mix_gain, num_channels,
       common_sample_rate, common_num_samples_per_frame,
       audio_element_id_to_ordered_labels, audio_element_id_to_demixing_matrices,
       audio_element_id_to_demixing_param_definitions,
-      audio_element_id_to_default_positions, trimming_settings,
+      audio_element_id_to_position_param_definitions, trimming_settings,
       std::move(oar)));
 }
 
@@ -627,9 +601,8 @@ OarLayoutRenderer::OarLayoutRenderer(
         audio_element_id_to_demixing_matrices,
     const absl::flat_hash_map<DecodedUleb128, DemixingParamDefinition>&
         audio_element_id_to_demixing_param_definitions,
-    const absl::flat_hash_map<DecodedUleb128,
-                              std::vector<OarWrapper::OarPositionData>>&
-        audio_element_id_to_default_positions,
+    const absl::flat_hash_map<DecodedUleb128, PositionParamVariant>&
+        audio_element_id_to_position_param_definitions,
     const TrimmingSettings& trimming_settings, std::unique_ptr<OarWrapper> oar)
     : LayoutRendererBase(audio_element_ids, element_mix_gains, output_mix_gain,
                          num_channels, common_sample_rate,
@@ -639,8 +612,8 @@ OarLayoutRenderer::OarLayoutRenderer(
           audio_element_id_to_demixing_matrices),
       audio_element_id_to_demixing_param_definitions_(
           audio_element_id_to_demixing_param_definitions),
-      audio_element_id_to_default_positions_(
-          audio_element_id_to_default_positions),
+      audio_element_id_to_position_param_definitions_(
+          audio_element_id_to_position_param_definitions),
       trimming_settings_(trimming_settings),
       empty_channel_(common_num_samples_per_frame, 0.0),
       oar_(std::move(oar)),
@@ -706,16 +679,10 @@ absl::Status OarLayoutRenderer::PerElementOperation(
       audio_element_id_to_demixing_param_definitions_,
       common_num_samples_per_frame_, *oar_));
 
-  // Set the object positions to their default for entire duration of the frame.
-  // TODO(b/516667116, b/571087734): Support updating time-varying object
-  //                                 positions.
-  const auto& default_positions =
-      LookupInMap(audio_element_id_to_default_positions_, audio_element_id,
-                  "Default positions for audio element ID");
-  if (default_positions.ok()) {
-    RETURN_IF_NOT_OK(oar_->UpdateObjectPositions(
-        audio_element_id, common_num_samples_per_frame_, *default_positions));
-  }
+  // Update object positions if necessary.
+  RETURN_IF_NOT_OK(MaybeUpdateObjectPositionsForOar(
+      audio_element_id_uint32, audio_element_id_to_position_param_definitions_,
+      common_num_samples_per_frame_, *oar_));
 
   return absl::OkStatus();
 }
