@@ -21,11 +21,14 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/codec/encoder_base.h"
+#include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
@@ -55,6 +58,7 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
@@ -806,6 +810,149 @@ TEST_F(IamfEncoderTest, GetEncoderDelayReturnsExpectedDelayForOpus) {
   auto iamf_encoder = CreateExpectOk();
 
   EXPECT_NE(iamf_encoder.GetEncoderDelay(), 0);
+}
+
+TEST_F(IamfEncoderTest, GetNumSamplesPerFrameReturnsConfiguredFrameSize) {
+  SetupDescriptorObus();
+  auto iamf_encoder = CreateExpectOk();
+
+  EXPECT_EQ(iamf_encoder.GetNumSamplesPerFrame(), kNumSamplesPerFrame);
+}
+
+TEST_F(IamfEncoderTest,
+       CreateFromObusEncodesStereoChannelSpansIntoExpectedAudioFrame) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  auto codec_config_obus = std::make_unique<CodecConfigsById>();
+  AddLpcmCodecConfig(kCodecConfigId, kNumSamplesPerFrame, kExpectedPcmBitDepth,
+                     /*sample_rate=*/16000, *codec_config_obus);
+  auto audio_elements = std::make_unique<AudioElementsById>();
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kAudioElementId, kCodecConfigId,
+      {kStereoSubstreamId}, *codec_config_obus, *audio_elements);
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      /*mix_presentation_id=*/42, {kAudioElementId}, kParameterBlockId,
+      /*common_parameter_rate=*/16000, mix_presentation_obus);
+  auto encoder =
+      std::make_unique<LpcmEncoder>(codec_config_obus->at(kCodecConfigId),
+                                    SubstreamChannelCount::MakeCoupled());
+  ASSERT_THAT(encoder->Initialize(/*validate_codec_delay=*/true), IsOk());
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  substream_id_to_encoder.emplace(kStereoSubstreamId, std::move(encoder));
+  constexpr std::array<double, 8> kLeftSamples = {
+      1.0 / 32768.0, 2.0 / 32768.0, 3.0 / 32768.0, 4.0 / 32768.0,
+      5.0 / 32768.0, 6.0 / 32768.0, 7.0 / 32768.0, 8.0 / 32768.0};
+  constexpr std::array<double, 8> kRightSamples = {
+      -1.0 / 32768.0, -2.0 / 32768.0, -3.0 / 32768.0, -4.0 / 32768.0,
+      -5.0 / 32768.0, -6.0 / 32768.0, -7.0 / 32768.0, -8.0 / 32768.0};
+  const std::array<std::span<const double>, 2> kStereoChannels = {
+      kLeftSamples, kRightSamples};
+  constexpr std::array<uint8_t, 32> kExpectedPcmPayload = {
+      1, 0, 255, 255, 2, 0, 254, 255, 3, 0, 253, 255, 4, 0, 252, 255,
+      5, 0, 251, 255, 6, 0, 250, 255, 7, 0, 249, 255, 8, 0, 248, 255};
+  const AudioFrameObu kExpectedAudioFrame(ObuHeader(), kStereoSubstreamId,
+                                          MakeConstSpan(kExpectedPcmPayload));
+
+  auto iamf_encoder = IamfEncoder::CreateFromObus(
+      kIaSequenceHeader, std::move(codec_config_obus),
+      std::move(audio_elements), std::move(mix_presentation_obus),
+      std::move(substream_id_to_encoder),
+      /*enable_temporal_delimiters=*/false, trimming_settings_,
+      loudness_calculator_factory_.get(), sample_processor_factory_,
+      obu_sequencer_factory_);
+  ASSERT_THAT(iamf_encoder, IsOkAndHolds(NotNull()));
+
+  const api::IamfStatus encode_status =
+      (*iamf_encoder)->Encode(kStereoChannels);
+  const api::IamfStatus finalize_status = (*iamf_encoder)->FinalizeEncode();
+  std::vector<uint8_t> output_obus;
+  const api::IamfStatus output_status =
+      (*iamf_encoder)->OutputTemporalUnit(output_obus);
+
+  EXPECT_TRUE(encode_status.ok());
+  EXPECT_TRUE(finalize_status.ok());
+  EXPECT_TRUE(output_status.ok());
+  EXPECT_EQ(output_obus, SerializeObusExpectOk({&kExpectedAudioFrame}));
+}
+
+TEST_F(IamfEncoderTest,
+       EncodeChannelSpansReturnsErrorWhenChannelCountDoesNotMatchElement) {
+  SetupDescriptorObus();
+  AddAudioFrame(user_metadata_);
+  auto iamf_encoder = CreateExpectOk();
+  const std::array<std::span<const double>, 1> kOneChannel = {
+      kEightZeroSamples};
+
+  const api::IamfStatus encode_status = iamf_encoder.Encode(kOneChannel);
+
+  EXPECT_FALSE(encode_status.ok());
+  EXPECT_THAT(encode_status.error_message,
+              testing::HasSubstr("Expected 2 channels, but got 1"));
+}
+
+TEST_F(
+    IamfEncoderTest,
+    EncodeChannelSpansReturnsErrorWhenChannelSpansHaveMismatchedSampleCounts) {
+  SetupDescriptorObus();
+  AddAudioFrame(user_metadata_);
+  auto iamf_encoder = CreateExpectOk();
+  constexpr std::array<double, 4> kFourZeroSamples = {0.0, 0.0, 0.0, 0.0};
+  const std::array<std::span<const double>, 2> kMismatchedChannels = {
+      kEightZeroSamples, kFourZeroSamples};
+
+  const api::IamfStatus encode_status =
+      iamf_encoder.Encode(kMismatchedChannels);
+
+  EXPECT_FALSE(encode_status.ok());
+  EXPECT_THAT(
+      encode_status.error_message,
+      testing::HasSubstr(
+          "Expected all channels to have 8 samples, but channel 1 has 4"));
+}
+
+TEST_F(IamfEncoderTest,
+       EncodeChannelSpansReturnsErrorWhenCalledAgainBeforeOutputTemporalUnit) {
+  SetupDescriptorObus();
+  AddAudioFrame(user_metadata_);
+  auto iamf_encoder = CreateExpectOk();
+  const std::array<std::span<const double>, 2> kStereoChannels = {
+      kEightZeroSamples, kEightZeroSamples};
+  ASSERT_TRUE(iamf_encoder.Encode(kStereoChannels).ok());
+
+  const api::IamfStatus second_encode_status =
+      iamf_encoder.Encode(kStereoChannels);
+
+  EXPECT_FALSE(second_encode_status.ok());
+  EXPECT_THAT(second_encode_status.error_message,
+              testing::HasSubstr("Unflushed samples already exist"));
+}
+
+TEST_F(IamfEncoderTest,
+       EncodeChannelSpansReturnsErrorWhenMultipleAudioElementsExist) {
+  SetupDescriptorObus();
+  AddAudioFrame(user_metadata_);
+  AudioElementMetadataBuilder builder;
+  auto* second_element = user_metadata_.add_audio_element_metadata();
+  ASSERT_THAT(builder.PopulateAudioElementMetadata(
+                  kAudioElementId + 1, kCodecConfigId, IamfInputLayout::kStereo,
+                  *second_element),
+              IsOk());
+  second_element->set_audio_substream_ids(0, kStereoSubstreamId + 1);
+  AddAudioFrame(user_metadata_);
+  user_metadata_.mutable_audio_frame_metadata(1)->set_audio_element_id(
+      kAudioElementId + 1);
+  auto iamf_encoder = CreateExpectOk();
+  const std::array<std::span<const double>, 2> kStereoChannels = {
+      kEightZeroSamples, kEightZeroSamples};
+
+  const api::IamfStatus encode_status = iamf_encoder.Encode(kStereoChannels);
+
+  EXPECT_FALSE(encode_status.ok());
+  EXPECT_THAT(encode_status.error_message,
+              testing::HasSubstr("requires exactly one audio element"));
 }
 
 // TODO(b/349321277): Add more tests.

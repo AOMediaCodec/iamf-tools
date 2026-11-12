@@ -19,8 +19,10 @@
 
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
-#include "iamf/cli/proto/mix_presentation.pb.h"
+
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 #include "iamf/cli/proto/user_metadata.pb.h"
+#endif
 
 namespace iamf_tools {
 
@@ -34,6 +36,7 @@ namespace iamf_tools {
 std::unique_ptr<LoudnessCalculatorFactoryBase>
 CreateLoudnessCalculatorFactory();
 
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 /*!\brief Creates instances of `ObuSequencerBase`.
  *
  * This is useful for binding different kinds of sequencers in an IAMF Encoder.
@@ -47,6 +50,7 @@ CreateLoudnessCalculatorFactory();
 std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const std::string& output_iamf_directory, bool include_temporal_delimiters);
+#endif
 
 }  // namespace iamf_tools
 

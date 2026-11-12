@@ -13,6 +13,7 @@
 #define INCLUDE_IAMF_TOOLS_IAMF_ENCODER_INTERFACE_H_
 
 #include <cstdint>
+#include <span>
 #include <vector>
 
 #include "iamf_tools_api_types.h"
@@ -161,6 +162,12 @@ class IamfEncoderInterface {
    */
   virtual uint32_t GetEncoderDelay() const = 0;
 
+  /*!\brief Gets the number of samples per frame required by the encoder.
+   *
+   * \return Number of samples per frame per channel.
+   */
+  virtual uint32_t GetNumSamplesPerFrame() const = 0;
+
   /*!\brief Returns whether this encoder is generating temporal units.
    *
    * \return True until the last temporal unit is output, then false.
@@ -177,7 +184,27 @@ class IamfEncoderInterface {
    * \return `IamfStatus::OkStatus()` if successful. A specific status on
    *         failure.
    */
-  virtual IamfStatus Encode(const IamfTemporalUnitData& temporal_unit_data) = 0;
+  virtual IamfStatus Encode(const IamfTemporalUnitData& temporal_unit_data) {
+    // TODO(b/585180756): Could IamfTemporalUnitData become proto-free?
+    return IamfStatus::ErrorStatus(
+        "Encode(IamfTemporalUnitData) is disabled in proto-free builds.");
+  }
+
+  /*!\brief Adds planar audio data for one temporal unit of a single-element
+   *        encoder.
+   *
+   * Channels in `channel_samples` must be ordered according to the canonical
+   * channel order of the configured `AudioElementType` (ACN order for
+   * Ambisonics; ITU/IAMF standard channel order for loudspeaker layouts).
+   *
+   * \param channel_samples Planar audio samples `[channel][sample]`
+   *        normalized to `[-1.0, 1.0]`.
+   * \return `IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure (e.g. if the encoder has multiple audio elements or the
+   *         number of channels does not match the audio element).
+   */
+  virtual IamfStatus Encode(
+      std::span<const std::span<const double>> channel_samples) = 0;
 
   /*!\brief Outputs data OBUs corresponding to one temporal unit.
    *

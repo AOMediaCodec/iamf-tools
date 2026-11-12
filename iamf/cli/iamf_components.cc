@@ -23,23 +23,25 @@
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_iamf.h"
+
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
-#include "iamf/obu/types.h"
+#endif
 
 namespace iamf_tools {
-
-namespace {
-
-constexpr absl::string_view kOmitIamfFile = "";
-
-}  // namespace
 
 std::unique_ptr<LoudnessCalculatorFactoryBase>
 CreateLoudnessCalculatorFactory() {
   return std::make_unique<LoudnessCalculatorFactoryItu1770_4>();
 }
+
+// TODO(b/585136603): Unroll the two args that depend on proto.
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
+namespace {
+constexpr absl::string_view kOmitIamfFile = "";
+}  // namespace
 
 std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
@@ -67,5 +69,6 @@ std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
 
   return obu_sequencers;
 }
+#endif
 
 }  // namespace iamf_tools
