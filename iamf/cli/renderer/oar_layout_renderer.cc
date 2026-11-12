@@ -45,6 +45,7 @@
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/ambisonics_config.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/cartesian_position_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
@@ -56,6 +57,7 @@
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/polar_position_data.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
@@ -467,6 +469,8 @@ absl::Status MaybeUpdateDownMixModeForOar(
 
 absl::Status MaybeUpdateObjectPositionsForOar(
     const uint32_t audio_element_id,
+    const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+        id_to_parameter_block,
     const absl::flat_hash_map<DecodedUleb128, PositionParamVariant>&
         audio_element_id_to_position_param_definitions,
     const uint32_t num_samples_per_frame, OarWrapper& oar) {
@@ -477,8 +481,51 @@ absl::Status MaybeUpdateObjectPositionsForOar(
     return absl::OkStatus();
   }
 
-  return oar.SetDefaultObjectPositions(audio_element_id, num_samples_per_frame,
-                                       position_iter->second);
+  const auto& position_param_variant = position_iter->second;
+  const DecodedUleb128 parameter_id =
+      std::visit([](const auto& def) { return def.GetParameterId(); },
+                 position_param_variant);
+  const auto parameter_block_iter = id_to_parameter_block.find(parameter_id);
+  if (parameter_block_iter == id_to_parameter_block.end()) {
+    // Default position will be used for this frame.
+    return oar.SetDefaultObjectPositions(
+        audio_element_id, num_samples_per_frame, position_param_variant);
+  }
+
+  // Now we have animated values; iterate through all subblocks.
+  RETURN_IF_NOT_OK(
+      ValidateNotNull(parameter_block_iter->second, "parameter_block"));
+  RETURN_IF_NOT_OK(ValidateNotNull(parameter_block_iter->second->obu,
+                                   "parameter_block->obu"));
+  const auto& parameter_block_obu = *parameter_block_iter->second->obu;
+  const auto num_subblocks = parameter_block_obu.GetNumSubblocks();
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+      "subblocks_", parameter_block_obu.subblocks_, num_subblocks));
+  const bool is_polar =
+      std::holds_alternative<PolarParamDefinition>(position_param_variant) ||
+      std::holds_alternative<DualPolarParamDefinition>(position_param_variant);
+  for (DecodedUleb128 i = 0; i < num_subblocks; ++i) {
+    const auto subblock_duration = parameter_block_obu.GetSubblockDuration(i);
+    if (!subblock_duration.ok()) {
+      return subblock_duration.status();
+    }
+    const auto duration = static_cast<uint32_t>(*subblock_duration);
+    RETURN_IF_NOT_OK(
+        ValidateNotNull(parameter_block_obu.subblocks_[i], "subblocks_[i]"));
+    if (is_polar) {
+      RETURN_IF_NOT_OK(oar.UpdatePolarObjectPositions(
+          audio_element_id, duration,
+          *static_cast<const PolarPositionData*>(
+              parameter_block_obu.subblocks_[i].get())));
+    } else {
+      RETURN_IF_NOT_OK(oar.UpdateCartesianObjectPositions(
+          audio_element_id, duration,
+          *static_cast<const CartesianPositionData*>(
+              parameter_block_obu.subblocks_[i].get())));
+    }
+  }
+
+  return absl::OkStatus();
 }
 
 }  // namespace
@@ -681,7 +728,8 @@ absl::Status OarLayoutRenderer::PerElementOperation(
 
   // Update object positions if necessary.
   RETURN_IF_NOT_OK(MaybeUpdateObjectPositionsForOar(
-      audio_element_id_uint32, audio_element_id_to_position_param_definitions_,
+      audio_element_id_uint32, id_to_parameter_block,
+      audio_element_id_to_position_param_definitions_,
       common_num_samples_per_frame_, *oar_));
 
   return absl::OkStatus();

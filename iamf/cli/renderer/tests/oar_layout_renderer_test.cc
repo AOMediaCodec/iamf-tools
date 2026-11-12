@@ -33,6 +33,7 @@
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/obu/ambisonics_config.h"
+#include "iamf/obu/animated_parameter_data.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
@@ -46,6 +47,7 @@
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/polar_position_data.h"
 #include "iamf/obu/rendering_config.h"
 #include "iamf/obu/tests/obu_test_utils.h"
 #include "iamf/obu/types.h"
@@ -67,6 +69,7 @@ constexpr DecodedUleb128 kAudioSubstreamIdsFoa[] = {102, 103, 104, 105};
 constexpr DecodedUleb128 kElementMixGainParameterId = 200;
 constexpr DecodedUleb128 kOutputMixGainParameterId = 201;
 constexpr DecodedUleb128 kDemixingInfoParameterId = 300;
+constexpr DecodedUleb128 kPositionParameterId = 400;
 constexpr uint32_t kCommonSampleRate = 48000;
 constexpr uint32_t kCommonNumSamplesPerFrame = 64;
 constexpr uint8_t kBitDepth16 = 16;
@@ -924,6 +927,80 @@ TEST_F(OarLayoutRendererTest, RenderFailsWithMultipleSubblocksInDemixingInfo) {
       .end_timestamp = kCommonNumSamplesPerFrame};
   id_to_parameter_block_[kDemixingInfoParameterId] =
       &two_subblocks_parameter_block_with_data;
+
+  EXPECT_THAT(renderer->Render(id_to_labeled_frame_, id_to_parameter_block_,
+                               rendered_samples_, valid_rendered_samples_),
+              Not(IsOk()));
+}
+
+TEST_F(OarLayoutRendererTest, RenderRendersObjectWithStepParameterBlock) {
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/1);
+  id_to_labeled_frame_[kAudioElementId].label_to_samples[kObjectChannel0] =
+      std::vector<InternalSampleType>(kCommonNumSamplesPerFrame, 1.0);
+  PolarParamDefinition polar_def(MakeConstantSubblocksParamDefinitionBaseArgs(
+      kPositionParameterId, kCommonSampleRate, kCommonNumSamplesPerFrame,
+      kCommonNumSamplesPerFrame / 2));
+  polar_def.default_azimuth_ = -90;
+  polar_def.default_distance_ = 127;
+  id_to_rendering_config_[kAudioElementId]
+      .rendering_config_param_definitions.push_back(
+          RenderingConfigParamDefinition::Create(polar_def, {}));
+  auto renderer = CreateRenderer({kAudioElementId});
+  ASSERT_NE(renderer, nullptr);
+  auto parameter_block = ParameterBlockObu::CreateMode0(ObuHeader(), polar_def);
+  ASSERT_NE(parameter_block, nullptr);
+  auto subblock_0 = PolarPositionData::Create(
+      AnimationType::kStep,
+      PolarPosition{
+          .azimuth = AnimatedParameterData<int16_t>::MakeStep(90),
+          .elevation = AnimatedParameterData<int8_t>::MakeStep(0),
+          .distance = AnimatedParameterData<uint8_t>::MakeStep(127),
+      });
+  ASSERT_THAT(subblock_0, IsOk());
+  auto subblock_1 = PolarPositionData::Create(
+      AnimationType::kStep,
+      PolarPosition{
+          .azimuth = AnimatedParameterData<int16_t>::MakeStep(90),
+          .elevation = AnimatedParameterData<int8_t>::MakeStep(0),
+          .distance = AnimatedParameterData<uint8_t>::MakeStep(127),
+      });
+  ASSERT_THAT(subblock_1, IsOk());
+  parameter_block->subblocks_.clear();
+  parameter_block->subblocks_.push_back(
+      std::make_unique<PolarPositionData>(*subblock_0));
+  parameter_block->subblocks_.push_back(
+      std::make_unique<PolarPositionData>(*subblock_1));
+  parameter_blocks_.push_back(
+      ParameterBlockWithData{.obu = std::move(parameter_block),
+                             .start_timestamp = 0,
+                             .end_timestamp = kCommonNumSamplesPerFrame});
+  id_to_parameter_block_[kPositionParameterId] = &parameter_blocks_.back();
+
+  ASSERT_THAT(renderer->Render(id_to_labeled_frame_, id_to_parameter_block_,
+                               rendered_samples_, valid_rendered_samples_),
+              IsOk());
+
+  constexpr size_t kLastSample = kCommonNumSamplesPerFrame - 1;
+  EXPECT_GT(valid_rendered_samples_[0][kLastSample],
+            valid_rendered_samples_[1][kLastSample]);
+}
+
+TEST_F(OarLayoutRendererTest, RenderFailsWhenPositionParameterSubblockIsNull) {
+  CreateObjectBasedAudioElement(kAudioElementId, /*num_objects=*/1);
+  const PolarParamDefinition polar_def(MakeOneSubblockParamDefinitionBaseArgs(
+      kPositionParameterId, kCommonSampleRate, kCommonNumSamplesPerFrame));
+  id_to_rendering_config_[kAudioElementId]
+      .rendering_config_param_definitions.push_back(
+          RenderingConfigParamDefinition::Create(polar_def, {}));
+  auto renderer = CreateRenderer({kAudioElementId});
+  ASSERT_NE(renderer, nullptr);
+  auto parameter_block = ParameterBlockObu::CreateMode0(ObuHeader(), polar_def);
+  ASSERT_NE(parameter_block, nullptr);
+  parameter_blocks_.push_back(
+      ParameterBlockWithData{.obu = std::move(parameter_block),
+                             .start_timestamp = 0,
+                             .end_timestamp = kCommonNumSamplesPerFrame});
+  id_to_parameter_block_[kPositionParameterId] = &parameter_blocks_.back();
 
   EXPECT_THAT(renderer->Render(id_to_labeled_frame_, id_to_parameter_block_,
                                rendered_samples_, valid_rendered_samples_),
