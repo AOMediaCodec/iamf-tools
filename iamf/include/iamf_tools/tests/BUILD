@@ -61,3 +61,20 @@ cc_test(
         # [internal] Placeholder for fine-grained protobuf dependency: "io",
     ],
 )
+
+cc_test(
+    name = "iamf_lite_encoder_factory_test",
+    srcs = ["iamf_lite_encoder_factory_test.cc"],
+    deps = [
+        "//iamf/cli:obu_processor",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/include/iamf_tools:iamf_encoder_interface",
+        "//iamf/include/iamf_tools:iamf_lite_encoder_factory",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
+        "//iamf/include/iamf_tools:iamf_tools_encoder_api_types",
+        "//iamf/obu:ia_sequence_header",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@googletest//:gtest_main",
+    ],
+)

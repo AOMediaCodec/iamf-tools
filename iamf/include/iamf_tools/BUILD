@@ -61,10 +61,33 @@ cc_library(
     visibility = [
         "//iamf/api:__subpackages__",
         "//iamf/cli:__pkg__",
+        "//iamf/include/iamf_tools/tests:__pkg__",
     ],
     deps = [
         ":iamf_tools_api_types",
         ":iamf_tools_encoder_api_types",
+    ],
+)
+
+cc_library(
+    name = "iamf_lite_encoder_factory",
+    srcs = ["iamf_lite_encoder_factory.cc"],
+    hdrs = ["iamf_lite_encoder_factory.h"],
+    visibility = [
+        "//iamf/api:__subpackages__",
+        "//iamf/include/iamf_tools/tests:__pkg__",
+    ],
+    deps = [
+        ":iamf_encoder_interface",
+        ":iamf_tools_encoder_api_types",
+        "//iamf/cli:descriptor_obus",
+        "//iamf/cli:iamf_components_no_proto",
+        "//iamf/cli:iamf_encoder_no_proto",
+        "//iamf/cli:iamf_lite_encoder_factory_utils",
+        "//iamf/cli:rendering_mix_presentation_finalizer",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/log:absl_log",
     ],
 )
 
@@ -86,6 +109,7 @@ cc_library(
         "//iamf/api:__subpackages__",
         "//iamf/cli:__pkg__",
         "//iamf/cli/tests:__pkg__",
+        "//iamf/include/iamf_tools/tests:__pkg__",
     ],
 )
 
