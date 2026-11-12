@@ -27,6 +27,8 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/codec/encoder_base.h"
+#include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
@@ -49,6 +51,7 @@
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
+#include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
@@ -57,6 +60,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::testing::AllOf;
 using ::testing::DoubleEq;
 using ::testing::Each;
@@ -1514,6 +1518,299 @@ TEST(AudioFrameGenerator,
       &user_metadata));
 
   ExpectAudioFrameGeneratorInitializeIsOk(user_metadata);
+}
+
+TEST(AudioFrameGenerator,
+     CreateFromPreInitializedEncodersGeneratesExpectedStereoFrame) {
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kCodecConfigId, /*num_samples_per_frame=*/8,
+                     /*sample_size=*/16, kSampleRate, codec_config_obus);
+  AudioElementsById audio_elements;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kFirstAudioElementId, kCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements);
+  auto encoder =
+      std::make_unique<LpcmEncoder>(codec_config_obus.at(kCodecConfigId),
+                                    SubstreamChannelCount::MakeCoupled());
+  ASSERT_THAT(encoder->Initialize(/*validate_codec_delay=*/true), IsOk());
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  substream_id_to_encoder.emplace(kFirstSubstreamId, std::move(encoder));
+  auto downmixer_manager = DownmixerManager::MakeForPassthrough(audio_elements);
+  ASSERT_THAT(downmixer_manager, NotNull());
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
+  auto parameters_manager = ParametersManager::Create(audio_elements);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+  const absl::flat_hash_map<ChannelLabel::Label,
+                            std::vector<absl::Span<const InternalSampleType>>>
+      label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
+                         {ChannelLabel::kR2, {kFrame0R2EightSamples}}};
+  const std::list<AudioFrameWithData> kExpectedAudioFrames = {
+      {.obu = AudioFrameObu(
+           ObuHeader(), kFirstSubstreamId,
+           {1, 0, 255, 255, 2, 0, 254, 255, 3, 0, 253, 255, 4, 0, 252, 255,
+            5, 0, 251, 255, 6, 0, 250, 255, 7, 0, 249, 255, 8, 0, 248, 255}),
+       .start_timestamp = 0,
+       .end_timestamp = 8,
+       .down_mixing_params = {.in_bitstream = false}}};
+
+  auto audio_frame_generator = AudioFrameGenerator::Create(
+      audio_elements, std::move(substream_id_to_encoder),
+      std::move(downmixer_manager), **parameters_manager,
+      *global_timing_module);
+  ASSERT_THAT(audio_frame_generator, IsOkAndHolds(NotNull()));
+
+  AddAllSamplesAndFinalizesExpectOk(kFirstAudioElementId, label_to_frames,
+                                    **audio_frame_generator);
+  std::list<AudioFrameWithData> output_audio_frames;
+  FlushAudioFrameGeneratorExpectOk(**audio_frame_generator,
+                                   output_audio_frames);
+
+  ValidateAudioFrames(output_audio_frames, kExpectedAudioFrames);
+}
+
+TEST(
+    AudioFrameGenerator,
+    CreateFromPreInitializedEncodersReturnsErrorWhenSubstreamEncoderIsMissing) {
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kCodecConfigId, /*num_samples_per_frame=*/8,
+                     /*sample_size=*/16, kSampleRate, codec_config_obus);
+  AudioElementsById audio_elements;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kFirstAudioElementId, kCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements);
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      empty_substream_id_to_encoder;
+  auto downmixer_manager = DownmixerManager::MakeForPassthrough(audio_elements);
+  ASSERT_THAT(downmixer_manager, NotNull());
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
+  auto parameters_manager = ParametersManager::Create(audio_elements);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+
+  const auto audio_frame_generator = AudioFrameGenerator::Create(
+      audio_elements, std::move(empty_substream_id_to_encoder),
+      std::move(downmixer_manager), **parameters_manager,
+      *global_timing_module);
+
+  EXPECT_THAT(audio_frame_generator,
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(
+    AudioFrameGenerator,
+    CreateFromPreInitializedEncodersReturnsErrorWhenExtraneousEncoderProvided) {
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kCodecConfigId, /*num_samples_per_frame=*/8,
+                     /*sample_size=*/16, kSampleRate, codec_config_obus);
+  AudioElementsById audio_elements;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kFirstAudioElementId, kCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements);
+  auto encoder =
+      std::make_unique<LpcmEncoder>(codec_config_obus.at(kCodecConfigId),
+                                    SubstreamChannelCount::MakeCoupled());
+  ASSERT_THAT(encoder->Initialize(/*validate_codec_delay=*/true), IsOk());
+  auto extraneous_encoder =
+      std::make_unique<LpcmEncoder>(codec_config_obus.at(kCodecConfigId),
+                                    SubstreamChannelCount::MakeCoupled());
+  ASSERT_THAT(extraneous_encoder->Initialize(/*validate_codec_delay=*/true),
+              IsOk());
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  substream_id_to_encoder.emplace(kFirstSubstreamId, std::move(encoder));
+  substream_id_to_encoder.emplace(kFirstSubstreamId + 1,
+                                  std::move(extraneous_encoder));
+  auto downmixer_manager = DownmixerManager::MakeForPassthrough(audio_elements);
+  ASSERT_THAT(downmixer_manager, NotNull());
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
+  auto parameters_manager = ParametersManager::Create(audio_elements);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+
+  const auto audio_frame_generator = AudioFrameGenerator::Create(
+      audio_elements, std::move(substream_id_to_encoder),
+      std::move(downmixer_manager), **parameters_manager,
+      *global_timing_module);
+
+  EXPECT_THAT(audio_frame_generator,
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(AudioFrameGenerator,
+     CreateFromPreInitializedEncodersReturnsErrorWhenEncoderIsNull) {
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kCodecConfigId, /*num_samples_per_frame=*/8,
+                     /*sample_size=*/16, kSampleRate, codec_config_obus);
+  AudioElementsById audio_elements;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kFirstAudioElementId, kCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements);
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  substream_id_to_encoder.emplace(kFirstSubstreamId, nullptr);
+  auto downmixer_manager = DownmixerManager::MakeForPassthrough(audio_elements);
+  ASSERT_THAT(downmixer_manager, NotNull());
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
+  auto parameters_manager = ParametersManager::Create(audio_elements);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+
+  const auto audio_frame_generator = AudioFrameGenerator::Create(
+      audio_elements, std::move(substream_id_to_encoder),
+      std::move(downmixer_manager), **parameters_manager,
+      *global_timing_module);
+
+  EXPECT_THAT(audio_frame_generator,
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(AudioFrameGenerator,
+     CreateFromPreInitializedEncodersReturnsErrorWhenCodecConfigIsNull) {
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kCodecConfigId, /*num_samples_per_frame=*/8,
+                     /*sample_size=*/16, kSampleRate, codec_config_obus);
+  AudioElementsById audio_elements;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kFirstAudioElementId, kCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements);
+  auto encoder =
+      std::make_unique<LpcmEncoder>(codec_config_obus.at(kCodecConfigId),
+                                    SubstreamChannelCount::MakeCoupled());
+  ASSERT_THAT(encoder->Initialize(/*validate_codec_delay=*/true), IsOk());
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  substream_id_to_encoder.emplace(kFirstSubstreamId, std::move(encoder));
+  auto downmixer_manager = DownmixerManager::MakeForPassthrough(audio_elements);
+  ASSERT_THAT(downmixer_manager, NotNull());
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
+  auto parameters_manager = ParametersManager::Create(audio_elements);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+  audio_elements.at(kFirstAudioElementId).codec_config = nullptr;
+
+  const auto audio_frame_generator = AudioFrameGenerator::Create(
+      audio_elements, std::move(substream_id_to_encoder),
+      std::move(downmixer_manager), **parameters_manager,
+      *global_timing_module);
+
+  EXPECT_THAT(audio_frame_generator,
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+class DelayedLpcmEncoder : public LpcmEncoder {
+ public:
+  DelayedLpcmEncoder(const CodecConfigObu& codec_config,
+                     SubstreamChannelCount channel_count, uint32_t codec_delay)
+      : LpcmEncoder(codec_config, channel_count), codec_delay_(codec_delay) {}
+
+ private:
+  absl::Status SetNumberOfSamplesToDelayAtStart(
+      bool /*validate_codec_delay*/) override {
+    required_samples_to_delay_at_start_ = codec_delay_;
+    return absl::OkStatus();
+  }
+
+  const uint32_t codec_delay_;
+};
+
+TEST(AudioFrameGenerator,
+     CreateFromPreInitializedEncodersAppliesEncoderCodecDelayToStartTrim) {
+  constexpr uint32_t kCodecDelay = 2;
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kCodecConfigId, /*num_samples_per_frame=*/8,
+                     /*sample_size=*/16, kSampleRate, codec_config_obus);
+  AudioElementsById audio_elements;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kFirstAudioElementId, kCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements);
+  auto encoder = std::make_unique<DelayedLpcmEncoder>(
+      codec_config_obus.at(kCodecConfigId),
+      SubstreamChannelCount::MakeCoupled(), kCodecDelay);
+  ASSERT_THAT(encoder->Initialize(/*validate_codec_delay=*/true), IsOk());
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  substream_id_to_encoder.emplace(kFirstSubstreamId, std::move(encoder));
+  auto downmixer_manager = DownmixerManager::MakeForPassthrough(audio_elements);
+  ASSERT_THAT(downmixer_manager, NotNull());
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
+  auto parameters_manager = ParametersManager::Create(audio_elements);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+  const absl::flat_hash_map<ChannelLabel::Label,
+                            std::vector<absl::Span<const InternalSampleType>>>
+      label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
+                         {ChannelLabel::kR2, {kFrame0R2EightSamples}}};
+
+  auto audio_frame_generator = AudioFrameGenerator::Create(
+      audio_elements, std::move(substream_id_to_encoder),
+      std::move(downmixer_manager), **parameters_manager,
+      *global_timing_module);
+  ASSERT_THAT(audio_frame_generator, IsOkAndHolds(NotNull()));
+  AddAllSamplesAndFinalizesExpectOk(kFirstAudioElementId, label_to_frames,
+                                    **audio_frame_generator);
+  std::list<AudioFrameWithData> output_audio_frames;
+  FlushAudioFrameGeneratorExpectOk(**audio_frame_generator,
+                                   output_audio_frames);
+
+  EXPECT_EQ((*audio_frame_generator)->GetEncoderDelay(), kCodecDelay);
+  ASSERT_FALSE(output_audio_frames.empty());
+  EXPECT_EQ(
+      output_audio_frames.front().obu.header_.num_samples_to_trim_at_start,
+      kCodecDelay);
+}
+
+TEST(
+    AudioFrameGenerator,
+    CreateFromPreInitializedEncodersReturnsErrorWhenChannelBasedDownmixingLacksDemixingParam) {
+  CodecConfigsById codec_config_obus;
+  AddLpcmCodecConfig(kCodecConfigId, /*num_samples_per_frame=*/8,
+                     /*sample_size=*/16, kSampleRate, codec_config_obus);
+  AudioElementsById audio_elements;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kFirstAudioElementId, kCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements);
+  auto encoder =
+      std::make_unique<LpcmEncoder>(codec_config_obus.at(kCodecConfigId),
+                                    SubstreamChannelCount::MakeCoupled());
+  ASSERT_THAT(encoder->Initialize(/*validate_codec_delay=*/true), IsOk());
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  substream_id_to_encoder.emplace(kFirstSubstreamId, std::move(encoder));
+  absl::flat_hash_map<DecodedUleb128, DownmixerManager::DownmixingConfig>
+      id_to_downmixing_config;
+  id_to_downmixing_config[kFirstAudioElementId].down_mixers.push_back(
+      DownMixer{});
+  auto downmixer_manager =
+      DownmixerManager::Make(std::move(id_to_downmixing_config));
+  ASSERT_THAT(downmixer_manager, NotNull());
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
+  auto parameters_manager = ParametersManager::Create(audio_elements);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+
+  const auto audio_frame_generator = AudioFrameGenerator::Create(
+      audio_elements, std::move(substream_id_to_encoder),
+      std::move(downmixer_manager), **parameters_manager,
+      *global_timing_module);
+
+  EXPECT_THAT(audio_frame_generator,
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 }  // namespace

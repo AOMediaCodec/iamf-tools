@@ -34,11 +34,14 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/parameters_manager.h"
-#include "iamf/cli/proto/audio_frame.pb.h"
-#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/types.h"
+
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
+#include "iamf/cli/proto/audio_frame.pb.h"
+#include "iamf/cli/proto/codec_config.pb.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
+#endif
 
 namespace iamf_tools {
 
@@ -86,6 +89,7 @@ class AudioFrameGenerator {
     int64_t user_samples_left_to_trim_at_start;
   };
 
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
   /*!\brief Factory function to create an `AudioFrameGenerator`.
    *
    * \param audio_frame_metadata Input audio frame metadata.
@@ -105,10 +109,35 @@ class AudioFrameGenerator {
       std::unique_ptr<DownmixerManager> absl_nonnull downmixer_manager,
       ParametersManager& parameters_manager,
       GlobalTimingModule& global_timing_module);
+#endif
+
+  /*!\brief Factory function to create an `AudioFrameGenerator` from
+   *        pre-initialized encoders.
+   *
+   * Uses default trimming settings (start trim equals maximum codec delay; end
+   * trim equals padding required for the final frame) and derives expected
+   * channel labels directly from `audio_elements`.
+   *
+   * \param audio_elements Input Audio Element OBUs with data.
+   * \param substream_id_to_encoder Mapping from audio substream IDs to
+   *        initialized encoders.
+   * \param downmixer_manager Downmixer manager.
+   * \param parameters_manager Manager of parameters.
+   * \param global_timing_module Global Timing Module.
+   * \return `AudioFrameGenerator` on success, or a specific status on failure.
+   */
+  static absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull>
+  Create(const DescriptorObus::AudioElementsById& audio_elements,
+         absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+             substream_id_to_encoder,
+         std::unique_ptr<DownmixerManager> absl_nonnull downmixer_manager,
+         ParametersManager& parameters_manager,
+         GlobalTimingModule& global_timing_module);
 
   /*!\brief Deleted move constructor. */
   AudioFrameGenerator(AudioFrameGenerator&&) = delete;
 
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
   /*!\brief Returns the number of samples to delay based on the codec config.
    *
    * \param codec_config_metadata Codec config metadata.
@@ -119,6 +148,7 @@ class AudioFrameGenerator {
   static absl::StatusOr<uint32_t> GetNumberOfSamplesToDelayAtStart(
       const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
       const CodecConfigObu& codec_config);
+#endif
 
   /*!\brief Returns whether the generator is still taking audio samples.
    *

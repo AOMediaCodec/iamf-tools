@@ -41,17 +41,11 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/codec/encoder_base.h"
-#include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/parameters_manager.h"
-#include "iamf/cli/proto/audio_frame.pb.h"
-#include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/cli/proto_conversion/channel_label_utils.h"
-#include "iamf/cli/proto_conversion/codec_config_utils.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/audio_element.h"
@@ -61,6 +55,14 @@
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/substream_channel_count.h"
 #include "iamf/obu/types.h"
+
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
+#include "iamf/cli/codec/lpcm_encoder.h"
+#include "iamf/cli/proto/audio_frame.pb.h"
+#include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/cli/proto/test_vector_metadata.pb.h"
+#include "iamf/cli/proto_conversion/channel_label_utils.h"
+#include "iamf/cli/proto_conversion/codec_config_utils.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 // These defines are not part of an official API and are likely to change or be
@@ -76,11 +78,13 @@
 #ifndef IAMF_TOOLS_DISABLE_OPUS_ENCODER
 #include "iamf/cli/codec/opus_encoder.h"
 #endif
+#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 namespace iamf_tools {
 
 namespace {
 
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 constexpr bool kValidateCodecDelay = true;
 
 absl::Status InitializeEncoder(
@@ -161,6 +165,7 @@ absl::Status GetEncodingDataAndInitializeEncoders(
 
   return absl::OkStatus();
 }
+#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 // Validates that the user requested number of samples to trim at start is
 // enough to cover the delay that the encoder needs.
@@ -253,7 +258,8 @@ absl::Status InitializeSubstreamData(
     // domain, to keep them aligned.
     const auto encoder_it = substream_id_to_encoder.find(substream_id);
     if (encoder_it == substream_id_to_encoder.end()) {
-      return absl::InternalError("Encoder not found for substream_id");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Encoder not found for substream_id= ", substream_id));
     }
     const auto substream_codec_delay =
         encoder_it->second->GetNumberOfSamplesToDelayAtStart();
@@ -560,6 +566,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
   return absl::OkStatus();
 }
 
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 // Validates that all substreams share the same trimming information.
 absl::Status ValidateSubstreamsShareTrimming(
     const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata,
@@ -581,6 +588,7 @@ absl::Status ValidateSubstreamsShareTrimming(
 
   return absl::OkStatus();
 }
+#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 // Applies additional user trimming to one audio frame.
 absl::Status ApplyUserTrimForFrame(const bool from_start,
@@ -653,8 +661,46 @@ absl::Status ValidateAndApplyUserTrimming(
   return absl::OkStatus();
 }
 
+// Returns the global maximum codec delay among all encoders, or an error if any
+// encoder pointer is null. IAMF requires that all substreams have the same
+// number of samples trimmed at the start.
+absl::StatusOr<uint32_t> GetMaxCodecDelay(
+    const absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
+        substream_id_to_encoder) {
+  uint32_t max_codec_delay = 0;
+  for (const auto& [substream_id, encoder] : substream_id_to_encoder) {
+    if (encoder == nullptr) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Null encoder provided for substream_id= ", substream_id));
+    }
+    max_codec_delay =
+        std::max(max_codec_delay, encoder->GetNumberOfSamplesToDelayAtStart());
+  }
+  return max_codec_delay;
+}
+
+// Validates that a `DemixingParamDefinition` is available if down-mixing is
+// needed for a channel-based audio element.
+absl::Status ValidateDemixingParamDefinitionAvailableIfNeeded(
+    const AudioElementWithData& audio_element_with_data,
+    DecodedUleb128 audio_element_id, const DownmixerManager& downmixer_manager,
+    const ParametersManager& parameters_manager) {
+  const bool is_channel_based =
+      audio_element_with_data.obu.GetAudioElementType() ==
+      AudioElementObu::kAudioElementChannelBased;
+  if (is_channel_based &&
+      !parameters_manager.DemixingParamDefinitionAvailable(audio_element_id) &&
+      downmixer_manager.HasDownMixers(audio_element_id)) {
+    return absl::InvalidArgumentError(
+        "Must include `DemixingParamDefinition` in the Audio Element if "
+        "down-mixers are required to produce audio substreams");
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull>
 AudioFrameGenerator::Create(
     const ::google::protobuf::RepeatedPtrField<
@@ -702,14 +748,9 @@ AudioFrameGenerator::Create(
         substream_id_to_encoder));
   }
 
-  // Get the global maximum delay among all encoders. IAMF requires that all
-  // substreams have the same number of samples trimmed at the start. When
-  // mixing multiple codec config OBUs, codecs that do not traditionally have
-  // delay may need delay added for alignment.
-  uint32_t max_codec_delay = 0;
-  for (const auto& [substream_id, encoder] : substream_id_to_encoder) {
-    max_codec_delay =
-        std::max(max_codec_delay, encoder->GetNumberOfSamplesToDelayAtStart());
+  const auto max_codec_delay = GetMaxCodecDelay(substream_id_to_encoder);
+  if (!max_codec_delay.ok()) {
+    return max_codec_delay.status();
   }
 
   const auto& first_audio_frame_metadata = *audio_frame_metadatas.begin();
@@ -752,25 +793,14 @@ AudioFrameGenerator::Create(
     }
     // Intermediate data for all substreams belonging to an Audio Element.
     RETURN_IF_NOT_OK(InitializeSubstreamData(
-        max_codec_delay, audio_element_with_data.substream_id_to_labels,
+        *max_codec_delay, audio_element_with_data.substream_id_to_labels,
         num_samples_per_frame,
         audio_frame_metadata.samples_to_trim_at_start_includes_codec_delay(),
         audio_frame_metadata.samples_to_trim_at_start(),
         substream_id_to_encoder, substream_id_to_substream_data));
-
-    // Validate that a `DemixingParamDefinition` is available if down-mixing
-    // is needed for channel-based audio elements.
-    const bool is_channel_based =
-        audio_element_with_data.obu.GetAudioElementType() ==
-        AudioElementObu::kAudioElementChannelBased;
-    if (is_channel_based &&
-        !parameters_manager.DemixingParamDefinitionAvailable(
-            audio_element_id) &&
-        downmixer_manager->HasDownMixers(audio_element_id)) {
-      return absl::InvalidArgumentError(
-          "Must include `DemixingParamDefinition` in the Audio Element if "
-          "down-mixers are required to produce audio substreams");
-    }
+    RETURN_IF_NOT_OK(ValidateDemixingParamDefinitionAvailableIfNeeded(
+        audio_element_with_data, audio_element_id, *downmixer_manager,
+        parameters_manager));
 
     // Validate the assumption that trimming is the same for all substreams.
     RETURN_IF_NOT_OK(ValidateSubstreamsShareTrimming(
@@ -785,7 +815,7 @@ AudioFrameGenerator::Create(
       const int64_t additional_samples_to_trim_at_start =
           common_samples_to_trim_at_start_includes_codec_delay
               ? 0
-              : max_codec_delay;
+              : *max_codec_delay;
       substream_id_to_trimming_state[substream_id] = {
           .increment_samples_to_trim_at_end_by_padding =
               !audio_frame_metadata.samples_to_trim_at_end_includes_padding(),
@@ -802,9 +832,74 @@ AudioFrameGenerator::Create(
       parameters_manager, global_timing_module,
       std::move(substream_id_to_encoder),
       std::move(substream_id_to_substream_data),
-      std::move(substream_id_to_trimming_state), max_codec_delay));
+      std::move(substream_id_to_trimming_state), *max_codec_delay));
+}
+#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
+
+// TODO(b/585180756): Reduce duplication in proto and proto-free code paths.
+absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull>
+AudioFrameGenerator::Create(
+    const DescriptorObus::AudioElementsById& audio_elements,
+    absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+        substream_id_to_encoder,
+    std::unique_ptr<DownmixerManager> absl_nonnull downmixer_manager,
+    ParametersManager& parameters_manager,
+    GlobalTimingModule& global_timing_module) {
+  ABSL_CHECK_NE(downmixer_manager, nullptr);
+  const auto max_codec_delay = GetMaxCodecDelay(substream_id_to_encoder);
+  if (!max_codec_delay.ok()) {
+    return max_codec_delay.status();
+  }
+
+  absl::flat_hash_map<DecodedUleb128, absl::flat_hash_set<ChannelLabel::Label>>
+      audio_element_id_to_labels;
+  absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data;
+  absl::flat_hash_map<uint32_t, TrimmingState> substream_id_to_trimming_state;
+  for (const auto& [audio_element_id, audio_element_with_data] :
+       audio_elements) {
+    if (audio_element_with_data.codec_config == nullptr) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Audio Element with ID= ", audio_element_id, " has no codec_config"));
+    }
+
+    auto& labels_for_element = audio_element_id_to_labels[audio_element_id];
+    for (const auto& [substream_id, labels] :
+         audio_element_with_data.substream_id_to_labels) {
+      labels_for_element.insert(labels.begin(), labels.end());
+      substream_id_to_trimming_state[substream_id] = {
+          .increment_samples_to_trim_at_end_by_padding = true,
+          .user_samples_left_to_trim_at_end = 0,
+          .user_samples_left_to_trim_at_start = *max_codec_delay,
+      };
+    }
+
+    const auto num_samples_per_frame =
+        audio_element_with_data.codec_config->GetNumSamplesPerFrame();
+    RETURN_IF_NOT_OK(InitializeSubstreamData(
+        *max_codec_delay, audio_element_with_data.substream_id_to_labels,
+        num_samples_per_frame,
+        /*user_samples_to_trim_at_start_includes_codec_delay=*/false,
+        /*user_samples_to_trim_at_start=*/0, substream_id_to_encoder,
+        substream_id_to_substream_data));
+    RETURN_IF_NOT_OK(ValidateDemixingParamDefinitionAvailableIfNeeded(
+        audio_element_with_data, audio_element_id, *downmixer_manager,
+        parameters_manager));
+  }
+  if (substream_id_to_encoder.size() != substream_id_to_substream_data.size()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected ", substream_id_to_substream_data.size(),
+        " substream encoders, but got ", substream_id_to_encoder.size()));
+  }
+
+  return absl::WrapUnique(new AudioFrameGenerator(
+      std::move(audio_element_id_to_labels), audio_elements,
+      std::move(downmixer_manager), parameters_manager, global_timing_module,
+      std::move(substream_id_to_encoder),
+      std::move(substream_id_to_substream_data),
+      std::move(substream_id_to_trimming_state), *max_codec_delay));
 }
 
+#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
     const CodecConfigObu& codec_config) {
@@ -822,6 +917,7 @@ absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
   }
   return encoder->GetNumberOfSamplesToDelayAtStart();
 }
+#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 bool AudioFrameGenerator::TakingSamples() const {
   absl::MutexLock lock(mutex_);
