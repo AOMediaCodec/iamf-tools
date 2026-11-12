@@ -441,6 +441,42 @@ cc_library(
 )
 
 cc_library(
+    name = "iamf_lite_encoder_factory_utils",
+    srcs = ["iamf_lite_encoder_factory_utils.cc"],
+    hdrs = ["iamf_lite_encoder_factory_utils.h"],
+    deps = [
+        ":audio_element_with_data",
+        ":obu_with_data_generator",
+        "//iamf/cli/codec:encoder_base",
+        "//iamf/cli/codec:lpcm_encoder",
+        "//iamf/cli/codec:opus_encoder",
+        "//iamf/common:q_format_or_floating_point",
+        "//iamf/common/utils:macros",
+        "//iamf/include/iamf_tools:iamf_tools_encoder_api_types",
+        "//iamf/obu:ambisonics_config",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:loudness_info",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:rendering_config",
+        "//iamf/obu:substream_channel_count",
+        "//iamf/obu:types",
+        "//iamf/obu/decoder_config:lpcm_decoder_config",
+        "//iamf/obu/decoder_config:opus_decoder_config",
+        "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "//iamf/obu/param_definitions:param_definition_base",
+        "//iamf/obu/param_definitions:recon_gain_param_definition",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/types:span",
+        "@opus",
+    ],
+)
+
+cc_library(
     name = "labeled_frame",
     srcs = ["labeled_frame.cc"],
     hdrs = ["labeled_frame.h"],

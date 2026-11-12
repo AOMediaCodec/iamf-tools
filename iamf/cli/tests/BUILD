@@ -488,6 +488,28 @@ cc_test(
 )
 
 cc_test(
+    name = "iamf_lite_encoder_factory_utils_test",
+    srcs = ["iamf_lite_encoder_factory_utils_test.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/cli:iamf_lite_encoder_factory_utils",
+        "//iamf/include/iamf_tools:iamf_tools_encoder_api_types",
+        "//iamf/obu:ambisonics_config",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:types",
+        "//iamf/obu/decoder_config:aac_decoder_config",
+        "//iamf/obu/decoder_config:opus_decoder_config",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "labeled_frame_test",
     size = "small",
     srcs = ["labeled_frame_test.cc"],

@@ -34,6 +34,47 @@ struct IamfTemporalUnitData {
   std::unordered_map<uint32_t, IamfAudioElementData> audio_element_id_to_data;
 };
 
+/*!\brief Sample rate for linear PCM audio substreams.*/
+enum class PcmSampleRate {
+  k16kHz = 16000,
+  k32kHz = 32000,
+  k44_1kHz = 44100,
+  k48kHz = 48000,
+  k96kHz = 96000,
+};
+
+/*!\brief Scene-based (Ambisonics) or channel-based full loudspeaker layout.*/
+enum class AudioElementType {
+  // Spherical Ambisonics (ACN/SN3D, (N + 1)^2 channels).
+  kAmbisonicSphericalOrder1 = 1,
+  kAmbisonicSphericalOrder2 = 2,
+  kAmbisonicSphericalOrder3 = 3,
+  kAmbisonicSphericalOrder4 = 4,
+
+  // Horizontal Ambisonics (ACN/SN3D, 2N + 1 channels).
+  kAmbisonicHorizontalOrder1 = 5,
+  kAmbisonicHorizontalOrder2 = 6,
+  kAmbisonicHorizontalOrder3 = 7,
+  kAmbisonicHorizontalOrder4 = 8,
+
+  // Standard Loudspeaker Layouts (LoudspeakerLayout).
+  kLayoutMono = 9,
+  kLayoutStereo = 10,
+  kLayout5_1 = 11,
+  kLayout5_1_2 = 12,
+  kLayout5_1_4 = 13,
+  kLayout7_1 = 14,
+  kLayout7_1_2 = 15,
+  kLayout7_1_4 = 16,
+  kLayout3_1_2 = 17,
+  kLayoutBinaural = 18,
+
+  // Full Expanded Loudspeaker Layouts (ExpandedLoudspeakerLayout).
+  kLayout9_1_6 = 19,
+  kLayout10_2_9_3 = 20,
+  kLayout7_1_5_4 = 21,
+};
+
 }  // namespace api
 }  // namespace iamf_tools
 
