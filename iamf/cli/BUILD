@@ -327,6 +327,8 @@ cc_library(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:channel_label_utils",
         "//iamf/cli/proto_conversion:output_audio_format_utils",
+        "//iamf/cli/proto_conversion:proto_utils",
+        "//iamf/common:leb_generator",
         "//iamf/common/utils:macros",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/include/iamf_tools:iamf_tools_encoder_api_types",
@@ -366,32 +368,14 @@ cc_library(
     name = "iamf_components",
     srcs = ["iamf_components.cc"],
     hdrs = ["iamf_components.h"],
-    defines = ["IAMF_TOOLS_ENCODER_INCLUDE_PROTO"],
     deps = [
         ":loudness_calculator_factory_base",
         ":obu_sequencer_base",
         ":obu_sequencer_iamf",
         "//iamf/cli/itu_1770_4:loudness_calculator_factory_itu_1770_4",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/cli/proto_conversion:proto_utils",
-        "@abseil-cpp//absl/log:absl_log",
+        "//iamf/common:leb_generator",
         "@abseil-cpp//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "iamf_components_no_proto",
-    srcs = ["iamf_components.cc"],
-    hdrs = ["iamf_components.h"],
-    tags = ["nofixdeps"],
-    deps = [
-        ":loudness_calculator_factory_base",
-        ":obu_sequencer_base",
-        ":obu_sequencer_iamf",
-        "//iamf/cli/itu_1770_4:loudness_calculator_factory_itu_1770_4",
-        "@abseil-cpp//absl/log:absl_log",
-        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:string_view",
     ],
 )
 

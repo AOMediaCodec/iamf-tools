@@ -16,19 +16,13 @@
 #include <string>
 #include <vector>
 
-#include "absl/log/absl_log.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/itu_1770_4/loudness_calculator_factory_itu_1770_4.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_iamf.h"
-
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/proto_conversion/proto_utils.h"
-#endif
+#include "iamf/common/leb_generator.h"
 
 namespace iamf_tools {
 
@@ -37,38 +31,27 @@ CreateLoudnessCalculatorFactory() {
   return std::make_unique<LoudnessCalculatorFactoryItu1770_4>();
 }
 
-// TODO(b/585136603): Unroll the two args that depend on proto.
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 namespace {
 constexpr absl::string_view kOmitIamfFile = "";
 }  // namespace
 
 std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const std::string& output_iamf_directory,
-    const bool include_temporal_delimiters) {
-  const auto leb_generator =
-      CreateLebGenerator(user_metadata.test_vector_metadata().leb_generator());
-  if (leb_generator == nullptr) {
-    ABSL_LOG(ERROR) << "Failed to create LebGenerator.";
-    return {};
-  }
-
+    absl::string_view file_name_prefix,
+    const std::string& output_iamf_directory, bool include_temporal_delimiters,
+    const LebGenerator& leb_generator) {
   std::vector<std::unique_ptr<ObuSequencerBase>> obu_sequencers;
-  const std::string& prefix =
-      user_metadata.test_vector_metadata().file_name_prefix();
 
   // Create an OBU sequencer that writes to a standalone IAMF file.
   const std::string iamf_filename =
-      prefix.empty() ? std::string(kOmitIamfFile)
-                     : (std::filesystem::path(output_iamf_directory) /
-                        std::filesystem::path(absl::StrCat(prefix, ".iamf")))
-                           .string();
+      file_name_prefix.empty()
+          ? std::string(kOmitIamfFile)
+          : (std::filesystem::path(output_iamf_directory) /
+             std::filesystem::path(absl::StrCat(file_name_prefix, ".iamf")))
+                .string();
   obu_sequencers.emplace_back(std::make_unique<ObuSequencerIamf>(
-      iamf_filename, include_temporal_delimiters, *leb_generator));
+      iamf_filename, include_temporal_delimiters, leb_generator));
 
   return obu_sequencers;
 }
-#endif
 
 }  // namespace iamf_tools

@@ -437,10 +437,8 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:iamf_components",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/common:leb_generator",
         "@googletest//:gtest_main",
-        "@protobuf",
     ],
 )
 

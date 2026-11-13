@@ -37,10 +37,12 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/proto_conversion/output_audio_format_utils.h"
+#include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
+#include "iamf/common/leb_generator.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
@@ -295,12 +297,21 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
       user_metadata.encoder_control_metadata().output_rendered_file_format(),
       sample_processor_factory);
 
+  const std::unique_ptr<LebGenerator> leb_generator =
+      CreateLebGenerator(user_metadata.test_vector_metadata().leb_generator());
+  if (leb_generator == nullptr) {
+    return absl::InvalidArgumentError("Failed to create LebGenerator.");
+  }
+
   // Adapt the "IAMF Components" sequencer to match the `IamfEncoder`. This
   // helps automatically create the output file(s).
   IamfEncoder::ObuSequencerFactory obu_sequencer_factory = [&]() {
-    return CreateObuSequencers(user_metadata, output_iamf_directory,
-                               user_metadata.temporal_delimiter_metadata()
-                                   .enable_temporal_delimiters());
+    return CreateObuSequencers(
+        user_metadata.test_vector_metadata().file_name_prefix(),
+        output_iamf_directory,
+        user_metadata.temporal_delimiter_metadata()
+            .enable_temporal_delimiters(),
+        *leb_generator);
   };
 
   auto iamf_encoder =

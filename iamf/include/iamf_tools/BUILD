@@ -81,7 +81,7 @@ cc_library(
         ":iamf_encoder_interface",
         ":iamf_tools_encoder_api_types",
         "//iamf/cli:descriptor_obus",
-        "//iamf/cli:iamf_components_no_proto",
+        "//iamf/cli:iamf_components",
         "//iamf/cli:iamf_encoder_no_proto",
         "//iamf/cli:iamf_lite_encoder_factory_utils",
         "//iamf/cli:rendering_mix_presentation_finalizer",
