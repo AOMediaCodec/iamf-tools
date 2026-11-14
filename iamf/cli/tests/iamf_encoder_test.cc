@@ -42,6 +42,7 @@
 #include "iamf/cli/proto/metadata_obu.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/output_audio_format.pb.h"
+#include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"

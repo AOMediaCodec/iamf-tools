@@ -26,6 +26,7 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_generator.h"
 #include "iamf/cli/channel_label.h"
@@ -37,6 +38,7 @@
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_streaming_iamf.h"
+#include "iamf/cli/parameter_block_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
@@ -53,7 +55,6 @@
 #ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
 #endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 ABSL_POINTERS_DEFAULT_NONNULL
@@ -243,6 +244,23 @@ class IamfEncoder : public api::IamfEncoderInterface {
       const api::IamfTemporalUnitData& temporal_unit_data) override;
 #endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
+  /*!\brief Adds audio data and parameter block metadata for one temporal unit.
+   *
+   * \param audio_element_id_to_data Map of Audio Element IDs to channel label
+   *        and audio sample spans `[channel_label][sample]` normalized to
+   *        `[-1.0, 1.0]`.
+   * \param parameter_blocks Parameter block metadata starting in this temporal
+   *        unit.
+   * \return `api::IamfStatus::OkStatus()` if successful. A specific status on
+   *         failure.
+   */
+  api::IamfStatus Encode(
+      const absl::flat_hash_map<
+          DecodedUleb128,
+          absl::flat_hash_map<ChannelLabel::Label, std::span<const double>>>&
+          audio_element_id_to_data,
+      absl::Span<const ParameterBlockMetadata> parameter_blocks);
+
   /*!\brief Adds planar audio data for one temporal unit of a single-element
    *        encoder.
    *
@@ -373,9 +391,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
       std::unique_ptr<
           absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>
           param_definition_variants,
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
       ParameterBlockGenerator&& parameter_block_generator,
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
       std::unique_ptr<ParametersManager> parameters_manager,
       const DemixingManager& demixing_manager,
       std::unique_ptr<AudioFrameGenerator> audio_frame_generator,
@@ -393,9 +409,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
         descriptor_arbitrary_obus_(std::move(descriptor_arbitrary_obus)),
         timestamp_to_arbitrary_obus_(std::move(timestamp_to_arbitrary_obus)),
         param_definition_variants_(std::move(param_definition_variants)),
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
         parameter_block_generator_(std::move(parameter_block_generator)),
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
         parameters_manager_(std::move(parameters_manager)),
         demixing_manager_(demixing_manager),
         audio_frame_generator_(std::move(audio_frame_generator)),
@@ -403,8 +417,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
         global_timing_module_(std::move(global_timing_module)),
         mix_presentation_finalizer_(std::move(mix_presentation_finalizer)),
         obu_sequencers_(std::move(obu_sequencers)),
-        streaming_obu_sequencer_(std::move(streaming_obu_sequencer)) {
-  }
+        streaming_obu_sequencer_(std::move(streaming_obu_sequencer)) {}
 
   const bool validate_user_loudness_;
 
@@ -449,9 +462,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
 
   // Various generators and modules used when generating data OBUs iteratively.
   // Some are held in `unique_ptr` for reference stability after move.
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
   ParameterBlockGenerator parameter_block_generator_;
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
   std::unique_ptr<ParametersManager> parameters_manager_;
   const DemixingManager demixing_manager_;
   std::unique_ptr<AudioFrameGenerator> audio_frame_generator_;

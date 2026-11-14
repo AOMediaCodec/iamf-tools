@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
+#include "iamf/cli/parameter_block_generator.h"
 
 #include <array>
 #include <cstdint>
@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -34,6 +35,7 @@
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_metadata_converter.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/q_format_or_floating_point.h"
@@ -79,7 +81,9 @@ TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
   // Add metadata.
   iamf_tools_cli_proto::UserMetadata user_metadata;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
-    EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
+    const auto converted_metadata = ConvertToParameterBlockMetadata(metadata);
+    ASSERT_THAT(converted_metadata, IsOk());
+    EXPECT_THAT(generator.AddMetadata(*converted_metadata), IsOk());
   }
 
   // Generate.
@@ -198,7 +202,9 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
-    EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
+    const auto converted_metadata = ConvertToParameterBlockMetadata(metadata);
+    ASSERT_THAT(converted_metadata, IsOk());
+    EXPECT_THAT(generator.AddMetadata(*converted_metadata), IsOk());
 
     // Generate parameter blocks.
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
@@ -304,7 +310,9 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
-    EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
+    const auto converted_metadata = ConvertToParameterBlockMetadata(metadata);
+    ASSERT_THAT(converted_metadata, IsOk());
+    EXPECT_THAT(generator.AddMetadata(*converted_metadata), IsOk());
 
     // Generate parameter blocks.
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
@@ -467,7 +475,9 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
-    EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
+    const auto converted_metadata = ConvertToParameterBlockMetadata(metadata);
+    ASSERT_THAT(converted_metadata, IsOk());
+    EXPECT_THAT(generator.AddMetadata(*converted_metadata), IsOk());
 
     // Generate.
     // Set the decoded frames identical to the original frames, so that recon
@@ -560,8 +570,10 @@ TEST(ParameterBlockGeneratorTest,
 
   // Add and generate.
   ASSERT_EQ(user_metadata.parameter_block_metadata_size(), 1);
-  EXPECT_THAT(generator.AddMetadata(user_metadata.parameter_block_metadata(0)),
-              IsOk());
+  const auto converted_metadata = ConvertToParameterBlockMetadata(
+      user_metadata.parameter_block_metadata(0));
+  ASSERT_THAT(converted_metadata, IsOk());
+  EXPECT_THAT(generator.AddMetadata(*converted_metadata), IsOk());
   std::list<ParameterBlockWithData> output_parameter_blocks;
   EXPECT_THAT(
       generator.GenerateMixGain(*global_timing_module, output_parameter_blocks),
@@ -601,7 +613,9 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   // will fail because the generator cannot find the corresponding param
   // definitions for the parameter (i.e. they are "stray").
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
-    EXPECT_THAT(generator.AddMetadata(metadata), Not(IsOk()));
+    const auto converted_metadata = ConvertToParameterBlockMetadata(metadata);
+    ASSERT_THAT(converted_metadata, IsOk());
+    EXPECT_THAT(generator.AddMetadata(*converted_metadata), Not(IsOk()));
   }
 }
 
@@ -649,7 +663,9 @@ TEST(GenerateMixGainParameterBlocks, IgnoresMismatchedAnimationType) {
                                     param_definition_variants);
   ASSERT_THAT(generator.Initialize(audio_elements), IsOk());
   // Add metadata.
-  EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
+  const auto converted_metadata = ConvertToParameterBlockMetadata(metadata);
+  ASSERT_THAT(converted_metadata, IsOk());
+  EXPECT_THAT(generator.AddMetadata(*converted_metadata), IsOk());
   const auto global_timing_module =
       GlobalTimingModule::Create(audio_elements, param_definition_variants);
   ASSERT_THAT(global_timing_module, NotNull());
@@ -669,6 +685,53 @@ TEST(GenerateMixGainParameterBlocks, IgnoresMismatchedAnimationType) {
       static_cast<const MixGainParameterData*>(
           parameter_block.obu->subblocks_[0].get());
   EXPECT_EQ(mix_gain_parameter_data->GetAnimationType(), AnimationType::kStep);
+}
+
+TEST(GenerateMixGainParameterBlocks,
+     GeneratesLinearMixGainBlockFromProtoFreeMetadata) {
+  CodecConfigsById codec_config_obus;
+  AudioElementsById audio_elements;
+  InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
+                             codec_config_obus, audio_elements);
+  const int16_t kDefaultMixGain = -123;
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants;
+  AddMixGainParamDefinition(kDefaultMixGain, param_definition_variants);
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
+                                    param_definition_variants);
+  ASSERT_THAT(generator.Initialize(audio_elements), IsOk());
+  const auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definition_variants);
+  ASSERT_THAT(global_timing_module, NotNull());
+  const ParameterBlockMetadata metadata = {
+      .parameter_id = kParameterId,
+      .duration = 8,
+      .constant_subblock_duration = 8,
+      .subblocks = {{.subblock_duration = 8,
+                     .parameter_data = MixGainParameterData::Make(
+                         AnimatedParameterData<int16_t>::MakeLinear(100,
+                                                                    200))}},
+      .start_timestamp = 0,
+  };
+  ASSERT_THAT(generator.AddMetadata(metadata), IsOk());
+
+  std::list<ParameterBlockWithData> output_parameter_blocks;
+  const absl::Status status =
+      generator.GenerateMixGain(*global_timing_module, output_parameter_blocks);
+
+  ASSERT_THAT(status, IsOk());
+  ASSERT_EQ(output_parameter_blocks.size(), 1);
+  const auto& parameter_block = output_parameter_blocks.front();
+  EXPECT_EQ(parameter_block.start_timestamp, 0);
+  EXPECT_EQ(parameter_block.end_timestamp, 8);
+  ASSERT_EQ(parameter_block.obu->subblocks_.size(), 1);
+  const auto* mix_gain_parameter_data =
+      static_cast<const MixGainParameterData*>(
+          parameter_block.obu->subblocks_[0].get());
+  EXPECT_EQ(mix_gain_parameter_data->GetAnimationType(),
+            AnimationType::kLinear);
+  EXPECT_EQ(mix_gain_parameter_data->param_data,
+            AnimatedParameterData<int16_t>::MakeLinear(100, 200));
 }
 
 }  // namespace

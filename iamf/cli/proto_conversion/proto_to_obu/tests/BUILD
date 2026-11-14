@@ -217,10 +217,11 @@ cc_test(
         "//iamf/cli:global_timing_module",
         "//iamf/cli:labeled_frame",
         "//iamf/cli:obu_with_data_generator",
+        "//iamf/cli:parameter_block_generator",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/cli/proto_conversion/proto_to_obu:parameter_block_generator",
+        "//iamf/cli/proto_conversion/proto_to_obu:parameter_block_metadata_converter",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common:q_format_or_floating_point",
@@ -235,10 +236,28 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_variant",
         "//iamf/obu/tests:obu_test_utils",
         "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@googletest//:gtest_main",
         "@protobuf",
+    ],
+)
+
+cc_test(
+    name = "parameter_block_metadata_converter_test",
+    srcs = ["parameter_block_metadata_converter_test.cc"],
+    deps = [
+        "//iamf/cli:parameter_block_generator",
+        "//iamf/cli/proto:obu_header_cc_proto",
+        "//iamf/cli/proto:parameter_block_cc_proto",
+        "//iamf/cli/proto:parameter_data_cc_proto",
+        "//iamf/cli/proto_conversion/proto_to_obu:parameter_block_metadata_converter",
+        "//iamf/obu:animated_parameter_data",
+        "//iamf/obu:parameter_data",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@googletest//:gtest_main",
     ],
 )
 

@@ -10,10 +10,12 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_PROTO_CONVERSION_PROTO_TO_OBU_PARAMETER_BLOCK_GENERATOR_H_
-#define CLI_PROTO_CONVERSION_PROTO_TO_OBU_PARAMETER_BLOCK_GENERATOR_H_
+#ifndef CLI_PARAMETER_BLOCK_GENERATOR_H_
+#define CLI_PARAMETER_BLOCK_GENERATOR_H_
 
 #include <list>
+#include <variant>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -21,14 +23,38 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/cli/proto/parameter_block.pb.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
+#include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 // TODO(b/296815263): Add tests for this class.
+
+/*!\brief Proto-free metadata for a single subblock in a Parameter Block OBU.*/
+struct ParameterSubblockMetadata {
+  /*!\brief Type-specific parameter data for one subblock.*/
+  using ParameterDataVariant =
+      std::variant<std::monostate, MixGainParameterData,
+                   DemixingInfoParameterData, ReconGainInfoParameterData>;
+
+  DecodedUleb128 subblock_duration = 0;
+  ParameterDataVariant parameter_data;
+};
+
+/*!\brief Proto-free metadata describing a Parameter Block OBU.*/
+struct ParameterBlockMetadata {
+  DecodedUleb128 parameter_id = 0;
+  DecodedUleb128 duration = 0;
+  DecodedUleb128 constant_subblock_duration = 0;
+  std::vector<ParameterSubblockMetadata> subblocks;
+  InternalTimestamp start_timestamp = 0;
+  ObuHeader obu_header;
+};
 
 /*!\brief Generator of parameter blocks.
  *
@@ -75,12 +101,10 @@ class ParameterBlockGenerator {
 
   /*!\brief Adds one parameter block metadata.
    *
-   * \param parameter_block_metadata parameter block metadata to add.
+   * \param parameter_block_metadata Parameter block metadata to add.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status AddMetadata(
-      const iamf_tools_cli_proto::ParameterBlockObuMetadata&
-          parameter_block_metadata);
+  absl::Status AddMetadata(ParameterBlockMetadata parameter_block_metadata);
 
   /*!\brief Generates a list of demixing parameter blocks with data.
    *
@@ -122,8 +146,11 @@ class ParameterBlockGenerator {
  private:
   /*!\brief Generates a list of parameter blocks with data.
    *
-   * \param proto_metadata_list Input list of user-defined metadata about
-   *        parameter blocks.
+   * \param id_to_labeled_frame Data structure for samples, used when computing
+   *        recon gains.
+   * \param id_to_labeled_decoded_frame Data structure for decoded samples, used
+   *        when computing recon gains.
+   * \param metadata_list Input list of metadata about parameter blocks.
    * \param global_timing_module Global Timing Module.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
@@ -131,8 +158,7 @@ class ParameterBlockGenerator {
   absl::Status GenerateParameterBlocks(
       const IdLabeledFrameMap* id_to_labeled_frame,
       const IdLabeledFrameMap* id_to_labeled_decoded_frame,
-      std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
-          proto_metadata_list,
+      std::list<ParameterBlockMetadata>& metadata_list,
       GlobalTimingModule& global_timing_module,
       std::list<ParameterBlockWithData>& output_parameter_blocks);
 
@@ -147,12 +173,11 @@ class ParameterBlockGenerator {
 
   // User metadata about Parameter Block OBUs categorized based on
   // the parameter definition type.
-  absl::flat_hash_map<
-      ParamDefinition::ParameterDefinitionType,
-      std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>>
-      typed_proto_metadata_;
+  absl::flat_hash_map<ParamDefinition::ParameterDefinitionType,
+                      std::list<ParameterBlockMetadata>>
+      typed_metadata_;
 };
 
 }  // namespace iamf_tools
 
-#endif  // CLI_PROTO_CONVERSION_PROTO_TO_OBU_PARAMETER_BLOCK_GENERATOR_H_
+#endif  // CLI_PARAMETER_BLOCK_GENERATOR_H_

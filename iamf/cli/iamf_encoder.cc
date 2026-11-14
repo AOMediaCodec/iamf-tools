@@ -48,6 +48,7 @@
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_streaming_iamf.h"
+#include "iamf/cli/parameter_block_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
@@ -77,7 +78,7 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/ia_sequence_header_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/metadata_obu_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/mix_presentation_generator.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_metadata_converter.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
@@ -302,6 +303,17 @@ GetOrderedLabelsForAudioElement(const AudioElementWithData& audio_element) {
   }
 }
 
+void CacheSamples(std::span<const double> samples,
+                  std::vector<InternalSampleType>& cached_samples) {
+  if (samples.empty()) {
+    return;
+  }
+  cached_samples.resize(samples.size());
+  std::transform(
+      samples.begin(), samples.end(), cached_samples.begin(),
+      [](double sample) { return static_cast<InternalSampleType>(sample); });
+}
+
 }  // namespace
 
 std::vector<std::unique_ptr<ObuSequencerBase>>
@@ -310,9 +322,7 @@ IamfEncoder::CreateNoObuSequencers() {
 }
 
 absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::CreateInternal(
-    bool validate_user_loudness,
-    // Only used when IAMF_TOOLS_ENCODER_INCLUDE_PROTO is defined.
-    [[maybe_unused]] bool override_computed_recon_gains,
+    bool validate_user_loudness, bool override_computed_recon_gains,
     bool enable_temporal_delimiters, const LebGenerator& leb_generator,
     IASequenceHeaderObu ia_sequence_header_obu,
     std::list<MetadataObu> metadata_obus,
@@ -353,12 +363,10 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::CreateInternal(
         "Failed to initialize the global timing module");
   }
 
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
   // Initialize the parameter block generator.
   ParameterBlockGenerator parameter_block_generator(
       override_computed_recon_gains, *param_definition_variants);
   RETURN_IF_NOT_OK(parameter_block_generator.Initialize(*audio_elements));
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
   // Put generated parameter blocks in a manager that supports easier queries.
   auto parameters_manager = ParametersManager::Create(*audio_elements);
@@ -414,13 +422,11 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::CreateInternal(
       std::move(descriptor_arbitrary_obus),
       std::move(timestamp_to_arbitrary_obus),
       std::move(param_definition_variants),
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-      std::move(parameter_block_generator),
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-      std::move(*parameters_manager), *demixing_manager,
-      *std::move(audio_frame_generator), std::move(audio_frame_decoder),
-      std::move(global_timing_module), std::move(*mix_presentation_finalizer),
-      std::move(obu_sequencers), std::move(streaming_obu_sequencer)));
+      std::move(parameter_block_generator), std::move(*parameters_manager),
+      *demixing_manager, *std::move(audio_frame_generator),
+      std::move(audio_frame_decoder), std::move(global_timing_module),
+      std::move(*mix_presentation_finalizer), std::move(obu_sequencers),
+      std::move(streaming_obu_sequencer)));
 }
 
 #ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
@@ -644,22 +650,23 @@ absl::Status IamfEncoder::GetInputTimestamp(
 #ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 api::IamfStatus IamfEncoder::Encode(
     const api::IamfTemporalUnitData& temporal_unit_data) {
-  // Parameter blocks need to cover any delayed or trimmed frames. They may be
-  // needed even if `finalize_encode_called_` is true.
+  std::vector<ParameterBlockMetadata> parameter_blocks;
+  parameter_blocks.reserve(
+      temporal_unit_data.parameter_block_id_to_metadata.size());
   for (const auto& [parameter_block_id, raw_parameter_block_metadata] :
        temporal_unit_data.parameter_block_id_to_metadata) {
-    ParameterBlockObuMetadata parameter_block_metadata;
-    if (!parameter_block_metadata.ParseFromString(
-            raw_parameter_block_metadata)) {
+    ParameterBlockObuMetadata proto_metadata;
+    if (!proto_metadata.ParseFromString(raw_parameter_block_metadata)) {
       return api::IamfStatus::ErrorStatus(
           "Failed to deserialize a `ParameterBlockObuMetadata` protocol "
           "buffer.");
     }
-    if (const absl::Status status =
-            parameter_block_generator_.AddMetadata(parameter_block_metadata);
-        !status.ok()) {
-      return AbslToIamfStatus(status);
+    auto parameter_block_metadata =
+        ConvertToParameterBlockMetadata(proto_metadata);
+    if (!parameter_block_metadata.ok()) {
+      return AbslToIamfStatus(parameter_block_metadata.status());
     }
+    parameter_blocks.push_back(*std::move(parameter_block_metadata));
   }
 
   if (finalize_encode_called_) {
@@ -669,14 +676,21 @@ api::IamfStatus IamfEncoder::Encode(
           << "Calling `Encode()` with samples after "
              "`FinalizeEncode()` drops the audio samples.";
     }
-
-    return api::IamfStatus::OkStatus();
+    return Encode(
+        absl::flat_hash_map<DecodedUleb128,
+                            absl::flat_hash_map<ChannelLabel::Label,
+                                                std::span<const double>>>{},
+        parameter_blocks);
   }
 
-  // TODO(b/428968283): Validate that the input labels are consistent with the
-  //                    expected labels in the audio elements.
+  absl::flat_hash_map<
+      DecodedUleb128,
+      absl::flat_hash_map<ChannelLabel::Label, std::span<const double>>>
+      audio_element_id_to_data;
   for (const auto& [audio_element_id, labeled_samples] :
        temporal_unit_data.audio_element_id_to_data) {
+    auto& converted_labeled_samples =
+        audio_element_id_to_data[audio_element_id];
     for (const auto& [label, samples] : labeled_samples) {
       ChannelLabelMessage channel_label_message;
       if (!channel_label_message.ParseFromString(label)) {
@@ -688,26 +702,54 @@ api::IamfStatus IamfEncoder::Encode(
       if (!internal_label.ok()) {
         return AbslToIamfStatus(internal_label.status());
       }
+      converted_labeled_samples[*internal_label] = samples;
+    }
+  }
 
+  return Encode(audio_element_id_to_data, parameter_blocks);
+}
+#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
+
+api::IamfStatus IamfEncoder::Encode(
+    const absl::flat_hash_map<
+        DecodedUleb128,
+        absl::flat_hash_map<ChannelLabel::Label, std::span<const double>>>&
+        audio_element_id_to_data,
+    absl::Span<const ParameterBlockMetadata> parameter_blocks) {
+  // Parameter blocks need to cover any delayed or trimmed frames. They may be
+  // needed even if `finalize_encode_called_` is true.
+  for (const auto& parameter_block_metadata : parameter_blocks) {
+    if (const absl::Status status =
+            parameter_block_generator_.AddMetadata(parameter_block_metadata);
+        !status.ok()) {
+      return AbslToIamfStatus(status);
+    }
+  }
+
+  if (finalize_encode_called_) {
+    // Avoid adding any samples after they are finalized.
+    if (!audio_element_id_to_data.empty()) {
+      ABSL_LOG_FIRST_N(WARNING, 3)
+          << "Calling `Encode()` with samples after "
+             "`FinalizeEncode()` drops the audio samples.";
+    }
+    return api::IamfStatus::OkStatus();
+  }
+
+  // TODO(b/428968283): Validate that the input labels are consistent with the
+  //                    expected labels in the audio elements.
+  for (const auto& [audio_element_id, labeled_samples] :
+       audio_element_id_to_data) {
+    for (const auto& [label, samples] : labeled_samples) {
       if (samples.empty()) {
         continue;
       }
-
-      // Cache the samples as the internal type.
-      auto& cached_samples =
-          id_to_labeled_samples_[audio_element_id][*internal_label];
-      cached_samples.resize(samples.size());
-      // Cast double to InternalSampleType.
-      std::transform(samples.begin(), samples.end(), cached_samples.begin(),
-                     [](double sample) {
-                       return static_cast<InternalSampleType>(sample);
-                     });
+      CacheSamples(samples, id_to_labeled_samples_[audio_element_id][label]);
     }
   }
 
   return api::IamfStatus::OkStatus();
 }
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 api::IamfStatus IamfEncoder::Encode(
     std::span<const std::span<const double>> channel_samples) {
@@ -753,16 +795,7 @@ api::IamfStatus IamfEncoder::Encode(
   }
 
   for (size_t i = 0; i < ordered_labels->size(); ++i) {
-    const auto& samples = channel_samples[i];
-    if (samples.empty()) {
-      continue;
-    }
-
-    auto& cached_samples = labeled_samples[(*ordered_labels)[i]];
-    cached_samples.resize(samples.size());
-    std::transform(
-        samples.begin(), samples.end(), cached_samples.begin(),
-        [](double sample) { return static_cast<InternalSampleType>(sample); });
+    CacheSamples(channel_samples[i], labeled_samples[(*ordered_labels)[i]]);
   }
 
   return api::IamfStatus::OkStatus();
@@ -774,7 +807,6 @@ api::IamfStatus IamfEncoder::OutputTemporalUnit(
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<ArbitraryObu> temporal_unit_arbitrary_obus;
 
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
   // Generate mix gain and demixing parameter blocks.
   if (const absl::Status status = parameter_block_generator_.GenerateDemixing(
           *global_timing_module_, temp_demixing_parameter_blocks_);
@@ -786,7 +818,6 @@ api::IamfStatus IamfEncoder::OutputTemporalUnit(
       !status.ok()) {
     return AbslToIamfStatus(status);
   }
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
   // Add the newly generated demixing parameter blocks to the parameters
   // manager so they can be easily queried by the audio frame generator.
@@ -899,7 +930,6 @@ api::IamfStatus IamfEncoder::OutputTemporalUnit(
     return AbslToIamfStatus(id_to_labeled_decoded_frame.status());
   }
 
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
   // Recon gain parameter blocks are generated based on the original and
   // demixed audio frames.
   if (const absl::Status status = parameter_block_generator_.GenerateReconGain(
@@ -908,7 +938,6 @@ api::IamfStatus IamfEncoder::OutputTemporalUnit(
       !status.ok()) {
     return AbslToIamfStatus(status);
   }
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
   // Move all generated parameter blocks belonging to this temporal unit to
   // the output.

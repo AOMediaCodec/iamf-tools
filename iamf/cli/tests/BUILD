@@ -464,6 +464,7 @@ cc_test(
         "//iamf/cli/proto:metadata_obu_cc_proto",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:output_audio_format_cc_proto",
+        "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/user_metadata_builder:audio_element_metadata_builder",
