@@ -27,12 +27,14 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_processor.h"
+#include "iamf/cli/parameter_block_generator.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
@@ -45,6 +47,7 @@
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/proto_iamf_encoder.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
@@ -58,6 +61,7 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/loudness_info.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
@@ -288,12 +292,12 @@ class IamfEncoderTest : public ::testing::Test {
     AddMixPresentation(user_metadata_);
   }
 
-  IamfEncoder CreateExpectOk() {
-    auto iamf_encoder = IamfEncoder::Create(
+  ProtoIamfEncoder CreateExpectOk() {
+    auto iamf_encoder = ProtoIamfEncoder::Create(
         user_metadata_, trimming_settings_, loudness_calculator_factory_.get(),
         sample_processor_factory_, obu_sequencer_factory_);
     EXPECT_THAT(iamf_encoder, IsOkAndHolds(NotNull()));
-    // Most users can use the `IamfEncoder` on the heap. For convenience, we
+    // Most users can use `ProtoIamfEncoder` on the heap. For convenience, we
     // check that it is valid and unwrap it.
     return std::move(**iamf_encoder);
   }
@@ -314,11 +318,11 @@ class IamfEncoderTest : public ::testing::Test {
 TEST_F(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
   user_metadata_.Clear();
 
-  EXPECT_THAT(
-      IamfEncoder::Create(user_metadata_, trimming_settings_,
-                          loudness_calculator_factory_.get(),
-                          sample_processor_factory_, obu_sequencer_factory_),
-      Not(IsOk()));
+  EXPECT_THAT(ProtoIamfEncoder::Create(user_metadata_, trimming_settings_,
+                                       loudness_calculator_factory_.get(),
+                                       sample_processor_factory_,
+                                       obu_sequencer_factory_),
+              Not(IsOk()));
 }
 
 TEST_F(IamfEncoderTest, GetRedundatantDescriptorObusIsUnimplemented) {
@@ -520,7 +524,7 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   auto iamf_encoder_to_move_from = CreateExpectOk();
 
   // Move the encoder, and use it.
-  IamfEncoder iamf_encoder = std::move(iamf_encoder_to_move_from);
+  ProtoIamfEncoder iamf_encoder = std::move(iamf_encoder_to_move_from);
   std::vector<uint8_t> output_obus;
   bool unused_output_obus_are_finalized = false;
   EXPECT_TRUE(iamf_encoder
@@ -956,6 +960,66 @@ TEST_F(IamfEncoderTest,
   EXPECT_FALSE(encode_status.ok());
   EXPECT_THAT(encode_status.error_message,
               testing::HasSubstr("requires exactly one audio element"));
+}
+
+TEST_F(IamfEncoderTest,
+       CreateFromObusEncodesLabeledSamplesAndProtoFreeParameterBlocks) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  auto codec_config_obus = std::make_unique<CodecConfigsById>();
+  AddLpcmCodecConfig(kCodecConfigId, kNumSamplesPerFrame, kExpectedPcmBitDepth,
+                     /*sample_rate=*/16000, *codec_config_obus);
+  auto audio_elements = std::make_unique<AudioElementsById>();
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kAudioElementId, kCodecConfigId,
+      {kStereoSubstreamId}, *codec_config_obus, *audio_elements);
+  MixPresentationObus mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      /*mix_presentation_id=*/42, {kAudioElementId}, kParameterBlockId,
+      /*common_parameter_rate=*/16000, mix_presentation_obus);
+  auto encoder =
+      std::make_unique<LpcmEncoder>(codec_config_obus->at(kCodecConfigId),
+                                    SubstreamChannelCount::MakeCoupled());
+  ASSERT_THAT(encoder->Initialize(/*validate_codec_delay=*/true), IsOk());
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  substream_id_to_encoder.emplace(kStereoSubstreamId, std::move(encoder));
+  auto iamf_encoder = IamfEncoder::CreateFromObus(
+      kIaSequenceHeader, std::move(codec_config_obus),
+      std::move(audio_elements), std::move(mix_presentation_obus),
+      std::move(substream_id_to_encoder),
+      /*enable_temporal_delimiters=*/false, trimming_settings_,
+      loudness_calculator_factory_.get(), sample_processor_factory_,
+      obu_sequencer_factory_);
+  ASSERT_THAT(iamf_encoder, IsOkAndHolds(NotNull()));
+
+  const absl::flat_hash_map<
+      DecodedUleb128,
+      absl::flat_hash_map<ChannelLabel::Label, std::span<const double>>>
+      labeled_samples = {{kAudioElementId,
+                          {{ChannelLabel::kL2, kEightZeroSamples},
+                           {ChannelLabel::kR2, kEightZeroSamples}}}};
+  const ParameterBlockMetadata parameter_block = {
+      .parameter_id = kParameterBlockId,
+      .duration = kNumSamplesPerFrame,
+      .constant_subblock_duration = kNumSamplesPerFrame,
+      .subblocks = {{.subblock_duration = kNumSamplesPerFrame,
+                     .parameter_data = MixGainParameterData{}}},
+      .start_timestamp = 0,
+  };
+
+  const api::IamfStatus encode_status =
+      (*iamf_encoder)->Encode(labeled_samples, {parameter_block});
+  const api::IamfStatus finalize_status = (*iamf_encoder)->FinalizeEncode();
+  std::vector<uint8_t> output_obus;
+  const api::IamfStatus output_status =
+      (*iamf_encoder)->OutputTemporalUnit(output_obus);
+
+  EXPECT_TRUE(encode_status.ok()) << encode_status.error_message;
+  EXPECT_TRUE(finalize_status.ok()) << finalize_status.error_message;
+  EXPECT_TRUE(output_status.ok()) << output_status.error_message;
+  EXPECT_FALSE(output_obus.empty());
 }
 
 // TODO(b/349321277): Add more tests.

@@ -45,17 +45,11 @@
 #include "iamf/common/leb_generator.h"
 #include "iamf/include/iamf_tools/iamf_encoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
-#include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
-
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 ABSL_POINTERS_DEFAULT_NONNULL
 
@@ -98,6 +92,13 @@ namespace iamf_tools {
  */
 class IamfEncoder : public api::IamfEncoderInterface {
  public:
+  /*!\brief Factory to create an `AudioFrameGenerator`. */
+  using AudioFrameGeneratorFactory = absl::AnyInvocable<
+      absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull>(
+          const DescriptorObus::AudioElementsById& audio_elements,
+          ParametersManager& parameters_manager,
+          GlobalTimingModule& global_timing_module)>;
+
   /*!\brief Factory to create `ObuSequencerBases`. */
   typedef absl::AnyInvocable<std::vector<std::unique_ptr<ObuSequencerBase>>()
                                  const>
@@ -109,29 +110,51 @@ class IamfEncoder : public api::IamfEncoderInterface {
    */
   static std::vector<std::unique_ptr<ObuSequencerBase>> CreateNoObuSequencers();
 
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-  /*!\brief Factory function to create an `IamfEncoder`.
+  /*!\brief Creates an `IamfEncoder` from proto-free OBUs and factories.
    *
-   * \param user_metadata Input user metadata describing the IAMF stream.
+   * \param validate_user_loudness Whether to validate user-provided loudness.
+   * \param override_computed_recon_gains Whether to override computed
+   *        reconstruction gains with user-provided values.
+   * \param enable_temporal_delimiters Whether to insert temporal delimiter
+   *        OBUs into the output stream.
+   * \param leb_generator Generator used when writing ULEB128 fields.
+   * \param ia_sequence_header_obu IA Sequence Header OBU.
+   * \param metadata_obus List of Metadata OBUs.
+   * \param codec_config_obus Map of Codec Config IDs to OBUs.
+   * \param audio_elements Map of Audio Element IDs to OBUs with data.
+   * \param mix_presentation_obus List of preliminary Mix Presentation OBUs.
+   * \param descriptor_arbitrary_obus Descriptor-section arbitrary OBUs.
+   * \param timestamp_to_arbitrary_obus Data-section arbitrary OBUs keyed by
+   *        insertion tick.
    * \param trimming_settings Trimming settings to configure the rendering,
-   *        or `std::nullopt` to disable rendering. This is for creating
-   *        layout renderers to measure loudness.
+   *        or `std::nullopt` to disable rendering.
    * \param loudness_calculator_factory Factory to create loudness calculators
    *        to measure the loudness of the output layouts.
    * \param sample_processor_factory Factory to create processors for use after
    *        rendering.
    * \param obu_sequencer_factory Factory to create `ObuSequencerBases`.
+   * \param audio_frame_generator_factory Factory to create the
+   *        `AudioFrameGenerator`.
    * \return Encoder on success, or a specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<IamfEncoder>> Create(
-      const iamf_tools_cli_proto::UserMetadata& user_metadata,
+      bool validate_user_loudness, bool override_computed_recon_gains,
+      bool enable_temporal_delimiters, const LebGenerator& leb_generator,
+      IASequenceHeaderObu ia_sequence_header_obu,
+      std::list<MetadataObu> metadata_obus,
+      std::unique_ptr<DescriptorObus::CodecConfigsById> codec_config_obus,
+      std::unique_ptr<DescriptorObus::AudioElementsById> audio_elements,
+      DescriptorObus::MixPresentationObus mix_presentation_obus,
+      std::list<ArbitraryObu> descriptor_arbitrary_obus,
+      absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>
+          timestamp_to_arbitrary_obus,
       std::optional<TrimmingSettings> trimming_settings,
       const LoudnessCalculatorFactoryBase* absl_nullable
           loudness_calculator_factory,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
-      const ObuSequencerFactory& obu_sequencer_factory);
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
+      const ObuSequencerFactory& obu_sequencer_factory,
+      AudioFrameGeneratorFactory audio_frame_generator_factory);
 
   /*!\brief Factory function to create an `IamfEncoder` from OBU objects.
    *
@@ -225,25 +248,6 @@ class IamfEncoder : public api::IamfEncoderInterface {
    */
   absl::Status GetInputTimestamp(InternalTimestamp& input_timestamp);
 
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-  /*!\brief Adds audio data and parameter block metadata for one temporal unit.
-   *
-   * The best practice is to not call this function with samples after
-   * `FinalizeEncode()`. But it is OK if you do -- just that the added
-   * samples will be ignored and not encoded.
-   *
-   * Typically, an entire frame of audio should be added at once, and any
-   * associated parameter block metadata. The number of audio samples, was
-   * configured based on the `CodecConfigObu` metadata at encoder creation.
-   *
-   * \param temporal_unit_data Temporal unit to add.
-   * \return `api::IamfStatus::OkStatus()` if successful. A specific status on
-   *         failure.
-   */
-  api::IamfStatus Encode(
-      const api::IamfTemporalUnitData& temporal_unit_data) override;
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-
   /*!\brief Adds audio data and parameter block metadata for one temporal unit.
    *
    * \param audio_element_id_to_data Map of Audio Element IDs to channel label
@@ -328,31 +332,6 @@ class IamfEncoder : public api::IamfEncoderInterface {
   const std::list<ArbitraryObu>& GetDescriptorArbitraryObus() const;
 
  private:
-  using AudioFrameGeneratorFactory = absl::AnyInvocable<
-      absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull>(
-          const DescriptorObus::AudioElementsById& audio_elements,
-          ParametersManager& parameters_manager,
-          GlobalTimingModule& global_timing_module)>;
-
-  static absl::StatusOr<std::unique_ptr<IamfEncoder>> CreateInternal(
-      bool validate_user_loudness, bool override_computed_recon_gains,
-      bool enable_temporal_delimiters, const LebGenerator& leb_generator,
-      IASequenceHeaderObu ia_sequence_header_obu,
-      std::list<MetadataObu> metadata_obus,
-      std::unique_ptr<DescriptorObus::CodecConfigsById> codec_config_obus,
-      std::unique_ptr<DescriptorObus::AudioElementsById> audio_elements,
-      DescriptorObus::MixPresentationObus mix_presentation_obus,
-      std::list<ArbitraryObu> descriptor_arbitrary_obus,
-      absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>
-          timestamp_to_arbitrary_obus,
-      std::optional<TrimmingSettings> trimming_settings,
-      const LoudnessCalculatorFactoryBase* absl_nullable
-          loudness_calculator_factory,
-      const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-          sample_processor_factory,
-      const ObuSequencerFactory& obu_sequencer_factory,
-      AudioFrameGeneratorFactory audio_frame_generator_factory);
-
   /*!\brief Private constructor.
    *
    * Moves from the input arguments Some arguments are wrapped in unique

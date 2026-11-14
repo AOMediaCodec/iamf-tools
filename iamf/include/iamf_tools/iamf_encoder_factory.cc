@@ -25,6 +25,7 @@
 #include "iamf/cli/obu_sequencer_iamf.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/proto_iamf_encoder.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/include/iamf_tools/iamf_encoder_interface.h"
@@ -61,7 +62,7 @@ IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
         *leb_generator));
     return obu_sequencers;
   };
-  auto iamf_encoder = IamfEncoder::Create(
+  auto iamf_encoder = ProtoIamfEncoder::Create(
       user_metadata, iamf_tools::TrimmingSettings{},
       CreateLoudnessCalculatorFactory().get(),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
@@ -84,7 +85,7 @@ std::unique_ptr<IamfEncoderInterface> IamfEncoderFactory::CreateIamfEncoder(
 
   // Create an encoder, which is pre-configured with enough functionality to
   // measure loudness.
-  auto iamf_encoder = IamfEncoder::Create(
+  auto iamf_encoder = ProtoIamfEncoder::Create(
       user_metadata, iamf_tools::TrimmingSettings{},
       CreateLoudnessCalculatorFactory().get(),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,

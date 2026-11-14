@@ -64,36 +64,11 @@
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-#include "iamf/cli/proto/encoder_control_metadata.pb.h"
-#include "iamf/cli/proto/temporal_delimiter.pb.h"
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/proto_conversion/channel_label_utils.h"
-#include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/arbitrary_obu_generator.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator_factory.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/ia_sequence_header_generator.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/metadata_obu_generator.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/mix_presentation_generator.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_metadata_converter.h"
-#include "iamf/cli/proto_conversion/proto_utils.h"
-#include "iamf/common/utils/validation_utils.h"
-#include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-
 ABSL_POINTERS_DEFAULT_NONNULL
 
 namespace iamf_tools {
 
 namespace {
-
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-using ::iamf_tools_cli_proto::ChannelLabelMessage;
-using ::iamf_tools_cli_proto::ParameterBlockObuMetadata;
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 api::IamfStatus AbslToIamfStatus(const absl::Status& absl_status) {
   if (absl_status.ok()) {
@@ -321,7 +296,7 @@ IamfEncoder::CreateNoObuSequencers() {
   return {};
 }
 
-absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::CreateInternal(
+absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
     bool validate_user_loudness, bool override_computed_recon_gains,
     bool enable_temporal_delimiters, const LebGenerator& leb_generator,
     IASequenceHeaderObu ia_sequence_header_obu,
@@ -429,133 +404,6 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::CreateInternal(
       std::move(streaming_obu_sequencer)));
 }
 
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-namespace {
-// Arranges the `ArbitraryObu`s into the non-timestamped (descriptor) and
-// timestamped lists.
-void ArrangeArbitraryObus(
-    std::list<ArbitraryObu>& original_arbitrary_obus,
-    std::list<ArbitraryObu>& descriptor_arbitrary_obus,
-    absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>&
-        timestamp_to_arbitrary_obus) {
-  while (!original_arbitrary_obus.empty()) {
-    auto& arbitrary_obu = original_arbitrary_obus.front();
-    // Arrange to the timestamps slot (if present), or the untimestamped slot,
-    // which implies the OBUs are descriptor OBUs.
-    auto& list_to_move_to =
-        arbitrary_obu.insertion_tick_.has_value()
-            ? timestamp_to_arbitrary_obus[*arbitrary_obu.insertion_tick_]
-            : descriptor_arbitrary_obus;
-    list_to_move_to.push_back(std::move(arbitrary_obu));
-    original_arbitrary_obus.pop_front();
-  }
-}
-}  // namespace
-
-absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    std::optional<TrimmingSettings> trimming_settings,
-    const LoudnessCalculatorFactoryBase* absl_nullable
-        loudness_calculator_factory,
-    const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-        sample_processor_factory,
-    const ObuSequencerFactory& obu_sequencer_factory) {
-  // IA Sequence Header OBU. Only one is allowed.
-  if (user_metadata.ia_sequence_header_metadata_size() != 1) {
-    return absl::InvalidArgumentError(
-        "Only one IA Sequence Header allowed in an IA Sequence.");
-  }
-
-  std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
-  IaSequenceHeaderGenerator ia_sequence_header_generator(
-      user_metadata.ia_sequence_header_metadata(0));
-  RETURN_IF_NOT_OK(
-      ia_sequence_header_generator.Generate(ia_sequence_header_obu));
-  RETURN_IF_NOT_OK(
-      ValidateHasValue(ia_sequence_header_obu, "IA Sequence Header"));
-
-  // Metadata OBUs.
-  std::list<MetadataObu> metadata_obus;
-  MetadataObuGenerator metadata_obu_generator(
-      user_metadata.metadata_obu_metadata());
-  RETURN_IF_NOT_OK(metadata_obu_generator.Generate(metadata_obus));
-
-  // Codec Config OBUs.
-  // Held in a `unique_ptr`, so the underlying map can be moved without
-  // invalidating pointers.
-  auto codec_config_obus = std::make_unique<DescriptorObus::CodecConfigsById>();
-  CodecConfigGenerator codec_config_generator(
-      user_metadata.codec_config_metadata());
-  RETURN_IF_NOT_OK(codec_config_generator.Generate(*codec_config_obus));
-
-  // Audio Element OBUs.
-  // Held in a `unique_ptr`, so the underlying map can be moved without
-  // invalidating pointers.
-  auto audio_elements = std::make_unique<DescriptorObus::AudioElementsById>();
-  AudioElementGenerator audio_element_generator(
-      user_metadata.audio_element_metadata());
-  RETURN_IF_NOT_OK(
-      audio_element_generator.Generate(*codec_config_obus, *audio_elements));
-
-  // Generate the majority of Mix Presentation OBUs - loudness will be
-  // calculated after all temporal units have been pushed.
-  DescriptorObus::MixPresentationObus mix_presentation_obus;
-  MixPresentationGenerator mix_presentation_generator(
-      user_metadata.mix_presentation_metadata());
-  RETURN_IF_NOT_OK(mix_presentation_generator.Generate(
-      user_metadata.encoder_control_metadata().add_build_information_tag(),
-      mix_presentation_obus));
-
-  // Generate Arbitrary OBUs.
-  std::list<ArbitraryObu> unorganized_arbitrary_obus;
-  ArbitraryObuGenerator arbitrary_obu_generator(
-      user_metadata.arbitrary_obu_metadata());
-  RETURN_IF_NOT_OK(
-      arbitrary_obu_generator.Generate(unorganized_arbitrary_obus));
-  // Arrange the `ArbitraryObu`s into the non-timestamped (descriptor) and
-  // timestamped lists.
-  std::list<ArbitraryObu> descriptor_arbitrary_obus;
-  absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>
-      timestamp_to_arbitrary_obus;
-  ArrangeArbitraryObus(unorganized_arbitrary_obus, descriptor_arbitrary_obus,
-                       timestamp_to_arbitrary_obus);
-
-  const auto leb_generator =
-      CreateLebGenerator(user_metadata.test_vector_metadata().leb_generator());
-  if (leb_generator == nullptr) {
-    return absl::InvalidArgumentError("Failed to create LebGenerator.");
-  }
-
-  return CreateInternal(
-      user_metadata.test_vector_metadata().validate_user_loudness(),
-      user_metadata.test_vector_metadata().override_computed_recon_gains(),
-      user_metadata.temporal_delimiter_metadata().enable_temporal_delimiters(),
-      *leb_generator, *std::move(ia_sequence_header_obu),
-      std::move(metadata_obus), std::move(codec_config_obus),
-      std::move(audio_elements), std::move(mix_presentation_obus),
-      std::move(descriptor_arbitrary_obus),
-      std::move(timestamp_to_arbitrary_obus), trimming_settings,
-      loudness_calculator_factory, sample_processor_factory,
-      obu_sequencer_factory,
-      [&user_metadata](const DescriptorObus::AudioElementsById& elements,
-                       ParametersManager& parameters_manager,
-                       GlobalTimingModule& global_timing_module)
-          -> absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull> {
-        auto audio_element_id_to_downmixing_config =
-            CreateAudioElementIdToDownmixingConfig(user_metadata, elements);
-        if (!audio_element_id_to_downmixing_config.ok()) {
-          return audio_element_id_to_downmixing_config.status();
-        }
-        return CreateAudioFrameGeneratorFromMetadata(
-            user_metadata.audio_frame_metadata(),
-            user_metadata.codec_config_metadata(), elements,
-            DownmixerManager::Make(
-                *std::move(audio_element_id_to_downmixing_config)),
-            parameters_manager, global_timing_module);
-      });
-}
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-
 absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::CreateFromObus(
     IASequenceHeaderObu ia_sequence_header_obu,
     std::unique_ptr<DescriptorObus::CodecConfigsById> codec_config_obus,
@@ -575,7 +423,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::CreateFromObus(
     return absl::InvalidArgumentError("Failed to create LebGenerator.");
   }
 
-  return CreateInternal(
+  return Create(
       /*validate_user_loudness=*/false,
       /*override_computed_recon_gains=*/false, enable_temporal_delimiters,
       *leb_generator, std::move(ia_sequence_header_obu),
@@ -646,69 +494,6 @@ absl::Status IamfEncoder::GetInputTimestamp(
   input_timestamp = *timestamp;
   return absl::OkStatus();
 }
-
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-api::IamfStatus IamfEncoder::Encode(
-    const api::IamfTemporalUnitData& temporal_unit_data) {
-  std::vector<ParameterBlockMetadata> parameter_blocks;
-  parameter_blocks.reserve(
-      temporal_unit_data.parameter_block_id_to_metadata.size());
-  for (const auto& [parameter_block_id, raw_parameter_block_metadata] :
-       temporal_unit_data.parameter_block_id_to_metadata) {
-    ParameterBlockObuMetadata proto_metadata;
-    if (!proto_metadata.ParseFromString(raw_parameter_block_metadata)) {
-      return api::IamfStatus::ErrorStatus(
-          "Failed to deserialize a `ParameterBlockObuMetadata` protocol "
-          "buffer.");
-    }
-    auto parameter_block_metadata =
-        ConvertToParameterBlockMetadata(proto_metadata);
-    if (!parameter_block_metadata.ok()) {
-      return AbslToIamfStatus(parameter_block_metadata.status());
-    }
-    parameter_blocks.push_back(*std::move(parameter_block_metadata));
-  }
-
-  if (finalize_encode_called_) {
-    // Avoid adding any samples after they are finalized.
-    if (!temporal_unit_data.audio_element_id_to_data.empty()) {
-      ABSL_LOG_FIRST_N(WARNING, 3)
-          << "Calling `Encode()` with samples after "
-             "`FinalizeEncode()` drops the audio samples.";
-    }
-    return Encode(
-        absl::flat_hash_map<DecodedUleb128,
-                            absl::flat_hash_map<ChannelLabel::Label,
-                                                std::span<const double>>>{},
-        parameter_blocks);
-  }
-
-  absl::flat_hash_map<
-      DecodedUleb128,
-      absl::flat_hash_map<ChannelLabel::Label, std::span<const double>>>
-      audio_element_id_to_data;
-  for (const auto& [audio_element_id, labeled_samples] :
-       temporal_unit_data.audio_element_id_to_data) {
-    auto& converted_labeled_samples =
-        audio_element_id_to_data[audio_element_id];
-    for (const auto& [label, samples] : labeled_samples) {
-      ChannelLabelMessage channel_label_message;
-      if (!channel_label_message.ParseFromString(label)) {
-        return api::IamfStatus::ErrorStatus(
-            "Failed to deserialize `ChannelLabelMessage` protocol buffer.");
-      }
-      auto internal_label = ChannelLabelUtils::ProtoToLabel(
-          channel_label_message.channel_label());
-      if (!internal_label.ok()) {
-        return AbslToIamfStatus(internal_label.status());
-      }
-      converted_labeled_samples[*internal_label] = samples;
-    }
-  }
-
-  return Encode(audio_element_id_to_data, parameter_blocks);
-}
-#endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 api::IamfStatus IamfEncoder::Encode(
     const absl::flat_hash_map<

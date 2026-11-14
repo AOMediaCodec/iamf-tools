@@ -49,6 +49,7 @@ cc_library(
         "//iamf/cli:rendering_mix_presentation_finalizer",
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/proto_conversion:proto_iamf_encoder",
         "//iamf/cli/proto_conversion:proto_utils",
         "//iamf/obu:types",
         "@abseil-cpp//absl/log:absl_log",
@@ -61,6 +62,7 @@ cc_library(
     visibility = [
         "//iamf/api:__subpackages__",
         "//iamf/cli:__pkg__",
+        "//iamf/cli/proto_conversion:__pkg__",
         "//iamf/include/iamf_tools/tests:__pkg__",
     ],
     deps = [
@@ -82,7 +84,7 @@ cc_library(
         ":iamf_tools_encoder_api_types",
         "//iamf/cli:descriptor_obus",
         "//iamf/cli:iamf_components",
-        "//iamf/cli:iamf_encoder_no_proto",
+        "//iamf/cli:iamf_encoder",
         "//iamf/cli:iamf_lite_encoder_factory_utils",
         "//iamf/cli:rendering_mix_presentation_finalizer",
         "//iamf/obu:codec_config",
@@ -108,6 +110,7 @@ cc_library(
     visibility = [
         "//iamf/api:__subpackages__",
         "//iamf/cli:__pkg__",
+        "//iamf/cli/proto_conversion:__pkg__",
         "//iamf/cli/tests:__pkg__",
         "//iamf/include/iamf_tools/tests:__pkg__",
     ],

@@ -37,6 +37,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/proto_conversion/output_audio_format_utils.h"
+#include "iamf/cli/proto_conversion/proto_iamf_encoder.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/sample_processor_base.h"
@@ -159,7 +160,7 @@ absl::Status LabeledSamplesToAudioElementData(
 
 absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
                                       const std::string& input_wav_directory,
-                                      IamfEncoder& iamf_encoder) {
+                                      ProtoIamfEncoder& iamf_encoder) {
   auto wav_sample_provider = WavSampleProvider::Create(
       user_metadata.audio_frame_metadata(), input_wav_directory,
       iamf_encoder.GetAudioElements());
@@ -315,9 +316,9 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   };
 
   auto iamf_encoder =
-      IamfEncoder::Create(user_metadata, TrimmingSettings{},
-                          CreateLoudnessCalculatorFactory().get(),
-                          sample_processor_factory, obu_sequencer_factory);
+      ProtoIamfEncoder::Create(user_metadata, TrimmingSettings{},
+                               CreateLoudnessCalculatorFactory().get(),
+                               sample_processor_factory, obu_sequencer_factory);
   if (!iamf_encoder.ok()) {
     return iamf_encoder.status();
   }
