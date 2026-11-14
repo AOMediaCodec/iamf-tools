@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_PROTO_CONVERSION_PROTO_TO_OBU_AUDIO_FRAME_GENERATOR_H_
-#define CLI_PROTO_CONVERSION_PROTO_TO_OBU_AUDIO_FRAME_GENERATOR_H_
+#ifndef CLI_AUDIO_FRAME_GENERATOR_H_
+#define CLI_AUDIO_FRAME_GENERATOR_H_
 
 #include <cstdint>
 #include <list>
@@ -34,14 +34,7 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/labeled_frame.h"
 #include "iamf/cli/parameters_manager.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/types.h"
-
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-#include "iamf/cli/proto/audio_frame.pb.h"
-#include "iamf/cli/proto/codec_config.pb.h"
-#include "src/google/protobuf/repeated_ptr_field.h"
-#endif
 
 namespace iamf_tools {
 
@@ -80,6 +73,15 @@ namespace iamf_tools {
  */
 class AudioFrameGenerator {
  public:
+  /*!\brief Global trimming configuration shared across all audio substreams.
+   */
+  struct TrimmingConfig {
+    uint32_t samples_to_trim_at_start = 0;
+    uint32_t samples_to_trim_at_end = 0;
+    bool samples_to_trim_at_start_includes_codec_delay = false;
+    bool samples_to_trim_at_end_includes_padding = false;
+  };
+
   /*!\brief Data structure to track the user requested trimming.
    */
   struct TrimmingState {
@@ -89,27 +91,31 @@ class AudioFrameGenerator {
     int64_t user_samples_left_to_trim_at_start;
   };
 
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-  /*!\brief Factory function to create an `AudioFrameGenerator`.
+  /*!\brief Factory function to create an `AudioFrameGenerator` with explicit
+   *        channel labels and trimming configuration.
    *
-   * \param audio_frame_metadata Input audio frame metadata.
-   * \param codec_config_metadata Input codec config metadata.
    * \param audio_elements Input Audio Element OBUs with data.
-   * \param demixing_manager Demixing manager.
+   * \param substream_id_to_encoder Mapping from audio substream IDs to
+   *        initialized encoders.
+   * \param downmixer_manager Downmixer manager.
    * \param parameters_manager Manager of parameters.
    * \param global_timing_module Global Timing Module.
+   * \param audio_element_id_to_labels Mapping from active Audio Element IDs to
+   *        expected input channel labels.
+   * \param trimming_config Shared trimming configuration across all substreams.
+   * \return `AudioFrameGenerator` on success, or a specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull>
-  Create(
-      const ::google::protobuf::RepeatedPtrField<
-          iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata,
-      const ::google::protobuf::RepeatedPtrField<
-          iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata,
-      const DescriptorObus::AudioElementsById& audio_elements,
-      std::unique_ptr<DownmixerManager> absl_nonnull downmixer_manager,
-      ParametersManager& parameters_manager,
-      GlobalTimingModule& global_timing_module);
-#endif
+  Create(const DescriptorObus::AudioElementsById& audio_elements,
+         absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+             substream_id_to_encoder,
+         std::unique_ptr<DownmixerManager> absl_nonnull downmixer_manager,
+         ParametersManager& parameters_manager,
+         GlobalTimingModule& global_timing_module,
+         absl::flat_hash_map<DecodedUleb128,
+                             absl::flat_hash_set<ChannelLabel::Label>>
+             audio_element_id_to_labels,
+         const TrimmingConfig& trimming_config);
 
   /*!\brief Factory function to create an `AudioFrameGenerator` from
    *        pre-initialized encoders.
@@ -136,19 +142,6 @@ class AudioFrameGenerator {
 
   /*!\brief Deleted move constructor. */
   AudioFrameGenerator(AudioFrameGenerator&&) = delete;
-
-#ifdef IAMF_TOOLS_ENCODER_INCLUDE_PROTO
-  /*!\brief Returns the number of samples to delay based on the codec config.
-   *
-   * \param codec_config_metadata Codec config metadata.
-   * \param codec_config Codec config.
-   * \return Number of samples to delay at start on success. A specific status
-   *         on failure.
-   */
-  static absl::StatusOr<uint32_t> GetNumberOfSamplesToDelayAtStart(
-      const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
-      const CodecConfigObu& codec_config);
-#endif
 
   /*!\brief Returns whether the generator is still taking audio samples.
    *
@@ -303,4 +296,4 @@ class AudioFrameGenerator {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_PROTO_CONVERSION_PROTO_TO_OBU_AUDIO_FRAME_GENERATOR_H_
+#endif  // CLI_AUDIO_FRAME_GENERATOR_H_

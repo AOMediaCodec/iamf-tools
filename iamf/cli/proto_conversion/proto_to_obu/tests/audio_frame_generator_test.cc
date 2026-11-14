@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
+#include "iamf/cli/audio_frame_generator.h"
 
 #include <array>
 #include <cstdint>
@@ -30,6 +30,7 @@
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/descriptor_obus.h"
+#include "iamf/cli/downmixer.h"
 #include "iamf/cli/downmixer_manager.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
@@ -39,6 +40,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator_factory.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
@@ -128,8 +130,8 @@ TEST(GetNumberOfSamplesToDelayAtStart, ReturnsZeroForLpcm) {
                                         codec_config_obus);
 
   EXPECT_THAT(
-      AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
-          kUnusedCodecConfigMetadata, codec_config_obus.at(kCodecConfigId)),
+      GetNumberOfSamplesToDelayAtStart(kUnusedCodecConfigMetadata,
+                                       codec_config_obus.at(kCodecConfigId)),
       IsOkAndHolds(0));
 }
 
@@ -170,7 +172,7 @@ TEST(GetNumberOfSamplesToDelayAtStart,
   AddOpusCodecConfigWithIdAndPreSkip(kCodecConfigId, kInvalidPreSkip,
                                      codec_config_obus);
 
-  const auto result = AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+  const auto result = GetNumberOfSamplesToDelayAtStart(
       codec_config_metadata, codec_config_obus.at(kCodecConfigId));
   EXPECT_THAT(result, IsOk());
   EXPECT_NE(*result, kInvalidPreSkip);
@@ -192,7 +194,7 @@ TEST(GetNumberOfSamplesToDelayAtStart, ReturnsNonZeroForOpus) {
   AddOpusCodecConfigWithIdAndPreSkip(kCodecConfigId, kApplicationAudioPreSkip,
                                      codec_config_obus);
 
-  const auto result = AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+  const auto result = GetNumberOfSamplesToDelayAtStart(
       codec_config_metadata, codec_config_obus.at(kCodecConfigId));
 
   ASSERT_THAT(result, IsOk());
@@ -232,14 +234,12 @@ TEST(GetNumberOfSamplesToDelayAtStart, ResultMayVaryWithEncoderMetadata) {
       kApplicationRestrictedLowdelayCodecConfigId, kLowdelayPreskip,
       codec_config_obus);
 
-  const auto application_audio_result =
-      AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
-          application_audio_metadata,
-          codec_config_obus.at(kApplicationAudioCodecConfigId));
-  const auto low_delay_result =
-      AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
-          application_restricted_lowdelay_metadata,
-          codec_config_obus.at(kApplicationRestrictedLowdelayCodecConfigId));
+  const auto application_audio_result = GetNumberOfSamplesToDelayAtStart(
+      application_audio_metadata,
+      codec_config_obus.at(kApplicationAudioCodecConfigId));
+  const auto low_delay_result = GetNumberOfSamplesToDelayAtStart(
+      application_restricted_lowdelay_metadata,
+      codec_config_obus.at(kApplicationRestrictedLowdelayCodecConfigId));
 
   ASSERT_THAT(application_audio_result, IsOk());
   ASSERT_THAT(low_delay_result, IsOk());
@@ -264,7 +264,7 @@ TEST(GetNumberOfSamplesToDelayAtStart, ReturnsNonZeroForAac) {
                     AudioSpecificConfig::SampleFrequencyIndex::k48000,
                     codec_config_obus);
 
-  const auto result = AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+  const auto result = GetNumberOfSamplesToDelayAtStart(
       codec_config_metadata, codec_config_obus.at(kCodecConfigId));
 
   ASSERT_THAT(result, IsOk());
@@ -343,7 +343,7 @@ void InitializeAudioFrameGenerator(
   parameters_manager = *std::move(temp_parameters_manager);
 
   // Generate the audio frames.
-  auto temp_audio_frame_generator = AudioFrameGenerator::Create(
+  auto temp_audio_frame_generator = CreateAudioFrameGeneratorFromMetadata(
       user_metadata.audio_frame_metadata(),
       user_metadata.codec_config_metadata(), audio_elements,
       std::move(downmixer_manager), *parameters_manager, *global_timing_module);

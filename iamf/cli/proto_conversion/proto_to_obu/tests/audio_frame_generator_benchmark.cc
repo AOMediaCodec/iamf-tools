@@ -19,6 +19,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
+#include "iamf/cli/audio_frame_generator.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/downmixer_manager.h"
@@ -31,7 +32,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator_factory.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/audio_frame_metadata_builder.h"
@@ -106,7 +107,7 @@ void InitializeAudioFrameGenerator(
   parameters_manager = *std::move(temp_parameters_manager);
 
   // Create an audio frame generator.
-  auto temp_audio_frame_generator = AudioFrameGenerator::Create(
+  auto temp_audio_frame_generator = CreateAudioFrameGeneratorFromMetadata(
       user_metadata.audio_frame_metadata(),
       user_metadata.codec_config_metadata(), audio_elements,
       std::move(downmixer_manager), *parameters_manager, *global_timing_module);

@@ -24,7 +24,7 @@
 #include "iamf/cli/descriptor_obus.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator_factory.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
@@ -222,8 +222,7 @@ absl::Status OverrideCodecDelay(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
     CodecConfigObu& codec_config_obu) {
   const auto required_codec_delay =
-      AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
-          codec_config_metadata, codec_config_obu);
+      GetNumberOfSamplesToDelayAtStart(codec_config_metadata, codec_config_obu);
   if (!required_codec_delay.ok()) {
     return required_codec_delay.status();
   }

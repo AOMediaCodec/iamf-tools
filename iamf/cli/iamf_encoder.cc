@@ -35,6 +35,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
+#include "iamf/cli/audio_frame_generator.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
@@ -49,7 +50,6 @@
 #include "iamf/cli/obu_sequencer_streaming_iamf.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/temporal_unit_view.h"
 #include "iamf/common/leb_generator.h"
@@ -72,12 +72,15 @@
 #include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/arbitrary_obu_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator_factory.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/ia_sequence_header_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/metadata_obu_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/mix_presentation_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
+#include "iamf/common/utils/validation_utils.h"
+#include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #endif  // IAMF_TOOLS_ENCODER_INCLUDE_PROTO
 
 ABSL_POINTERS_DEFAULT_NONNULL
@@ -537,7 +540,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
         if (!audio_element_id_to_downmixing_config.ok()) {
           return audio_element_id_to_downmixing_config.status();
         }
-        return AudioFrameGenerator::Create(
+        return CreateAudioFrameGeneratorFromMetadata(
             user_metadata.audio_frame_metadata(),
             user_metadata.codec_config_metadata(), elements,
             DownmixerManager::Make(
