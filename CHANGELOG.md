@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+-   Added `IamfLiteEncoderFactory` which allows creating a simple encoder for a
+    single audio element without depending on ProtoBuf.
+
 ### Changed
 
 -   Default `iamf_encoder` tag in Mix Presentation OBUs now includes the build
