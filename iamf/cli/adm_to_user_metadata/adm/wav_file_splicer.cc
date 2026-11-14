@@ -78,7 +78,8 @@ std::vector<std::vector<int32_t>> GetAudioTracksForAudioObjects(
   for (const auto& audio_object : audio_objects) {
     auto& audio_tracks_for_audio_object =
         audio_tracks_for_audio_objects[++audio_object_index];
-    for (auto unused_audio_track : audio_object.audio_track_uid_ref) {
+    for ([[maybe_unused]] auto unused_audio_track :
+         audio_object.audio_track_uid_ref) {
       audio_tracks_for_audio_object.push_back(++audio_track_index);
     }
   }

@@ -940,8 +940,6 @@ TEST(PushDescriptorObusThenClose,
   const CodecConfigsById kNoCodecConfigsById;
   const AudioElementsById kNoAudioElements;
   const MixPresentationObus kNoMixPresentationObus;
-  const std::list<AudioFrameWithData> kNoAudioFrames;
-  const std::list<ParameterBlockWithData> kNoParameterBlocks;
   const std::list<ArbitraryObu> kNoArbitraryObus;
   const std::list<MetadataObu> kNoMetadataObus;
   MockObuSequencer mock_obu_sequencer(*LebGenerator::Create(),
@@ -1427,7 +1425,6 @@ TEST(PushTemporalUnit, FailsWhenBeforePushDescriptorObus) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  const std::list<MetadataObu> kNoMetadataObus;
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
@@ -1451,7 +1448,6 @@ TEST(PushTemporalUnit, FailsWhenCalledAfterClose) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  const std::list<MetadataObu> kNoMetadataObus;
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;
@@ -1475,7 +1471,6 @@ TEST(PushTemporalUnit, FailsWhenCalledAfterAbort) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
-  const std::list<MetadataObu> kNoMetadataObus;
   CodecConfigsById codec_config_obus;
   AudioElementsById audio_elements;
   MixPresentationObus mix_presentation_obus;

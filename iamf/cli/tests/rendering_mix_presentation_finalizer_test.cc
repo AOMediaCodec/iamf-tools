@@ -301,7 +301,6 @@ TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
 TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
   PrepareObusForLabelToSamples({{kL2, {0}}, {kR2, {2}}});
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  std::list<ParameterBlockWithData> parameter_blocks;
 
   auto finalizer = CreateFinalizerExpectOk();
   IterativeRenderingExpectOk(finalizer, parameter_blocks_);
@@ -314,7 +313,6 @@ TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingDisabled) {
   const std::filesystem::path output_directory =
       GetAndCreateOutputDirectory("");
   trimming_settings_ = std::nullopt;
-  std::list<ParameterBlockWithData> parameter_blocks;
 
   auto finalizer = CreateFinalizerExpectOk();
   IterativeRenderingExpectOk(finalizer, parameter_blocks_);
@@ -327,7 +325,6 @@ TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingDisabled) {
 TEST_F(FinalizerTest, UsesCodecConfigBitDepthWhenOverrideIsNotSet) {
   PrepareObusForLabelToSamples({{kMono, {0, 1}}});
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
 
   IterativeRenderingExpectOk(finalizer, parameter_blocks_);
@@ -342,7 +339,6 @@ TEST_F(FinalizerTest, OverridesBitDepthWhenRequested) {
   output_audio_format_ =
       iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO;
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
 
   IterativeRenderingExpectOk(finalizer, parameter_blocks_);
@@ -368,7 +364,6 @@ TEST_F(FinalizerTest, WavFileHasExpectedProperties) {
   const std::vector<InternalSampleType> kFourSamples = {1, 2, 3, 4};
   PrepareObusForLabelToSamples({{kMono, kFourSamples}});
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
 
   IterativeRenderingExpectOk(finalizer, parameter_blocks_);
@@ -390,7 +385,6 @@ TEST_F(FinalizerTest, SamplesAreTrimmedFromWavFile) {
                                kNumSamplesToTrimFromStart,
                                kNumSamplesToTrimFromEnd);
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
 
   IterativeRenderingExpectOk(finalizer, parameter_blocks_);

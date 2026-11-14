@@ -856,9 +856,6 @@ TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
       kCommonMixGainParameterId, kCommonParameterRate, sound_system_layouts,
       mix_presentation_obus);
 
-  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
-  const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
-
   const IASequenceHeaderObu ia_sequence_header(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
@@ -1021,9 +1018,6 @@ TEST(
       api::IamfDecoder::CreateFromDescriptors(kMonoSettings, descriptors.data(),
                                               descriptors.size(), decoder)
           .ok());
-
-  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
-  const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
 
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
